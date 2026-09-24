@@ -131,6 +131,8 @@ jobs:
       run: node tests/no-data-masking.test.js
     - name: Intelligence Layer — real timestamps + certificate fingerprint uniqueness (D2)
       run: node tests/analytics-timestamps.test.js
+    - name: Intelligence Layer — Phase 9.0 wiring gate E2E (D3)
+      run: node tests/semantic-analytics-e2e.test.js
 
     - name: Migration chain — clean install on an empty database (001 → latest)
       run: |

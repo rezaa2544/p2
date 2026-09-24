@@ -54,6 +54,8 @@ const { createGradeRoutes } = require('./routes/grades');
 const { createUserRoutes } = require('./routes/users');
 const { createReportsRoutes } = require('./routes/reports'); /* Wave 23 — گزارش‌دهی پیشرفته */
 const { createAnalyticsRoutes } = require('./routes/analytics'); /* P0-EI-09 — مرکز فرماندهی و هوشمندی مدرسه */
+/* Phase 9.0 (Wiring Gate): اتصال هشت موتور آموزشیِ F-EI-01 به مسیر HTTP واقعی */
+const { createSemanticAnalyticsRoutes } = require('./routes/semantic-analytics');
 const { createBootstrapRoute } = require('./routes/bootstrap');
 const { createSystemRoutes } = require('./routes/system'); /* Phase 4 — P1-SC-01: سلامت زیرساخت و مقیاس‌پذیری */
 const { assertNationalCapacityEnforcement } = require('./infrastructure/national-capacity-enforcement'); /* Phase 5 — P2-NI-05: اینگرس مهار ظرفیت ملی */
@@ -719,6 +721,7 @@ const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty, ids, delete
 const userRoutes = createUserRoutes({ store, db, audit, markDirty, ids, deleter });
 const reportsRoutes = createReportsRoutes({ store, db, audit, markDirty, ids, deleter }); /* Wave 23 */
 const analyticsRoutes = createAnalyticsRoutes({ store, db, audit, markDirty, ids, deleter }); /* P0-EI-09 */
+const semanticAnalyticsRoutes = createSemanticAnalyticsRoutes({ store, db }); /* Phase 9.0 Wiring Gate */
 const bootstrapRoute = createBootstrapRoute({ store, db });
 const systemRoutes = createSystemRoutes({ store, db }); /* Phase 4 — P1-SC-01 */
 /* Root-cause elimination (RAM-as-authority audit): canary weights MUST be
@@ -1293,6 +1296,41 @@ const onRequest = async (req, res) => {
       // /api/v1/analytics/intelligence-certification (P0-EI-21: گیت انتشار و صدور گواهی نهایی فاز ۳)
       if(p === '/api/v1/analytics/intelligence-certification' && req.method === 'GET'){
         const r = await analyticsRoutes.intelligenceCertificationReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // ── Phase 9.0 Wiring Gate (F-EI-01): اتصال هشت موتور آموزشی که پیش‌تر
+      //    کد داشتند اما هیچ مسیر رانتایمی به آن‌ها نبود. ──────────────────
+      if(p === '/api/v1/analytics/semantic-metrics' && req.method === 'GET'){
+        const r = await semanticAnalyticsRoutes.semanticReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/analytics/assessment-quality' && req.method === 'GET'){
+        const r = await semanticAnalyticsRoutes.assessmentQualityReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/analytics/attendance-risk' && req.method === 'GET'){
+        const r = await semanticAnalyticsRoutes.attendanceRiskReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/analytics/student-timeline' && req.method === 'GET'){
+        const r = await semanticAnalyticsRoutes.studentTimelineReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/analytics/intervention-warnings' && req.method === 'GET'){
+        const r = await semanticAnalyticsRoutes.interventionWarningsReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/analytics/school-health-dashboard' && req.method === 'GET'){
+        const r = await semanticAnalyticsRoutes.schoolHealthReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/analytics/parent-360' && req.method === 'GET'){
+        const r = await semanticAnalyticsRoutes.parent360Report(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/analytics/teacher-evidence' && req.method === 'GET'){
+        const r = await semanticAnalyticsRoutes.teacherEvidenceReport(req, url.searchParams);
         return sendJson(res, r.status, r.body);
       }
 
