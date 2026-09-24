@@ -9,7 +9,8 @@
 
 > ## 🔴 CURRENT EXECUTION PLAN — 2026-09-24
 > **Canonical execution plan:** `docs/CURRENT_WORK_EXECUTION_PLAN.md`
-> **Current sequence:** Atria Critical/High → Atria Medium → Atria Low → Full Multi-AI Validation → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification.
+> **Current sequence:** Atria Critical/High → **Phase A Carry-over Closure** → Atria Medium → Atria Low → Full Multi-AI Validation → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification.
+> **Atria Phase A carry-over register:** `docs/audit/ATRIA_PHASE_A_CARRYOVER.md` — موارد A-01..A-23 شناسایی‌شده در نخستین sweep که هنوز تعیین‌تکلیف کامل نشده‌اند. این queue بخشی از Ground Truth اجرایی است و قبل از عبور از sweep Medium باید disposition و evidence داشته باشد.
 > این سند همچنان لایهٔ Ground Truth است؛ هر status باید با HEAD جاری و evidence واقعی تطبیق داده شود. گزارش Atria به‌تنهایی certification نیست.
 
 ---
@@ -824,3 +825,35 @@ E3 DR/PITR and Redis HA evidence remains E3. E4 requires production-equivalent t
 | Phase 8.3 | **BLOCKED** | depends on 8.2 exit | `21ec84e1...` | 8.2 exit + E4 load environment |
 | Production GO | **NOT DECLARED** | no production-equivalent E4 gate | `21ec84e1...` | all required E4 evidence |
 
+
+
+## Architecture Evolution Ground Truth — 2026-09-24
+
+Canonical architecture backlog: docs/ARCHITECTURE_EVOLUTION_ROADMAP.md
+
+The repository now records twelve architecture patterns as a controlled evolution track. P0: Modular Monolith/Vertical Slices; Event-Driven; Transactional Outbox; OpenTelemetry; Policy-as-Code. P1: Selective CQRS; Workflow/Saga. Conditional: Event Sourcing; Microservices; Kubernetes; Service Mesh. Cross-cutting: Zero-Trust Service Boundaries.
+
+This is roadmap state, not implementation certification. Current architecture remains the baseline until an evidence-backed Architecture Review changes it. The active execution order remains Atria Critical/High → Phase A Carry-over Closure → Atria Medium → Atria Low → Multi-AI Validation → Capability/Role/E2E → Failure/Recovery → Performance → Final Certification.
+
+
+## Mandatory Strict Verification Gate — 2026-09-24
+
+The repository now has a fail-closed certification policy in `docs/STRICT_VERIFICATION_GATE.md`. No item may be marked PASS/VERIFIED without the evidence contract and independent ChatGPT + Arena + Atria review bound to the same HEAD. The machine gate is `tools/strict-verification-gate.js`, with CI enforcement in `.github/workflows/strict-verification.yml`. An incomplete registry is intentionally NOT VERIFIED.
+
+
+## 2026-09-24 — Multi-AI Report Reconciliation / Current Main 3b98fc1
+
+Current GitHub `main` resolves to `3b98fc19ec49bbbc7362fea578b196c1d4c0f2e9`. The report corpus was reconciled against this SHA. Historical report PASS/VERIFIED labels are not promoted automatically.
+
+### Newly confirmed work queue from report reconciliation
+1. **SYNC-OFFLINE / OCC:** the dedicated Sync/Offline remediation branch is not merged into current main. A-18/A-20 therefore remain open in the canonical queue. The branch evidence also leaves legacy/LWW compatibility, device/browser crash durability, reconnect/production topology and multi-host behavior unverified. Reconcile the branch onto current main, reproduce A-18/A-20, run adversarial stale-write/concurrent/version tests, then regression-test the merged SHA.
+2. **Authorization:** Arena-2 found and fixed five defects on its branch: cross-collection ID collision, tenant-province fallback/parent-office lockout, guard/driver read over-permission, NULL school anchor, and phone canonicalization. Current main already contains the ID-generation remediation path and upstream tenant fixes; these must be independently revalidated on current main rather than duplicated. The Arena-2 branch is not a certification source.
+3. **Security/CI:** Arena-6 reported repo-owned security/false-green gaps requiring explicit reconciliation: F-S04 security workflow/orphan-suite gating; F-S01 scanner extension coverage; F-S02 published example JWT secret rejection; F-S05 supply-chain suite drift; F-S09 OTP mutation oracle; F-S10 configuration-variable drift; F-S07 sync denial envelope contract; F-S06 outbox/tombstone model coverage; F-S11 malformed JSON contract; F-S13 skip-to-incomplete semantics; F-S16 Node-engine guard; F-S12/F-S14 hardening. F-S03 PAT rotation and E4 penetration testing remain external owner blockers.
+4. **Outbox/Worker:** prior Arena evidence identified F-1a processing-claim recovery, F-1b no-handler processing state, F-2 worker timeout/recovery, F-3 processing-depth observability, F-4 missing CI registration, and F-5 terminal dead-letter label consistency. These are not to be re-counted as new defects if already fixed by later commits; current-head revalidation is mandatory before closure.
+5. **DR/HA:** Arena-8 and the DR reports leave E3 as historical/local evidence and E4 unverified. Required work remains current-SHA DR-01 refresh, real PG/Redis restore/failover evidence, independent failure domains, off-site/S3 evidence, RPO/RTO acceptance thresholds, and alert→receiver→on-call→ack→runbook→recovery evidence.
+6. **Architecture/scale:** remaining validation includes RAM-authoritative control-plane remnants, explicit authority mode/fail-closed behavior outside server boot, fragmented tenant enforcement on legacy routes, national-scale load/soak evidence, and measured performance rather than documented targets.
+7. **Release/roadmap integrity:** the master schedule audit identified documentation/execution drift items (Redis target-version mismatch, Node engine-pin mismatch, unsupported critical-path duration claim, and Phase 9.0 dependency wording). These are documentation/plan reconciliation tasks, not runtime defect claims.
+8. **Strict Verification Gate:** the registry is intentionally still empty and therefore BLOCKED. The previous broken `monitoring/alert-rules.yml` finding is no longer reproduced on current main: the path is readable and is a documented compatibility marker pointing to the canonical rules file. The gate itself still requires a real registry and three independent reviews before any certification claim.
+
+### Mandatory execution consequence
+No item above is marked green by this reconciliation. New/remaining work must enter the appropriate workstream, receive exact current-HEAD evidence, and pass the three-AI gate. Historical reports remain evidence records only.

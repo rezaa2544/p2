@@ -98,3 +98,17 @@ This register is a mandatory carry-over queue for:
 `Atria Critical/High → Phase A carry-over closure → Atria Medium/P2 → Atria Low/P3 → Full Multi-AI Validation → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification`
 
 It does not replace the canonical execution plan; it makes the unresolved Phase A work explicit and prevents loss of scope.
+
+
+## 2026-09-24 — Cross-report additions
+
+The multi-AI reconciliation adds the following explicit closure work around the existing A-01..A-23 queue. These are **not replacements** for A-18/A-20; they are integration/revalidation obligations:
+
+- **A-24 — Sync/Offline branch reconciliation:** independent remediation exists off-main; reconcile onto current main, re-run A-18/A-20, and prove stale-write/newer-state invariants on the merged/current SHA. Legacy/LWW, crash durability, reconnect, and production multi-host limits remain unverified until separately exercised.
+- **A-25 — Outbox/worker current-head revalidation:** reconcile the previously reported F-1a/F-1b/F-2/F-3/F-4/F-5 findings against current main; close only with exact-SHA regression/runtime evidence.
+- **A-26 — Security/CI false-green closure:** reconcile F-S04/F-S01/F-S02/F-S05/F-S07/F-S09/F-S10/F-S11/F-S13/F-S16 and related hardening items against current main; no blanket allowlist.
+- **A-27 — DR/E4 closure:** current-SHA DR-01 refresh plus E4 PG/Redis restore/failover, independent failure domains, RPO/RTO acceptance, and alert/on-call recovery evidence.
+- **A-28 — Architecture/scale revalidation:** RAM-authoritative control planes, explicit authority mode, legacy tenant enforcement, national-scale load/soak and measured capacity.
+- **A-29 — Roadmap integrity reconciliation:** Redis/Node version drift, unsupported critical-path duration, and Phase 9.0 dependency wording from the schedule audit.
+
+These additions remain subject to the same disposition contract and do not permit Phase A carry-over closure until evidence is complete.

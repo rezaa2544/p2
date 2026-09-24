@@ -220,6 +220,40 @@ Atria باید کل `main` فعلی را به‌عنوان baseline بررسی �
 
 ---
 
+
+
+### Phase I.1 — Database Sharding Readiness / Decision Gate
+**وضعیت: PLANNED / CONDITIONAL**
+
+این کار عمداً بعد از Performance / Scale Validation قرار می‌گیرد. هدف، تبدیل weighted partitioning و read-replica routing فعلی به **true sharding فقط در صورت اثبات نیاز** است؛ نه اجرای premature architecture.
+
+**Decision Gate:**
+- measured database/tenant bottleneck روی Current HEAD
+- evidence واقعی capacity و saturation
+- shard key + tenant placement contract
+- topology و failover model
+- بررسی کافی‌بودن partitioning + read replicas
+- Architecture Review با تصمیم ADOPT / DEFER / REJECT
+
+**در صورت ADOPT:**
+1. Shard Router / Placement contract
+2. connection/pool isolation per shard
+3. tenant-safe routing
+4. primary-write / read-consistency contract
+5. shard-local migrations
+6. provisioning + failover
+7. rebalancing / tenant migration
+8. cross-shard query policy
+9. per-shard observability
+10. per-shard backup/restore/DR
+11. tenant/authz/OCC regression
+12. E3 + E4 multi-shard evidence
+
+**Definition of Done:**
+Design → Decision Gate → Bounded Implementation → 5-Pass Regression → E3 Runtime Evidence → E4 Multi-Shard Evidence → Independent Review
+
+**قید:** PAYESH_SHARDS یا weighted routing به‌تنهایی اثبات Sharding Production نیست. تا اثبات واقعی توزیع داده و lifecycle چند shard مستقل، این آیتم PLANNED / NOT VERIFIED باقی می‌ماند.
+
 ## 10. Phase J — Final Certification / Ground Truth
 
 در پایان یک ماتریس واحد صادر می‌شود:
@@ -309,3 +343,42 @@ CI / RUNTIME EVIDENCE:
 `Atria Critical/High → Atria Medium → Atria Low → Full Multi-AI Validation → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification`
 
 این ترتیب تا Architecture Review صریح تغییر نمی‌کند.
+
+
+## Architecture Evolution Track — execution policy
+
+Canonical detail: docs/ARCHITECTURE_EVOLUTION_ROADMAP.md
+
+P0: Modular Monolith/Vertical Slices; Event-Driven + Transactional Outbox; OpenTelemetry; Policy-as-Code.
+P1: Selective CQRS; Workflow/Saga.
+Conditional/research: Event Sourcing; Microservices; Kubernetes; Service Mesh.
+Cross-cutting: Zero-Trust Service Boundaries.
+
+These are not implementation claims. They are controlled architecture work items. P0 may be evaluated during the current program only when it reduces current risk or unblocks validation. P1/research remains behind the current defect and validation gates unless Architecture Review explicitly changes the sequence.
+
+
+## MANDATORY STRICT VERIFICATION GATE — 2026-09-24
+
+Canonical policy: `docs/STRICT_VERIFICATION_GATE.md`
+
+از این نقطه هیچ بخش/آیتمی بدون عبور از Strict Verification Gate حق دریافت PASS/VERIFIED ندارد. هر آیتم باید برای همان HEAD توسط سه بررسی مستقل ChatGPT + Arena + Atria ارزیابی شود و evidence مستقل داشته باشد. Gate به‌صورت fail-closed در `tools/strict-verification-gate.js` و GitHub Actions workflow ثبت شده است. Registry رسمی: `docs/verification/VERIFICATION_REGISTRY.json`. موارد A-01..A-23 نیز مشمول این قانون هستند.
+
+قانون اجرایی: **NO EVIDENCE CHAIN → NO GREEN CHECK**. تست سبز، CI سبز، review یا گزارش تاریخی به‌تنهایی certification نیست.
+
+
+## 2026-09-24 — Multi-AI Report Reconciliation / Current Main 3b98fc1
+
+Current GitHub `main` resolves to `3b98fc19ec49bbbc7362fea578b196c1d4c0f2e9`. The report corpus was reconciled against this SHA. Historical report PASS/VERIFIED labels are not promoted automatically.
+
+### Newly confirmed work queue from report reconciliation
+1. **SYNC-OFFLINE / OCC:** the dedicated Sync/Offline remediation branch is not merged into current main. A-18/A-20 therefore remain open in the canonical queue. The branch evidence also leaves legacy/LWW compatibility, device/browser crash durability, reconnect/production topology and multi-host behavior unverified. Reconcile the branch onto current main, reproduce A-18/A-20, run adversarial stale-write/concurrent/version tests, then regression-test the merged SHA.
+2. **Authorization:** Arena-2 found and fixed five defects on its branch: cross-collection ID collision, tenant-province fallback/parent-office lockout, guard/driver read over-permission, NULL school anchor, and phone canonicalization. Current main already contains the ID-generation remediation path and upstream tenant fixes; these must be independently revalidated on current main rather than duplicated. The Arena-2 branch is not a certification source.
+3. **Security/CI:** Arena-6 reported repo-owned security/false-green gaps requiring explicit reconciliation: F-S04 security workflow/orphan-suite gating; F-S01 scanner extension coverage; F-S02 published example JWT secret rejection; F-S05 supply-chain suite drift; F-S09 OTP mutation oracle; F-S10 configuration-variable drift; F-S07 sync denial envelope contract; F-S06 outbox/tombstone model coverage; F-S11 malformed JSON contract; F-S13 skip-to-incomplete semantics; F-S16 Node-engine guard; F-S12/F-S14 hardening. F-S03 PAT rotation and E4 penetration testing remain external owner blockers.
+4. **Outbox/Worker:** prior Arena evidence identified F-1a processing-claim recovery, F-1b no-handler processing state, F-2 worker timeout/recovery, F-3 processing-depth observability, F-4 missing CI registration, and F-5 terminal dead-letter label consistency. These are not to be re-counted as new defects if already fixed by later commits; current-head revalidation is mandatory before closure.
+5. **DR/HA:** Arena-8 and the DR reports leave E3 as historical/local evidence and E4 unverified. Required work remains current-SHA DR-01 refresh, real PG/Redis restore/failover evidence, independent failure domains, off-site/S3 evidence, RPO/RTO acceptance thresholds, and alert→receiver→on-call→ack→runbook→recovery evidence.
+6. **Architecture/scale:** remaining validation includes RAM-authoritative control-plane remnants, explicit authority mode/fail-closed behavior outside server boot, fragmented tenant enforcement on legacy routes, national-scale load/soak evidence, and measured performance rather than documented targets.
+7. **Release/roadmap integrity:** the master schedule audit identified documentation/execution drift items (Redis target-version mismatch, Node engine-pin mismatch, unsupported critical-path duration claim, and Phase 9.0 dependency wording). These are documentation/plan reconciliation tasks, not runtime defect claims.
+8. **Strict Verification Gate:** the registry is intentionally still empty and therefore BLOCKED. The previous broken `monitoring/alert-rules.yml` finding is no longer reproduced on current main: the path is readable and is a documented compatibility marker pointing to the canonical rules file. The gate itself still requires a real registry and three independent reviews before any certification claim.
+
+### Mandatory execution consequence
+No item above is marked green by this reconciliation. New/remaining work must enter the appropriate workstream, receive exact current-HEAD evidence, and pass the three-AI gate. Historical reports remain evidence records only.

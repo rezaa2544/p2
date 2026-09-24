@@ -72,3 +72,15 @@ Workstreamهای مستقل و non-overlapping؛ هر تحویل باید scope�
 **مرجع اصلی اجرا:** `docs/CURRENT_WORK_EXECUTION_PLAN.md`  
 **مرجع roadmap:** `docs/ROADMAP.md` و `docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md`  
 **مرجع current truth:** `docs/ROADMAP_CURRENT_GROUND_TRUTH_2026-09-21.md`
+
+## Architecture Evolution Ground Truth — 2026-09-24
+
+Canonical detail: docs/ARCHITECTURE_EVOLUTION_ROADMAP.md
+
+The 12 architecture patterns are now part of project intelligence as a prioritized evolution backlog:
+- P0: Modular Monolith/Vertical Slices; Event-Driven; Transactional Outbox; OpenTelemetry; Policy-as-Code.
+- P1: Selective CQRS; Workflow/Saga.
+- Conditional research: Event Sourcing; Microservices; Kubernetes; Service Mesh.
+- Cross-cutting: Zero-Trust Service Boundaries.
+
+This registration is not a claim of implementation. Existing architecture remains the baseline until evidence-backed Architecture Review decisions are made.
