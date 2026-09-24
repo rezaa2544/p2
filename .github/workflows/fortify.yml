@@ -62,7 +62,8 @@ jobs:
       - name: Skip Fortify Scan without credentials or on forked PRs
         if: ${{ env.FOD_CREDENTIALS_PRESENT == 'false' || env.IS_FORK_PR == 'true' }}
         run: |
-          echo "Skipping Fortify scan because required credentials are not available or the PR comes from a fork. Configure repository secrets for Fortify and rerun the workflow."
+          echo "Fortify scan NOT EXECUTED: required credentials are not available or the PR comes from a fork." >&2
+          exit 1
           {
             echo "## Fortify AST Scan — NOT EXECUTED"
             echo ""
