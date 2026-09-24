@@ -1420,3 +1420,10 @@ F-QA-02 → F-QA-03 → F-QA-01 → F-QA-08 → M1 → M2 → M3 → OUTBOX-002 
 
 **حکم:** گزارش Chat → Reconcile با Current HEAD → Update Roadmap/Ground Truth → Commit/Push → Re-verify → سپس Chat بعدی.
 
+
+
+## Architecture Evolution Track — 2026-09-24
+
+Canonical detail: docs/ARCHITECTURE_EVOLUTION_ROADMAP.md
+
+The roadmap now contains a 12-pattern modernization track. P0 foundations are evaluated first; P1 items follow evidence; Event Sourcing, Microservices, Kubernetes and Service Mesh remain conditional research; Zero-Trust boundaries are cross-cutting. No blanket rewrite is planned.
