@@ -437,38 +437,47 @@ function buildRegionalSnapshot(regionContext = {}, options = {}) {
   let totalActiveInterventions = 0;
   let totalUnassignedHigh = 0;
   let sumResolutionRate = 0;
+  let countedResolution = 0;
 
   for (const s of rawSchools) {
     totalActiveInterventions += Number(s.intervention_summary?.active_cases_count ?? 0);
     totalUnassignedHigh += Number(s.intervention_summary?.unassigned_high_priority_count ?? 0);
-    sumResolutionRate += Number(s.intervention_summary?.resolution_rate ?? 100.0);
+    // D1 (بازمانده): مدرسه بدون نرخ حل، باید ۱۰۰٪ موفق جلوه نکند.
+    const resRate = s.intervention_summary?.resolution_rate;
+    if (resRate != null) { sumResolutionRate += Number(resRate); countedResolution += 1; }
   }
 
   const schoolCount = rawSchools.length;
-  const overallResolutionRate = schoolCount > 0 ? Math.round((sumResolutionRate / schoolCount) * 10) / 10 : 100.0;
+  const overallResolutionRate = countedResolution > 0 ? Math.round((sumResolutionRate / countedResolution) * 10) / 10 : null;
 
   const interventionSummary = {
     total_active_cases: totalActiveInterventions,
     unassigned_high_priority_cases: totalUnassignedHigh,
+    schools_reported_in_resolution_average: countedResolution,
     overall_resolution_rate: overallResolutionRate,
-    effective_interventions_ratio: totalActiveInterventions > 0 ? 0.85 : 1.0
+    // مقدار ۰.۸۵ یک برآورد دل‌بخواه بود؛ نسبتِ موثّر تنها روی دادهٔ واقعی
+    // محاسبه می‌شود و در نبودِ آن explicit null می‌گردد (نه ۱.۰ نمایشی).
+    effective_interventions_ratio: null
   };
 
   // ۴. الگوهای حضور
   let sumChronic = 0;
+  let countedChronic = 0;
   const peakDays = {};
   for (const s of rawSchools) {
-    sumChronic += Number(s.attendance_summary?.chronic_absence_rate ?? 5.0);
-    const pd = s.attendance_summary?.peak_absence_day || 'wednesday';
-    peakDays[pd] = (peakDays[pd] || 0) + 1;
+    // D1 (بازمانده): مدرسه بدون نرخ غیبتِ مزمن، ۵٪ غیبتِ مزمن ندارد.
+    const chronicRate = s.attendance_summary?.chronic_absence_rate;
+    if (chronicRate != null) { sumChronic += Number(chronicRate); countedChronic += 1; }
+    const pd = s.attendance_summary?.peak_absence_day;
+    if (pd) peakDays[pd] = (peakDays[pd] || 0) + 1;
   }
-  const avgChronic = schoolCount > 0 ? Math.round((sumChronic / schoolCount) * 10) / 10 : 5.0;
+  const avgChronic = countedChronic > 0 ? Math.round((sumChronic / countedChronic) * 10) / 10 : null;
 
-  let regionalPeakDay = 'wednesday';
+  let regionalPeakDay = null;
   let maxCount = -1;
-  for (const [day, count] of Object.entries(peakDays)) {
-    if (count > maxCount) {
-      maxCount = count;
+  for (const [day, cnt] of Object.entries(peakDays)) {
+    if (cnt > maxCount) {
+      maxCount = cnt;
       regionalPeakDay = day;
     }
   }
