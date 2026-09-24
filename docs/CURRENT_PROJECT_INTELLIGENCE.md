@@ -20,7 +20,10 @@
 - اسناد اجرایی جدید در main ثبت شده‌اند: `docs/CURRENT_WORK_EXECUTION_PLAN.md` و alignmentهای roadmap/P0/production-readiness.
 
 ## 2. ترتیب اجرایی حاکم
-`Atria Critical/High → Atria Medium → Atria Low → Full Multi-AI Validation → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification`
+`Atria Critical/High → Phase A Carry-over Closure → Atria Medium → Atria Low → Full Multi-AI Validation → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification`
+
+### Phase A carry-over (mandatory)
+گزارش نخست Atria، ۲۲ مورد Medium/Low را شناسایی و عمداً خارج از P0/P1 remediation گذاشت. این موارد اکنون به‌صورت queue رسمی در `docs/audit/ATRIA_PHASE_A_CARRYOVER.md` ثبت شده‌اند و قبل از عبور از sweep Medium باید تعیین‌تکلیف شوند. «Deferred» یا «خارج از scope قبلی» به معنی حل‌شده نیست.
 تا پایان sweep آتریا، Arenaها نباید هم‌زمان روی همان ناحیه‌ای که Atria در حال remediation آن است تغییر کدنویسی دهند. بعد از آن، workstreamها مستقل و non-overlapping می‌شوند.
 
 ## 3. قرارداد رفع عیب
