@@ -77,18 +77,24 @@ function sanitizePayload(data) {
   return clone;
 }
 
+/* کد استاندارد سازمان ثبت احوال ایران. تصحیحِ P1: نگاشتِ پیشین
+   'سیستان' و 'کردستان' را هر دو به '۱۲' می‌برد و دو استانِ متمایز را
+   به یک توکنِ واحد فرو می‌کوبید — نتیجه: گارد حریم استانی بینِ این
+   دو استان بی‌اثر می‌شد. همچنین خراسان‌ها و البرز نیز کدِ اشتباه داشتند. */
 const IRAN_PROVINCE_BY_NAME = Object.freeze({
   'تهران': '07',
-  'البرز': '00',
+  'البرز': '30',
   'اصفهان': '04',
   'قم': '25',
   'مرکزی': '03',
   'چهارمحال': '20',
-  'خراسان رضوی': '09',
-  'خراسان جنوبی': '10',
-  'خراسان شمالی': '11',
-  'سیستان': '12',
-  'کردستان': '12',
+  'چهارمحال و بختیاری': '20',
+  'خراسان رضوی': '24',
+  'خراسان جنوبی': '27',
+  'خراسان شمالی': '28',
+  'سیستان': '19',
+  'سیستان و بلوچستان': '19',
+  'کردستان': '05',
   'فارس': '14',
   'کرمان': '15',
   'بوشهر': '16',
@@ -123,6 +129,15 @@ function resolveActorProvince(actor, store) {
     if (sch) {
       if (sch.province_code) return mapProvinceToken(sch.province_code, store);
       if (sch.province_id != null) return mapProvinceToken(sch.province_id, store);
+    }
+  }
+  // edu_office: استان از طریقِ دفترِ آموزش و پرورشِ کاربر حل می‌شود
+  // (کاربرانِ این نقش نه school_id دارند و نه province_code).
+  if (actor.office_id != null) {
+    const office = ((store && store.offices) || []).find((o) => Number(o.id) === Number(actor.office_id));
+    if (office) {
+      if (office.province_code) return mapProvinceToken(office.province_code, store);
+      if (office.province_id != null) return mapProvinceToken(office.province_id, store);
     }
   }
   return null;
@@ -200,6 +215,8 @@ module.exports = {
   HARDENING_ERRORS,
   validateProductionEnvironment,
   sanitizePayload,
+  mapProvinceToken,
+  resolveActorProvince,
   assertTenantBoundary,
   checkMemoryHealth
 };

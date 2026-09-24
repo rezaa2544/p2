@@ -332,7 +332,12 @@ async function seedPgFromBootstrap(store, db) {
   return null;
 });
 
-cache.init().then((r) => {
+/* P1: آماده‌سازیِ کش باید پیش از باز شدنِ سوکت به نتیجه برسد. پیش از این
+   fire-and-forget بود: با ردیسِ پیکربندی‌شده اما غیرقابلِ دسترس، redis.init
+   تا ۳ ثانیه طول می‌کشید و server.listen در همین پنجره سوکت را باز می‌کرد —
+   یعنی درخواست‌ها سرو می‌شدند پیش از آنکه دروازهٔ بوتِ ردیس بتواند
+   process.exit(1) کند. startListening اکنون cacheReady را هم await می‌کند. */
+const cacheReady = cache.init().then((r) => {
   if (r && r.ok === false) {
     /* P0-13: در تولید بدونِ ردیسِ زنده سرویس نمی‌دهیم — فال‌بک به حافظهٔ
        محلی بین نمونه‌ها واگرا می‌شود. خروجی غیرصفر = شکستِ ریدی. */
@@ -1172,16 +1177,22 @@ const onRequest = async (req, res) => {
       const targetProv = req.headers['x-province-code'];
       if (s.role !== 'superadmin' || targetSchool || targetProv) {
         try {
-          let actorWithProv = s;
-          if (!s.province_code && s.school_id) {
-            const sch = (store.schools || []).find(x => x.id === s.school_id);
-            if (sch) {
-              const pCode = sch.province_code || (sch.province_id === 2 ? '07' : sch.province_id === 1 ? '07' : String(sch.province_id).padStart(2, '0'));
-              actorWithProv = Object.assign({}, s, { province_code: pCode });
-            }
-          }
+          /* P1: استانِ عامل از یک منبعِ واحد حل می‌شود (resolveActorProvince:
+             session.province_code → province_id → school → office). پیش از این
+             یک پیش‌فرضِ جادوییِ '۰۷' به‌کار می‌رفت که با هیچ استانِ واقعی
+             تطابق نداشت، استان‌های ۱ و ۲ را یکی می‌کرد، و edu_office را که
+             school_id ندارد کلاً از /api/v1 محروم می‌ساخت.
+             اکنون: اگر استانِ عامل قابلِ تعیین نیست، fail-closed می‌بندیم
+             (هیچ استانِ پیش‌فرضی فرض نمی‌شود). */
+          const actorProv = resolveActorProvince(s, store);
           const effSchool = targetSchool || s.school_id;
-          const effProv = targetProv || actorWithProv.province_code || '07';
+          const effProv = targetProv || actorProv;
+          if (!effProv) {
+            const err = new Error('PHASE6_UNRESOLVED_PROVINCE: استان عامل قابل تعیین نیست؛ دسترسی مسدود شد');
+            err.code = 'PHASE6_TENANT_ISOLATION_BREACH';
+            throw err;
+          }
+          const actorWithProv = Object.assign({}, s, { province_code: actorProv });
           await assertTenantBoundary(actorWithProv, effSchool, effProv);
         } catch (err) {
           return sendJson(res, err.status === 503 ? 503 : 403, {
@@ -1853,12 +1864,19 @@ if(require.main === module){
         console.warn('[CANARY] boot continues WITHOUT persisted weights (loud degradation — see error above)');
       }
     }
+    /* P1: پیش از باز کردنِ سوکت، دروازهٔ آمادگیِ کش (ردیس) هم به نتیجه برسد.
+       در غیر این صورت با ردیسِ غیرقابلِ دسترس، سوکت پیش از exit(1) باز می‌ماند. */
+    try { await cacheReady; }
+    catch (e) {
+      console.error('[FATAL] cache readiness crashed — refusing listen():', e && e.message);
+      process.exit(1);
+    }
     server.listen(PORT, HOST, () => {
     const proto = (TLS_CERT && TLS_KEY) ? 'https' : 'http';
     console.log('payesh-server (phase 1' + (TLS_CERT ? ' + TLS' : '') + ') on ' + proto + '://' + HOST + ':' + PORT);
     console.log('  static : ' + path.join(ROOT, 'index.html'));
     console.log('  api    : /api/health /api/readiness /api/liveness /api/auth/* /api/sync /api/sync/conflicts /api/sync/resolve-conflict /api/students/:id /api/bell/now /api/public-report /api/admin/{backup,restore} /api/sms/send');
-    console.log('  metrics: /metrics (' + (process.env.PAYESH_METRICS_TOKEN ? 'bearer token' : process.env.PAYESH_ENV === 'production' ? 'DISABLED — set PAYESH_METRICS_TOKEN' : 'loopback only') + ')');
+    console.log('  metrics: /metrics (' + (process.env.PAYESH_METRICS_TOKEN ? 'bearer token' : (process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production') ? 'DISABLED — set PAYESH_METRICS_TOKEN' : 'loopback only') + ')');
     console.log('  store  : ' + STORE_FILE + '  (' + (store.users || []).length + ' users)');
     if(BACKUP_EVERY_MS > 0){
       console.log('  backup : automatic every ' + Math.round(BACKUP_EVERY_MS / 60000) + ' min (retention ' + 10 + ')');

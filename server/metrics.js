@@ -753,7 +753,12 @@ function scrapeGate(req) {
   const env = process.env;
   if (env.PAYESH_METRICS === '0') return { ok: false, status: 404, code: 'not_found' };
   const token = env.PAYESH_METRICS_TOKEN;
-  const isProd = env.PAYESH_ENV === 'production';
+  /* P1: دروازهٔ تولید باید هر دو پرچمِ تولید را ببیند — مثلِ دروازه‌هایِ
+     بوتِ DB/Redis/TLS. پیش از این فقط PAYESH_ENV چک می‌شد؛ با NODE_ENV=production
+     و بدونِ توکن، شاخص‌ها از مسیرِ loopback باز می‌شدند و پشتِ یک پروکسیِ
+     هم‌میزبانی (که remoteAddress را ۱۲۷.۰.۰.۱ می‌کند) برای هر کسی قابلِ
+     خواندن بودند. */
+  const isProd = env.PAYESH_ENV === 'production' || env.NODE_ENV === 'production';
   if (token) {
     const h = (req && req.headers && req.headers.authorization) || '';
     const m = /^Bearer\s+(.+)$/.exec(h);
