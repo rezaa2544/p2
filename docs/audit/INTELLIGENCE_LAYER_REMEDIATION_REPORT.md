@@ -1,3 +1,11 @@
+> ## 🔴 CURRENT-HEAD RECONCILIATION — 2026-09-24
+> این گزارش، گزارش remediation است و نباید به‌تنهایی certification نهایی تلقی شود.
+> نتیجهٔ remediation در main: PR #401 با merge `e264932419335ce42da53f2700e362bce31670b9`؛ 21/21 موتور runtime-wired و 0 orphan؛ F-EI-01 بسته در سطح code/remediation.
+> **نکته:** وضعیت نهایی Intelligence باید در validation campaign روی current HEAD مستقل re-run شود. `generate-write-perms --check` failure پیش‌موجود است و بازسازی آن نباید مجوزهای 199تایی را حذف کند؛ `tools/check-authz.js` گیت مجوزهاست.
+> مرجع اجرای جاری: `docs/CURRENT_WORK_EXECUTION_PLAN.md`؛ مرجع هوش پروژه: `docs/CURRENT_PROJECT_INTELLIGENCE.md`.
+
+---
+
 # گزارش رفع عیوب لایه هوشمندی پایش
 ## Intelligence Layer Remediation Report — 2026-09-24
 
