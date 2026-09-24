@@ -166,9 +166,23 @@ function createAdmin(ctx){
    */
   function startAutoBackup(ms){
     if(!ms || ms <= 0) return null;
+    /* A-05b: در حالتِ PG-live، backupNow اسنپ‌شاتِ JSON را رد می‌کند (PG
+       مرجع است — اسنپ‌شاتِ جزئیِ کشِ این نمونه، بکاپِ کامل جلوه می‌کند).
+       تا پیش از این تایمر مسلح می‌شد و هر تیک ساکت null برمی‌گرداند: هیچ
+       فایلی نوشته نمی‌شد و هیچ خطایی چاپ نمی‌شد، در حالی که بنرِ بوت قولِ
+       «بکاپِ خودکارِ هر N دقیقه» را می‌داد. استقراری می‌توانست ماه‌ها فکر
+       کند بکاپ دارد. اکنون تایتر اصلاً مسلح نمی‌شود و یک‌بار دلیلش گفته
+       می‌شود. بکاپِ واقعی در سطحِ زیرساخت است (pg_dump/pgBackRest/WAL-G —
+       docs/RELIABILITY_DR_PLAN.md). */
+    if (pgLive()) {
+      console.warn('auto-backup: PG is authoritative — the in-process JSON-export timer is a NO-OP here. ' +
+        'Backups must be taken at the infrastructure level (pg_dump / pgBackRest / WAL-G).');
+      return null;
+    }
     const t = setInterval(() => {
       Promise.resolve(backupNow('auto', null)).then((r) => {
         if(r) console.log('auto-backup: ' + r.name + ' (count ' + r.count + ')');
+        else console.warn('auto-backup: tick produced no backup file (workers/in-process path failed) — investigate.');
       }).catch(() => {});
     }, ms);
     if(t.unref) t.unref();

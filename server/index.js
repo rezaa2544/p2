@@ -1879,7 +1879,15 @@ if(require.main === module){
     console.log('  metrics: /metrics (' + (process.env.PAYESH_METRICS_TOKEN ? 'bearer token' : (process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production') ? 'DISABLED — set PAYESH_METRICS_TOKEN' : 'loopback only') + ')');
     console.log('  store  : ' + STORE_FILE + '  (' + (store.users || []).length + ' users)');
     if(BACKUP_EVERY_MS > 0){
-      console.log('  backup : automatic every ' + Math.round(BACKUP_EVERY_MS / 60000) + ' min (retention ' + 10 + ')');
+      /* A-05b: در حالتِ PG-live، تایمرِ بکاپ عمداً مسلح نمی‌شود (PG مرجع
+         است — admin.startAutoBackup هیچ‌وقت فایل نمی‌نویسد). چاپِ «automatic
+         every N min» در این حالت یک قولِ دروغ بود. */
+      if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
+        console.log('  backup : in-process JSON export refused in PG mode — timer NOT armed. ' +
+          'Use pg_dump / pgBackRest / WAL-G at the infrastructure level (docs/RELIABILITY_DR_PLAN.md).');
+      } else {
+        console.log('  backup : automatic every ' + Math.round(BACKUP_EVERY_MS / 60000) + ' min (retention ' + 10 + ')');
+      }
     } else if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL) {
       /* A-05: بکاپِ خودکار پیش‌فرض خاموش است و تا پیش از این در زمانِ بوتِ
          تولید هیچ خطی چاپ نمی‌شد — یک استقرار می‌توانست بدونِ هیچ بکاپی
