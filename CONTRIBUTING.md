@@ -1,3 +1,11 @@
+> ## 🔴 CURRENT PROJECT INTELLIGENCE — 2026-09-24
+> مرجع واحد وضعیت جاری پروژه: `docs/CURRENT_PROJECT_INTELLIGENCE.md`
+> مرجع ترتیب اجرای کار: `docs/CURRENT_WORK_EXECUTION_PLAN.md`
+> قبل از تغییر، current HEAD را بررسی و workstream را با sweep آتریا و سایر عامل‌ها reconcile کن. force-push/history rewrite و duplicate fixing ممنوع است.
+> لایهٔ هوشمندی: 21/21 runtime-wired و 0 orphan؛ F-EI-01 در سطح remediation بسته، اما certification نهایی فقط با evidence current-head معتبر است.
+
+---
+
 # راهنمای برنامه‌نویس — «پایش»
 
 > **از دور ۷۳ (۲۰۲۶-۰۹-۰۶):** راهنمای برنامه‌نویس، پرامپتِ کلی و مستندات
