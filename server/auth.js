@@ -107,9 +107,17 @@ function createAuth(ctx){
     const p = v.payload;
     /* ابطالِ توزیع‌شده: denylist (logout در نمونهٔ دیگر) + نسخهٔ نشست (revoke-all).
        بررسیِ محلی (store.__revoked_jti) در jwtVerify دست‌نخورده مانده است. */
-    if(await revocation.isRevoked(p.jti)) return null;
-    const sv = await revocation.getSessionVersion(p.sub);
-    if(sv > 0 && (p.sv || 0) < sv) return null;
+    try {
+      if (await revocation.isRevoked(p.jti)) return null;
+      const sv = await revocation.getSessionVersion(p.sub);
+      if(sv > 0 && (p.sv || 0) < sv) return null;
+    } catch (e) {
+      if (e && e.code === 'REVOCATION_UNAVAILABLE') {
+        console.error('[AUTH] session revocation authority unavailable — fail closed');
+        return null;
+      }
+      throw e;
+    }
     /* Wave 1 (P0-1): PG is authoritative for user identity & active status.
        In PostgreSQL mode, query PG directly so changes (deactivation, role change,
        deletion) on other instances are immediately authoritative. */
