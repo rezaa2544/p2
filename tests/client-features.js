@@ -136,7 +136,11 @@ async function main() {
     // دکمه: دانلود در jsdom خطا نمی‌دهد (مسیرِ data-URI)
     const before = W(`S.user=db.users.find(function(u){return u.id===${par.id};});S.persona=null;S.boss=null;S.child=16;S.route='record';S.tab='attendance';renderRoute()`);
     clickAct('ics-export', 16);
-    assert(true, 'دکمهٔ ICS بدونِ کرش کار کرد');
+    /* A-17: به‌جایِ assert(true) — خروجیِ واقعیِ قابلِ مشاهده: toastِ
+       «فایل تقویم آماده شد» (toastِ خطای «برنامه‌ای یافت نشد» اینجا fail می‌شود) */
+    const toastTxt = W(`(function(){ var w=$('#toasts'); if(!w) return '';
+      var d=w.querySelectorAll('.toast'); return d.length? d[d.length-1].textContent : ''; })()`);
+    assert(String(toastTxt).indexOf('آماده شد') >= 0, 'دکمهٔ ICS خروجیِ تقویم تولید نکرد: toast="' + toastTxt + '"');
   });
 
   /* ── F3-b: پالایش ICS (RFC 5545) — تزریقِ فیلدِ کاذب ممکن نباشد ── */

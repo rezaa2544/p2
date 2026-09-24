@@ -381,7 +381,11 @@ class Infra {
   }
   pgStop(mode) { execFileSync(pgBin('pg_ctl'), ['-D', this.pgData, '-m', mode || 'fast', 'stop'], { stdio: 'ignore' }); return this; }
   pgStart() { execFileSync(pgBin('pg_ctl'), ['-D', this.pgData, '-l', this.pgLog, '-w', '-t', '40', 'start'], { stdio: 'ignore' }); return this; }
-  pgRunning() { try { return execFileSync(pgBin('pg_ctl'), ['-D', this.pgData, 'status'], { stdio: 'ignore', timeout: 5000 }) === Buffer.alloc(0) || true; } catch (e) { return false; } }
+  /* A-16: مقایسهٔ === Buffer.alloc(0) همیشه false است (هویتِ آبجکت، نه
+     محتوا) و || true هم کلِ عبارت را تاتولوژی می‌کرد — نتیجه: pgRunning()
+     هیچ اطلاعاتی نمی‌داد و مسیرِ بازیابیِ pgStart() در drill غیرقابل‌دسترس
+     بود. اکنون فقط روی exit codeِ pg_ctl status تکیه می‌کنیم. */
+  pgRunning() { try { execFileSync(pgBin('pg_ctl'), ['-D', this.pgData, 'status'], { stdio: 'ignore', timeout: 5000 }); return true; } catch (e) { return false; } }
   /** ثبتِ پاک‌سازیِ خودکار (تا کشته‌شدنِ drill، tmpfs/پروسه یتیم نگذارد) */
   installCleanup() {
     const self = this;

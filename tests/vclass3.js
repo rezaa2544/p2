@@ -209,11 +209,13 @@ const setU = (id) => W(`S.user=byId('users',${id});S.persona=null;S.boss=null;S.
       let att = JSON.parse(W(`JSON.stringify(vclassAttOf(${sess},${fx.a}))`));
       assert(att && !att.left_at, 'ورود از hash انجام نشد');
       assert(W(`S.route`)==='vclass', 'مسیر به vclass نرفت');
-      /* hashِ نامعتبر: بی‌اثر */
-      W(`location.hash = 'vc-fake999'`);
-      W(`vclassAutoJoinFromHash()`);
-      const n = W(`db.vclass_links.length`);
-      assert(true, 'hash نامعتبر باید بی‌اثر باشد (no throw)');
+    /* hashِ نامعتبر: بی‌اثر */
+    const linksBefore = Number(W(`db.vclass_links.length`));
+    W(`location.hash = 'vc-fake999'`);
+    W(`vclassAutoJoinFromHash()`);
+    const linksAfter = Number(W(`db.vclass_links.length`));
+    assert(linksAfter === linksBefore, 'hash نامعتبر باید بی‌اثر باشد (no throw، no new link): ' + linksBefore + '→' + linksAfter);
+    assert(W(`S.route`) === 'vclass', 'hash نامعتبر مسیر را تغییر نداد');
       /* hash خالی: بی‌اثر */
       W(`location.hash = ''`);
       W(`vclassAutoJoinFromHash()`);
