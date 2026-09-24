@@ -201,7 +201,7 @@ function createStudentRoutes(ctx) {
     }
 
     /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
-    const conflict = checkOcc(student, body, 'دانش‌آموز');
+    const conflict = checkOcc(student, body, 'دانش‌آموز', true);
     if (conflict) {
       /* B4: rejected concurrent write ⇒ recorded in sync_conflicts (SSoT) */
       await recordRejectedConflict({ store, db, ids }, { collection: 'students', rec: student, user, base: body && (body.base_version !== undefined ? body.base_version : body.version), body });
