@@ -201,5 +201,9 @@ module.exports = {
   validateProductionEnvironment,
   sanitizePayload,
   assertTenantBoundary,
-  checkMemoryHealth
+  checkMemoryHealth,
+  /* A-AUTHZ-02 (Arena-2): حلِ استانِ بازیگر باید تنها از همین‌جا بیاید —
+     فال‌بکِ سخت‌کدشدهٔ '07' در لایهٔ مسیر حذف شد. */
+  resolveActorProvince,
+  mapProvinceToken
 };

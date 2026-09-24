@@ -62,6 +62,10 @@ function _officeGeoClause(alias, user, office, parts, push) {
 function _roleScopeParts(alias, coll, user, parts, push) {
   const a = alias ? alias + '.' : '';
   if (!user || SUPER_SCOPED.has(user.role)) return;
+  /* A-AUTHZ-03 (Arena-2 adversarial audit): نگهبان/راننده اعطای خواندنی روی
+     منابعِ آموزشی ندارند (کمینه‌اختیار — آینهٔ READ_DENY_ROLES در policy.js).
+     پیش‌تر فقط مهارِ مدرسه می‌خوردند و کلِ دادهٔ مدرسه را فهرست می‌کردند. */
+  if (user.role === 'guard' || user.role === 'driver') { parts.push('1 = 0'); return; }
   if (coll === 'users-directory') {
     if (user.role === 'student') { const i = push(Number(user.id)); parts.push(`${a}id = $${i}`); return; }
     if (user.role === 'parent') {
@@ -78,6 +82,9 @@ function _roleScopeParts(alias, coll, user, parts, push) {
       parts.push(`EXISTS (SELECT 1 FROM "${tableName('enrollments')}" e3 WHERE e3.student_id = ${a}id AND e3.class_id IN (SELECT c3.id FROM "${tableName('classes')}" c3 WHERE c3.homeroom_teacher_id = $${t} OR c3.id IN (SELECT s3.class_id FROM "${tableName('schedule')}" s3 WHERE s3.teacher_id = $${t})))`);
       return;
     }
+    /* A-AUTHZ-03: رکوردِ دانش‌آموز فقط مدیر/دبیرِ مرتبط/ولی/خودِ دانش‌آموز
+       (آینهٔ studentRecordOk) — مشاور و بقیه ⇒ رد. */
+    if (user.role !== 'manager') { parts.push('1 = 0'); return; }
   }
   if (coll === 'classes') {
     if (user.role === 'student') { const i = push(Number(user.id)); parts.push(`${a}id IN (SELECT e.class_id FROM "${tableName('enrollments')}" e WHERE e.student_id = $${i})`); return; }
@@ -193,8 +200,16 @@ function buildStudentsList({ user, office, classId, grade, search, limit, cursor
          کاربران (/api/users) هندسهٔ دفتر را می‌بیند؛ فهرستِ دانش‌آموزان نه. */
       parts.push('1 = 0');
     } else {
-      const i = push(Number(user.school_id));
-      parts.push(`u.school_id = $${i}`); /* Wave 5 — strict anchor, no NULL escape */
+      /* A-AUTHZ-04 (Arena-2): لنگرِ مدرسه فقط وقتی مقدور است که جلسه مدرسه داشته
+         باشد؛ برتریِ `= $1` با مقدارِ NULL در SQL هرگز برقرار نمی‌شود و خواندنِ
+         نقش‌های بدونِ مدرسه (ولی/دانش‌آموز) را بی‌دلیل صفر می‌کرد. برایِ آنان
+         بندِ مالکیتِ _roleScopeParts محدوده می‌سازد؛ بقیه ⇒ فیل‌کلوزد. */
+      if (user.school_id != null) {
+        const i = push(Number(user.school_id));
+        parts.push(`u.school_id = $${i}`); /* Wave 5 — strict anchor, no NULL escape */
+      } else if (user.role !== 'parent' && user.role !== 'student') {
+        parts.push('1 = 0'); /* A-AUTHZ-04 */
+      }
     }
   }
   _roleScopeParts('u', 'students', user, parts, push);
@@ -226,10 +241,20 @@ function buildAttendanceList({ user, office, date, classId, studentId, limit, cu
 
   if (user && !SUPER_SCOPED.has(user.role)) {
     if (user.role !== 'edu_office') {
-      const i = push(Number(user.school_id));
-      parts.push(`school_id = $${i}`); /* Wave 5 — strict anchor, no NULL escape */
+      /* A-AUTHZ-04 (Arena-2): لنگرِ مدرسه فقط وقتی مقدور است که جلسه مدرسه داشته
+         باشد؛ برتریِ `= $1` با مقدارِ NULL در SQL هرگز برقرار نمی‌شود و خواندنِ
+         نقش‌های بدونِ مدرسه (ولی/دانش‌آموز) را بی‌دلیل صفر می‌کرد. برایِ آنان
+         بندِ مالکیتِ _roleScopeParts محدوده می‌سازد؛ بقیه ⇒ فیل‌کلوزد. */
+      if (user.school_id != null) {
+        const i = push(Number(user.school_id));
+        parts.push(`school_id = $${i}`); /* Wave 5 — strict anchor, no NULL escape */
+      } else if (user.role !== 'parent' && user.role !== 'student') {
+        parts.push('1 = 0'); /* A-AUTHZ-04 */
+      }
     }
     _officeGeoClause('', user, office, parts, push);
+    /* A-AUTHZ-03 — نقش‌های بدونِ اعطای خواندن (نگهبان/راننده) ⇒ رد */
+    if (user.role === 'guard' || user.role === 'driver') parts.push('1 = 0');
   }
   if (user && user.role === 'teacher') {
     /* Wave 5 — teacher sees attendance of classes they actually teach
@@ -288,10 +313,20 @@ function buildGradesList({ user, office, studentId, subjectId, classId, limit, c
 
   if (user && !SUPER_SCOPED.has(user.role)) {
     if (user.role !== 'edu_office') {
-      const i = push(Number(user.school_id));
-      parts.push(`g.school_id = $${i}`); /* Wave 5 — strict anchor, no NULL escape */
+      /* A-AUTHZ-04 (Arena-2): لنگرِ مدرسه فقط وقتی مقدور است که جلسه مدرسه داشته
+         باشد؛ برتریِ `= $1` با مقدارِ NULL در SQL هرگز برقرار نمی‌شود و خواندنِ
+         نقش‌های بدونِ مدرسه (ولی/دانش‌آموز) را بی‌دلیل صفر می‌کرد. برایِ آنان
+         بندِ مالکیتِ _roleScopeParts محدوده می‌سازد؛ بقیه ⇒ فیل‌کلوزد. */
+      if (user.school_id != null) {
+        const i = push(Number(user.school_id));
+        parts.push(`g.school_id = $${i}`); /* Wave 5 — strict anchor, no NULL escape */
+      } else if (user.role !== 'parent' && user.role !== 'student') {
+        parts.push('1 = 0'); /* A-AUTHZ-04 */
+      }
     }
     _officeGeoClause('g', user, office, parts, push);
+    /* A-AUTHZ-03 — نقش‌های بدونِ اعطای خواندن (نگهبان/راننده) ⇒ رد */
+    if (user.role === 'guard' || user.role === 'driver') parts.push('1 = 0');
   }
   if (studentId) {
     const s = push(Number(studentId));
@@ -344,8 +379,12 @@ function buildClassesList({ user, office, grade, limit, cursor }) {
 
   if (user && !SUPER_SCOPED.has(user.role)) {
     if (user.role !== 'edu_office') {
-      const i = push(Number(user.school_id));
-      parts.push(`c.school_id = $${i}`); /* Wave 5 — strict anchor, no NULL escape */
+      if (user.school_id != null) {
+        const i = push(Number(user.school_id));
+        parts.push(`c.school_id = $${i}`); /* Wave 5 — strict anchor, no NULL escape */
+      } else if (user.role !== 'parent' && user.role !== 'student') {
+        parts.push('1 = 0'); /* A-AUTHZ-04 */
+      }
     }
     _officeGeoClause('c', user, office, parts, push);
   }
@@ -378,8 +417,14 @@ function buildUsersList({ user, office, role, search, limit, cursor }) {
 
   if (user && !SUPER_SCOPED.has(user.role)) {
     if (user.role !== 'edu_office') {
-      const i = push(Number(user.school_id));
-      parts.push(`u.school_id = $${i}`); /* Wave 5 — national accounts (school NULL) never leak */
+      /* Wave 5 — national accounts (school NULL) never leak; A-AUTHZ-04: ولی/
+         دانش‌آموز با بندِ مالکیت خود را می‌بینند، نه با لنگرِ تهی */
+      if (user.school_id != null) {
+        const i = push(Number(user.school_id));
+        parts.push(`u.school_id = $${i}`);
+      } else if (user.role !== 'parent' && user.role !== 'student') {
+        parts.push('1 = 0');
+      }
     }
     _officeGeoClause('u', user, office, parts, push);
   }

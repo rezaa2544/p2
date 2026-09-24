@@ -468,10 +468,20 @@ async function resolveStudentScopeOpts(db, store, session, rec) {
                    دبیر/مدیر ⇒ مدرسهٔ خود، با پروژکشنِ ماسک‌شده.
      • students  — نما/رکوردِ دانش‌آموز (studentRecordOk — همان idor).
    خروجی هر دو boolean. */
+/* A-AUTHZ-03 (Arena-2 adversarial audit): نقش‌های بدونِ اعطای خواندن
+   (نگهبان/راننده) پیش‌تر از سقوطِ عمومیِ «فیلترِ مدرسه» عبور می‌کردند و
+   نمره/حضور/انضباطی/دایرکتوری کلِ مدرسه را می‌خواندند — با وجودِ آن‌که
+   اعطای نوشتن‌شان فقط visitors/bus_* است و هیچ سندِ دسترسی‌ای خواندنِ
+   آموزشی برایشان تعریف نکرده. کمینه‌اختیار: خواندنِ REST برایِ این دو نقش
+   بسته است (مسیرهایِ کاریِ خودشان — بازدیدکننده/سرویس — از مدلِ نوشتنِ
+   همان مجموعه‌ها می‌آیند، نه از این دروازه). */
+const READ_DENY_ROLES = new Set(['guard', 'driver']);
+
 function readOk(store, session, coll, rec, opts) {
   if (!session || !rec) return false;
   const role = session.role;
   if (role === 'superadmin') return true;
+  if (READ_DENY_ROLES.has(role)) return false;
   const schoolId = num(session.school_id);
 
   if (coll === 'students') return studentRecordOk(store, session, rec, opts);
@@ -527,6 +537,7 @@ function filterReadable(store, session, coll, records) {
   if (!session) return [];
   const role = session.role;
   if (role === 'superadmin') return records;
+  if (READ_DENY_ROLES.has(role)) return []; /* A-AUTHZ-03 — کمینه‌اختیار */
   const schoolId = num(session.school_id);
 
   const isUsersLike = coll === 'users';

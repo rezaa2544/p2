@@ -1165,21 +1165,38 @@ const onRequest = async (req, res) => {
       req.session = s;
 
       // Phase 6 (B8): Zero-Trust Tenant & Provincial Isolation Guardrail
+      // A-AUTHZ-02 (Arena-2 adversarial audit): فال‌بکِ سخت‌کدشدهٔ '07' حذف شد.
+      // استانِ بازیگر فقط از منابعِ واقعی حل می‌شود: خودِ نشست → مدرسهٔ نشست →
+      // هندسهٔ دفتر (برایِ نقشِ اداره). بازیگرِ بی‌استان (ولی/نقش‌های بدونِ
+      // مدرسه) بدونِ هدفِ صریح به دروازه‌های حوزه‌ای خودِ مسیرها سپرده می‌شود
+      // (هرکدام فیل‌کلوزد)؛ با هدفِ صریحِ تننت/استان ⇒ ردِ فیل‌کلوزد.
       const targetSchool = url.searchParams.get('school_id') || req.headers['x-school-id'];
       const targetProv = req.headers['x-province-code'];
       if (s.role !== 'superadmin' || targetSchool || targetProv) {
         try {
-          let actorWithProv = s;
-          if (!s.province_code && s.school_id) {
-            const sch = (store.schools || []).find(x => x.id === s.school_id);
-            if (sch) {
-              const pCode = sch.province_code || (sch.province_id === 2 ? '07' : sch.province_id === 1 ? '07' : String(sch.province_id).padStart(2, '0'));
-              actorWithProv = Object.assign({}, s, { province_code: pCode });
-            }
+          let actorProv = resolveActorProvince(s, store);
+          if (!actorProv && s.office_id != null) {
+            const off = ((store.offices) || []).find(o => Number(o.id) === Number(s.office_id));
+            if (off) actorProv = resolveActorProvince({ id: s.id, province_code: off.province_code, province_id: off.province_id }, store);
           }
+          const actorWithProv = actorProv ? Object.assign({}, s, { province_code: actorProv }) : s;
           const effSchool = targetSchool || s.school_id;
-          const effProv = targetProv || actorWithProv.province_code || '07';
-          await assertTenantBoundary(actorWithProv, effSchool, effProv);
+          const effProv = targetProv || actorProv || null;
+          const explicitTarget = targetSchool != null || targetProv != null;
+          if (effProv == null && s.role !== 'superadmin') {
+            if (explicitTarget) {
+              /* هدفِ صریح با هویتِ استانیِ غیرقابلِ حل ⇒ فیل‌کلوزد
+                 (سوپرامین از این پیش‌بررسی معاف است — مثلِ قراردادِ پیشین) */
+              return sendJson(res, 403, {
+                ok: false,
+                code: 'PHASE6_TENANT_ISOLATION_BREACH',
+                message: 'تخطی از حریم استانی: دسترسی به اطلاعات استان دیگر مجاز نیست'
+              });
+            }
+            /* بدونِ هدفِ صریح: دروازه‌های حوزه‌ای مسیر (policy) تصمیم می‌گیرند */
+          } else {
+            await assertTenantBoundary(actorWithProv, effSchool, effProv);
+          }
         } catch (err) {
           return sendJson(res, err.status === 503 ? 503 : 403, {
             ok: false,

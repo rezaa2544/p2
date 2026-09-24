@@ -13,13 +13,26 @@ const rateLimit = require('./rate-limit'); /* R dist: شمارنده‌های Re
 const revocation = require('./revocation'); /* ابطالِ توزیع‌شدهٔ نشست */
 const gdpr = require('./gdpr'); /* حقِ فراموشی */ /* R dist: شمارنده‌های Redis (اتمیک) */
 
-/* نرمال‌سازیِ سطحی برایِ اعتبارسنجی: trimِ رشته‌ها (کلاینت هم همین را
+/* نرمال‌سازیِ سطحی برایِ اعتبارسنجی: trimِ رشته‌ها (کلاینت هم این را
    می‌فرستد) — کلیدها دست‌نخورده می‌مانند تا unknown_field سنجیده شود. */
 function shallowTrim(o){
   if(!o || typeof o !== 'object' || Array.isArray(o)) return o;
   const c = {};
   for(const k of Object.keys(o)) c[k] = (typeof o[k] === 'string') ? o[k].trim() : o[k];
   return c;
+}
+
+/* A-AUTHZ-05 (Arena-2 adversarial audit): canonical شکلِ تلفن. پیش‌تر
+   '09123456789' و '+989123456789' دو «هویتِ» جدا بودند (کلیدِ جدا برایِ
+   OTP، حلِ کاربر با تطبیقِ ۱۰ رقمِ آخر + ترتیبِ id) ⇒ سردرگمیِ نقش و
+   گم‌شدنِ ورود برایِ کاربرِ بالادست. حالا هر دو به یک شکلِ واحد می‌رسند:
+   ارقامِ خالی؛ ۹۸ پیشرو (۱۲ رقم) حذف؛ ۹ پیشروِ ۱۰رقمی ⇒ ۰ پیشرو.
+   شماره‌های خارج از الگوی موبایل ایران دست‌نخورده می‌مانند. */
+function canonPhone(v){
+  let d = String(v || '').replace(/\D/g, '');
+  if(d.length === 12 && d.indexOf('98') === 0) d = d.slice(2);   /* +98… ⇒ ۱۰ رقم */
+  if(d.length === 10 && d.indexOf('9') === 0) return '0' + d;   /* ۹… ⇒ ۰۹… */
+  return d;
 }
 
 /* ctx: { store, JWT_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS,
@@ -237,7 +250,7 @@ function createAuth(ctx){
       if(v.kind === 'unknown_field') return sendJson(res, 400, { ok: false, code: 'unknown_field', field: v.field });
       return sendJson(res, 400, { ok: false, code: 'bad_phone' });
     }
-    const phone = String(body.phone).replace(/[\s\-()]/g, '');
+    const phone = canonPhone(body.phone); /* A-AUTHZ-05 */
     /* R96: EVERY limit BEFORE the existence check — probing unknown
        phones must cost the same as known ones (equal-shape responses). */
     const now = Date.now();
@@ -296,7 +309,7 @@ function createAuth(ctx){
       if(v.kind === 'unknown_field') return sendJson(res, 400, { ok: false, code: 'unknown_field', field: v.field });
       return sendJson(res, 400, { ok: false, code: 'missing_fields' });
     }
-    const phone = String(body.phone).replace(/[\s\-()]/g, '');
+    const phone = canonPhone(body.phone); /* A-AUTHZ-05 — یک شکلِ واحد */
     const code  = String(body.code).trim();
     const nid   = String(body.national_id).trim();
 
