@@ -139,7 +139,12 @@ function createSemanticAnalyticsRoutes(ctx) {
         }
         return out;
       } catch (e) {
-        /* در صورت خطای DB به fallback برو */
+        /* A-03: این catchِ خالی، فال‌بکِ آینه را کاملاً نامرئی می‌کرد — در
+           فشارِ pool یا قطعیِ PG، لایهٔ معنایی ساکت دادهٔ کهنه سرو می‌کرد
+           بدونِ اینکه اپراتور بفهمد. اکنون اعلام می‌شود. */
+        console.warn('[semantic-analytics] PG read failed for school', schoolId,
+          'tables', Object.values(tables).join(','), '— serving in-memory mirror:',
+          (e && e.message) || e);
       }
     }
     for (const [key, table] of Object.entries(tables)) {

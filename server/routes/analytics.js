@@ -148,6 +148,12 @@ function createAnalyticsRoutes(ctx) {
         cases = (rCases && rCases.rows) || [];
         teacherNotes = (rTN && rTN.rows) || [];
       } catch (e) {
+        /* A-03: این فال‌بک یک مسیرِ واقعی است که در فشارِ pool (۶ اتصال به
+           ازایِ هر درخواست رویِ poolِ ۲۰تایی) یا قطعیِ PG اجرا می‌شود، ولی
+           ساکت بود — گزارش، دادهٔ آینهٔ ممکن‌است-کهنه را بدونِ هیچ لاگ یا
+           چرخشِ سنجه‌ای سرو می‌کرد. اکنون اعلام می‌شود. */
+        console.warn('[analytics] PG read failed for school', schoolId, '— serving in-memory mirror:',
+          (e && e.message) || e);
         grades = (store.grades || []).filter(g => Number(g.school_id) === schoolId);
         attendance = (store.attendance || []).filter(a => Number(a.school_id) === schoolId);
         classes = (store.classes || []).filter(c => Number(c.school_id) === schoolId);
