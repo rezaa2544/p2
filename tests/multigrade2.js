@@ -178,7 +178,7 @@ setTimeout(async () => {
     W(`(function(){
       (db.class_subject_members||[]).filter(function(x){return x.class_id===${cls1};}).forEach(function(x){remove('class_subject_members',x.id);});
     })()`);
-    assert(true, 'پاک شد');
+    assert(!doc().querySelector('[data-act="class-membership-save"]'), 'membership editor should be removed after delete');
   });
 
   await seq;
