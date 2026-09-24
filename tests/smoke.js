@@ -6214,13 +6214,13 @@ test('اسکرول: منوی کناری هم جای خود را حفظ می‌ک
    ۵. هر روت کمکی (EXTRA_ROUTES) مجاز و دارای نما باشد */
 
 const NAV_EXPECT = {
-  superadmin: ['dashboard','schools','users','subjects','bells','announcements','calendar','geo','offices','officedash','regions','plans','finance','adminsubs','activity','audit','health','diag','notifications','tickets','teacheval','regionscore','staffgap','reports'], /* G.2 فرناز: روت تیکت — ویو ۲۳: reports */
+  superadmin: ['dashboard','schools','users','subjects','bells','announcements','calendar','geo','offices','officedash','regions','plans','finance','adminsubs','activity','audit','health','diag','notifications','tickets','teacheval','regionscore','staffgap','reports','intelligence'], /* delta 4bff3bc: src/js/30-authz.js superadmin+intelligence */ /* G.2 فرناز: روت تیکت — ویو ۲۳: reports */
   /* دور ۷۷: چهار ماژولِ مدیری (preapps/scholarships دور ۶۱-۶۲، reexams/summerclasses دور ۷۰)
      به منوی مدیر اضافه شدند ولی این فهرست به‌روز نشد و تا کرشِ قدیمیِ smoke پنهان ماند */
-  manager: ['dashboard','atrisk','growth','calendar','visitors','library','assets','dorm','sidadiff','formssms','preapps','scholarships','drills','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','multigrade','grades','discipline','followup','leaves','exams','reexams','teachers','corrections','staff','staffatt','training','tuition','association','donations','meetings','notifyqueue','announcements','notifications','chat','busservice','summerclasses','tickets','teacheval','reports'], /* G.2 فرناز: روت تیکت — ویو ۲۳: reports */
+  manager: ['dashboard','atrisk','growth','calendar','visitors','library','assets','dorm','sidadiff','formssms','preapps','scholarships','drills','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','multigrade','grades','discipline','followup','leaves','exams','reexams','teachers','corrections','staff','staffatt','training','tuition','association','donations','meetings','notifyqueue','announcements','notifications','chat','busservice','summerclasses','tickets','teacheval','reports','intelligence'], /* delta: intelligence — 30-authz */
   teacher: ['meetings','dashboard','classes','schedule','calendar','attendance','multigrade','grades','discipline','leaves','exams','vclass','homework','announcements','notifications','chat'],
   student: ['dashboard','schedule','exams','record','calendar','mytuition','leaves','homework','announcements','notifications','chat','library','teacheval'],
-  edu_office: ['officedash','officeschools','announcements','notifications','teacheval','regionscore','staffgap','reports'], /* ویو ۲۳ */
+  edu_office: ['officedash','officeschools','announcements','notifications','teacheval','regionscore','staffgap','reports','intelligence'], /* ویو ۲۳ — delta: intelligence (30-authz) */
   parent: ['meetings','dashboard','family','children','exams','calendar','mytuition','leaves','announcements','notifications','chat','teacheval'],
   /* دور ۶۳: نقش تازهٔ مشاور — فقط صف ارجاع + صفحه‌های عمومی */
   counselor: ['cqueue','dashboard','announcements','notifications'],
