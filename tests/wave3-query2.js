@@ -30,9 +30,17 @@ const { createUserRoutes } = require('../server/routes/users');
 let pass = 0, fail = 0;
 const failures = [];
 const assert = (c, m) => { if (!c) throw new Error(m || 'شرط برقرار نیست'); };
+let notrun = 0;
+/* A-07: مانندِ wave1-reads — skipِ صریح به‌جایِ returnِ ناشناخته‌ای که
+   wrapper آن را PASS می‌شمرد. */
+function skip(why){ const e = new Error(why); e.__skip = true; throw e; }
+
 async function test(name, fn) {
   try { await fn(); pass++; console.log(`  ✅ ${name}`); }
-  catch (e) { fail++; failures.push({ name, msg: e.message }); console.log(`  ❌ ${name}\n     ${e.message}`); }
+  catch (e) {
+    if (e && e.__skip) { notrun++; console.log(`  ⏭️  NOT-RUN: ${name} — ${e.message}`); return; }
+    fail++; failures.push({ name, msg: e.message }); console.log(`  ❌ ${name}\n     ${e.message}`);
+  }
 }
 function group(t) { console.log(`\n▸ ${t}`); }
 
@@ -191,8 +199,7 @@ function fakeDb(rows, count) {
     let pg = null;
     try { pg = require('pg'); } catch (e) { pg = null; }
     if (!process.env.DATABASE_URL || !pg) {
-      console.log('     ⏭️  no live PostgreSQL — DB-native SQL NOT executed; see WAVE3_QUERY_PERFORMANCE.md');
-      return;
+      skip('no live PostgreSQL — DB-native SQL NOT executed; see WAVE3_QUERY_PERFORMANCE.md');
     }
     const db = require('../server/db');
     const info = await db.init(seed());
@@ -204,7 +211,7 @@ function fakeDb(rows, count) {
 
   const total = pass + fail;
   console.log('\n' + '─'.repeat(56));
-  console.log(`نتیجه Wave3 Query part2: ${pass}/${total}` + (fail ? `  —  ${fail} ناموفق` : '  —  بدون خطا ✅'));
+  console.log(`نتیجه Wave3 Query part2: ${pass}/${total}` + (notrun ? `  (+${notrun} NOT-RUN)` : '') + (fail ? `  —  ${fail} ناموفق` : '  —  بدون خطا ✅'));
   console.log('─'.repeat(56) + '\n');
   process.exit(fail ? 1 : 0);
 })();

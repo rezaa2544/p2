@@ -34,9 +34,19 @@ let pass = 0, fail = 0;
 const failures = [];
 const assert = (cond, msg) => { if (!cond) throw new Error(msg || 'شرط برقرار نیست'); };
 
+let notrun = 0;
+/* A-07: مسیرِ PGِ نگهبان‌دار قبلاً console.log می‌زد و return می‌کرد —
+   wrapper بالا آن را به‌عنوانِ PASS می‌شمرد (false-green: شاخهٔ PG هرگز
+   اجرا نمی‌شد ولی در خلاصه به‌نامِ موفق می‌رفت). اکنون skip() یک
+   نشان‌گذار می‌اندازد که wrapper آن را در NOT-RUN می‌شمارد، نه در pass. */
+function skip(why){ const e = new Error(why); e.__skip = true; throw e; }
+
 async function test(name, fn) {
   try { await fn(); pass++; console.log(`  ✅ ${name}`); }
-  catch (e) { fail++; failures.push({ name, msg: e.message }); console.log(`  ❌ ${name}\n     ${e.message}`); }
+  catch (e) {
+    if (e && e.__skip) { notrun++; console.log(`  ⏭️  NOT-RUN: ${name} — ${e.message}`); return; }
+    fail++; failures.push({ name, msg: e.message }); console.log(`  ❌ ${name}\n     ${e.message}`);
+  }
 }
 function group(title) { console.log(`\n▸ ${title}`); }
 // apiPull/getBootstrapData embed server_time = new Date().toISOString(); the
@@ -200,8 +210,7 @@ function seedStore() {
   await test('real-PG SELECT verification', async () => {
     const hasPgDriver = (() => { try { require('pg'); return true; } catch (e) { return false; } })();
     if (!process.env.DATABASE_URL || !hasPgDriver) {
-      console.log('     ⏭️  no live PostgreSQL (DATABASE_URL/pg absent) — PG SELECT branch NOT executed; see WAVE1_READS_INVENTORY.md');
-      return;
+      skip('no live PostgreSQL (DATABASE_URL/pg absent) — PG SELECT branch NOT executed; see WAVE1_READS_INVENTORY.md');
     }
     const info = await db.init(store); // would connect to real PG when configured
     assert(info.driver === 'postgres', 'driver باید postgres باشد');
@@ -212,7 +221,7 @@ function seedStore() {
   /* ── result ── */
   const total = pass + fail;
   console.log('\n' + '─'.repeat(56));
-  console.log(`نتیجه Wave1 Reads: ${pass}/${total}` + (fail ? `  —  ${fail} ناموفق` : '  —  بدون خطا ✅'));
+  console.log(`نتیجه Wave1 Reads: ${pass}/${total}` + (notrun ? `  (+${notrun} NOT-RUN)` : '') + (fail ? `  —  ${fail} ناموفق` : '  —  بدون خطا ✅'));
   console.log('─'.repeat(56) + '\n');
   process.exit(fail ? 1 : 0);
 })();

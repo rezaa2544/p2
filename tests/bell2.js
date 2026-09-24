@@ -19,22 +19,33 @@ catch { console.log('⏭️  jsdom نصب نیست — تست رد شد.  (npm i
 const ROOT = path.join(__dirname, '..');
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
-let pass = 0, fail = 0;
+let pass = 0, fail = 0, notrun = 0;
 const errors = [];
 const testQueue = [];
 let __seq = Promise.resolve();
+/* A-14: یک skipِ صریح که wrapper آن را در NOT-RUN می‌شمارد، نه در pass —
+   تا پیش از این «امروز روزِ درسیِ تمیزی نیست» return می‌کرد و تستِ
+   skipشده در خلاصه به‌نامِ موفق می‌رفت (false-green). */
+function skip(why){ const e = new Error(why); e.__skip = true; throw e; }
+function __skipReject(name, e, resolve){
+  notrun++; console.log(`  ⏭️  NOT-RUN: ${name} — ${e.message}`); if (resolve) resolve();
+}
 function test(name, fn) {
   const p = __seq.then(() => new Promise((resolve) => {
     let q;
     try { q = fn(); }
     catch (e) {
+      if (e && e.__skip) { __skipReject(name, e, resolve); return; }
       fail++; errors.push(`${name}: ${e.message}`);
       console.log(`  ❌ ${name}\n     ${e.message}`);
       resolve(); return;
     }
     Promise.resolve(q).then(
       () => { pass++; console.log(`  ✅ ${name}`); },
-      (e) => { fail++; errors.push(`${name}: ${e.message}`); console.log(`  ❌ ${name}\n     ${e.message}`); }
+      (e) => {
+        if (e && e.__skip) { __skipReject(name, e, resolve); return; }
+        fail++; errors.push(`${name}: ${e.message}`); console.log(`  ❌ ${name}\n     ${e.message}`);
+      }
     ).then(resolve);
   }));
   __seq = p;
@@ -181,7 +192,7 @@ test('B6 — خودِ دانش‌آموز هم کارتِ زنده می‌بین
 });
 
 test('B7 — تیکِ زنده: تغییرِ حضور، بدونِ رندرِ کامل، به DOM می‌رسد', () => {
-  if(!TODAY_OK_FOR_LIVE_TICK){ console.log('     (skipped: today is not a clean school day for school 1 — the live tick follows the real clock)'); return; }
+  if(!TODAY_OK_FOR_LIVE_TICK){ skip('today is not a clean school day for school 1 — the live tick follows the real clock'); }
   /* ولی و فرزندِ تازه (یک‌فرزند) تا آزمون به دادهٔ نمونه وابسته نباشد */
   const mk = W(`(function(){
     var sid=db.schools[0].id;
@@ -219,7 +230,7 @@ test('B8 — رایگان بودن: فرزندِ اشتراکِ منقضی هم 
 await Promise.all(testQueue);
 const total = pass + fail;
 console.log('\n' + '─'.repeat(52));
-console.log(`زنگ زنده: ${pass}/${total} موفق` + (fail ? `  —  ${fail} ناموفق` : '  —  بدون خطا ✅'));
+console.log(`زنگ زنده: ${pass}/${total} موفق` + (notrun ? `  (+${notrun} NOT-RUN)` : '') + (fail ? `  —  ${fail} ناموفق` : '  —  بدون خطا ✅'));
 if (consoleErrors.length) {
   console.log(`\n⚠️ خطاهای کنسول (${consoleErrors.length}):`);
   consoleErrors.slice(0, 5).forEach((e) => console.log('   ' + String(e).slice(0, 160)));
