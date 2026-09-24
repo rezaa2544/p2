@@ -150,3 +150,8 @@
 | MIGRATION_GUIDE.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — سیاست/چرخه/بسط‌انقباض/مهاجرت زنده + تست پوشش `tests/migration-guide-coverage.js` |
 
 **جمع §30:** موجود **۱۴ از ۱۴** — آخرین سند (`LOAD_TEST_RESULTS.md`) با قالب آماده و چارچوب تحلیل تحویل شد؛ فقط پر شدن اعداد به اجرای واقعی آزمون بار ملی (موج ۱۸) مسدود است.
+
+
+## 2026-09-24 Architecture Evolution Gate
+
+See docs/ARCHITECTURE_EVOLUTION_ROADMAP.md. New architectural patterns are future gates, not current production certifications. Any adopted pattern requires executable regression/contract tests and runtime evidence before it is marked ready.
