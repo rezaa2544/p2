@@ -168,8 +168,7 @@ const SINCE = '2026-09-08T10:00:00.000Z';
     let pg = null;
     try { pg = require('pg'); } catch (e) { pg = null; }
     if (!process.env.DATABASE_URL || !pg) {
-      console.log('     ⏭️  no live PostgreSQL — real-PG delta run NOT executed; see SYNC_PROTOCOL.md');
-      return;
+      throw new Error('LIVE_PG_REQUIRED: DATABASE_URL and pg are required; real-PG delta run must execute');
     }
     const db = require('../server/db');
     const info = await db.init(seedStore());
