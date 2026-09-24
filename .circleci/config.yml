@@ -34,6 +34,9 @@ jobs:
       - run:
           name: "No-data-masking gate (D1)"
           command: node tests/no-data-masking.test.js
+      - run:
+          name: "Real timestamps + fingerprint uniqueness (D2)"
+          command: node tests/analytics-timestamps.test.js
 
 workflows:
   payesh-gate:
