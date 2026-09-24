@@ -26,6 +26,8 @@ const {
   summarizeDistrictQualityGovernance
 } = require('../analytics/quality-governance');
 
+const policy = require('../policy');
+
 const {
   enforceLongitudinalAccessGuard,
   buildLongitudinalSchoolProfile,
@@ -114,7 +116,7 @@ function createAnalyticsRoutes(ctx) {
     }
 
     try {
-      enforceSchoolIntelligenceAccessGuard(user, schoolId);
+      enforceSchoolIntelligenceAccessGuard(user, schoolId, { store });
     } catch (err) {
       return {
         status: 403,

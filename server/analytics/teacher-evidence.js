@@ -19,6 +19,8 @@
 
 'use strict';
 
+const policy = require('../policy');
+
 /**
  * گارد امنیتی دسترسی معلم و ضد نفوذ (Anti-IDOR Access Guard)
  *
@@ -50,7 +52,12 @@ function enforceTeacherAccessGuard(requester, teacherId, options = {}) {
   }
 
   if (role === 'edu_office') {
-    // بازرس آموزش و پرورش مجاز به مشاهده داده‌های آموزشی است
+    // بازرس آموزش و پرورش فقط در محدودهٔ جغرافیایی دفترِ خودش مجاز است؛
+    // مدرسهٔ ناشناس یا خارج از حوزه ⇒ رد (fail-closed).
+    const store = options.store || {};
+    if (teacherSchoolId == null || !policy.schoolInOfficeScope(store, requester, teacherSchoolId)) {
+      throw new Error(`TENANT_ISOLATION_VIOLATION: edu_office scope does not cover school ${teacherSchoolId}`);
+    }
     return true;
   }
 

@@ -18,6 +18,8 @@
 
 'use strict';
 
+const policy = require('../policy');
+
 /**
  * گارد امنیتی دسترسی به مرکز هوشمندی مدرسه (Anti-IDOR & Access Guard)
  *
@@ -44,9 +46,13 @@ function enforceSchoolIntelligenceAccessGuard(requester, targetSchoolId, options
     return true;
   }
 
-  // ۲. ناظر/بازرس اداره آموزش و پرورش منطقه
+  // ۲. ناظر/بازرس اداره آموزش و پرورش منطقه — فقط مدارسِ داخلِ
+  // محدودهٔ جغرافیایی دفترِ خودش؛ دفترِ بی‌مهار یا مدرسهٔ خارج از حوزه = رد.
   if (role === 'edu_office') {
-    // دسترسی قانونی در سطح منطقه
+    const store = options.store || {};
+    if (!policy.schoolInOfficeScope(store, requester, schoolId)) {
+      throw new Error(`TENANT_ISOLATION_VIOLATION: edu_office scope does not cover school ${schoolId}`);
+    }
     return true;
   }
 
@@ -549,15 +555,29 @@ function generateDistrictAggregation(schools = [], options = {}) {
 
   let sumAttendance = 0;
   let sumChronic = 0;
+  let countedAttendance = 0;
+  let countedChronic = 0;
+  let noDataCount = 0;
   let totalActiveInterventions = 0;
   const commonIssuesSet = new Set();
 
   for (const s of rawSchools) {
-    const status = s.health_index?.status || 'HEALTHY';
-    healthDist[status] = (healthDist[status] || 0) + 1;
+    // D1 (بازمانده): مدرسه‌ای بدون health_index دیگر HEALTHY فرض نمی‌شود.
+    const health = s.health_index || {};
+    const status = health.status;
+    if (status && Object.prototype.hasOwnProperty.call(healthDist, status)) {
+      healthDist[status] += 1;
+    } else {
+      noDataCount += 1;
+    }
 
-    sumAttendance += Number(s.attendance_summary?.calendar_rate ?? 90.0);
-    sumChronic += Number(s.attendance_summary?.chronic_absence_rate ?? 5.0);
+    // مدارس بدون داده نباید در میانگین منطقه‌ای نرخ ۹۰/غیبت ۵ بسازند.
+    const calRate = s.attendance_summary?.calendar_rate;
+    if (calRate != null) { sumAttendance += Number(calRate); countedAttendance += 1; }
+
+    const chronicRate = s.attendance_summary?.chronic_absence_rate;
+    if (chronicRate != null) { sumChronic += Number(chronicRate); countedChronic += 1; }
+
     totalActiveInterventions += Number(s.intervention_summary?.active_cases_count ?? 0);
 
     for (const risk of (s.risk_summary?.top_risks || [])) {
@@ -568,8 +588,8 @@ function generateDistrictAggregation(schools = [], options = {}) {
   }
 
   const count = rawSchools.length;
-  const avgAtt = count > 0 ? Math.round((sumAttendance / count) * 100) / 100 : 90.0;
-  const avgChronic = count > 0 ? Math.round((sumChronic / count) * 100) / 100 : 5.0;
+  const avgAtt = countedAttendance > 0 ? Math.round((sumAttendance / countedAttendance) * 100) / 100 : null;
+  const avgChronic = countedChronic > 0 ? Math.round((sumChronic / countedChronic) * 100) / 100 : null;
 
   return {
     district_id: options.districtId || options.district_id || 1,
@@ -579,6 +599,9 @@ function generateDistrictAggregation(schools = [], options = {}) {
     ranking_score: null,               // تضمین فقدان نمره رتبه‌ای
     league_table: null,                // تضمین عدم تولید جدول لیگ
     health_distribution: Object.freeze(healthDist),
+    schools_with_no_data_count: noDataCount,
+    schools_reported_in_attendance_average: countedAttendance,
+    schools_reported_in_chronic_absence_average: countedChronic,
     overall_average_attendance: avgAtt,
     district_chronic_absence_rate: avgChronic,
     total_active_interventions: totalActiveInterventions,

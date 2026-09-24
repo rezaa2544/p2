@@ -60,15 +60,24 @@ const {
   enforceTeacherAccessGuard
 } = require('../analytics/teacher-evidence');
 
-/* گزارهای دسترسی — مدیر مدرسه فقط مدرسهٔ خودش؛ superadmin/edu_office آزاد.
-   این قرارداد همان‌طور که در مرکز فرماندهی هوشمندی برقرار است. */
-function assertCanSeeSchool(user, schoolId) {
+const policy = require('../policy');
+
+/* گزارهای دسترسی — مدیر مدرسه فقط مدرسهٔ خودش؛ superadmin آزاد؛
+   edu_office فقط مدارس داخلِ محدودهٔ جغرافیایی دفترِ خودش (همان دروازهٔ
+   یکتای policy.schoolInOfficeScope که در sync/reports به کار رفته). */
+function assertCanSeeSchool(user, schoolId, store = {}) {
   if (!user || typeof user !== 'object') {
     throw new Error('SEMANTIC_ANALYTICS_FORBIDDEN: requester session is missing');
   }
   const sid = Number(schoolId);
   if (!sid || isNaN(sid)) throw new Error('INVALID_INPUT: valid school_id is required');
-  if (user.role === 'superadmin' || user.role === 'edu_office') return true;
+  if (user.role === 'superadmin') return true;
+  if (user.role === 'edu_office') {
+    if (!policy.schoolInOfficeScope(store, user, sid)) {
+      throw new Error(`TENANT_ISOLATION_VIOLATION: edu_office scope does not cover school ${sid}`);
+    }
+    return true;
+  }
   if (user.role === 'manager') {
     const own = user.school_id != null ? Number(user.school_id) : null;
     if (own === null || own !== sid) {
@@ -144,7 +153,7 @@ function createSemanticAnalyticsRoutes(ctx) {
     const parsed = requireSchoolId(searchParams);
     if (parsed.err) return parsed.err;
     const { schoolId } = parsed;
-    try { assertCanSeeSchool(user, schoolId); }
+    try { assertCanSeeSchool(user, schoolId, store); }
     catch (e) { return { status: 403, body: { ok: false, code: 'forbidden', message: e.message } }; }
 
     const rec = await schoolRecords({ attendance: 'attendance', grades: 'grades' }, schoolId);
@@ -183,7 +192,7 @@ function createSemanticAnalyticsRoutes(ctx) {
     const parsed = requireSchoolId(searchParams);
     if (parsed.err) return parsed.err;
     const { schoolId } = parsed;
-    try { assertCanSeeSchool(user, schoolId); }
+    try { assertCanSeeSchool(user, schoolId, store); }
     catch (e) { return { status: 403, body: { ok: false, code: 'forbidden', message: e.message } }; }
 
     const rec = await schoolRecords({ grades: 'grades' }, schoolId);
@@ -198,7 +207,7 @@ function createSemanticAnalyticsRoutes(ctx) {
     const parsed = requireSchoolId(searchParams);
     if (parsed.err) return parsed.err;
     const { schoolId } = parsed;
-    try { assertCanSeeSchool(user, schoolId); }
+    try { assertCanSeeSchool(user, schoolId, store); }
     catch (e) { return { status: 403, body: { ok: false, code: 'forbidden', message: e.message } }; }
 
     const rec = await schoolRecords({ attendance: 'attendance' }, schoolId);
@@ -223,7 +232,7 @@ function createSemanticAnalyticsRoutes(ctx) {
     if (parsed.err) return parsed.err;
     const { schoolId } = parsed;
     const studentIdParam = searchParams.get('student_id');
-    try { assertCanSeeSchool(user, schoolId); }
+    try { assertCanSeeSchool(user, schoolId, store); }
     catch (e) { return { status: 403, body: { ok: false, code: 'forbidden', message: e.message } }; }
     if (!studentIdParam) {
       return { status: 400, body: { ok: false, code: 'invalid_params', message: 'student_id الزامی است' } };
@@ -251,14 +260,14 @@ function createSemanticAnalyticsRoutes(ctx) {
     const parsed = requireSchoolId(searchParams);
     if (parsed.err) return parsed.err;
     const { schoolId } = parsed;
-    try { assertCanSeeSchool(user, schoolId); }
+    try { assertCanSeeSchool(user, schoolId, store); }
     catch (e) { return { status: 403, body: { ok: false, code: 'forbidden', message: e.message } }; }
 
     const rec = await schoolRecords({ cases: 'counselor_refs', grades: 'grades' }, schoolId);
     const warnings = [];
     for (const c of rec.cases) {
       try {
-        enforceInterventionAccessGuard(user, c);
+        enforceInterventionAccessGuard(user, c, { store });
       } catch (e) {
         continue; /* پرونده‌هایی که این نقش نباید ببیند */
       }
@@ -280,7 +289,7 @@ function createSemanticAnalyticsRoutes(ctx) {
     const parsed = requireSchoolId(searchParams);
     if (parsed.err) return parsed.err;
     const { schoolId } = parsed;
-    try { assertCanSeeSchool(user, schoolId); }
+    try { assertCanSeeSchool(user, schoolId, store); }
     catch (e) { return { status: 403, body: { ok: false, code: 'forbidden', message: e.message } }; }
 
     const rec = await schoolRecords({
@@ -317,7 +326,7 @@ function createSemanticAnalyticsRoutes(ctx) {
         /* نقش‌های مدرسه (manager/teacher/counselor) با گارد مدرسه کنترل می‌شوند */
         const schoolIdRaw = searchParams.get('school_id');
         if (!schoolIdRaw) return { status: 400, body: { ok: false, code: 'invalid_params', message: 'school_id الزامی است' } };
-        assertCanSeeSchool(user, Number(schoolIdRaw));
+        assertCanSeeSchool(user, Number(schoolIdRaw), store);
       }
     } catch (e) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: e.message } };
@@ -354,8 +363,8 @@ function createSemanticAnalyticsRoutes(ctx) {
     if (!schoolIdRaw) return { status: 400, body: { ok: false, code: 'invalid_params', message: 'school_id الزامی است' } };
     const schoolId = Number(schoolIdRaw);
     try {
-      assertCanSeeSchool(user, schoolId);
-      enforceTeacherAccessGuard(user, teacherId, {});
+      assertCanSeeSchool(user, schoolId, store);
+      enforceTeacherAccessGuard(user, teacherId, { store, schoolId });
     } catch (e) {
       return { status: 403, body: { ok: false, code: 'forbidden', message: e.message } };
     }

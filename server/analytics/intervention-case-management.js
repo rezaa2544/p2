@@ -20,6 +20,8 @@
 
 'use strict';
 
+const policy = require('../policy');
+
 // وضعیت‌های مجاز چرخه حیات پرونده
 const VALID_CASE_STATUSES = Object.freeze([
   'OPEN',
@@ -61,7 +63,16 @@ function enforceInterventionAccessGuard(requester, caseRecord, options = {}) {
   const requesterSchoolId = requester.school_id != null ? Number(requester.school_id) : null;
 
   // ۱. مدیر سامانه و بازرس آموزش و پرورش
-  if (role === 'superadmin' || role === 'edu_office') {
+  if (role === 'superadmin') {
+    return true;
+  }
+  if (role === 'edu_office') {
+    // بازرس فقط پرونده‌های مدارسِ داخلِ محدودهٔ جغرافیایی دفترِ خودش؛
+    // پروندهٔ مدرسهٔ خارج از حوزه یا مدرسهٔ ناشناس ⇒ رد (fail-closed).
+    const store = options.store || {};
+    if (caseSchoolId == null || !policy.schoolInOfficeScope(store, requester, caseSchoolId)) {
+      throw new Error(`TENANT_ISOLATION_VIOLATION: edu_office scope does not cover school ${caseSchoolId}`);
+    }
     return true;
   }
 
