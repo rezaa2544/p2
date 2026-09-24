@@ -13,6 +13,7 @@
     "clean": "rm -rf dist",
     "build:android": "node tools/build-android.js",
     "test:smoke": "node tests/smoke.js",
+    "test:all": "bash scripts/run-all-tests.sh",
     "truth-gate": "node tools/production-truth-gate.js",
     "strict-verification": "node tools/strict-verification-gate.js"
   },
