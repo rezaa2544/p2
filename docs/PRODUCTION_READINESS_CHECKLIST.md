@@ -1,3 +1,10 @@
+> ## 🔴 برنامه اجرای اعتبارسنجی نهایی — 2026-09-24
+> این checklist در مرحلهٔ نهایی با برنامه `docs/CURRENT_WORK_EXECUTION_PLAN.md` اجرا می‌شود.
+> ترتیب: Atria Critical/High → Medium → Low → Multi-AI Validation → Capability/Role Matrix → E2E → Failure/Recovery → Performance → Final Certification.
+> هیچ checkbox صرفاً به دلیل وجود کد یا سند تیک نمی‌خورد؛ evidence اجرایی لازم است.
+
+---
+
 # چک‌لیست آمادگی تولید (Production Readiness Gate) — بخش ۲۷ نقشه راه
 
 - **تاریخ بررسی:** 2026-09-10 | **بیس:** `origin/main` @ `351bd10` (پس از PR #45) + شاخهٔ `arena/01a08a2e-p2`
