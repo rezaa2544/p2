@@ -58,6 +58,13 @@ function makeWindow() {
     dom.window.close();
   }
 
+  // Regression: the real smoke harness must also override jsdom's nominal-but-unimplemented scrollTo.
+  {
+    const source = require('fs').readFileSync('tests/smoke.js', 'utf8');
+    assert.match(source, /win\.scrollTo\s*=\s*\(\)\s*=>\s*\{\}/);
+    passes++;
+  }
+
   // Independent re-run
   {
     const { win, errors, dom } = makeWindow();
