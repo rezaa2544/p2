@@ -704,3 +704,12 @@ const LOG_KEY = 'sms_log_v1';        // ← یک کلید برای همهٔ مد
 پایگاهِ داده — درست مطابقِ وضعیتِ فعلی).
 
 📄 مرتبط: `docs/STORAGE_OPTIONS_2026-09-06.md`
+
+
+## Architecture Evolution Registration — 2026-09-24
+
+Canonical detail: docs/ARCHITECTURE_EVOLUTION_ROADMAP.md
+
+The twelve patterns are registered as future architecture decisions, not as completed implementation: Modular Monolith + Vertical Slices; Event-Driven Architecture; Transactional Outbox; OpenTelemetry; Policy-as-Code; Selective CQRS; Workflow/Saga; Event Sourcing; Microservices; Kubernetes; Service Mesh; Zero-Trust Service Boundaries.
+
+P0 is the near-term modernization priority. CQRS/Saga are P1. Event Sourcing/Microservices/Kubernetes/Service Mesh require concrete evidence and Architecture Review. Zero-Trust is cross-cutting.
