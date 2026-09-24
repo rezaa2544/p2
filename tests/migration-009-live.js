@@ -61,8 +61,8 @@ function hasPgModule() { try { require.resolve('pg'); return true; } catch (e) {
 const BIN = findPgBin();
 if (!BIN || !hasPgModule()) {
   skip('migration-009 live gate', !BIN ? 'باینری‌هایِ PostgreSQL در PATH/PG_LIVE_BIN نیستند' : 'ماژولِ pg نصب نیست');
-  console.log('\nmigration-009-live: 0/0 (skip)؛ سبزِ نهایی: ✅\n');
-  process.exit(0);
+  console.error('\nmigration-009-live: NOT-RUN — PostgreSQL prerequisite missing; this suite cannot produce green evidence.\n');
+  process.exit(1);
 }
 
 const PORT = 55452;
