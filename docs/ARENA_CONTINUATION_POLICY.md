@@ -1,3 +1,8 @@
+> ## 🔴 CURRENT EXECUTION OVERRIDE — 2026-09-24
+> continuation نباید ترتیب canonical را دور بزند. در Phase A/B/C، sweep آتریا اولویت دارد و Arena فقط در scope مستقل و بدون overlap مجاز است. وضعیت جاری را از `docs/CURRENT_PROJECT_INTELLIGENCE.md` بخوان.
+
+---
+
 # Payesh — Arena All-Day Continuation Policy
 
 **Status:** ACTIVE  
