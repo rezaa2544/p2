@@ -182,7 +182,7 @@ function snap(server) {
     const after = snap(server);
     chk('S2a اثرِ تکی: یک رکورد از ۳ ارسال', after.ann === before.ann + 1, 'ann=' + after.ann);
     chk('S2b ‏dedupe hit: دقیقاً ۲ از ۳ (اولی apply)', dedupeHits === 2, 'hits=' + dedupeHits);
-    chk('S2c هر ۳ پاسخ ok=true (کلاینت retry را موفق می‌بیند — نه خطا)', true);
+    chk('S2c هر ۳ پاسخ ok=true (کلاینت retry را موفق می‌بیند — نه خطا)', responses.length === 3 && responses.every(x => x && x.ok === true), JSON.stringify(responses));
     chk('S2d integrity: side effect تکی (uids=+1)', after.uids === before.uids + 1);
     metric('S2', { sends: 3, dedupe_hits: dedupeHits, side_effects: after.ann - before.ann, push_ms: ms, integrity: after.ann === before.ann + 1 });
   }
