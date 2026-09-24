@@ -136,7 +136,7 @@ async function main() {
     // دکمه: دانلود در jsdom خطا نمی‌دهد (مسیرِ data-URI)
     const before = W(`S.user=db.users.find(function(u){return u.id===${par.id};});S.persona=null;S.boss=null;S.child=16;S.route='record';S.tab='attendance';renderRoute()`);
     clickAct('ics-export', 16);
-    assert(true, 'دکمهٔ ICS بدونِ کرش کار کرد');
+    assert(W(`document.querySelector('[data-act="ics-export"]') || document.querySelector('[data-action="ics-export"]') || document.querySelector('#ics-export')`), 'دکمهٔ ICS در DOM پیدا نشد');
   });
 
   /* ── F3-b: پالایش ICS (RFC 5545) — تزریقِ فیلدِ کاذب ممکن نباشد ── */
