@@ -4,7 +4,7 @@
 **Date:** 2026-09-24  
 **Repository:** `rezaa2544/p2`  
 **Source:** `docs/audit/PHASE_B_DEFECT_HUNT_REPORT.md`  
-**Purpose:** Preserve every unresolved item identified during Atria's first (Critical/High) sweep so none is lost when the execution plan advances to Medium/P2 and Low/P3.
+**Purpose:** Preserve every unresolved item identified during Atria's first (Critical/High) sweep so none is lost when the execution plan advances to Medium/P2 and Low/P3. The source report calls out 22 deferred Medium/Low items; the fixed-value intelligence metric is tracked separately as A-23 because it appears in the report's remaining-risk discussion and must be independently dispositioned.
 
 ## Ground rule
 
@@ -54,9 +54,11 @@ Definition of Done:
 
 ## Additional carry-over explicitly called out by Atria
 
-Atria also recorded that the following must **not** be treated as solved:
+Atria also recorded the following as an explicit remaining-risk item; it is tracked separately as **A-23** and must not be treated as solved:
 
-- `buildRegionalSnapshot.average_difficulty_p_value` currently uses a fixed fallback (`0.62` / `0.65`) and requires validation of whether the metric is genuine or fabricated.
+| ID | Area | Item | Required next action |
+|---|---|---|---|
+| A-23 | Intelligence / analytics integrity | `buildRegionalSnapshot.average_difficulty_p_value` uses a fixed fallback (`0.62` / `0.65`) | Reproduce, trace source semantics, determine whether the metric is valid or fabricated, then fix or explicitly disposition with evidence |
 - The Phase B report noted that production readiness was not certified: PostgreSQL/Redis production drills and national-scale capacity evidence were not performed.
 - The Phase B report explicitly stated that the six performance findings above were not fixed.
 
@@ -68,9 +70,8 @@ Atria also recorded that the following must **not** be treated as solved:
    A-07 through A-17.
 3. Resolve operational/performance items:
    A-01 through A-06.
-4. Resolve the regional intelligence fixed-value metric as part of the intelligence validation:
-   A-23 (if reproduced/confirmed from the current HEAD).
-5. Only after dispositioning these items may Atria claim that the Phase A carry-over queue is cleared.
+4. Resolve A-23 as part of intelligence validation.
+5. Only after dispositioning all A-01 through A-23 may Atria claim that the Phase A carry-over queue is cleared.
 6. Then proceed to the normal Low/P3 sweep and subsequently the independent Multi-AI validation campaign.
 
 ## Evidence rule
