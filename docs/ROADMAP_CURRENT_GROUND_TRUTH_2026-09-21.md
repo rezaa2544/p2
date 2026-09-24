@@ -825,3 +825,12 @@ E3 DR/PITR and Redis HA evidence remains E3. E4 requires production-equivalent t
 | Phase 8.3 | **BLOCKED** | depends on 8.2 exit | `21ec84e1...` | 8.2 exit + E4 load environment |
 | Production GO | **NOT DECLARED** | no production-equivalent E4 gate | `21ec84e1...` | all required E4 evidence |
 
+
+
+## Architecture Evolution Ground Truth — 2026-09-24
+
+Canonical architecture backlog: docs/ARCHITECTURE_EVOLUTION_ROADMAP.md
+
+The repository now records twelve architecture patterns as a controlled evolution track. P0: Modular Monolith/Vertical Slices; Event-Driven; Transactional Outbox; OpenTelemetry; Policy-as-Code. P1: Selective CQRS; Workflow/Saga. Conditional: Event Sourcing; Microservices; Kubernetes; Service Mesh. Cross-cutting: Zero-Trust Service Boundaries.
+
+This is roadmap state, not implementation certification. Current architecture remains the baseline until an evidence-backed Architecture Review changes it. The active execution order remains Atria Critical/High → Phase A Carry-over Closure → Atria Medium → Atria Low → Multi-AI Validation → Capability/Role/E2E → Failure/Recovery → Performance → Final Certification.
