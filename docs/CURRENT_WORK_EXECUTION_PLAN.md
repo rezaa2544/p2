@@ -220,6 +220,40 @@ Atria باید کل `main` فعلی را به‌عنوان baseline بررسی �
 
 ---
 
+
+
+### Phase I.1 — Database Sharding Readiness / Decision Gate
+**وضعیت: PLANNED / CONDITIONAL**
+
+این کار عمداً بعد از Performance / Scale Validation قرار می‌گیرد. هدف، تبدیل weighted partitioning و read-replica routing فعلی به **true sharding فقط در صورت اثبات نیاز** است؛ نه اجرای premature architecture.
+
+**Decision Gate:**
+- measured database/tenant bottleneck روی Current HEAD
+- evidence واقعی capacity و saturation
+- shard key + tenant placement contract
+- topology و failover model
+- بررسی کافی‌بودن partitioning + read replicas
+- Architecture Review با تصمیم ADOPT / DEFER / REJECT
+
+**در صورت ADOPT:**
+1. Shard Router / Placement contract
+2. connection/pool isolation per shard
+3. tenant-safe routing
+4. primary-write / read-consistency contract
+5. shard-local migrations
+6. provisioning + failover
+7. rebalancing / tenant migration
+8. cross-shard query policy
+9. per-shard observability
+10. per-shard backup/restore/DR
+11. tenant/authz/OCC regression
+12. E3 + E4 multi-shard evidence
+
+**Definition of Done:**
+Design → Decision Gate → Bounded Implementation → 5-Pass Regression → E3 Runtime Evidence → E4 Multi-Shard Evidence → Independent Review
+
+**قید:** PAYESH_SHARDS یا weighted routing به‌تنهایی اثبات Sharding Production نیست. تا اثبات واقعی توزیع داده و lifecycle چند shard مستقل، این آیتم PLANNED / NOT VERIFIED باقی می‌ماند.
+
 ## 10. Phase J — Final Certification / Ground Truth
 
 در پایان یک ماتریس واحد صادر می‌شود:
