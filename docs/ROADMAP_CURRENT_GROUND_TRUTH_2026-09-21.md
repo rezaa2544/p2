@@ -1,3 +1,10 @@
+> ## 🔴 CURRENT EXECUTION PLAN — 2026-09-24
+> **Canonical execution plan:** `docs/CURRENT_WORK_EXECUTION_PLAN.md`
+> **Current sequence:** Atria Critical/High → Atria Medium → Atria Low → Full Multi-AI Validation → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification.
+> این سند همچنان لایهٔ Ground Truth است؛ هر status باید با HEAD جاری و evidence واقعی تطبیق داده شود. گزارش Atria به‌تنهایی certification نیست.
+
+---
+
 # PAYESH — CURRENT ROADMAP GROUND TRUTH
 ## وضعیت اجرایی و برنامه ادامه کار — 2026-09-21
 
