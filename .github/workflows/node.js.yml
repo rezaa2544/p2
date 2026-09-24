@@ -55,6 +55,7 @@ jobs:
 
     env:
       PGURL: postgres://payesh:payesh@127.0.0.1:5432/payesh_ci
+      DATABASE_URL: postgres://payesh:payesh@127.0.0.1:5432/payesh_ci
       REDIS_URL: redis://127.0.0.1:6379
 
     steps:
