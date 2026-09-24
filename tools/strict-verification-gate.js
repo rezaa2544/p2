@@ -17,7 +17,7 @@ chk('G4 registry valid JSON',!!reg);
 chk('G5 three independent reviewers declared',!!reg&&JSON.stringify(reg.required_reviewers)===JSON.stringify(['chatgpt','arena','atria']));
 let allowed=null;try{allowed=JSON.parse(read(ALLOW));}catch(e){}
 chk('G6 explicit false-green allowlist exists',!!allowed&&Array.isArray(allowed.items));
-function walk(dir,out){out=out||[];for(const e of fs.readdirSync(dir,{withFileTypes:true})){if(['node_modules','.git','dist'].includes(e.name))continue;const p=path.join(dir,e.name);if(e.isDirectory())walk(p,out);else if(/\.(js|mjs|cjs|yml|yaml)$/.test(e.name))out.push(p);}return out;}
+function walk(dir,out){out=out||[];for(const e of fs.readdirSync(dir,{withFileTypes:true})){if(['node_modules','.git','dist'].includes(e.name))continue;const p=path.join(dir,e.name);if(e.isSymbolicLink())continue;if(e.isDirectory())walk(p,out);else if(/\.(js|mjs|cjs|yml|yaml)$/.test(e.name))out.push(p);}return out;}
 const amap=new Map();
 if(allowed&&Array.isArray(allowed.items))for(const x of allowed.items)amap.set(String(x.pattern),x);
 const pats=[['assert(true',/assert\s*\(\s*true\b/gi],['process.exit(0)',/process\.exit\(\s*0\s*\)/g],['|| true',/\|\|\s*true\b/g],['0/0 checks',/0\s*\/\s*0\s*(?:checks?|tests?)/gi]];
