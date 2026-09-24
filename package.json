@@ -13,7 +13,8 @@
     "clean": "rm -rf dist",
     "build:android": "node tools/build-android.js",
     "test:smoke": "node tests/smoke.js",
-    "truth-gate": "node tools/production-truth-gate.js"
+    "truth-gate": "node tools/production-truth-gate.js",
+    "strict-verification": "node tools/strict-verification-gate.js"
   },
   "keywords": [
     "school-management",
