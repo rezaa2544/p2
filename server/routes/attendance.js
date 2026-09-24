@@ -118,6 +118,16 @@ const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.scho
       created_at: new Date().toISOString()
     };
 
+    /* A-21: class_id must resolve to a class in the actor's school and,
+       for teachers, to a class they actually teach. */
+    const attendanceClass = (store.classes || []).find(c => Number(c.id) === Number(newRecord.class_id));
+    if (!attendanceClass || attendanceClass.school_id == null || Number(attendanceClass.school_id) !== Number(schoolId)) {
+      return { status: 403, body: { ok: false, code: 'out_of_scope', message: 'کلاس خارج از محدودهٔ مدرسه است' } };
+    }
+    if (user.role === 'teacher' && !policy.teacherClassIds(store, user.id).has(Number(newRecord.class_id))) {
+      return { status: 403, body: { ok: false, code: 'out_of_scope', message: 'کلاس خارج از محدودهٔ تدریس شماست' } };
+    }
+
     /* Wave 5 — مهارِ مدلِ یکتا روی بدنهٔ تازه (دبیر: دانش‌آموزِ کلاسِ تدرسی؛
        مدیر: دانش‌آموزِ مدرسهٔ خودش؛ ناسازگاریِ مهار/دانش‌آموز ⇒ رد). */
     if (!policy.restCreateScopeOk(store, user, 'attendance', newRecord)) {
