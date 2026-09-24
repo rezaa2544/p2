@@ -19,8 +19,8 @@ function hasRedis() {
 }
 if (!hasRedis()) {
   console.log('  ⏭️  live redis mutations — redis-server در PATH نیست');
-  console.log('wave6-11-redis-live-mutations: 0/0 (skip)؛ سبزِ نهایی: ✅');
-  process.exit(0);
+  console.error('wave6-11-redis-live-mutations: NOT-RUN — redis-server prerequisite missing; mutation evidence cannot be green.');
+  process.exit(1);
 }
 
 const ROOT = path.join(__dirname, '..');
