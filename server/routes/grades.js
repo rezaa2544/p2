@@ -146,6 +146,19 @@ const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.scho
       created_at: new Date().toISOString()
     };
 
+    /* A-21: class_id is a relationship boundary, not a free foreign key.
+       It must belong to the same school and, for teachers, to a class they
+       actually teach/homeroom. */
+    if (newGrade.class_id != null) {
+      const cls = (store.classes || []).find(c => Number(c.id) === Number(newGrade.class_id));
+      if (!cls || cls.school_id == null || Number(cls.school_id) !== Number(schoolId)) {
+        return { status: 403, body: { ok: false, code: 'out_of_scope', message: 'کلاس خارج از محدودهٔ مدرسه است' } };
+      }
+      if (user.role === 'teacher' && !policy.teacherClassIds(store, user.id).has(Number(newGrade.class_id))) {
+        return { status: 403, body: { ok: false, code: 'out_of_scope', message: 'کلاس خارج از محدودهٔ تدریس شماست' } };
+      }
+    }
+
     /* Wave 5 — مهارِ دانش‌آموز با محدوده (دبیر: کلاسِ تدرسی؛ مدیر: مدرسهٔ خود) —
        همان inScope که sync اعمال می‌کند. */
     if (!policy.restCreateScopeOk(store, user, 'grades', newGrade)) {
