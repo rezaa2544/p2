@@ -200,8 +200,7 @@ function seedStore() {
   await test('real-PG SELECT verification', async () => {
     const hasPgDriver = (() => { try { require('pg'); return true; } catch (e) { return false; } })();
     if (!process.env.DATABASE_URL || !hasPgDriver) {
-      console.log('     ⏭️  no live PostgreSQL (DATABASE_URL/pg absent) — PG SELECT branch NOT executed; see WAVE1_READS_INVENTORY.md');
-      return;
+      throw new Error('LIVE_PG_REQUIRED: DATABASE_URL and pg are required; PG SELECT branch must execute');
     }
     const info = await db.init(store); // would connect to real PG when configured
     assert(info.driver === 'postgres', 'driver باید postgres باشد');
