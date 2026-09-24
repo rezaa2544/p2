@@ -36,14 +36,8 @@ const check = (name, fn) => {
       store, db: null, sessionFrom: async () => ({ id: 2, role: 'manager', school_id: 1 }),
       markDirty: () => {}, audit: () => {}
     });
-    const res = await routes.apiResolve({}, { statusCode: 200, setHeader() {}, end(b) {
-      this.body = JSON.parse(b);
-    } }, { conflict_id: 10, winner: 'incoming' });
-    check('A-18 negative: stale conflict cannot rewind a newer record', () => {
-      assert.strictEqual(res, undefined);
-      assert.strictEqual(arguments, undefined); // unreachable; response is asserted below
-    });
-    // apiResolve returns through sendJson; the response object is the observable.
+    // apiResolve writes its HTTP result through the response object; that is
+    // the observable contract for this direct route invocation.
     const probe = { statusCode: 200, setHeader() {}, end(b) { this.body = JSON.parse(b); } };
     await routes.apiResolve({}, probe, { conflict_id: 10, winner: 'incoming' });
     check('A-18 adversarial: version 3 target rejects conflict captured at v2', () => {
