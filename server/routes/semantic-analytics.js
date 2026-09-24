@@ -238,6 +238,19 @@ function createSemanticAnalyticsRoutes(ctx) {
       return { status: 400, body: { ok: false, code: 'invalid_params', message: 'student_id الزامی است' } };
     }
     const studentId = Number(studentIdParam);
+    if (!Number.isInteger(studentId) || studentId <= 0) {
+      return { status: 400, body: { ok: false, code: 'invalid_params', message: 'student_id نامعتبر است' } };
+    }
+
+    const studentRec = (store.users || []).find((u) => Number(u.id) === studentId && u.role === 'student');
+    if (!studentRec || studentRec.school_id == null || Number(studentRec.school_id) !== schoolId) {
+      return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
+    }
+    /* Tenant is not sufficient for teacher access: the requested student must
+       be an actually owned/taught student under the canonical policy. */
+    if (user && user.role === 'teacher' && !policy.studentRecordOk(store, user, studentRec)) {
+      return { status: 403, body: { ok: false, code: 'forbidden', message: 'این دانش‌آموز در کلاس‌های شما نیست' } };
+    }
 
     const rec = await schoolRecords({
       attendance: 'attendance', grades: 'grades', discipline: 'discipline',
