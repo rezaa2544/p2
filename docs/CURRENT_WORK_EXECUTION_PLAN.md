@@ -58,8 +58,27 @@ Atria باید کل `main` فعلی را به‌عنوان baseline بررسی �
 
 **قاعده:** finding باید روی HEAD جاری reproduce شود یا صریحاً به‌عنوان historical/unverified ثبت شود.
 
+### Phase A Carry-over — Unresolved Items From First Atria Sweep
+پس از اتمام P0/P1، گزارش Phase B تعداد **۲۲ مورد Medium/Low** را به‌عنوان «شناسایی‌شده و اصلاح‌نشده» ثبت کرد. این موارد از بین نرفته‌اند و نباید به‌عنوان resolved/safe تلقی شوند.
+
+مرجع اجرایی کامل و غیرقابل‌حذف این queue:
+`docs/audit/ATRIA_PHASE_A_CARRYOVER.md`
+
+ترتیب closure:
+
+1. ابتدا موارد امنیت/یکپارچگی داده و ownership:
+   `A-18`, `A-19`, `A-20`, `A-21`, `A-22`
+2. سپس false-green و test/CI integrity:
+   `A-07` تا `A-17`
+3. سپس operational/performance:
+   `A-01` تا `A-06`
+4. سپس metric ثابت/مشکوک `average_difficulty_p_value` در intelligence، با reproduction مستقل.
+5. برای هر مورد یکی از این dispositionها الزامی است:
+   `FIXED + evidence` / `VERIFIED NOT A DEFECT` / `ACCEPTED RISK` / `BLOCKED` / `HISTORICAL` / `DEFERRED`
+6. هیچ موردی صرفاً به دلیل «deferred» یا «خارج از scope قبلی» resolved محسوب نمی‌شود.
+
 ### Phase B — Atria Medium Sweep
-پس از بسته‌شدن Critical/High:
+پس از بسته‌شدن Critical/High و **پس از تعیین تکلیف Phase A Carry-over**:
 
 - منطق ناقص و edge caseها
 - validation و error handling
