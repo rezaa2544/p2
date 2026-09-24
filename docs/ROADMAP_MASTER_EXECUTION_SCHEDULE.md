@@ -1270,3 +1270,10 @@ Historical E3 DR/HA measurements remain E3. E4 requires production-equivalent to
 | Phase 8.3 | **BLOCKED** | 8.2 exit dependency | `9d565d7b...` | 8.2 exit + E4 load |
 | Production GO | **NOT DECLARED** | no E4 production gate | `9d565d7b...` | all required E4 evidence |
 
+
+
+## Architecture Evolution Track — 2026-09-24
+
+Canonical architecture backlog: docs/ARCHITECTURE_EVOLUTION_ROADMAP.md
+
+Priority placement: P0 foundations = Modular Monolith/Vertical Slices, Event-Driven + Transactional Outbox, OpenTelemetry, Policy-as-Code. P1 = Selective CQRS and Workflow/Saga. Conditional research = Event Sourcing, Microservices, Kubernetes, Service Mesh. Zero-Trust Service Boundaries = cross-cutting. These items do not reorder the active Atria/Cary-over/P2/P3/validation sequence without Architecture Review.
