@@ -181,7 +181,7 @@ test('B6 — خودِ دانش‌آموز هم کارتِ زنده می‌بین
 });
 
 test('B7 — تیکِ زنده: تغییرِ حضور، بدونِ رندرِ کامل، به DOM می‌رسد', () => {
-  if(!TODAY_OK_FOR_LIVE_TICK){ console.log('     (skipped: today is not a clean school day for school 1 — the live tick follows the real clock)'); return; }
+  if(!TODAY_OK_FOR_LIVE_TICK){ throw new Error('LIVE_CLOCK_PREREQUISITE: today is not a clean live-tick school day for school 1'); }
   /* ولی و فرزندِ تازه (یک‌فرزند) تا آزمون به دادهٔ نمونه وابسته نباشد */
   const mk = W(`(function(){
     var sid=db.schools[0].id;
