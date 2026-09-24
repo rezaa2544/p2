@@ -75,41 +75,64 @@ function calculateSchoolHealthIndex(snapshot = {}, options = {}) {
   const engagement = snapshot.engagement_summary || snapshot.parent_summary || {};
   const intervention = snapshot.intervention_summary || {};
 
+  // اصل No-Fabrication: مؤلفه‌ای که داده واقعی ندارد در محاسبه وارد نمی‌شود
+  // (به‌جای مقادیر پیش‌فرض ساختگی مانند 15.0 / 90.0 / 75.0 / 50.0)
+  const hasAcademic = academic.average_gpa != null && !isNaN(Number(academic.average_gpa));
+  const hasAttendance = attendance.calendar_rate != null && !isNaN(Number(attendance.calendar_rate));
+  const hasEngagement = engagement.average_pei != null && !isNaN(Number(engagement.average_pei));
+  const hasIntervention = intervention.resolution_rate != null && !isNaN(Number(intervention.resolution_rate));
+
   // مؤلفه آموزشی (0-100)
-  const avgGpa = Number(academic.average_gpa ?? 15.0);
+  const avgGpa = hasAcademic ? Number(academic.average_gpa) : null;
   const failingRatio = Number(academic.failing_students_ratio ?? 0);
-  let compAcademic = Math.max(0, Math.min(100, (avgGpa / 20) * 100 - (failingRatio * 100 * 0.5)));
+  const compAcademic = hasAcademic
+    ? Math.max(0, Math.min(100, (avgGpa / 20) * 100 - (failingRatio * 100 * 0.5)))
+    : null;
 
   // مؤلفه حضور (0-100)
-  const attRate = Number(attendance.calendar_rate ?? 90.0);
-  const chronicRate = Number(attendance.chronic_absence_rate ?? 5.0);
-  let compAttendance = Math.max(0, Math.min(100, attRate - (chronicRate * 1.5)));
+  const attRate = hasAttendance ? Number(attendance.calendar_rate) : null;
+  const chronicRate = attendance.chronic_absence_rate != null ? Number(attendance.chronic_absence_rate) : null;
+  const compAttendance = hasAttendance
+    ? Math.max(0, Math.min(100, attRate - ((chronicRate || 0) * 1.5)))
+    : null;
 
   // مؤلفه مشارکت و تعامل (0-100)
-  const pei = Number(engagement.average_pei ?? 75.0);
-  let compEngagement = Math.max(0, Math.min(100, pei));
+  const pei = hasEngagement ? Number(engagement.average_pei) : null;
+  const compEngagement = hasEngagement ? Math.max(0, Math.min(100, pei)) : null;
 
   // مؤلفه مداخله (0-100)
-  const resRate = Number(intervention.resolution_rate ?? 50.0);
+  const resRate = hasIntervention ? Number(intervention.resolution_rate) : null;
   const unassignedCritical = Number(intervention.unassigned_high_priority_count ?? 0);
-  let compIntervention = Math.max(0, Math.min(100, resRate - (unassignedCritical * 15)));
+  const compIntervention = hasIntervention
+    ? Math.max(0, Math.min(100, resRate - (unassignedCritical * 15)))
+    : null;
 
-  // میانگین وزنی
-  const score = Math.round(
-    (0.35 * compAcademic + 0.30 * compAttendance + 0.20 * compEngagement + 0.15 * compIntervention) * 10
-  ) / 10;
+  // میانگین وزنی فقط روی مؤلفه‌های دارای داده (بازتوزیع وزن)
+  const weighted = [
+    [0.35, compAcademic],
+    [0.30, compAttendance],
+    [0.20, compEngagement],
+    [0.15, compIntervention]
+  ].filter(([, v]) => v != null);
 
-  // احصای مخاطرات بحرانی (Critical Risks)
+  const weightSum = weighted.reduce((acc, [w]) => acc + w, 0);
+  const score = weighted.length > 0
+    ? Math.round((weighted.reduce((acc, [w, v]) => acc + w * v, 0) / weightSum) * 10) / 10
+    : null;
+
+  // احصای مخاطرات بحرانی (Critical Risks) — فقط بر پایه داده واقعی
   let criticalRiskCount = 0;
-  if (chronicRate >= 15.0) criticalRiskCount++;
-  if (avgGpa < 10.0) criticalRiskCount++;
+  if (chronicRate != null && chronicRate >= 15.0) criticalRiskCount++;
+  if (avgGpa != null && avgGpa < 10.0) criticalRiskCount++;
   if (unassignedCritical > 0) criticalRiskCount++;
 
   // اعمال اصل عدم پنهان‌سازی (No-Masking)
   let status = 'HEALTHY';
   let noMaskingApplied = false;
 
-  if (criticalRiskCount > 0) {
+  if (score == null) {
+    status = 'NO_DATA';
+  } else if (criticalRiskCount > 0) {
     status = 'NEEDS_IMMEDIATE_ACTION';
     noMaskingApplied = score >= 60; // اگر نمره عددی متوسط/بالا بوده اما به دلیل ریسک حاد تنزل یافته
   } else if (score >= 80) {
@@ -124,10 +147,16 @@ function calculateSchoolHealthIndex(snapshot = {}, options = {}) {
     score: score,
     status: status,
     components: {
-      academic: Math.round(compAcademic * 10) / 10,
-      attendance: Math.round(compAttendance * 10) / 10,
-      engagement: Math.round(compEngagement * 10) / 10,
-      intervention: Math.round(compIntervention * 10) / 10
+      academic: compAcademic != null ? Math.round(compAcademic * 10) / 10 : null,
+      attendance: compAttendance != null ? Math.round(compAttendance * 10) / 10 : null,
+      engagement: compEngagement != null ? Math.round(compEngagement * 10) / 10 : null,
+      intervention: compIntervention != null ? Math.round(compIntervention * 10) / 10 : null
+    },
+    data_coverage: {
+      academic: hasAcademic,
+      attendance: hasAttendance,
+      engagement: hasEngagement,
+      intervention: hasIntervention
     },
     critical_risk_count: criticalRiskCount,
     no_masking_applied: noMaskingApplied
@@ -281,8 +310,9 @@ function buildSchoolIntelligenceSnapshot(data = {}, options = {}) {
   }
 
   const gradeCount = rawGrades.length;
-  const avgGpa = gradeCount > 0 ? Math.round((totalScore / gradeCount) * 100) / 100 : 15.0;
-  const failingRatio = gradeCount > 0 ? Math.round((failingCount / gradeCount) * 1000) / 1000 : 0;
+  // No-Fabrication: در نبود نمره، معدل null است (نه مقدار ساختگی 15.0)
+  const avgGpa = gradeCount > 0 ? Math.round((totalScore / gradeCount) * 100) / 100 : null;
+  const failingRatio = gradeCount > 0 ? Math.round((failingCount / gradeCount) * 1000) / 1000 : null;
 
   let atRiskSubjectsCount = 0;
   for (const [, scores] of subjectScores.entries()) {
@@ -318,11 +348,12 @@ function buildSchoolIntelligenceSnapshot(data = {}, options = {}) {
   }
 
   const totalSessions = presentCount + absentCount;
-  const calendarRate = totalSessions > 0 ? Math.round(((presentCount / totalSessions) * 100) * 100) / 100 : 95.0;
-  const chronicAbsenceRate = totalSessions > 0 ? Math.round(((absentCount / totalSessions) * 100) * 100) / 100 : 5.0;
+  // No-Fabrication: در نبود جلسه حضور/غیاب، نرخ‌ها null هستند (نه 95.0 / 5.0 ساختگی)
+  const calendarRate = totalSessions > 0 ? Math.round(((presentCount / totalSessions) * 100) * 100) / 100 : null;
+  const chronicAbsenceRate = totalSessions > 0 ? Math.round(((absentCount / totalSessions) * 100) * 100) / 100 : null;
 
-  let peakDay = 'wednesday';
-  let maxAbs = -1;
+  let peakDay = null;
+  let maxAbs = 0;
   for (const [d, count] of Object.entries(dayAbsenceMap)) {
     if (count > maxAbs) {
       maxAbs = count;
@@ -366,14 +397,17 @@ function buildSchoolIntelligenceSnapshot(data = {}, options = {}) {
   }
 
   const teacherSummary = {
-    active_teachers_count: teacherPeriods.size || 1,
+    // No-Fabrication: تعداد واقعی معلمان فعال (نه حداقل ساختگی 1)
+    active_teachers_count: teacherPeriods.size,
     overloaded_teachers_count: overloadedTeachers,
     exemplary_evidence_count: Math.min(teacherPeriods.size, rawTeacherNotes.length > 5 ? 2 : 0)
   };
 
   // ۵. خلاصه اولیا (Parent Summary)
+  // No-Fabrication: منبع داده شاخص تعامل اولیا (PEI) هنوز متصل نیست؛ null با علامت‌گذاری صریح
   const parentSummary = {
-    average_pei: 78.5,
+    average_pei: null,
+    average_pei_status: 'NOT_AVAILABLE',
     unjustified_absences_pending: absentCount > 0 ? Math.min(absentCount, 3) : 0
   };
 
@@ -395,7 +429,8 @@ function buildSchoolIntelligenceSnapshot(data = {}, options = {}) {
   }
 
   const totalCases = rawCases.length;
-  const resolutionRate = totalCases > 0 ? Math.round(((resolvedCount / totalCases) * 100) * 100) / 100 : 100.0;
+  // No-Fabrication: بدون پرونده مداخله، نرخ حل null است (نه 100٪ ساختگی)
+  const resolutionRate = totalCases > 0 ? Math.round(((resolvedCount / totalCases) * 100) * 100) / 100 : null;
 
   const interventionSummary = {
     active_cases_count: activeCasesCount,
@@ -434,10 +469,23 @@ function buildSchoolIntelligenceSnapshot(data = {}, options = {}) {
     });
   }
 
+  // وضعیت کیفیت داده اسنپ‌شات (No-Data Masking صریح)
+  const dataQualityStatus =
+    (gradeCount === 0 && totalSessions === 0 && totalCases === 0) ? 'NO_DATA'
+      : (gradeCount === 0 || totalSessions === 0) ? 'PARTIAL'
+        : 'OK';
+
   return {
     school_id: schoolId,
     generated_at: options.now || new Date().toISOString(),
     academic_year: data.academicYear || data.academic_year || '1405-1406',
+    data_quality: {
+      status: dataQualityStatus,
+      grades_count: gradeCount,
+      attendance_sessions_count: totalSessions,
+      intervention_cases_count: totalCases,
+      teacher_schedule_entries_count: rawSchedule.length
+    },
     health_index: healthIndex,
     risk_summary: {
       total_risks_count: topRisks.length,
@@ -469,7 +517,8 @@ function generateDistrictAggregation(schools = [], options = {}) {
   const healthDist = {
     HEALTHY: 0,
     NEEDS_MONITORING: 0,
-    NEEDS_IMMEDIATE_ACTION: 0
+    NEEDS_IMMEDIATE_ACTION: 0,
+    NO_DATA: 0
   };
 
   let sumAttendance = 0;
@@ -477,12 +526,18 @@ function generateDistrictAggregation(schools = [], options = {}) {
   let totalActiveInterventions = 0;
   const commonIssuesSet = new Set();
 
+  let attendanceSchoolCount = 0;
   for (const s of rawSchools) {
-    const status = s.health_index?.status || 'HEALTHY';
+    // No-Fabrication: مدرسه بدون شاخص سلامت، NO_DATA است نه HEALTHY
+    const status = s.health_index?.status || 'NO_DATA';
     healthDist[status] = (healthDist[status] || 0) + 1;
 
-    sumAttendance += Number(s.attendance_summary?.calendar_rate ?? 90.0);
-    sumChronic += Number(s.attendance_summary?.chronic_absence_rate ?? 5.0);
+    // فقط مدارس دارای داده حضور واقعی در میانگین منطقه‌ای وارد می‌شوند
+    if (s.attendance_summary?.calendar_rate != null) {
+      sumAttendance += Number(s.attendance_summary.calendar_rate);
+      sumChronic += Number(s.attendance_summary.chronic_absence_rate ?? 0);
+      attendanceSchoolCount++;
+    }
     totalActiveInterventions += Number(s.intervention_summary?.active_cases_count ?? 0);
 
     for (const risk of (s.risk_summary?.top_risks || [])) {
@@ -493,8 +548,9 @@ function generateDistrictAggregation(schools = [], options = {}) {
   }
 
   const count = rawSchools.length;
-  const avgAtt = count > 0 ? Math.round((sumAttendance / count) * 100) / 100 : 90.0;
-  const avgChronic = count > 0 ? Math.round((sumChronic / count) * 100) / 100 : 5.0;
+  // No-Fabrication: میانگین فقط از مدارس دارای داده؛ در نبود داده null (نه 90.0 / 5.0)
+  const avgAtt = attendanceSchoolCount > 0 ? Math.round((sumAttendance / attendanceSchoolCount) * 100) / 100 : null;
+  const avgChronic = attendanceSchoolCount > 0 ? Math.round((sumChronic / attendanceSchoolCount) * 100) / 100 : null;
 
   return {
     district_id: options.districtId || options.district_id || 1,

@@ -81,95 +81,122 @@ function calculateSchoolHealthIndex(params = {}, options = {}) {
 
   const criticalFlags = [];
 
+  // اصل No-Fabrication: بعدی که هیچ داده واقعی ندارد وارد محاسبه نمی‌شود
+  // (پیش‌فرض‌های ساختگی 100/85/…/90 حذف شدند؛ نبود داده => بعد null)
+  const hasAttendanceData = !!(attendance && typeof attendance === 'object' &&
+    (typeof attendance.attendance_rate === 'number' || typeof attendance.rate === 'number'));
+  const hasAssessmentData = !!(assessment && typeof assessment === 'object' &&
+    (typeof assessment.reliability === 'number' || typeof assessment.fairness_score === 'number' || typeof assessment.quality_score === 'number'));
+  const hasProgressData = !!(progress && typeof progress === 'object' &&
+    (typeof progress.improving_students_ratio === 'number' || typeof progress.declining_students_ratio === 'number' ||
+     typeof progress.improving_ratio === 'number' || typeof progress.declining_ratio === 'number'));
+  const hasCompletionData = !!(completion && typeof completion === 'object' &&
+    (typeof completion.pass_rate === 'number' || typeof completion.failure_rate === 'number'));
+
   // ۱. بعد سلامت حضور و تعامل (Attendance Health — وزن ۳۰٪)
-  let attRate = 100;
-  let chronicRate = 0;
-  if (attendance && typeof attendance === 'object') {
+  let attendanceHealth = null;
+  if (hasAttendanceData) {
+    let attRate = 100;
+    let chronicRate = 0;
     if (typeof attendance.attendance_rate === 'number') attRate = attendance.attendance_rate;
     if (typeof attendance.chronic_absence_rate === 'number') chronicRate = attendance.chronic_absence_rate;
     if (typeof attendance.rate === 'number') attRate = attendance.rate;
-  }
-  const chronicPenalty = chronicRate * 1.5;
-  const attendanceHealth = roundTo(Math.max(0, Math.min(100, attRate - chronicPenalty)), 2);
 
-  if (chronicRate >= 20.0) {
-    criticalFlags.push('HIGH_CHRONIC_ABSENCE');
-  }
-  if (attRate < 75.0) {
-    criticalFlags.push('SEVERE_ATTENDANCE_DEFICIT');
+    const chronicPenalty = chronicRate * 1.5;
+    attendanceHealth = roundTo(Math.max(0, Math.min(100, attRate - chronicPenalty)), 2);
+
+    if (chronicRate >= 20.0) {
+      criticalFlags.push('HIGH_CHRONIC_ABSENCE');
+    }
+    if (attRate < 75.0) {
+      criticalFlags.push('SEVERE_ATTENDANCE_DEFICIT');
+    }
   }
 
   // ۲. بعد سلامت سنجش و امتحانات (Assessment Health — وزن ۲۵٪)
-  let assessReliability = 85;
-  let assessFairness = 85;
-  let assessDiscrim = 80;
-  if (assessment && typeof assessment === 'object') {
+  let assessmentHealth = null;
+  if (assessment && typeof assessment === 'object' && assessment.has_critical_anomaly) {
+    criticalFlags.push('CRITICAL_ASSESSMENT_ANOMALY');
+  }
+  if (hasAssessmentData) {
+    let assessReliability = 85;
+    let assessFairness = 85;
+    let assessDiscrim = 80;
     if (typeof assessment.reliability === 'number') assessReliability = assessment.reliability;
     if (typeof assessment.fairness_score === 'number') assessFairness = assessment.fairness_score;
     if (typeof assessment.quality_score === 'number') assessDiscrim = assessment.quality_score;
-    if (assessment.has_critical_anomaly) {
-      criticalFlags.push('CRITICAL_ASSESSMENT_ANOMALY');
-    }
-  }
-  const assessmentHealth = roundTo(
-    Math.max(0, Math.min(100, (0.40 * assessReliability) + (0.40 * assessFairness) + (0.20 * assessDiscrim))),
-    2
-  );
 
-  if (assessReliability < 50.0 || assessFairness < 50.0) {
-    criticalFlags.push('CRITICAL_ASSESSMENT_DEFICIT');
+    assessmentHealth = roundTo(
+      Math.max(0, Math.min(100, (0.40 * assessReliability) + (0.40 * assessFairness) + (0.20 * assessDiscrim))),
+      2
+    );
+
+    if (assessReliability < 50.0 || assessFairness < 50.0) {
+      criticalFlags.push('CRITICAL_ASSESSMENT_DEFICIT');
+    }
   }
 
   // ۳. بعد سلامت پیشرفت یادگیری (Learning Progress Health — وزن ۳۰٪)
-  let improvingRatio = 0.5;
-  let decliningRatio = 0.1;
-  if (progress && typeof progress === 'object') {
+  let learningHealth = null;
+  if (hasProgressData) {
+    let improvingRatio = 0.5;
+    let decliningRatio = 0.1;
     if (typeof progress.improving_students_ratio === 'number') improvingRatio = progress.improving_students_ratio;
     if (typeof progress.declining_students_ratio === 'number') decliningRatio = progress.declining_students_ratio;
     if (typeof progress.improving_ratio === 'number') improvingRatio = progress.improving_ratio;
     if (typeof progress.declining_ratio === 'number') decliningRatio = progress.declining_ratio;
-  }
-  const learningHealth = roundTo(
-    Math.max(0, Math.min(100, 50 + (50 * (improvingRatio - decliningRatio)))),
-    2
-  );
 
-  if (decliningRatio > 0.35) {
-    criticalFlags.push('ALARMING_LEARNING_DECLINE');
+    learningHealth = roundTo(
+      Math.max(0, Math.min(100, 50 + (50 * (improvingRatio - decliningRatio)))),
+      2
+    );
+
+    if (decliningRatio > 0.35) {
+      criticalFlags.push('ALARMING_LEARNING_DECLINE');
+    }
   }
 
   // ۴. بعد سلامت ارتقا و قبولی (Completion Health — وزن ۱۵٪)
-  let passRate = 90;
-  let failureRate = 5;
-  if (completion && typeof completion === 'object') {
+  let completionHealth = null;
+  if (hasCompletionData) {
+    let passRate = 90;
+    let failureRate = 5;
     if (typeof completion.pass_rate === 'number') passRate = completion.pass_rate;
     if (typeof completion.failure_rate === 'number') failureRate = completion.failure_rate;
+
+    completionHealth = roundTo(
+      Math.max(0, Math.min(100, passRate - (0.5 * failureRate))),
+      2
+    );
+
+    if (failureRate >= 15.0) {
+      criticalFlags.push('HIGH_FAILURE_RISK');
+    }
   }
-  const completionHealth = roundTo(
-    Math.max(0, Math.min(100, passRate - (0.5 * failureRate))),
-    2
-  );
 
-  if (failureRate >= 15.0) {
-    criticalFlags.push('HIGH_FAILURE_RISK');
-  }
+  // محاسبه میانگین وزنی فقط روی ابعاد دارای داده (بازتوزیع وزن)
+  const weightedDims = [
+    [0.30, attendanceHealth],
+    [0.25, assessmentHealth],
+    [0.30, learningHealth],
+    [0.15, completionHealth]
+  ].filter(([, v]) => v != null);
 
-  // محاسبه میانگین وزنی شاخص کل
-  const weightedComposite = (0.30 * attendanceHealth) +
-                            (0.25 * assessmentHealth) +
-                            (0.30 * learningHealth) +
-                            (0.15 * completionHealth);
-  const healthScore = roundTo(weightedComposite, 2);
+  const dimWeightSum = weightedDims.reduce((acc, [w]) => acc + w, 0);
+  const healthScore = weightedDims.length > 0
+    ? roundTo(weightedDims.reduce((acc, [w, v]) => acc + w * v, 0) / dimWeightSum, 2)
+    : null;
 
-  // رده‌بندی اولیه بر پایه نمره
+  // رده‌بندی اولیه بر پایه نمره — در نبود کامل داده: NO_DATA صریح
   let healthLevel = 'CRITICAL';
-  if (healthScore >= 85) healthLevel = 'EXCELLENT';
+  if (healthScore == null) healthLevel = 'NO_DATA';
+  else if (healthScore >= 85) healthLevel = 'EXCELLENT';
   else if (healthScore >= 70) healthLevel = 'GOOD';
   else if (healthScore >= 50) healthLevel = 'NEEDS_INTERVENTION';
 
   // اعمال اصل عدم پنهان‌سازی (No-Masking Principle)
   let noMaskingApplied = false;
-  if (criticalFlags.length > 0) {
+  if (criticalFlags.length > 0 && healthLevel !== 'NO_DATA') {
     if (healthLevel === 'EXCELLENT' || healthLevel === 'GOOD') {
       healthLevel = 'NEEDS_INTERVENTION';
       noMaskingApplied = true;
@@ -189,6 +216,12 @@ function calculateSchoolHealthIndex(params = {}, options = {}) {
       assessment_health: assessmentHealth,
       learning_health: learningHealth,
       completion_health: completionHealth
+    },
+    data_coverage: {
+      attendance: hasAttendanceData,
+      assessment: hasAssessmentData,
+      learning: hasProgressData,
+      completion: hasCompletionData
     },
     critical_flags: criticalFlags,
     no_masking_applied: noMaskingApplied

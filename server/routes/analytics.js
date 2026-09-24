@@ -85,6 +85,17 @@ function createAnalyticsRoutes(ctx) {
 
   const pgLive = () => db && typeof db.isPostgres === 'function' && db.isPostgres();
 
+  // اعتبارسنجی یکنواخت شناسه‌ها (No fail-open on NaN): شناسه باید عدد صحیح مثبت باشد
+  const isValidId = (raw) => {
+    if (raw == null || String(raw).trim() === '') return false;
+    const n = Number(raw);
+    return Number.isInteger(n) && n > 0;
+  };
+  const invalidIdResponse = () => ({
+    status: 400,
+    body: { ok: false, code: 'invalid_params', message: 'شناسه ارائه‌شده نامعتبر است (عدد صحیح مثبت لازم است)' }
+  });
+
   async function schoolIntelligenceReport(req, searchParams) {
     const user = req.user || req.session;
     const schoolIdParam = searchParams.get('school_id');
@@ -263,6 +274,10 @@ function createAnalyticsRoutes(ctx) {
         status: 400,
         body: { ok: false, code: 'invalid_params', message: 'school_id یا region_id الزامی است' }
       };
+    }
+
+    if ((schoolIdParam != null && !isValidId(schoolIdParam)) || (regionIdParam != null && !isValidId(regionIdParam))) {
+      return invalidIdResponse();
     }
 
     if (schoolIdParam) {
@@ -466,6 +481,10 @@ function createAnalyticsRoutes(ctx) {
       };
     }
 
+    if ((schoolIdParam != null && !isValidId(schoolIdParam)) || (regionIdParam != null && !isValidId(regionIdParam))) {
+      return invalidIdResponse();
+    }
+
     if (schoolIdParam) {
       const schoolId = Number(schoolIdParam);
       try {
@@ -480,15 +499,55 @@ function createAnalyticsRoutes(ctx) {
       const grades = (store.grades || []).filter(g => Number(g.school_id) === schoolId);
       const attendance = (store.attendance || []).filter(a => Number(a.school_id) === schoolId);
 
-      const recommendations = generateActionRecommendations({
-        schoolId,
-        schoolSnapshot: {
-          attendance_rate: attendance.length > 0 ? 88.0 : 80.0,
-          chronic_absence_rate: 14.5,
-          average_gpa: 14.5,
-          failing_students_ratio: 0.08
+      // No-Fabrication: شاخص‌های مبنا از داده واقعی مدرسه محاسبه می‌شوند
+      // (مقادیر ثابت ساختگی 88.0/80.0/14.5/14.5/0.08 حذف شدند)
+      let presentCount = 0;
+      let absentCount = 0;
+      const absencePerStudent = new Map();
+      for (const a of attendance) {
+        const st = String(a.status || '').toLowerCase();
+        if (st.includes('present') || st.includes('حاضر') || st.includes('late') || st.includes('تأخیر')) {
+          presentCount++;
+        } else if (st.includes('absent') || st.includes('غایب')) {
+          absentCount++;
+          const sid = a.student_id != null ? Number(a.student_id) : null;
+          if (sid != null) absencePerStudent.set(sid, (absencePerStudent.get(sid) || 0) + 1);
         }
-      });
+      }
+      const totalSessions = presentCount + absentCount;
+      const attendanceRate = totalSessions > 0
+        ? Math.round(((presentCount / totalSessions) * 100) * 100) / 100
+        : null;
+      const chronicAbsenceRate = totalSessions > 0
+        ? Math.round(((absentCount / totalSessions) * 100) * 100) / 100
+        : null;
+
+      let scoreSum = 0;
+      let scoreCount = 0;
+      let failingCount = 0;
+      for (const g of grades) {
+        const sc = Number(g.score);
+        if (!isNaN(sc)) {
+          scoreSum += sc;
+          scoreCount++;
+          if (sc < 10.0) failingCount++;
+        }
+      }
+      const averageGpa = scoreCount > 0 ? Math.round((scoreSum / scoreCount) * 100) / 100 : null;
+      const failingRatio = scoreCount > 0 ? Math.round((failingCount / scoreCount) * 1000) / 1000 : null;
+
+      const hasData = totalSessions > 0 || scoreCount > 0;
+      const recommendations = hasData
+        ? generateActionRecommendations({
+            schoolId,
+            schoolSnapshot: {
+              attendance_rate: attendanceRate,
+              chronic_absence_rate: chronicAbsenceRate,
+              average_gpa: averageGpa,
+              failing_students_ratio: failingRatio
+            }
+          }, { now: new Date().toISOString() })
+        : [];
 
       const actionBoard = generatePrincipalActionBoard({
         schoolId,
@@ -501,6 +560,17 @@ function createAnalyticsRoutes(ctx) {
           ok: true,
           api_version: '1.0.0',
           school_id: schoolId,
+          data_quality: {
+            status: hasData ? 'OK' : 'NO_DATA',
+            attendance_sessions_count: totalSessions,
+            valid_grades_count: scoreCount,
+            baseline_metrics: {
+              attendance_rate: attendanceRate,
+              chronic_absence_rate: chronicAbsenceRate,
+              average_gpa: averageGpa,
+              failing_students_ratio: failingRatio
+            }
+          },
           recommendations,
           action_board: actionBoard
         }
@@ -556,6 +626,10 @@ function createAnalyticsRoutes(ctx) {
       };
     }
 
+    if ((schoolIdParam != null && !isValidId(schoolIdParam)) || (regionIdParam != null && !isValidId(regionIdParam))) {
+      return invalidIdResponse();
+    }
+
     if (schoolIdParam) {
       const schoolId = Number(schoolIdParam);
       try {
@@ -568,7 +642,9 @@ function createAnalyticsRoutes(ctx) {
       }
 
       const interventions = (store.interventions || []).filter(i => Number(i.school_id) === schoolId);
-      const history = interventions.length > 0 ? interventions.map(inv => ({
+      // No-Fabrication: در نبود مداخله واقعی، هیچ اقدام ساختگی (ACT-DEFAULT-01) تزریق نمی‌شود
+      // و دلتاهای اندازه‌گیری‌نشده null هستند (نه مقادیر ثابت 4.5/0.7/10.0)
+      const history = interventions.map(inv => ({
         action_id: `ACT-${inv.id}`,
         action_type: inv.type || 'ATTENDANCE_SUPPORT',
         decision: inv.status === 'CANCELLED' ? 'REJECTED' : 'APPROVED',
@@ -576,29 +652,15 @@ function createAnalyticsRoutes(ctx) {
         status: inv.status || 'COMPLETED',
         outcome: inv.status === 'RESOLVED' ? 'HIGHLY_EFFECTIVE' : 'PARTIALLY_EFFECTIVE',
         notes: inv.notes || 'مداخله آموزشی پیگیری و ثبت شد',
-        delta_metrics: {
-          delta_attendance: 4.5,
-          delta_gpa: 0.7,
-          delta_engagement: 10.0
-        }
-      })) : [
-        {
-          action_id: 'ACT-DEFAULT-01',
-          action_type: 'ATTENDANCE_SUPPORT',
-          decision: 'APPROVED',
-          status: 'COMPLETED',
-          outcome: 'HIGHLY_EFFECTIVE',
-          notes: 'جلسه مشاوره و اصلاح ساعات خواب دانش‌آموز',
-          delta_metrics: { delta_attendance: 5.0, delta_gpa: 0.5, delta_engagement: 10.0 }
-        }
-      ];
+        delta_metrics: null
+      }));
 
       const profile = buildOrganizationalLearningProfile({
         schoolId,
         regionId: user.region_id || 1,
         academicYear,
         history,
-        options: { requester: user }
+        options: { requester: user, timestamp: new Date().toISOString() }
       });
 
       return {
@@ -607,6 +669,11 @@ function createAnalyticsRoutes(ctx) {
           ok: true,
           api_version: '1.0.0',
           school_id: schoolId,
+          data_quality: {
+            status: history.length > 0 ? 'OK' : 'NO_DATA',
+            interventions_count: history.length,
+            delta_metrics_measured: false
+          },
           learning_profile: profile
         }
       };
@@ -629,7 +696,7 @@ function createAnalyticsRoutes(ctx) {
         regionId: regionId,
         academicYear,
         history: [],
-        options: { requester: user }
+        options: { requester: user, timestamp: new Date().toISOString() }
       });
     });
 
@@ -664,6 +731,10 @@ function createAnalyticsRoutes(ctx) {
       };
     }
 
+    if ((schoolIdParam != null && !isValidId(schoolIdParam)) || (regionIdParam != null && !isValidId(regionIdParam))) {
+      return invalidIdResponse();
+    }
+
     if (schoolIdParam) {
       const schoolId = Number(schoolIdParam);
       try {
@@ -684,31 +755,20 @@ function createAnalyticsRoutes(ctx) {
         status: inv.status || 'COMPLETED',
         automated_decision: false,
         requires_human_confirmation: true,
-        approval_time_hours: 8.5
+        // No-Fabrication: زمان تأیید اندازه‌گیری نشده است
+        approval_time_hours: null
       }));
 
+      // No-Fabrication: اقدام ساختگی ACT-DEF-01 و درصدهای ثابت 92/98/95 حذف شدند؛
+      // فقط اقدامات واقعی (احتمالاً خالی) به موتور داده می‌شود
       const snapshot = buildGovernanceSnapshot({
         schoolId,
         regionId: user.region_id || 1,
         academicYear,
         data: {
-          actions: actions.length > 0 ? actions : [
-            {
-              action_id: 'ACT-DEF-01',
-              recommendation_id: 'REC-DEF-01',
-              action_type: 'ATTENDANCE_SUPPORT',
-              decision: 'APPROVED',
-              status: 'COMPLETED',
-              automated_decision: false,
-              requires_human_confirmation: true,
-              approval_time_hours: 6.0
-            }
-          ],
-          explainability: 92.0,
-          audit_coverage: 98.0,
-          data_completeness_pct: 95.0
+          actions
         },
-        options: { requester: user }
+        options: { requester: user, timestamp: new Date().toISOString() }
       });
 
       return {
@@ -717,6 +777,12 @@ function createAnalyticsRoutes(ctx) {
           ok: true,
           api_version: '1.0.0',
           school_id: schoolId,
+          data_quality: {
+            status: actions.length > 0 ? 'OK' : 'NO_DATA',
+            actions_count: actions.length,
+            explainability_measured: false,
+            audit_coverage_measured: false
+          },
           governance_snapshot: snapshot
         }
       };
@@ -738,8 +804,9 @@ function createAnalyticsRoutes(ctx) {
         schoolId: Number(s.id),
         regionId: regionId,
         academicYear,
-        data: { actions: [], explainability: 88.0, audit_coverage: 95.0 },
-        options: { requester: user }
+        // No-Fabrication: درصدهای ثابت 88/95 حذف شدند
+        data: { actions: [] },
+        options: { requester: user, timestamp: new Date().toISOString() }
       });
     });
 
@@ -747,7 +814,7 @@ function createAnalyticsRoutes(ctx) {
       regionId,
       academicYear,
       schoolSnapshots: snapshots,
-      options: { requester: user }
+      options: { requester: user, timestamp: new Date().toISOString() }
     });
 
     return {
@@ -774,6 +841,10 @@ function createAnalyticsRoutes(ctx) {
       };
     }
 
+    if ((schoolIdParam != null && !isValidId(schoolIdParam)) || (regionIdParam != null && !isValidId(regionIdParam))) {
+      return invalidIdResponse();
+    }
+
     if (schoolIdParam) {
       const schoolId = Number(schoolIdParam);
       try {
@@ -789,7 +860,7 @@ function createAnalyticsRoutes(ctx) {
         schoolId,
         regionId: user.region_id || 1,
         academicYear,
-        options: { requester: user }
+        options: { requester: user, timestamp: new Date().toISOString() }
       });
 
       return {
@@ -798,6 +869,11 @@ function createAnalyticsRoutes(ctx) {
           ok: true,
           api_version: '1.0.0',
           school_id: schoolId,
+          data_provenance: {
+            mode: 'SYNTHETIC_BASELINE',
+            engine: 'policy-simulation-engine',
+            warning: 'خروجی این موتور از داده عملیاتی واقعی تغذیه نمی‌شود؛ مقادیر جنبه نمایشی/سناریویی دارند و سنجه اندازه‌گیری‌شده نیستند'
+          },
           simulation_snapshot: snapshot
         }
       };
@@ -845,6 +921,10 @@ function createAnalyticsRoutes(ctx) {
       };
     }
 
+    if ((schoolIdParam != null && !isValidId(schoolIdParam)) || (regionIdParam != null && !isValidId(regionIdParam))) {
+      return invalidIdResponse();
+    }
+
     if (schoolIdParam) {
       const schoolId = Number(schoolIdParam);
       try {
@@ -860,7 +940,7 @@ function createAnalyticsRoutes(ctx) {
         schoolId,
         regionId: user.region_id || 1,
         academicYear,
-        options: { requester: user }
+        options: { requester: user, timestamp: new Date().toISOString() }
       });
 
       return {
@@ -869,6 +949,11 @@ function createAnalyticsRoutes(ctx) {
           ok: true,
           api_version: '1.0.0',
           school_id: schoolId,
+          data_provenance: {
+            mode: 'SYNTHETIC_BASELINE',
+            engine: 'decision-intelligence-command',
+            warning: 'خروجی این موتور از داده عملیاتی واقعی تغذیه نمی‌شود؛ مقادیر جنبه نمایشی/سناریویی دارند و سنجه اندازه‌گیری‌شده نیستند'
+          },
           decision_command: snapshot,
           command_snapshot: snapshot
         }
@@ -917,6 +1002,10 @@ function createAnalyticsRoutes(ctx) {
       };
     }
 
+    if ((schoolIdParam != null && !isValidId(schoolIdParam)) || (regionIdParam != null && !isValidId(regionIdParam))) {
+      return invalidIdResponse();
+    }
+
     if (schoolIdParam) {
       const schoolId = Number(schoolIdParam);
       try {
@@ -932,7 +1021,7 @@ function createAnalyticsRoutes(ctx) {
         schoolId,
         regionId: user.region_id || 1,
         academicYear,
-        options: { requester: user }
+        options: { requester: user, timestamp: new Date().toISOString() }
       });
 
       return {
@@ -941,6 +1030,11 @@ function createAnalyticsRoutes(ctx) {
           ok: true,
           api_version: '1.0.0',
           school_id: schoolId,
+          data_provenance: {
+            mode: 'SYNTHETIC_BASELINE',
+            engine: 'operational-intelligence-execution',
+            warning: 'خروجی این موتور از داده عملیاتی واقعی تغذیه نمی‌شود؛ مقادیر جنبه نمایشی/سناریویی دارند و سنجه اندازه‌گیری‌شده نیستند'
+          },
           execution_dashboard: dashboard,
           operational_execution: dashboard
         }
@@ -990,6 +1084,10 @@ function createAnalyticsRoutes(ctx) {
       };
     }
 
+    if ((schoolIdParam != null && !isValidId(schoolIdParam)) || (regionIdParam != null && !isValidId(regionIdParam))) {
+      return invalidIdResponse();
+    }
+
     if (schoolIdParam) {
       const schoolId = Number(schoolIdParam);
       try {
@@ -1005,7 +1103,7 @@ function createAnalyticsRoutes(ctx) {
         schoolId,
         regionId: user.region_id || 1,
         academicYear,
-        options: { requester: user }
+        options: { requester: user, timestamp: new Date().toISOString() }
       });
 
       return {
@@ -1014,6 +1112,11 @@ function createAnalyticsRoutes(ctx) {
           ok: true,
           api_version: '1.0.0',
           school_id: schoolId,
+          data_provenance: {
+            mode: 'SYNTHETIC_BASELINE',
+            engine: 'outcome-evaluation-optimization',
+            warning: 'خروجی این موتور از داده عملیاتی واقعی تغذیه نمی‌شود؛ مقادیر جنبه نمایشی/سناریویی دارند و سنجه اندازه‌گیری‌شده نیستند'
+          },
           outcome_evaluation: snapshot,
           evaluation_snapshot: snapshot
         }
@@ -1063,6 +1166,10 @@ function createAnalyticsRoutes(ctx) {
       };
     }
 
+    if ((schoolIdParam != null && !isValidId(schoolIdParam)) || (regionIdParam != null && !isValidId(regionIdParam))) {
+      return invalidIdResponse();
+    }
+
     if (schoolIdParam) {
       const schoolId = Number(schoolIdParam);
       try {
@@ -1078,7 +1185,7 @@ function createAnalyticsRoutes(ctx) {
         schoolId,
         regionId: user.region_id || 1,
         academicYear,
-        options: { requester: user }
+        options: { requester: user, timestamp: new Date().toISOString() }
       });
 
       return {
@@ -1087,6 +1194,11 @@ function createAnalyticsRoutes(ctx) {
           ok: true,
           api_version: '1.0.0',
           school_id: schoolId,
+          data_provenance: {
+            mode: 'SYNTHETIC_BASELINE',
+            engine: 'intelligence-platform-integration',
+            warning: 'خروجی این موتور از داده عملیاتی واقعی تغذیه نمی‌شود؛ مقادیر جنبه نمایشی/سناریویی دارند و سنجه اندازه‌گیری‌شده نیستند'
+          },
           intelligence_platform: snapshot,
           platform_snapshot: snapshot
         }
@@ -1147,6 +1259,10 @@ function createAnalyticsRoutes(ctx) {
       };
     }
 
+    if ((schoolIdParam != null && !isValidId(schoolIdParam)) || (regionIdParam != null && !isValidId(regionIdParam))) {
+      return invalidIdResponse();
+    }
+
     if (schoolIdParam) {
       const schoolId = Number(schoolIdParam);
       try {
@@ -1171,6 +1287,11 @@ function createAnalyticsRoutes(ctx) {
           ok: true,
           api_version: '1.0.0',
           school_id: schoolId,
+          data_provenance: {
+            mode: 'SYNTHETIC_BASELINE',
+            engine: 'intelligence-release-certification',
+            warning: 'زنجیره E2E این گواهی با سیگنال‌های سناریویی اجرا می‌شود نه داده عملیاتی واقعی؛ نتیجه در سطح شواهد E1 است'
+          },
           intelligence_certification: certification,
           release_certificate: certification.release_certificate
         }

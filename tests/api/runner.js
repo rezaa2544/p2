@@ -14,6 +14,7 @@ const fs = require('fs');
 
 const API_TESTS = [
   'bootstrap.test.js',
+  'school-regional-intelligence.test.js',
   'students.test.js',
   'classes.test.js',
   'attendance.test.js',

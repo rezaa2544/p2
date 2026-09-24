@@ -480,11 +480,13 @@ function summarizeSchoolInterventions(cases = [], options = {}) {
 
   const total = rawCases.length;
   const activeCasesCount = statusBreakdown.OPEN + statusBreakdown.UNDER_REVIEW + statusBreakdown.INTERVENTION_ACTIVE + statusBreakdown.EVALUATING;
-  const resolutionRate = total > 0 ? Math.round(((statusBreakdown.RESOLVED / total) * 100) * 100) / 100 : 0;
-  const effectiveRatio = evaluatedCount > 0 ? Math.round((effectiveCount / evaluatedCount) * 100) / 100 : 1.0;
+  // No-Fabrication: بدون پرونده/ارزیابی، نرخ‌ها null هستند (نه 0 یا نسبت اثربخشی ساختگی 1.0)
+  const resolutionRate = total > 0 ? Math.round(((statusBreakdown.RESOLVED / total) * 100) * 100) / 100 : null;
+  const effectiveRatio = evaluatedCount > 0 ? Math.round((effectiveCount / evaluatedCount) * 100) / 100 : null;
 
   return {
     school_id: targetSchoolId,
+    data_quality: { status: total === 0 ? 'NO_DATA' : (evaluatedCount === 0 ? 'PARTIAL' : 'OK'), evaluated_cases_count: evaluatedCount },
     total_cases: total,
     status_breakdown: Object.freeze(statusBreakdown),
     active_cases_count: activeCasesCount,

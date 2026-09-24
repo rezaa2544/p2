@@ -168,55 +168,55 @@ function evaluateQualityPillars(context = {}, options = {}) {
   const par = context.parentSummary || context.parent_summary || null;
 
   // ۱. رکن ۱: تسلط علمی و تثبیت یادگیری (Academic Mastery)
-  let acaScore = 80.0;
+  let acaScore = null; // No-Fabrication: بدون داده، رکن ارزیابی نمی‌شود
   let acaMetrics = {};
   if (Array.isArray(context.assessments) && context.assessments.length > 0) {
     const scores = context.assessments.map(a => (a.score / (a.max_score || 20)) * 100);
     const sum = scores.reduce((acc, val) => acc + val, 0);
     acaScore = Math.round((sum / scores.length) * 10) / 10;
     acaMetrics = { sample_count: context.assessments.length, average_percentage: acaScore };
-  } else if (aca) {
-    const avgGpa = Number(aca.average_gpa ?? 15.0);
+  } else if (aca && aca.average_gpa != null) {
+    const avgGpa = Number(aca.average_gpa);
     const failingRatio = Number(aca.failing_students_ratio ?? 0);
     const atRiskSubjects = Number(aca.at_risk_subjects_count ?? 0);
     acaScore = Math.max(0, Math.min(100, Math.round(((avgGpa / 20) * 100 - (failingRatio * 150) - (atRiskSubjects * 5)) * 10) / 10));
     acaMetrics = { average_gpa: avgGpa, failing_students_ratio: failingRatio };
   }
-  let acaStatus = acaScore >= 80 ? QUALITY_STATUS.EXEMPLARY : (acaScore >= 65 ? QUALITY_STATUS.STABLE_AND_COMPLIANT : QUALITY_STATUS.CRITICAL_ATTENTION_REQUIRED);
+  let acaStatus = acaScore == null ? 'NO_DATA' : acaScore >= 80 ? QUALITY_STATUS.EXEMPLARY : (acaScore >= 65 ? QUALITY_STATUS.STABLE_AND_COMPLIANT : QUALITY_STATUS.CRITICAL_ATTENTION_REQUIRED);
 
   // ۲. رکن ۲: پایداری و ثبات حضور (Attendance Stability)
-  let attScore = 85.0;
+  let attScore = null;
   let attMetrics = {};
   if (Array.isArray(context.attendanceSessions) && context.attendanceSessions.length > 0) {
     const total = context.attendanceSessions.length;
     const presents = context.attendanceSessions.filter(s => s.status === 'PRESENT' || s.status === 'LATE').length;
     attScore = Math.round(((presents / total) * 100) * 10) / 10;
     attMetrics = { total_sessions: total, attendance_rate: attScore };
-  } else if (att) {
-    const calRate = Number(att.calendar_rate ?? 90.0);
-    const chronicRate = Number(att.chronic_absence_rate ?? 5.0);
+  } else if (att && att.calendar_rate != null) {
+    const calRate = Number(att.calendar_rate);
+    const chronicRate = Number(att.chronic_absence_rate ?? 0);
     attScore = Math.max(0, Math.min(100, Math.round((calRate - (chronicRate * 2.0)) * 10) / 10));
     attMetrics = { calendar_rate: calRate, chronic_absence_rate: chronicRate };
   }
-  let attStatus = attScore >= 80 ? QUALITY_STATUS.EXEMPLARY : (attScore >= 65 ? QUALITY_STATUS.STABLE_AND_COMPLIANT : QUALITY_STATUS.CRITICAL_ATTENTION_REQUIRED);
+  let attStatus = attScore == null ? 'NO_DATA' : attScore >= 80 ? QUALITY_STATUS.EXEMPLARY : (attScore >= 65 ? QUALITY_STATUS.STABLE_AND_COMPLIANT : QUALITY_STATUS.CRITICAL_ATTENTION_REQUIRED);
 
   // ۳. رکن ۳: روایی و عدالت سنجش (Assessment Validity and Fairness)
-  let assScore = 85.0;
+  let assScore = null;
   let assMetrics = {};
   if (Array.isArray(context.assessmentsWithVariance) && context.assessmentsWithVariance.length > 0) {
     const avgVariance = context.assessmentsWithVariance.reduce((acc, a) => acc + (a.score_variance || 0), 0) / context.assessmentsWithVariance.length;
     assScore = Math.max(0, Math.min(100, Math.round((95.0 - (avgVariance * 10.0)) * 10) / 10));
     assMetrics = { average_score_variance: avgVariance };
-  } else if (ass) {
+  } else if (ass && Number(ass.total_exams_analyzed ?? 0) > 0) {
     const hardExams = Number(ass.hard_exams_count ?? 0);
     const anomalies = Number(ass.anomalies_count ?? 0);
     assScore = Math.max(0, Math.min(100, Math.round((90.0 - (hardExams * 10.0) - (anomalies * 15.0)) * 10) / 10));
     assMetrics = { hard_exams_count: hardExams, anomalies_count: anomalies };
   }
-  let assStatus = assScore >= 80 ? QUALITY_STATUS.EXEMPLARY : (assScore >= 65 ? QUALITY_STATUS.STABLE_AND_COMPLIANT : QUALITY_STATUS.CRITICAL_ATTENTION_REQUIRED);
+  let assStatus = assScore == null ? 'NO_DATA' : assScore >= 80 ? QUALITY_STATUS.EXEMPLARY : (assScore >= 65 ? QUALITY_STATUS.STABLE_AND_COMPLIANT : QUALITY_STATUS.CRITICAL_ATTENTION_REQUIRED);
 
   // ۴. رکن ۴: شواهد تدریس و توانمندسازی معلمان (Teaching Evidence and Support)
-  let teaScore = 80.0;
+  let teaScore = null;
   let teaMetrics = {};
   if (Array.isArray(context.courses) && context.courses.length > 0) {
     const totalPlans = context.courses.reduce((acc, c) => acc + (c.total_lesson_plans || 1), 0);
@@ -225,16 +225,16 @@ function evaluateQualityPillars(context = {}, options = {}) {
     const planRate = (submittedPlans / totalPlans) * 100;
     teaScore = Math.max(0, Math.min(100, Math.round((planRate * 0.8 + feedbackCount * 5.0) * 10) / 10));
     teaMetrics = { lesson_plan_compliance_rate: planRate, observation_feedback_count: feedbackCount };
-  } else if (tea) {
+  } else if (tea && Number(tea.active_teachers_count ?? 0) > 0 && tea.formative_coverage != null) {
     const overloaded = Number(tea.overloaded_teachers_count ?? 0);
-    const coverage = Number(tea.formative_coverage ?? 70.0);
+    const coverage = Number(tea.formative_coverage);
     teaScore = Math.max(0, Math.min(100, Math.round(((coverage * 0.7) + 30.0 - (overloaded * 10.0)) * 10) / 10));
     teaMetrics = { overloaded_teachers_count: overloaded, formative_coverage: coverage };
   }
-  let teaStatus = teaScore >= 80 ? QUALITY_STATUS.EXEMPLARY : (teaScore >= 65 ? QUALITY_STATUS.STABLE_AND_COMPLIANT : QUALITY_STATUS.CRITICAL_ATTENTION_REQUIRED);
+  let teaStatus = teaScore == null ? 'NO_DATA' : teaScore >= 80 ? QUALITY_STATUS.EXEMPLARY : (teaScore >= 65 ? QUALITY_STATUS.STABLE_AND_COMPLIANT : QUALITY_STATUS.CRITICAL_ATTENTION_REQUIRED);
 
   // ۵. رکن ۵: مشارکت اولیا و جامعه مدرسه (Family and Community Collaboration)
-  let parScore = 80.0;
+  let parScore = null;
   let parMetrics = {};
   if (context.parentEngagement && typeof context.parentEngagement === 'object') {
     const p = context.parentEngagement;
@@ -244,13 +244,13 @@ function evaluateQualityPillars(context = {}, options = {}) {
     const activeRate = (active / reg) * 100;
     parScore = Math.max(0, Math.min(100, Math.round((activeRate * 0.5 + ptaRate * 0.5) * 10) / 10));
     parMetrics = { active_parent_ratio: activeRate, pta_attendance_rate: ptaRate };
-  } else if (par) {
-    const pei = Number(par.average_pei ?? 75.0);
+  } else if (par && par.average_pei != null) {
+    const pei = Number(par.average_pei);
     const pendingJust = Number(par.pending_justifications ?? 0);
     parScore = Math.max(0, Math.min(100, Math.round((pei - (pendingJust * 2.0)) * 10) / 10));
     parMetrics = { average_pei: pei, pending_justifications: pendingJust };
   }
-  let parStatus = parScore >= 80 ? QUALITY_STATUS.EXEMPLARY : (parScore >= 65 ? QUALITY_STATUS.STABLE_AND_COMPLIANT : QUALITY_STATUS.CRITICAL_ATTENTION_REQUIRED);
+  let parStatus = parScore == null ? 'NO_DATA' : parScore >= 80 ? QUALITY_STATUS.EXEMPLARY : (parScore >= 65 ? QUALITY_STATUS.STABLE_AND_COMPLIANT : QUALITY_STATUS.CRITICAL_ATTENTION_REQUIRED);
 
   const pillars = {
     [QUALITY_PILLARS.ACADEMIC_MASTERY]: {
@@ -280,16 +280,21 @@ function evaluateQualityPillars(context = {}, options = {}) {
     }
   };
 
-  // محاسبه شاخص ترکیبی کیفیت
-  const totalScore = acaScore + attScore + assScore + teaScore + parScore;
-  const overallQualityIndex = Math.round((totalScore / 5) * 10) / 10;
+  // محاسبه شاخص ترکیبی کیفیت — فقط رکن‌های دارای داده واقعی (No-Fabrication)
+  const availablePillarScores = [acaScore, attScore, assScore, teaScore, parScore].filter(v => v != null);
+  const overallQualityIndex = availablePillarScores.length > 0
+    ? Math.round((availablePillarScores.reduce((a, b) => a + b, 0) / availablePillarScores.length) * 10) / 10
+    : null;
 
   // احصای وضعیت ترکیبی و رکن اولویت‌دار
   const hasCritical = Object.values(pillars).some(p => p.status === QUALITY_STATUS.CRITICAL_ATTENTION_REQUIRED);
   let overallQualityStatus = QUALITY_STATUS.STABLE_AND_COMPLIANT;
   let overallGovernanceStatus = 'STABLE_GOVERNANCE';
 
-  if (overallQualityIndex >= 80 && !hasCritical) {
+  if (overallQualityIndex == null) {
+    overallQualityStatus = 'NO_DATA';
+    overallGovernanceStatus = 'NO_DATA';
+  } else if (overallQualityIndex >= 80 && !hasCritical) {
     overallQualityStatus = QUALITY_STATUS.EXEMPLARY;
     overallGovernanceStatus = 'EXEMPLARY_GOVERNANCE';
   } else if (overallQualityIndex < 65 || hasCritical) {
@@ -298,14 +303,15 @@ function evaluateQualityPillars(context = {}, options = {}) {
   }
 
   // احصای رکنی با پایین‌ترین امتیاز جهت تمرکز بهبود
-  let lowestPillar = QUALITY_PILLARS.ACADEMIC_MASTERY;
-  let minScore = pillars[QUALITY_PILLARS.ACADEMIC_MASTERY].score;
+  let lowestPillar = null;
+  let minScore = null;
   for (const [pKey, pVal] of Object.entries(pillars)) {
-    if (pVal.score < minScore) {
+    if (pVal.score != null && (minScore == null || pVal.score < minScore)) {
       minScore = pVal.score;
       lowestPillar = pKey;
     }
   }
+  if (lowestPillar == null) lowestPillar = QUALITY_PILLARS.ACADEMIC_MASTERY;
 
   const result = {
     school_id: schoolId,
@@ -499,11 +505,13 @@ function generateDistrictQualitySummary(districtContext = {}, options = {}) {
   };
 
   let sumQualityIndex = 0;
+  let qualityIndexCount = 0;
   const processedSchools = [];
 
   for (const s of sortedSchools) {
-    const qIndex = Number(s.overall_quality_index ?? 75.0);
-    const qStatus = s.overall_quality_status || (qIndex >= 80 ? QUALITY_STATUS.EXEMPLARY : (qIndex >= 65 ? QUALITY_STATUS.STABLE_AND_COMPLIANT : QUALITY_STATUS.CRITICAL_ATTENTION_REQUIRED));
+    // No-Fabrication: مدرسه بدون شاخص واقعی وارد میانگین نمی‌شود
+    const qIndex = s.overall_quality_index != null ? Number(s.overall_quality_index) : null;
+    const qStatus = s.overall_quality_status || (qIndex == null ? 'NO_DATA' : (qIndex >= 80 ? QUALITY_STATUS.EXEMPLARY : (qIndex >= 65 ? QUALITY_STATUS.STABLE_AND_COMPLIANT : QUALITY_STATUS.CRITICAL_ATTENTION_REQUIRED)));
 
     if (statusDistribution[qStatus] !== undefined) {
       statusDistribution[qStatus]++;
@@ -511,7 +519,7 @@ function generateDistrictQualitySummary(districtContext = {}, options = {}) {
       statusDistribution[QUALITY_STATUS.STABLE_AND_COMPLIANT]++;
     }
 
-    sumQualityIndex += qIndex;
+    if (qIndex != null) { sumQualityIndex += qIndex; qualityIndexCount++; }
 
     // نسخه پاکسازی‌شده بدون هرگونه فیلد رتبه‌ای
     processedSchools.push({
@@ -523,7 +531,8 @@ function generateDistrictQualitySummary(districtContext = {}, options = {}) {
   }
 
   const totalSchools = sortedSchools.length;
-  const meanQualityIndex = totalSchools > 0 ? Math.round((sumQualityIndex / totalSchools) * 10) / 10 : 0.0;
+  // No-Fabrication: میانگین فقط از مدارس دارای شاخص واقعی
+  const meanQualityIndex = qualityIndexCount > 0 ? Math.round((sumQualityIndex / qualityIndexCount) * 10) / 10 : null;
 
   const summary = {
     region_id: regionId,

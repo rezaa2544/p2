@@ -45,14 +45,15 @@ const VALID_EVENT_TYPES = Object.freeze(Object.keys(EVENT_SEMANTIC_WEIGHTS));
  * تبدیل استاندارد و قطعی تاریخ به فرمت ISO-8601
  */
 function toStandardIsoTimestamp(val) {
-  if (!val) return '1970-01-01T00:00:00.000Z';
+  // No-Fabrication: ورودی نامعتبر/غایب هرگز به تاریخ ساختگی (epoch 1970) تبدیل نمی‌شود
+  if (!val) return null;
   if (val instanceof Date) {
-    return isNaN(val.getTime()) ? '1970-01-01T00:00:00.000Z' : val.toISOString();
+    return isNaN(val.getTime()) ? null : val.toISOString();
   }
   if (typeof val === 'number') {
     const ms = val < 1e11 ? val * 1000 : val;
     const d = new Date(ms);
-    return isNaN(d.getTime()) ? '1970-01-01T00:00:00.000Z' : d.toISOString();
+    return isNaN(d.getTime()) ? null : d.toISOString();
   }
   const str = String(val).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
@@ -62,7 +63,7 @@ function toStandardIsoTimestamp(val) {
   if (!isNaN(d.getTime())) {
     return d.toISOString();
   }
-  return '1970-01-01T00:00:00.000Z';
+  return null;
 }
 
 /**
@@ -331,7 +332,7 @@ function buildStudentTimeline(studentData = {}, options = {}) {
     }
   }
 
-  const normalizedEvents = [];
+  let normalizedEvents = [];
 
   // ۱. حضور و غیاب
   for (const a of rawAttendance) {
@@ -401,6 +402,10 @@ function buildStudentTimeline(studentData = {}, options = {}) {
     }
   }
 
+  // جداسازی رویدادهای فاقد زمان معتبر (No-Fabrication: به‌جای تاریخ ساختگی epoch)
+  const invalidTimestampEvents = normalizedEvents.filter(e => e.timestamp == null);
+  normalizedEvents = normalizedEvents.filter(e => e.timestamp != null);
+
   // مرتب‌سازی قطعی و کرونولوژیک (Primary: timestamp ASC, Secondary: semantic_weight DESC, Tertiary: event_type ASC, Quaternary: source_id ASC)
   normalizedEvents.sort((a, b) => {
     if (a.timestamp !== b.timestamp) {
@@ -428,6 +433,12 @@ function buildStudentTimeline(studentData = {}, options = {}) {
     date_range: {
       from: startDate,
       to: endDate
+    },
+    data_quality: {
+      invalid_timestamp_events_count: invalidTimestampEvents.length,
+      status: totalEvents === 0
+        ? (invalidTimestampEvents.length > 0 ? 'ALL_EVENTS_INVALID_TIMESTAMP' : 'NO_DATA')
+        : (invalidTimestampEvents.length > 0 ? 'PARTIAL' : 'OK')
     },
     events: normalizedEvents
   };

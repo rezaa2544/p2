@@ -119,12 +119,14 @@ function buildParent360Profile(params = {}, options = {}) {
 
   const totalSessions = presentCount + unexcusedCount + excusedCount + lateCount;
   const attNumerator = presentCount + (lateCount * 0.8);
+  // No-Fabrication: بدون جلسه ثبت‌شده، نرخ حضور null است (نه 100٪ ساختگی)
   const attendanceRate = totalSessions > 0
     ? roundTo((attNumerator / totalSessions) * 100, 1)
-    : 100.0;
+    : null;
 
   let attendanceStatus = 'EXCELLENT';
-  if (attendanceRate < 80.0 || unexcusedCount >= 3) attendanceStatus = 'CRITICAL';
+  if (attendanceRate == null) attendanceStatus = 'NO_DATA';
+  else if (attendanceRate < 80.0 || unexcusedCount >= 3) attendanceStatus = 'CRITICAL';
   else if (attendanceRate < 90.0 || unexcusedCount >= 1) attendanceStatus = 'WARNING';
   else if (attendanceRate < 95.0) attendanceStatus = 'STABLE';
 
@@ -132,6 +134,7 @@ function buildParent360Profile(params = {}, options = {}) {
     attendance_rate: attendanceRate,
     unexcused_absences: unexcusedCount,
     late_arrivals_count: lateCount,
+    recorded_sessions_count: totalSessions,
     status: attendanceStatus
   };
 
