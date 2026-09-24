@@ -40,6 +40,9 @@ jobs:
       - run:
           name: "Phase 9.0 wiring gate E2E (D3)"
           command: node tests/semantic-analytics-e2e.test.js
+      - run:
+          name: "Non-circular release certification (D5)"
+          command: node tests/certification-non-circular.test.js
 
 workflows:
   payesh-gate:
