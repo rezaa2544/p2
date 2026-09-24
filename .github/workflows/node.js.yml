@@ -75,6 +75,8 @@ jobs:
     - run: npm ci
     - name: Runtime Reliability — Lease fencing static contract
       run: node tests/outbox-lease-fencing.test.js
+    - name: Security — independent adversarial A-18..A-22 battery
+      run: node tests/security-adversarial-a18-a22.test.js
     - name: Runtime Reliability — DLQ atomic terminal transition
       run: node tests/outbox-dlq-atomicity.test.js
     - name: Runtime Reliability — isolated fresh-DB lease race proof
