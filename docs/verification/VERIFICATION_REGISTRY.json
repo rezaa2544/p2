@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "policy": "docs/STRICT_VERIFICATION_GATE.md",
+  "status": "BLOCKED_UNTIL_REGISTRY_IS_COMPLETE",
+  "items": [],
+  "required_reviewers": ["chatgpt", "arena", "atria"],
+  "allowed_statuses": ["UNKNOWN", "TESTED", "RUNTIME_VERIFIED", "ADVERSARIAL_VERIFIED", "INDEPENDENTLY_VERIFIED", "CERTIFIED"]
+}
