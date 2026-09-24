@@ -1,3 +1,10 @@
+> ## 🔴 CURRENT EXECUTION OVERRIDE — 2026-09-24
+> ابتدا `docs/CURRENT_PROJECT_INTELLIGENCE.md` و `docs/CURRENT_WORK_EXECUTION_PLAN.md` را بخوان.
+> تا پایان sweep آتریا، روی ناحیهٔ در حال remediation آتریا کدنویسی نکن. بعد از آن فقط Missionهای مستقل و non-overlapping اجرا کن.
+> هیچ Arena حق اعلام National GO یا ارتقای historical evidence به current PASS را ندارد.
+
+---
+
 # Payesh — Common Arena Agent Prompt
 
 > فقط `CHAT_NAME` را با نام Chat خودت جایگزین کن.
