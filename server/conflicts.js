@@ -134,27 +134,58 @@ function createConflicts(ctx) {
       if (incData && typeof incData === 'object' && incData.data && typeof incData.data === 'object') incData = incData.data;
       if (!incData || typeof incData !== 'object') incData = {};
 
+      /* A-18: conflict resolution is itself an OCC write. The snapshot stored
+         in the conflict is valid only while the target remains at the same
+         server_version. Never rewind a record that was changed after the
+         conflict was captured. */
+      const expectedVersion = Number(c.server_version);
+      const currentVersion = target && Number(target.version);
+      if (target && Number.isFinite(expectedVersion)
+          && Number.isFinite(currentVersion) && currentVersion !== expectedVersion) {
+        return sendJson(res, 409, {
+          ok: false,
+          code: 'conflict_stale',
+          message: 'رکورد از زمان ثبت تعارض تغییر کرده است؛ تعارض باید دوباره حل شود.',
+          server_version: currentVersion
+        });
+      }
+      if (!target && Number.isFinite(expectedVersion)) {
+        return sendJson(res, 409, {
+          ok: false,
+          code: 'conflict_stale',
+          message: 'رکورد مبنای تعارض دیگر در وضعیت مورد انتظار نیست.'
+        });
+      }
+
       const nextVer = (Number(c.server_version) || 1) + 1;
       const patch = Object.assign({}, incData, { id: targetId, version: nextVer });
-
-      if (target) {
-        Object.assign(target, patch);
-      } else {
-        store[coll].push(patch);
-        target = patch;
-      }
+      const wasExisting = !!target;
 
       if (pgLive && typeof db.persistOpsBatch === 'function') {
         try {
           await db.persistOpsBatch([{
             c: coll,
-            t: target ? 'upd' : 'ins',
+            t: wasExisting ? 'upd' : 'ins',
             id: targetId,
-            data: patch
+            data: patch,
+            ...(wasExisting && Number.isFinite(expectedVersion) ? { base_version: expectedVersion } : {})
           }]);
         } catch (e) {
-          console.error('[CONFLICTS] PG apply incoming failed:', e.message);
+          if (e && e.status === 409) {
+            return sendJson(res, 409, { ok: false, code: 'conflict_stale', message: 'رکورد در PostgreSQL هم‌زمان تغییر کرده است.' });
+          }
+          return sendJson(res, 503, { ok: false, code: 'pg_unavailable' });
         }
+      }
+
+      /* Mutate the in-memory mirror only after the authoritative write
+         succeeds. This keeps the conflict transition atomic from the route's
+         perspective. */
+      if (target) {
+        Object.assign(target, patch);
+      } else {
+        store[coll].push(patch);
+        target = patch;
       }
     }
 
