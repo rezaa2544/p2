@@ -172,8 +172,10 @@ function snap(server) {
       at: new Date().toISOString(), data: { school_id: 1, title: 'تکراری', body: 'x' } };
     let dedupeHits = 0;
     const t0 = Date.now();
+    const responses = [];
     for (let i = 0; i < 3; i++) {
       const r = await server.handle(JSON.stringify({ ops: [op] }));
+      responses.push(r.body.results[0]);
       if (r.body.results[0].code === 'duplicate_ignored') dedupeHits++;
     }
     const ms = Date.now() - t0;
