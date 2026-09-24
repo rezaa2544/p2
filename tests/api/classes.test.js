@@ -113,7 +113,7 @@ async function main() {
   });
 
   await test('CLS4: PATCH /api/v1/classes/:id updates capacity', async () => {
-    const r = await req('PATCH', `/api/v1/classes/${createdClassId}`, { body: { capacity: 35 }, cookie: cookieMgr1 });
+    const r = await req('PATCH', `/api/v1/classes/${createdClassId}`, { body: { capacity: 35, base_version: 1 }, cookie: cookieMgr1 });
     assert.strictEqual(r.status, 200);
     assert.strictEqual(r.json.data.capacity, 35);
   });
