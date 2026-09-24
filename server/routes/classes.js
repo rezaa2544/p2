@@ -208,7 +208,7 @@ function createClassRoutes(ctx) {
     }
 
     /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
-    const conflict = checkOcc(cls, body, 'کلاس');
+    const conflict = checkOcc(cls, body, 'کلاس', true);
     if (conflict) {
       /* B4: rejected concurrent write ⇒ recorded in sync_conflicts (SSoT) */
       await recordRejectedConflict({ store, db, ids }, { collection: 'classes', rec: cls, user, base: body && (body.base_version !== undefined ? body.base_version : body.version), body });
