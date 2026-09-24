@@ -73,6 +73,8 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm ci
+    - name: Full regression runner (fail-closed)
+      run: npm run test:all
     - name: Runtime Reliability — Lease fencing static contract
       run: node tests/outbox-lease-fencing.test.js
     - name: Runtime Reliability — DLQ atomic terminal transition
