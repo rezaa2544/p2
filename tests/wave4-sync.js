@@ -32,7 +32,16 @@ async function test(name, fn) {
 }
 function group(t) { console.log(`\n▸ ${t}`); }
 
-const SINCE = '2026-09-08T10:00:00.000Z';
+/* تاریخ‌ها باید نسبتی باشند، نه مطلق: محافظِ since_too_old (پایین) هر since
+   را که بیش از deltaMaxAgeDays (پیش‌فرض ۷) از «اکنون» قدیمی باشد، به
+   full snapshot تبدیل می‌کند. تا پیش از این SINCE رویِ ۲۰۲۶-۰۹-۰۸ ثابت
+   بود و بعد از ~۱۶ روزِ تقویم، این تست ساکت از مسیرِ دلتا خارج می‌شد و
+   SQL دلتا هرگز صادر نمی‌شد — نه رگرسیونِ محصول، بلکه پوسیدگیِ تقویم.
+   اکنون since دو ساعت پیش و داده‌ها نیم ساعت پیش هستند: همیشه تازه‌تر از
+   since و همیشه درونِ پنجرهٔ دلتا. */
+const NOW = Date.now();
+const SINCE = new Date(NOW - 2 * 60 * 60 * 1000).toISOString();       /* ۲ ساعت پیش */
+const RECENT = new Date(NOW - 30 * 60 * 1000).toISOString();          /* نیم ساعت پیش — تازه‌تر از SINCE */
 
 (async () => {
   group('A. syncdelta builders');
@@ -113,7 +122,7 @@ const SINCE = '2026-09-08T10:00:00.000Z';
   await test('delta request uses DB (time-pushed) when PG live', async () => {
     const store = seedStore();
     const changed = [
-      { id: 1, school_id: 1, full_name: 'تازه', role: 'student', updated_at: '2026-09-09T08:00:00.000Z', created_at: '2026-09-09T08:00:00.000Z' }
+      { id: 1, school_id: 1, full_name: 'تازه', role: 'student', updated_at: RECENT, created_at: RECENT }
     ];
     const { fakeDb, queries } = makePullDb({ changedRows: changed });
     const ctl = build(store, fakeDb);
@@ -137,7 +146,7 @@ const SINCE = '2026-09-08T10:00:00.000Z';
 
   await test('memory path (db absent) still works for delta', async () => {
     const store = seedStore();
-    store.users.push({ id: 55, school_id: 1, role: 'student', updated_at: '2026-09-09T08:00:00.000Z', created_at: '2026-09-09T08:00:00.000Z' });
+    store.users.push({ id: 55, school_id: 1, role: 'student', updated_at: RECENT, created_at: RECENT });
     const ctl = build(store, null); // no db
     const r = await ctl.apiPull({ url: '/api/v1/pull?since=' + encodeURIComponent(SINCE) + '&collections=users' }, {});
     const hasNew = (r.body.collections.users || []).some(u => u.id === 55);
@@ -155,7 +164,7 @@ const SINCE = '2026-09-08T10:00:00.000Z';
 
   await test('tombstones still served from store (write side not PG-native yet)', async () => {
     const store = seedStore();
-    store.__deleted_records.push({ c: 'grades', id: 999, school_id: 1, at: '2026-09-09T08:00:00.000Z' });
+    store.__deleted_records.push({ c: 'grades', id: 999, school_id: 1, at: RECENT });
     const { fakeDb } = makePullDb({ changedRows: [] });
     const ctl = build(store, fakeDb);
     const r = await ctl.apiPull({ url: '/api/v1/pull?since=' + encodeURIComponent(SINCE) }, {});
