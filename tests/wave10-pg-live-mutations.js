@@ -27,8 +27,8 @@ function findPgBin() {
 function hasPgModule() { try { require.resolve('pg'); return true; } catch (e) { return false; } }
 if (!findPgBin() || !hasPgModule()) {
   console.log('  ⏭️  wave10 pg live mutations — باینری‌هایِ PG یا ماژولِ pg در دسترس نیستند');
-  console.log('wave10-pg-live-mutations: 0/0 (skip)؛ سبزِ نهایی: ✅');
-  process.exit(0);
+  console.error('wave10-pg-live-mutations: NOT-RUN — PostgreSQL prerequisite missing; mutation evidence cannot be green.');
+  process.exit(1);
 }
 
 const ROOT = path.join(__dirname, '..');
