@@ -83,8 +83,8 @@ const BIN = findPgBin();
 if (!BIN || !hasPgModule()) {
   skip('wave10 pg live gate', !BIN ? 'باینری‌هایِ PostgreSQL (initdb/postgres/pg_ctl) در PATH/PG_LIVE_BIN نیستند'
     : 'ماژولِ pg نصب نیست');
-  console.log('\nwave10-pg-live: 0/0 (skip)؛ سبزِ نهایی: ✅\n');
-  process.exit(0);
+  console.error('\nwave10-pg-live: NOT-RUN — PostgreSQL prerequisite missing; this suite cannot produce green evidence.\n');
+  process.exit(1);
 }
 
 const P_PORT = 55450, R_PORT = 55451;
