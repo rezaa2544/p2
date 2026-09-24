@@ -102,6 +102,15 @@ const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.scho
     if (user.role === 'teacher' && !syncInScope(user, 'attendance', null, { student_id: Number(body.student_id), school_id: schoolId })) {
       return { status: 403, body: { ok: false, code: 'out_of_scope', message: 'این دانش‌آموز در کلاس‌های شما نیست' } };
     }
+    /* A-21: معتبربودنِ دانش‌آموز کافی نیست — class_idِ بدنه هم باید کلاسی
+       باشد که دانش‌آموز واقعاً در آن ثبت‌نام است. ذخیرهٔ class_idِ بیگانه،
+       teacherClassIdsِ دبیرِ آن کلاس را با این دانش‌آموز آلوده می‌کند و به
+       او اجازهٔ خواندنِ حضورغیابِ دانش‌آموزی که در کلاسش نیست را می‌دهد
+       (read scope-break درون‌مدرسه‌ای). این همان ناموراییِ دادهٔ seed است:
+       ۱۰۴۶۰/۱۰۴۶۰ رکوردِ حضورغیاب class_id = کلاسِ ثبت‌نامِ دانش‌آموز. */
+    if (user.role === 'teacher' && !policy.studentClassIds(store, Number(body.student_id)).has(Number(body.class_id))) {
+      return { status: 403, body: { ok: false, code: 'out_of_scope', message: 'این دانش‌آموز در این کلاس ثبت‌نام نیست' } };
+    }
     /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
     const nextId = await ids.nextId('attendance', store.attendance);
 

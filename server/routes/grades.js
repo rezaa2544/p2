@@ -128,6 +128,17 @@ const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.scho
     if (user.role === 'teacher' && !syncInScope(user, 'grades', null, { student_id: Number(body.student_id), school_id: schoolId })) {
       return { status: 403, body: { ok: false, code: 'out_of_scope', message: 'این دانش‌آموز در کلاس‌های شما نیست' } };
     }
+    /* A-21: FKهایِ بدنه باید واقعی باشند. class_id باید کلاسی باشد که
+       دانش‌آموز در آن ثبت‌نام است (نه کلاسِ تدریسیِ دبیر — class_id روی
+       نمره به معنای کلاسِ دانش‌آموز است: ۱۲۵۵۵/۱۲۵۵۵ رکوردِ seed همین‌اند) و
+       subject_id باید از دروسِ تدریسیِ خودِ دبیر. ثبتِ class_idِ بیگانه،
+       دامنهٔ خواندنِ دبیرِ آن کلاس را با این نمره می‌شکند. */
+    if (user.role === 'teacher') {
+      if (body.class_id && !policy.studentClassIds(store, Number(body.student_id)).has(Number(body.class_id)))
+        return { status: 403, body: { ok: false, code: 'out_of_scope', message: 'این دانش‌آموز در این کلاس ثبت‌نام نیست' } };
+      if (body.subject_id && !policy.teacherSubjectIds(store, user.id).has(Number(body.subject_id)))
+        return { status: 403, body: { ok: false, code: 'out_of_scope', message: 'این درس در محدودهٔ شما نیست' } };
+    }
     /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
     const nextId = await ids.nextId('grades', store.grades);
 
