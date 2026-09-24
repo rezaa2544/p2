@@ -25,3 +25,8 @@
    - هیچ فرضی به‌جای سنجش واقعی؛ اگه چیزی رو نسنجیدی، بگو نسنجیدم، عدد نساز.
 
 بعد از این ۵ مرحله، خلاصه بده از: وضعیت مخزن، آخرین کار انجام‌شده (طبق HANDOFF)، کارهای بازِ شناخته‌شده. بعد منتظر دستور کار این سشن بمون.
+
+
+## Architecture track — session rule
+
+Read docs/ARCHITECTURE_EVOLUTION_ROADMAP.md before architecture work. Do not introduce Microservices, Kubernetes, Service Mesh or Event Sourcing merely because they are listed. P0 work must be bounded and evidence-backed; P1/research stays behind current defect/validation gates unless Architecture Review changes the sequence.
