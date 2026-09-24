@@ -218,6 +218,16 @@ function createClassRoutes(ctx) {
     }
 
     /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
+    /* A-21: changing homeroom_teacher_id must not attach a cross-school
+       teacher to an in-scope class. */
+    if (body.homeroom_teacher_id !== undefined && body.homeroom_teacher_id !== null && body.homeroom_teacher_id !== '') {
+      const teacher = (store.users || []).find(u =>
+        Number(u.id) === Number(body.homeroom_teacher_id) && u.role === 'teacher');
+      if (!teacher || teacher.school_id == null || Number(teacher.school_id) !== Number(cls.school_id)) {
+        return { status: 403, body: { ok: false, code: 'out_of_scope', message: 'سرپرست کلاس باید دبیر همان مدرسه باشد' } };
+      }
+    }
+
     const conflict = checkOcc(cls, body, 'کلاس', true);
     if (conflict) {
       /* B4: rejected concurrent write ⇒ recorded in sync_conflicts (SSoT) */
