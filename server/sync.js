@@ -871,7 +871,7 @@ function createSync(ctx){
       }
       /* P1-05: mandatory base_version on VERSIONED resource updates when in strict mode or production */
       const strictBaseVersion = process.env.PAYESH_STRICT_BASE_VERSION === '1' || process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production';
-      if((op.t === 'upd' || op.t === 'del') && VERSIONED[op.c] && op.base_version == null && strictBaseVersion){
+      if((op.t === 'upd' || op.t === 'del') && VERSION_TRACKED[op.c] && op.base_version == null && strictBaseVersion){
         audit('sync_validation_failed', { user_id: s.id, uid: op.uid, collection: op.c, field: 'base_version', reason: 'missing_base_version' });
         results.push({ uid: op.uid, ok: false, code: 'missing_base_version', field: 'base_version', message: 'مقدارِ «base_version» برای مجموعه‌های نسخه‌دار الزامی است' });
         continue;
@@ -1054,12 +1054,11 @@ function createSync(ctx){
         /* Wave 1: hydrate cross-instance misses from PG before the upsert check. */
         const ex = await findForApply(op.c, data.id, undo);
         if(ex){
-          const uRec = undo ? undo.items.push({ k: 'rec', c: op.c, id: ex.id,
-            before: JSON.parse(JSON.stringify(ex)) }) - 1 : -1;   /* باگ ۲: before + after */
-          Object.assign(ex, data); Object.assign(ex, prot);
-          if(undo) undo.items[uRec].after = JSON.parse(JSON.stringify(ex));
+          await rollbackUndo();
+          for (const r of results) if (r) r.ok = false;
+          return sendJson(res, 409, { ok: false, code: 'record_exists', results });
         }
-        else { Object.assign(data, prot); mirrorAppend(op.c, data); }
+        Object.assign(data, prot); mirrorAppend(op.c, data);
         data.updated_at = new Date().toISOString();   /* تکمیلِ رکورد پیش از ثبتِ after */
         /* باگ ۱ (بازبین، دور ۲): uPush فقط برای درجِ خودِ این op — var تابع‌محدوده
            بود و مقدارش از دورِ قبل می‌ماند؛ op برخوردیِ بعدی (مسیرِ ex) با رکوردِ
@@ -1082,11 +1081,12 @@ function createSync(ctx){
           if(op.c === 'users' && clean.role && rec.role !== clean.role){
             audit('role_change', { user_id: s.id, role: s.role, school_id: s.school_id, target_user_id: rec.id, old_role: rec.role, new_role: clean.role, summary: 'تغییر نقش کاربر ' + rec.id + ' به ' + clean.role });
           }
+          delete clean.version;
           Object.assign(rec, clean, { id: rec.id, updated_at: new Date().toISOString() });
           Object.assign(rec, prot); /* مقادیرِ اعتبارسنجی‌شده — صریح، نه inject */
           if(VERSION_TRACKED[op.c]) rec.version = (rec.version || 1) + 1; /* R95 */
           if(undo) undo.items[uRec].after = JSON.parse(JSON.stringify(rec));   /* باگ ۲ */
-          mirror.push({ uid: op.uid, c: op.c, t: 'upd', data: rec });   /* P1-14 */
+          mirror.push({ uid: op.uid, c: op.c, t: 'upd', id: rec.id, base_version: op.base_version, data: Object.assign({}, rec) });   /* P1-14 */
         }
       }else if(op.t === 'del'){
         const delId = Number(op.id != null ? op.id : (op.data && op.data.id));
@@ -1106,7 +1106,7 @@ function createSync(ctx){
            مجموعه‌ها اشتباه می‌گرفت (grades:42 vs announcements:42). */
         if(undo) undo.items.push({ k: 'popDelRec', idx: store.__deleted_records.length - 1, id: delId, c: op.c, at: tomb.at, ref: tomb });
         audit('record_deleted', { user_id: s.id, role: s.role, school_id: s.school_id, collection: op.c, record_id: delId, summary: 'حذف رکورد ' + delId + ' از ' + op.c });
-        mirror.push({ uid: op.uid, c: op.c, t: 'del', id: delId });   /* P1-14 */
+        mirror.push({ uid: op.uid, c: op.c, t: 'del', id: delId, base_version: op.base_version });   /* P1-14 */
       }
       store.__server_version = (store.__server_version || 0) + 1;
       if(undo) undo.bumps++;   /* باگ ۲: فقط افزایش‌های خودِ این درخواست */
@@ -1208,9 +1208,14 @@ function createSync(ctx){
     let mirrorFailed = false;
     if(batchAll.length && db && typeof db.persistOpsBatch === 'function'){
       try{
-        await db.persistOpsBatch(batchAll);
+        await (typeof db.persistSyncBatch === 'function' ? db.persistSyncBatch(batchAll) : db.persistOpsBatch(batchAll));
       }catch(mirrorErr){
         const why = String((mirrorErr && mirrorErr.message) || mirrorErr);
+        if (mirrorErr && mirrorErr.code === 'record_exists') {
+          await rollbackUndo();
+          for (const r of results) if (r) r.ok = false;
+          return sendJson(res, 409, { ok: false, code: 'record_exists', results });
+        }
 
         /* Final OCC gate: the earlier read/compare is advisory only. PostgreSQL's
            conditional UPDATE/DELETE is the authoritative compare-and-write. A
@@ -1369,6 +1374,18 @@ function createSync(ctx){
     sendJson(res, 200, mirrorFailed ? { ok: true, results, mirror_failed: true } : { ok: true, results });
   }
 
-  return { apiSync, canWrite, inScope };
+  // Do not acknowledge an in-flight UID as durable. Requests sharing a UID
+  // wait for the earlier commit/rollback; unrelated requests remain concurrent.
+  const pending = new Map();
+  async function syncAfterPending(req, res, body) {
+    const list = body && Array.isArray(body.ops) && body.ops.length <= (MAX_BATCH || 500) ? body.ops : [];
+    const keys = [...new Set(list.filter(op => op && typeof op.uid === 'string' && op.uid.length <= 128).map(op => op.uid))];
+    const previous = keys.map(key => pending.get(key)).filter(Boolean);
+    let release; const gate = new Promise(resolve => { release = resolve; });
+    for (const key of keys) pending.set(key, gate);
+    try { await Promise.all(previous); return await apiSync(req, res, body); }
+    finally { for (const key of keys) if (pending.get(key) === gate) pending.delete(key); release(); }
+  }
+  return { apiSync: syncAfterPending, canWrite, inScope };
 }
 module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, virtualDayOfflineBasis, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED };

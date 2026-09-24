@@ -13,7 +13,7 @@
 const LOG_KEY='sms_log_v1', SESSION_KEY='sms_session_v1', BOSS_KEY='sms_boss_v1', PERSONA_KEY='sms_persona_v1';
 /* R95 (بند ۲.۵): مجموعه‌هایِ دارایِ نسخه — باید با VERSION_TRACKED سرور
    (server/sync.js) یکی باشد؛ server-authority و LWW این‌جا نیستند. */
-const _VERSIONED_C = { grades:1, attendance:1, discipline:1 };
+const _VERSIONED_C = { grades:1, attendance:1, discipline:1, schools:1, classes:1, subjects:1, users:1, enrollments:1, schedule:1 };
 let log=[];
 /* هنگام بازپخش لاگ یا تولید داده نمونه، صف همگام‌سازی نباید پر شود */
 let SYNC_MUTED=false;
@@ -185,7 +185,9 @@ function applyOp(op,record=true){
         op.base_version = it.version || 1;
         it.version = (it.version || 1) + 1;
       }
+      var serverOwnedVersion = it.version;
       Object.assign(it,op.data);
+      if (_VERSIONED_C[op.c]) it.version = serverOwnedVersion;
     }
   }
   else if(op.t==='del'){
@@ -193,6 +195,7 @@ function applyOp(op,record=true){
     const i=arr.findIndex(x=>x.id===op.id);
     /* اندازهٔ ردیفِ حذف‌شده — برای اصلاحِ شمارندهٔ حجمِ وضعیت (_DB_BYTES) */
     var _delBytes = (i>-1) ? JSON.stringify(arr[i]).length + 2 : 0;
+    if (i > -1 && _VERSIONED_C[op.c]) op.base_version = arr[i].version || 1;
     if(i>-1)arr.splice(i,1);
   }
   else if(typeof idxInvalidate==='function') idxInvalidate(op.c);

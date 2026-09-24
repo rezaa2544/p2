@@ -14,6 +14,8 @@ chk('G2 mandatory policy exists',fs.existsSync(path.join(ROOT,'docs','STRICT_VER
 chk('G3 registry exists',fs.existsSync(REG));
 let reg=null;try{reg=JSON.parse(read(REG));}catch(e){}
 chk('G4 registry valid JSON',!!reg);
+chk('G4b registry has actionable items',!!reg && Array.isArray(reg.items) && reg.items.length > 0);
+chk('G4c registry is not blocked',!!reg && !String(reg.status || '').startsWith('BLOCKED'));
 chk('G5 three independent reviewers declared',!!reg&&JSON.stringify(reg.required_reviewers)===JSON.stringify(['chatgpt','arena','atria']));
 let allowed=null;try{allowed=JSON.parse(read(ALLOW));}catch(e){}
 chk('G6 explicit false-green allowlist exists',!!allowed&&Array.isArray(allowed.items));

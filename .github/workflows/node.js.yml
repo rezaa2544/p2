@@ -227,6 +227,13 @@ jobs:
       run: node tests/outbox-runtime-reliability.test.js
     - name: Runtime Reliability — Five-Task/Five-Pass independent battery
       run: node tests/runtime-reliability-five-task.test.js
+    - name: Sync offline OCC — adversarial PG and client contracts
+      run: |
+        export SYNC_TEST_DATABASE_URL="$PGURL"
+        node tests/sync-occ-adversarial-live.js
+        node tests/sync-replay-adversarial-live.js
+        node tests/sync-client-adversarial.js
+        node tests/strict-gate-empty-registry.js
     - name: Data Integrity — OCC atomic write + migration 012 recovery
       run: node tests/data-integrity-occ-migration.js
     - name: Zero-Trust Remediation — R1, R2 & R21 authoritative fail-closed suites
