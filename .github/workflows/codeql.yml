@@ -1,10 +1,28 @@
 name: "CodeQL"
 on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
-  codeql-notice:
+  codeql:
+    name: CodeQL JavaScript analysis
     runs-on: ubuntu-latest
     steps:
-      - name: Informative Notice
-        run: echo "Default CodeQL setup is enabled in repository settings."
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+          queries: security-and-quality
+      - name: Analyze with CodeQL
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript"
