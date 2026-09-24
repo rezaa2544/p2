@@ -48,15 +48,12 @@ function chk(name, cond, extra){
   let chainOk = true, lastErr = '';
   for(const m of migs){
     try {
-      const sql = fs.readFileSync(path.join(migDir, m), 'utf8');
-      /* ری‌تارگت (مرج #82): مهاجرتِ 012 متاکامندِ psql دارد (\gset) و از
-         pool.query عبور نمی‌کند — قراردادِ خودِ مهاجرت اجرایِ psql است. */
-      if (/^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql)) {
-        require('child_process').execFileSync('psql',
-          ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(migDir, m), PGURL], { stdio: 'pipe' });
-      } else {
-        await pool.query(sql);
-      }
+      /* قراردادِ خودِ مهاجرت‌ها اجرای psql است (merge #82). همهٔ فایل‌ها از همین
+         مسیر می‌روند: 012 ذخیره‌گاه‌های chunk-COMMIT دارد و CALL آن‌ها داخل
+         تراکنشِ ضمنیِ pool.query خطای invalid transaction termination می‌دهد
+         (بازتولید arena روی DB خالی — pool.query(012) همیشه red). */
+      require('child_process').execFileSync('psql',
+        ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(migDir, m), PGURL], { stdio: 'pipe' });
     }
     catch(e){ chainOk = false; lastErr = m + ': ' + String(e.stderr || e.message).slice(0, 140); break; }
   }
