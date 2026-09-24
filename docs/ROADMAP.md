@@ -1,3 +1,11 @@
+> ## 🔴 برنامه اجرایی جاری — 2026-09-24
+> ترتیب اجرایی از این نقطه در **`docs/CURRENT_WORK_EXECUTION_PLAN.md`** تثبیت شده است.
+> مسیر عملیاتی فعلی:
+> **Atria Critical/High Sweep → Atria Medium → Atria Low → Full Multi-AI Validation → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification.**
+> اسناد قدیمی این فایل مرجع معماری و دامنه باقی می‌مانند؛ statusهای تاریخی بدون evidence روی HEAD جاری، اثبات جاری محسوب نمی‌شوند.
+
+---
+
 # نقشه راه جامع مهندسی «پایش» تا آمادگی مقیاس ملی
 
 > ## ⚠️ سند برنامهٔ اجرایی مرجع تغییر کرد (۲۰۲۶-۰۹-۲۰)
