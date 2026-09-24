@@ -122,7 +122,7 @@ rm -f "$OTP_A" "$OTP_B"
 
 boot_one() {
   local port="$1" otp="$2" logfile="$3"
-  env -u NODE_ENV -u PAYESH_ENV PAYESH_STORE="$STORE" PAYESH_KEY="$JWT" PAYESH_DEMO_CODE=1 \
+  NODE_ENV=development PAYESH_ENV=development PAYESH_STORE="$STORE" PAYESH_KEY="$JWT" PAYESH_DEMO_CODE=1 \
     PAYESH_OTP_FILE="$otp" HOST=127.0.0.1 PORT="$port" DATABASE_URL="$URL" \
     PAYESH_GOVERNANCE_ED25519_PUBLIC_KEY="${PUBB64:-}" \
     $NODE server/index.js >"$logfile" 2>&1 &
