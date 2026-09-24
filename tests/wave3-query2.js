@@ -191,8 +191,7 @@ function fakeDb(rows, count) {
     let pg = null;
     try { pg = require('pg'); } catch (e) { pg = null; }
     if (!process.env.DATABASE_URL || !pg) {
-      console.log('     ⏭️  no live PostgreSQL — DB-native SQL NOT executed; see WAVE3_QUERY_PERFORMANCE.md');
-      return;
+      throw new Error('LIVE_PG_REQUIRED: DATABASE_URL and pg are required; DB-native SQL must execute');
     }
     const db = require('../server/db');
     const info = await db.init(seed());
