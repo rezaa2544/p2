@@ -67,9 +67,15 @@ async function main() {
   test('F1 — ساختارِ چک‌لیستِ فردا (تاریخ/روز/مدرسه‌بودن)', () => {
     const tc = W(`tomorrowChecklistItems(16)`);
     assert(tc && tc.date, 'تاریخِ فردا نیست');
-    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-    const iso = tomorrow.getFullYear() + '-' + String(tomorrow.getMonth() + 1).padStart(2, '0') + '-' + String(tomorrow.getDate()).padStart(2, '0');
-    assert(tc.date === iso, 'تاریخِ فردا درست نیست: ' + tc.date);
+    /* red ناشناخته ( timezone ): todayISOِ کلاینت از new Date().toISOString()
+       یعنی تاریخِ UTC استفاده می‌کند، ولی این تست، فردای موردِ انتظار را
+       از اجزایِ تاریخِ محلی (getFullYear/getMonth/getDate — همگی local)
+       می‌ساخت. در یک timezoneِ جلوتر از UTC (مثلِ ایران +۳:۳۰)، بعد از
+       نیمه‌شبِ محلی، تاریخِ محلی یک روز جلوتر از UTC است و این دو نمی‌خواند.
+       اکنون فردای موردِ انتظار با همان ساعتِ کلاینت (UTC) ساخته می‌شود
+       تا مقایسه در هر timezoneی پایدار باشد. */
+    const iso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    assert(tc.date === iso, 'تاریخِ فردا درست نیست: ' + tc.date + ' vs ' + iso);
     assert(tc.day === W(`cfAppDay('${iso}')`), 'روزِ هفتهٔ محاسبه‌شده نمی‌خواند');
     /* PR#2 (دور ۸۸): «روزِ درسی» بر پایهٔ work_daysِ خودِ مدرسه + روزهای جبرانی
        (isWorkDay) — نه فقط ۰ تا ۴. با دو پیکربندیِ کنترل‌شده راستی‌آزمایی: */
