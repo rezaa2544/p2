@@ -1,3 +1,10 @@
+> ## 🔴 CURRENT PROJECT INTELLIGENCE — 2026-09-24
+> قبل از شروع سشن علاوه بر اسناد زیر، `docs/CURRENT_PROJECT_INTELLIGENCE.md` و `docs/CURRENT_WORK_EXECUTION_PLAN.md` را بخوان.
+> ترتیب اجرایی حاکم: Atria Critical/High → Medium → Low → Multi-AI Validation → Capability/Role/E2E → Failure/Recovery → Performance → Final Certification.
+> هیچ historical PASS/VERIFIED را current-head evidence فرض نکن.
+
+---
+
 # شروع هر سشن — چک‌لیست اجباری
 
 قبل از شروع هر کاری در این سشن، این مراحل رو به ترتیب انجام بده و نتیجه‌ی هرکدوم رو کوتاه گزارش بده:

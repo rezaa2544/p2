@@ -1,3 +1,12 @@
+> ## 🔴 CURRENT PROJECT INTELLIGENCE — 2026-09-24
+> مرجع وضعیت جاری: `docs/CURRENT_PROJECT_INTELLIGENCE.md`
+> مرجع ترتیب اجرا: `docs/CURRENT_WORK_EXECUTION_PLAN.md`
+> وضعیت فعلی: Atria ابتدا Critical/High → Medium → Low؛ سپس Multi-AI Validation و ماتریس Capability/Role/E2E/Failure-Recovery/Performance.
+> Intelligence layer: 21/21 موتور runtime-wired، 0 orphan، F-EI-01 در سطح remediation بسته؛ certification نهایی هنوز نیازمند current-head evidence مستقل است.
+> این سربرگ وضعیت جاری است؛ محتوای تاریخی/توضیحی پایین سند حفظ شده است.
+
+---
+
 # چارچوب رسمی مهارت‌های مهندسی هوش مصنوعی (AI Skills Framework)
 ## Official AI Engineering Agent Skills for Payesh (`rezaa2544/p2`)
 
