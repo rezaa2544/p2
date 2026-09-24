@@ -213,7 +213,7 @@ const setU = (id) => W(`S.user=byId('users',${id});S.persona=null;S.boss=null;S.
       W(`location.hash = 'vc-fake999'`);
       W(`vclassAutoJoinFromHash()`);
       const n = W(`db.vclass_links.length`);
-      assert(true, 'hash نامعتبر باید بی‌اثر باشد (no throw)');
+      assert(n === db.vclass_links.length, 'invalid hash must not mutate vclass link state');
       /* hash خالی: بی‌اثر */
       W(`location.hash = ''`);
       W(`vclassAutoJoinFromHash()`);
