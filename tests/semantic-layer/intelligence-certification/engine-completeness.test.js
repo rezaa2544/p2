@@ -1,5 +1,5 @@
 /**
- * آزمون ۱: جامعیت و کمال رجیستری ۱۲ موتور هوشمندی فاز ۳ (engine-completeness)
+ * آزمون ۱: جامعیت و کمال رجیستری ۲۰ موتور هوشمندی (engine-completeness)
  */
 
 'use strict';
@@ -12,13 +12,22 @@ const {
 } = require('../../../server/analytics/intelligence-release-certification');
 
 function runTests() {
-  console.log('▸ تست ۱: جامعیت و کمال رجیستری ۱۲ موتور هوشمندی فاز ۳ (engine-completeness)');
+  console.log('▸ تست ۱: جامعیت و کمال رجیستری ۲۰ موتور هوشمندی (engine-completeness)');
 
   // احراز تعداد کل موتورها
-  assert.strictEqual(CANONICAL_PHASE3_CATALOG.length, 12, 'باید دقیقاً ۱۲ موتور هوشمندی آموزشی فاز ۳ ثبت شده باشند');
+  // D5: کاتالوگ باید ۲۰ موتور را پوشش دهد (۱۲ فاز ۳ + ۸ لایه معنایی که در F-EI-01 یتیم بودند)
+  assert.strictEqual(CANONICAL_PHASE3_CATALOG.length, 20, 'باید دقیقاً ۲۰ موتور هوشمندی ثبت شده باشند');
 
-  // احراز تک‌تک ۱۲ شناسه
+  // احراز تک‌تک ۲۰ شناسه
   const expectedEngineIds = [
+    PHASE3_ENGINE_ID.EI_01_SEMANTIC,
+    PHASE3_ENGINE_ID.EI_02_STUDENT_TIMELINE,
+    PHASE3_ENGINE_ID.EI_03_ASSESSMENT,
+    PHASE3_ENGINE_ID.EI_04_ATTENDANCE,
+    PHASE3_ENGINE_ID.EI_05_SCHOOL_HEALTH_DASHBOARD,
+    PHASE3_ENGINE_ID.EI_06_PARENT_360,
+    PHASE3_ENGINE_ID.EI_07_TEACHER_EVIDENCE,
+    PHASE3_ENGINE_ID.EI_08_INTERVENTION_CASES,
     PHASE3_ENGINE_ID.EI_09_SCHOOL_INTELLIGENCE,
     PHASE3_ENGINE_ID.EI_10_REGIONAL_NETWORK,
     PHASE3_ENGINE_ID.EI_11_QUALITY_GOVERNANCE,
@@ -43,9 +52,13 @@ function runTests() {
   // اجرای تابع اعتبارسنجی
   const validation = validateEngineCompleteness();
   assert.strictEqual(validation.complete, true, 'اعتبارسنجی باید complete = true بازگرداند');
-  assert.strictEqual(validation.total_required, 12);
-  assert.strictEqual(validation.active_count, 12);
+  assert.strictEqual(validation.total_required, 20);
+  assert.strictEqual(validation.active_count, 20);
   assert.strictEqual(validation.missing_engines.length, 0);
+  // D5: اعتبارسنجی باید اتصال رانتایم واقعی را هم بررسی کرده باشد
+  assert.ok(validation.runtime_wiring, 'گزارش باید شامل شاخص‌های اتصال رانتایم باشد');
+  assert.strictEqual(validation.runtime_wiring.orphan_count, 0, 'هیچ موتوری نباید یتیم باشد');
+  assert.strictEqual(validation.runtime_wiring.dead_active_modules.length, 0, 'هیچ موتور ACTIVE‌ای نباید مرده باشد');
 
   // سناریوی منفی: کاتالوگ با موتور جاافتاده
   const incompleteCatalog = CANONICAL_PHASE3_CATALOG.filter(e => e.engine_id !== PHASE3_ENGINE_ID.EI_20_PLATFORM_INTEGRATION);
@@ -54,7 +67,14 @@ function runTests() {
   assert.strictEqual(incompleteValidation.missing_engines.length, 1);
   assert.strictEqual(incompleteValidation.missing_engines[0], PHASE3_ENGINE_ID.EI_20_PLATFORM_INTEGRATION);
 
-  console.log('  ✅ کمال رجیستری و حضور تمامی ۱۲ موتور فاز ۳ با موفقیت تأیید شد');
+  // D5 — سناریوی منفی چرخشی: کاتالوگ کامل اما بدون مسیر رانتایم → گواهی نباید صادر شود
+  const deadValidation = validateEngineCompleteness(CANONICAL_PHASE3_CATALOG, {
+    runtimeWiring: { modulesOnDisk: [], wired: new Set(), orphans: [] }
+  });
+  assert.strictEqual(deadValidation.complete, false, 'موتورهای ACTIVE بدون مسیر رانتایم نباید کامل حساب شوند');
+  assert.strictEqual(deadValidation.runtime_wiring.dead_active_modules.length, 20);
+
+  console.log('  ✅ کمال رجیستری و حضور تمامی ۲۰ موتور و اتصال رانتایم آن‌ها با موفقیت تأیید شد');
 }
 
 if (require.main === module) {

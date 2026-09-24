@@ -85,6 +85,14 @@ function createAnalyticsRoutes(ctx) {
 
   const pgLive = () => db && typeof db.isPostgres === 'function' && db.isPostgres();
 
+  // D2 remediation: موتورها برای قطعیتِ تست‌ها، پیش‌فرض timestamp ثابت
+  // 2026-09-18 دارند و routeها هیچ چیزی به آن‌ها نمی‌رساندند — پس هر گزارش
+  // API با همان تاریخِ چندین ماه پیش مهر می‌شد و دو گواهی در روزهای مختلف،
+  // fingerprint یکسان می‌گرفتند. اکنون route مهر زمان واقعی را تزریق می‌کند
+  // (مگر اینکه tests آن را با env override مساوی‌سازی کند).
+  const ROUTE_NOW = process.env.PAYESH_ANALYTICS_FIXED_NOW || new Date().toISOString();
+  const nowOptions = (extra) => Object.assign({ timestamp: ROUTE_NOW, now: ROUTE_NOW }, extra || {});
+
   async function schoolIntelligenceReport(req, searchParams) {
     const user = req.user || req.session;
     const schoolIdParam = searchParams.get('school_id');
@@ -162,7 +170,8 @@ function createAnalyticsRoutes(ctx) {
       classes,
       schedule,
       cases,
-      teacherNotes
+      teacherNotes,
+      options: nowOptions()
     });
 
     return {
@@ -240,7 +249,8 @@ function createAnalyticsRoutes(ctx) {
     const snapshot = buildRegionalSnapshot({
       regionId,
       academicYear,
-      schools: schoolSnapshots
+      schools: schoolSnapshots,
+      options: nowOptions()
     }, { requester: user });
 
     return {
@@ -284,7 +294,8 @@ function createAnalyticsRoutes(ctx) {
         schoolId,
         grades,
         attendanceSessions: attendance,
-        cases
+        cases,
+        options: nowOptions()
       });
 
       const pillars = evaluateQualityPillars(snapshot);
@@ -315,7 +326,8 @@ function createAnalyticsRoutes(ctx) {
       const sSnapshot = buildSchoolIntelligenceSnapshot({
         schoolId: sid,
         grades: (store.grades || []).filter(g => Number(g.school_id) === sid),
-        attendanceSessions: (store.attendance || []).filter(a => Number(a.school_id) === sid)
+        attendanceSessions: (store.attendance || []).filter(a => Number(a.school_id) === sid),
+        options: nowOptions()
       });
       return evaluateQualityPillars(sSnapshot);
     });
@@ -381,7 +393,8 @@ function createAnalyticsRoutes(ctx) {
       const profile = buildLongitudinalSchoolProfile({
         schoolId: entityId,
         snapshots,
-        periodRange
+        periodRange,
+        options: nowOptions()
       });
 
       return {
@@ -418,7 +431,8 @@ function createAnalyticsRoutes(ctx) {
         const sProfile = buildLongitudinalSchoolProfile({
           schoolId: sid,
           snapshots: sSnapshots,
-          periodRange
+          periodRange,
+          options: nowOptions()
         });
         return {
           school_id: sid,
@@ -431,7 +445,8 @@ function createAnalyticsRoutes(ctx) {
       const trendMap = buildRegionalTrendMap({
         regionId: entityId,
         schools: schoolTrendSummaries,
-        periodRange
+        periodRange,
+        options: nowOptions()
       });
 
       return {
@@ -487,7 +502,8 @@ function createAnalyticsRoutes(ctx) {
           chronic_absence_rate: 14.5,
           average_gpa: 14.5,
           failing_students_ratio: 0.08
-        }
+        },
+        options: nowOptions()
       });
 
       const actionBoard = generatePrincipalActionBoard({
@@ -523,7 +539,8 @@ function createAnalyticsRoutes(ctx) {
       regionalSnapshot: {
         region_id: regionId,
         priority_support_needed_count: schools.length
-      }
+      },
+      options: nowOptions()
     });
 
     const actionBoard = generatePrincipalActionBoard({
@@ -1163,7 +1180,7 @@ function createAnalyticsRoutes(ctx) {
         regionId: user.region_id || 1,
         academicYear,
         user
-      });
+      }, nowOptions());
 
       return {
         status: 200,
@@ -1194,7 +1211,7 @@ function createAnalyticsRoutes(ctx) {
       regionId,
       academicYear,
       user
-    });
+    }, nowOptions());
 
     return {
       status: 200,

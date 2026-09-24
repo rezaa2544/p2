@@ -99,14 +99,14 @@ async function run() {
     assert.strictEqual(mgrOwnRes.json.intelligence_certification.phase, 'PHASE_3');
     assert.strictEqual(mgrOwnRes.json.intelligence_certification.certification_status, 'CERTIFIED');
     assert.strictEqual(mgrOwnRes.json.intelligence_certification.release_ready, true);
-    assert.strictEqual(mgrOwnRes.json.intelligence_certification.engines_completeness.total_required, 12);
-    assert.strictEqual(mgrOwnRes.json.intelligence_certification.engines_completeness.active_count, 12);
+    assert.strictEqual(mgrOwnRes.json.intelligence_certification.engines_completeness.total_required, 20);
+    assert.strictEqual(mgrOwnRes.json.intelligence_certification.engines_completeness.active_count, 20);
     assert.ok(mgrOwnRes.json.release_certificate);
     assert.ok(mgrOwnRes.json.release_certificate.certificate_id.startsWith('CERT-PAYESH-PHASE3-'));
     assert.strictEqual(mgrOwnRes.json.release_certificate.status, 'CERTIFIED');
     assert.strictEqual(mgrOwnRes.json.release_certificate.governance_summary.human_decision_sovereignty, 'VERIFIED_STRICT');
     assert.strictEqual(mgrOwnRes.json.release_certificate.governance_summary.zero_ranking_policy, 'ENFORCED_ZERO_TOLERANCE');
-    console.log('  ✅ CRT3: Manager gets 200 with 12-engine Phase 3 release certification snapshot');
+    console.log('  ✅ CRT3: Manager gets 200 with 20-engine Phase 3 release certification snapshot');
     pass++;
 
     // ۴. مدیر مدرسه به مدرسه دیگر (Anti-IDOR)

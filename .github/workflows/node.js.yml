@@ -118,6 +118,26 @@ jobs:
     - name: M1 Runtime Probes & Scrape Regression — publishRuntimeProbes wiring
       run: node tests/runtime-probes-scrape-regression.test.js
 
+    # ── Educational Intelligence Layer (P0-EI-01 semantic layer) ─────────────
+    # D4 remediation: the 33-suite semantic-layer gate (mutation, determinism,
+    # tenant isolation) previously ran nowhere in CI. Wired as an explicit
+    # critical orphan so tests/ci-test-parity-contract.js P3 (npm test boundary)
+    # and P6 (orphan budget) both stay satisfied.
+    - name: Intelligence Layer — educational semantic suite (33 suites)
+      run: node tests/semantic-layer/runner.js
+    - name: Intelligence Layer — analytics wiring guard (no orphan engines)
+      run: node tests/analytics-wiring-guard.test.js
+    - name: Intelligence Layer — no-data-masking gate (D1)
+      run: node tests/no-data-masking.test.js
+    - name: Intelligence Layer — real timestamps + certificate fingerprint uniqueness (D2)
+      run: node tests/analytics-timestamps.test.js
+    - name: Intelligence Layer — Phase 9.0 wiring gate E2E (D3)
+      run: node tests/semantic-analytics-e2e.test.js
+    - name: Intelligence Layer — non-circular release certification (D5)
+      run: node tests/certification-non-circular.test.js
+    - name: Intelligence Layer — client consumer render gate (D6)
+      run: node tests/intelligence-client-render.test.js
+
     - name: Migration chain — clean install on an empty database (001 → latest)
       run: |
         DATABASE_URL="$PGURL" node tools/migrate-ledger.js up

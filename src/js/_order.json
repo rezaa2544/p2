@@ -84,14 +84,15 @@
  "67-theme-picker.js",
  "68-sync-conflicts.js",
  "69-staff-attendance.js",
-  "70-training.js",
-  "71-safety-drills.js",
-    "72-donations.js",
-    "73-teacher-eval.js",
-    "74-region-tools.js",
+ "70-training.js",
+ "71-safety-drills.js",
+ "72-donations.js",
+ "73-teacher-eval.js",
+ "74-region-tools.js",
  "74-schedgen.js",
-    "75-staff-gap.js",
+ "75-staff-gap.js",
  "76-multigrade.js",
-    "77-reports.js",
-    "99-theme-loader.js"
+ "77-reports.js",
+ "78-intelligence.js",
+ "99-theme-loader.js"
 ]

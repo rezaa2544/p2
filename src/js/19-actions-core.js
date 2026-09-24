@@ -1888,6 +1888,7 @@ document.addEventListener('click',e=>{
   else if(typeof STAFFGAP_ACTIONS!=='undefined'&&STAFFGAP_ACTIONS[a]){e.preventDefault();STAFFGAP_ACTIONS[a](el,id);} /* 75-staff-gap */
   else if(typeof MG_ACTIONS!=='undefined'&&MG_ACTIONS[a]){e.preventDefault();MG_ACTIONS[a](el,id);} /* 76-multigrade */
   else if(typeof RPT_ACTIONS!=='undefined'&&RPT_ACTIONS[a]){e.preventDefault();RPT_ACTIONS[a](el,id);} /* 77-reports */
+  else if(typeof INT_ACTIONS!=='undefined'&&INT_ACTIONS[a]){e.preventDefault();INT_ACTIONS[a](el,id);} /* 78-intelligence */
 });
 // live filters
 document.addEventListener('input',e=>{

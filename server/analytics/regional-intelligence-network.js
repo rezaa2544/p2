@@ -90,6 +90,9 @@ function summarizeRegionalHealth(context = {}) {
 
   let sumAttendance = 0;
   let sumGpa = 0;
+  let countedAttendance = 0;
+  let countedGpa = 0;
+  let noDataCount = 0;
 
   for (const s of schools) {
     const health = s.health_index || {};
@@ -97,20 +100,28 @@ function summarizeRegionalHealth(context = {}) {
     if (status === 'HEALTHY') healthyCount++;
     else if (status === 'NEEDS_MONITORING') needsMonitoringCount++;
     else if (status === 'NEEDS_IMMEDIATE_ACTION') needsImmediateActionCount++;
+    if (status === 'NEEDS_IMMEDIATE_ACTION' && health.data_quality && health.data_quality.status === 'NO_DATA') noDataCount++;
 
-    sumAttendance += Number(s.attendance_summary?.calendar_rate ?? 90.0);
-    sumGpa += Number(s.academic_summary?.average_gpa ?? 15.0);
+    // D1: مدارس بدون داده نباید در میانگین منطقه‌ای نرخ ۹۰/معدل ۱۵ بسازند.
+    const calRate = s.attendance_summary?.calendar_rate;
+    if (calRate != null) { sumAttendance += Number(calRate); countedAttendance++; }
+
+    const gpa = s.academic_summary?.average_gpa;
+    if (gpa != null) { sumGpa += Number(gpa); countedGpa++; }
   }
 
   const total = schools.length;
-  const avgAtt = total > 0 ? Math.round((sumAttendance / total) * 100) / 100 : 90.0;
-  const avgGpa = total > 0 ? Math.round((sumGpa / total) * 100) / 100 : 15.0;
+  const avgAtt = countedAttendance > 0 ? Math.round((sumAttendance / countedAttendance) * 100) / 100 : null;
+  const avgGpa = countedGpa > 0 ? Math.round((sumGpa / countedGpa) * 100) / 100 : null;
 
   return {
     total_schools: total,
     healthy_schools_count: healthyCount,
     needs_monitoring_count: needsMonitoringCount,
     needs_immediate_action_count: needsImmediateActionCount,
+    schools_with_no_data_count: noDataCount,
+    schools_reported_in_attendance_average: countedAttendance,
+    schools_reported_in_gpa_average: countedGpa,
     average_attendance_rate: avgAtt,
     average_gpa: avgGpa,
     is_ranked: false,                 // ضمانت صریح عدم رتبه‌بندی
