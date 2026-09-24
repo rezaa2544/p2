@@ -47,10 +47,26 @@ function runTest() {
     'Manager must not access teachers of another school'
   );
 
-  // ۶. بازرس آموزش و پرورش و مدیر ارشد: مجاز
-  const eduOffice = { id: 301, role: 'edu_office' };
+  // ۶. بازرس آموزش و پرورش: فقط در محدودهٔ جغرافیاییِ دفترش + مدیر ارشد: مجاز
+  // (اصلاحِ Phase B: پیش از این edu_office بدونِ هیچ مهاری مجاز شمرده می‌شد).
+  const officeStore = {
+    offices: [{ id: 7, province_id: 1 }],
+    schools: [{ id: 5, province_id: 1 }, { id: 8, province_id: 2 }]
+  };
+  const eduOffice = { id: 301, role: 'edu_office', office_id: 7 };
+  const eduOfficeNoOffice = { id: 302, role: 'edu_office' };
   const superadmin = { id: 1, role: 'superadmin' };
-  assert.strictEqual(enforceTeacherAccessGuard(eduOffice, 101, { schoolId: 5 }), true);
+  assert.strictEqual(enforceTeacherAccessGuard(eduOffice, 101, { store: officeStore, schoolId: 5 }), true);
+  assert.throws(
+    () => enforceTeacherAccessGuard(eduOffice, 101, { store: officeStore, schoolId: 8 }),
+    /TENANT_ISOLATION_VIOLATION/,
+    'edu_office must not access a teacher outside its office scope'
+  );
+  assert.throws(
+    () => enforceTeacherAccessGuard(eduOfficeNoOffice, 101, { store: officeStore, schoolId: 5 }),
+    /TENANT_ISOLATION_VIOLATION/,
+    'edu_office without an office must fail closed, not pass open'
+  );
   assert.strictEqual(enforceTeacherAccessGuard(superadmin, 101, { schoolId: 5 }), true);
 
   // ۷. نقش‌های غیرمجاز (دانش‌آموز، ولی، راننده، مشاور)

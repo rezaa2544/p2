@@ -146,7 +146,7 @@ test('پرداختِ پدر → ولی‌های دیگرِ همان فرزند �
   assert(acc.active === true, 'ولیِ دوم باید دسترسی داشته باشد');
   assert(acc.own === false, 'ولیِ دوم صاحبِ اشتراک نیست');
   assert(acc.via && acc.via.payerId === f.p, 'مسیرِ دسترسی باید به پرداختِ پدر برگردد');
-  assert(W(`parentLocked()`) === false || true, '');
+  assert(W(`parentLocked()`) === false, 'فرزندِ پوشش‌داده‌شده توسط پرداختِ پدر نباید قفل باشد');
   W(`S.user=byId('users',${Q});S.persona="parent";S.boss=null;S.filters={};1`);
   assert(W('parentLocked()') === false, 'پنلِ ولیِ دوم قفل است');
 });
