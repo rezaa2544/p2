@@ -1,3 +1,10 @@
+> ## 🔴 CURRENT-HEAD INTELLIGENCE SYNC — 2026-09-24
+> مرجع وضعیت جاری: `docs/CURRENT_PROJECT_INTELLIGENCE.md`
+> Intelligence remediation: 21/21 runtime-wired، 0 orphan، F-EI-01 بسته در سطح code/remediation؛ certification نهایی هنوز UNVERIFIED تا اجرای validation campaign.
+> Phase 7 verifier fixes در main reconcile شده‌اند. هیچ checkbox تاریخی صرفاً به دلیل این اصلاحات به PASS ارتقا نمی‌یابد.
+
+---
+
 > ## 🔴 برنامه اجرای اعتبارسنجی نهایی — 2026-09-24
 > این checklist در مرحلهٔ نهایی با برنامه `docs/CURRENT_WORK_EXECUTION_PLAN.md` اجرا می‌شود.
 > ترتیب: Atria Critical/High → Medium → Low → Multi-AI Validation → Capability/Role Matrix → E2E → Failure/Recovery → Performance → Final Certification.
