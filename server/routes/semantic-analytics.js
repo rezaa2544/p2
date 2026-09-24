@@ -243,9 +243,20 @@ function createSemanticAnalyticsRoutes(ctx) {
       attendance: 'attendance', grades: 'grades', discipline: 'discipline',
       enrollments: 'enrollments', exams: 'exams'
     }, schoolId);
-    const studentRec = (store.users || []).find((u) => Number(u.id) === studentId) || {};
+    const studentRec = (store.users || []).find((u) => Number(u.id) === studentId);
+    /* A-19: دیدنِ مدرسه کافی نیست — دبیر/مشاور فقط باید خطِ زمانیِ
+       دانش‌آموزانی را ببیند که واقعاً در کلاسِ تدریسیِ او هستند (همان
+       دروازهٔ یکتای policy.studentRecordOk که در idor.js نشسته). */
+    if (user.role === 'teacher' || user.role === 'counselor') {
+      if (!studentRec || !policy.studentRecordOk(store, user, studentRec)) {
+        return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی به خط زمانی این دانش‌آموز مجاز نیست' } };
+      }
+    } else if (!studentRec) {
+      return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
+    }
+    const timelineStudentRec = studentRec || {};
     const timeline = buildStudentTimeline({
-      student: studentRec,
+      student: timelineStudentRec,
       attendance: rec.attendance.filter((a) => Number(a.student_id) === studentId),
       grades: rec.grades.filter((g) => Number(g.student_id) === studentId),
       discipline: (rec.discipline || []).filter((d) => Number(d.student_id) === studentId),
