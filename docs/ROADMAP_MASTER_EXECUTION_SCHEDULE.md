@@ -1,3 +1,11 @@
+> ## 🔴 EXECUTION ORDER UPDATE — 2026-09-24
+> از این تاریخ، ترتیب اجرای کار با **`docs/CURRENT_WORK_EXECUTION_PLAN.md`** هم‌راستا است.
+> پیش از ورود گستردهٔ Arena/ChatGPT به کدنویسی، Atria باید sweep سه‌مرحله‌ای **Critical/High → Medium → Low** را روی HEAD جاری انجام دهد.
+> پس از آن، کل تیم وارد کمپین مستقل Validation می‌شود: قابلیت‌ها → نقش‌ها → E2E → Failure/Recovery → Performance → Final Certification.
+> این الحاق ترتیب اجرایی جدید است و شواهد تاریخی این سند را حذف یا بازنویسی نمی‌کند.
+
+---
+
 # PAYESH — MASTER EXECUTION SCHEDULE
 
 **نسخه:** 1.0.0-MASTER-SCHEDULE
