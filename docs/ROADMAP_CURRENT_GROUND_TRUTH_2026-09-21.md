@@ -9,7 +9,8 @@
 
 > ## 🔴 CURRENT EXECUTION PLAN — 2026-09-24
 > **Canonical execution plan:** `docs/CURRENT_WORK_EXECUTION_PLAN.md`
-> **Current sequence:** Atria Critical/High → Atria Medium → Atria Low → Full Multi-AI Validation → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification.
+> **Current sequence:** Atria Critical/High → **Phase A Carry-over Closure** → Atria Medium → Atria Low → Full Multi-AI Validation → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification.
+> **Atria Phase A carry-over register:** `docs/audit/ATRIA_PHASE_A_CARRYOVER.md` — موارد A-01..A-23 شناسایی‌شده در نخستین sweep که هنوز تعیین‌تکلیف کامل نشده‌اند. این queue بخشی از Ground Truth اجرایی است و قبل از عبور از sweep Medium باید disposition و evidence داشته باشد.
 > این سند همچنان لایهٔ Ground Truth است؛ هر status باید با HEAD جاری و evidence واقعی تطبیق داده شود. گزارش Atria به‌تنهایی certification نیست.
 
 ---
