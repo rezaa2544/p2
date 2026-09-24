@@ -120,7 +120,7 @@ async function main() {
 
   await test('ATT4: PATCH /api/v1/attendance/:id updates status', async () => {
     const r = await req('PATCH', `/api/v1/attendance/${createdAttId}`, {
-      body: { status: 'present', late: 0 },
+      body: { status: 'present', late: 0, base_version: 1 },
       cookie: cookieMgr1
     });
     assert.strictEqual(r.status, 200);
@@ -144,12 +144,12 @@ async function main() {
     });
     assert.strictEqual(rPost.status, 403);
     const rPatch = await req('PATCH', `/api/v1/attendance/${seedAtt.id}`, {
-      body: { note: 'تلاشِ خارج از scope' },
+      body: { note: 'تلاشِ خارج از scope', base_version: seedAtt.version || 1 },
       cookie: cookieTchOther
     });
     assert.strictEqual(rPatch.status, 403);
     const rOk = await req('PATCH', `/api/v1/attendance/${seedAtt.id}`, {
-      body: { note: 'یادداشتِ دبیرِ کلاس' },
+      body: { note: 'یادداشتِ دبیرِ کلاس', base_version: seedAtt.version || 1 },
       cookie: cookieTch1
     });
     assert.strictEqual(rOk.status, 200);
