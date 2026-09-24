@@ -82,3 +82,8 @@ node tools/verify-agent-skills.js
 
 
 <!-- Architecture evolution track registered 2026-09-24; see docs/ARCHITECTURE_EVOLUTION_ROADMAP.md -->
+
+
+## Architecture-modernization alignment — 2026-09-24
+
+AI agents must read docs/ARCHITECTURE_EVOLUTION_ROADMAP.md before architecture changes. The 12 patterns are not a rewrite instruction. Before implementation, an agent must identify the concrete problem, affected domain, migration boundary, rollback path, tests and evidence. P0: Modular Monolith/Vertical Slices, Event-Driven + Outbox, OpenTelemetry, Policy-as-Code. P1: Selective CQRS, Workflow/Saga. Conditional: Event Sourcing, Microservices, Kubernetes, Service Mesh. Zero-Trust boundaries are cross-cutting.
