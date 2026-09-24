@@ -77,9 +77,9 @@ const win = dom.window;
 // the application during route/render transitions. Treat it as a deterministic
 // no-op in the DOM harness so an unsupported jsdom API is not misclassified as an
 // application console failure. Real browser scroll behavior is covered separately.
-if (typeof win.scrollTo !== 'function') {
-  win.scrollTo = () => {};
-}
+// jsdom exposes scrollTo as a function that throws "Not implemented"; replace it
+// unconditionally so the harness does not convert a known DOM gap into a smoke failure.
+win.scrollTo = () => {};
 if (typeof win.scrollTo !== 'function') throw new Error('SMOKE_SCROLLTO_HARNESS_UNAVAILABLE');
 
 /* متغیرهای سطح‌بالا با const/let روی window نمی‌نشینند؛
