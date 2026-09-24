@@ -309,3 +309,15 @@ CI / RUNTIME EVIDENCE:
 `Atria Critical/High → Atria Medium → Atria Low → Full Multi-AI Validation → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification`
 
 این ترتیب تا Architecture Review صریح تغییر نمی‌کند.
+
+
+## Architecture Evolution Track — execution policy
+
+Canonical detail: docs/ARCHITECTURE_EVOLUTION_ROADMAP.md
+
+P0: Modular Monolith/Vertical Slices; Event-Driven + Transactional Outbox; OpenTelemetry; Policy-as-Code.
+P1: Selective CQRS; Workflow/Saga.
+Conditional/research: Event Sourcing; Microservices; Kubernetes; Service Mesh.
+Cross-cutting: Zero-Trust Service Boundaries.
+
+These are not implementation claims. They are controlled architecture work items. P0 may be evaluated during the current program only when it reduces current risk or unblocks validation. P1/research remains behind the current defect and validation gates unless Architecture Review explicitly changes the sequence.
