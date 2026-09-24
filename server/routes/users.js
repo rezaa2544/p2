@@ -176,7 +176,7 @@ function createUserRoutes(ctx) {
     }
 
     /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
-    const conflict = checkOcc(target, body, 'کاربر');
+    const conflict = checkOcc(target, body, 'کاربر', true);
     if (conflict) {
       /* B4: rejected concurrent write ⇒ recorded in sync_conflicts (SSoT) */
       await recordRejectedConflict({ store, db, ids }, { collection: 'users', rec: target, user, base: body && (body.base_version !== undefined ? body.base_version : body.version), body });
