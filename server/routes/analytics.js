@@ -218,23 +218,54 @@ function createAnalyticsRoutes(ctx) {
     let schools = [];
     if (pgLive() && typeof db.query === 'function') {
       try {
-        const rS = await db.query('SELECT * FROM schools WHERE region_id = $1 OR district_id = $1', [regionId]);
+        /* A-01: ستونِ region_id در جدولِ schools وجود ندارد (schema.sql:
+           county_id / district_id / province_id) — این کوئری در PG زنده
+           همیشه «column does not exist» می‌گرفت و catch ساکت به آینهٔ
+           درون‌حافظه‌ای برمی‌گشت. یعنی مسیرِ PG در عمل هیچ‌وقت اجرا نمی‌شد.
+           در data model، وقتی region_id غایب است «منطقه» همان district_id
+           است (هیچ مدرسهٔ seedی region_id ندارد) پس این نگاشتِ وفادار
+           به فال‌بکِ JSON است. */
+        const rS = await db.query('SELECT * FROM schools WHERE district_id = $1', [regionId]);
         schools = (rS && rS.rows) || [];
       } catch (e) {
+        console.warn('[analytics] regional schools query failed — falling back to in-memory mirror:',
+          (e && e.message) || e);
         schools = (store.schools || []).filter(s => Number(s.region_id || s.district_id) === regionId);
       }
     } else {
       schools = (store.schools || []).filter(s => Number(s.region_id || s.district_id) === regionId);
     }
 
+    /* A-01: در PG-live، داده‌هایِ مدارس هم باید از همان منبعِ زنده خوانده
+       شوند، نه از آینه — در غیر این صورت، وقتی آینه کامل نیست (مثلاً وقتی
+       PAYESH_PG_HYDRATE_LIMIT تنظیم شده)، مدارسِ واقعی بدونِ داده به‌درستی
+       «نیازمندِ اقدامِ فوری» پرچم می‌شوند و گزارش ساکت غلط می‌دهد. این
+       همان درزِ خواندنِ Wave-1 است که routes/students.js:37 استفاده می‌کند.
+       هر مجموعه یک‌بار خوانده می‌شود (نه به ازایِ هر مدرسه) و فیلترِ
+       school_id مثلِ قبل در حافظه انجام می‌شود. هر مجموعه فال‌بکِ
+       مستقلِ خود را دارد تا شکستِ یک جدول، کلِ گزارش را نیندازد. */
+    const REGION_COLL = ['grades', 'attendance', 'classes', 'schedule', 'counselor_refs', 'teacher_notes'];
+    const liveColl = {};
+    if (pgLive() && typeof db.readCollection === 'function') {
+      for (const cn of REGION_COLL) {
+        try { liveColl[cn] = await db.readCollection(cn); }
+        catch (e) {
+          console.warn('[analytics] readCollection(' + cn + ') failed — in-memory mirror used:',
+            (e && e.message) || e);
+          liveColl[cn] = null; /* فال‌بکِ مجموعه به store زیر */
+        }
+      }
+    }
+    const collFor = (cn) => (Array.isArray(liveColl[cn]) ? liveColl[cn] : (store[cn] || []));
+
     const schoolSnapshots = schools.map(sch => {
       const sid = Number(sch.id);
-      const grades = (store.grades || []).filter(g => Number(g.school_id) === sid);
-      const attendance = (store.attendance || []).filter(a => Number(a.school_id) === sid);
-      const classes = (store.classes || []).filter(c => Number(c.school_id) === sid);
-      const schedule = (store.schedule || []).filter(s => Number(s.school_id) === sid);
-      const cases = (store.counselor_refs || []).filter(c => Number(c.school_id) === sid);
-      const teacherNotes = (store.teacher_notes || []).filter(t => Number(t.school_id) === sid);
+      const grades = collFor('grades').filter(g => Number(g.school_id) === sid);
+      const attendance = collFor('attendance').filter(a => Number(a.school_id) === sid);
+      const classes = collFor('classes').filter(c => Number(c.school_id) === sid);
+      const schedule = collFor('schedule').filter(s => Number(s.school_id) === sid);
+      const cases = collFor('counselor_refs').filter(c => Number(c.school_id) === sid);
+      const teacherNotes = collFor('teacher_notes').filter(t => Number(t.school_id) === sid);
 
       return buildSchoolIntelligenceSnapshot({
         schoolId: sid,
