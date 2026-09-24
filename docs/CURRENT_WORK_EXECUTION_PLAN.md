@@ -1,3 +1,12 @@
+> ## CURRENT SYNCHRONIZATION — 2026-09-24
+> This plan remains the canonical execution-order document. The original baseline SHA below is intentionally preserved as the planning baseline.
+> Latest synchronized project-intelligence document: `docs/CURRENT_PROJECT_INTELLIGENCE.md`.
+> Latest documentation synchronization checkpoint: `d5034211400a79c00aa0ac82428c34b3f0f5a2df`.
+> Recent confirmed code changes include Intelligence PR #401 (`e264932419335ce42da53f2700e362bce31670b9`) and Phase 7 verifier fixes reconciled through PRs #382/#383/#386/#390/#391/#392.
+> Intelligence remediation status: 21/21 runtime-wired, 0 orphan, F-EI-01 closed at remediation level; final certification remains evidence-gated.
+
+---
+
 # PAYESH — برنامه اجرایی یکپارچه پایش، رفع عیب و اعتبارسنجی نهایی
 
 **وضعیت:** ACTIVE / CANONICAL EXECUTION PLAN  
