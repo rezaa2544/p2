@@ -155,7 +155,8 @@ setTimeout(async () => {
       });
       remove('classes',${ctx.cls});
     })()`);
-    assert(true, 'پاک شد');
+    const left = W(`db.classes.some(function(x){return x.id===${ctx.cls};})`);
+    assert(left === false, 'کلاس ویرایش‌شده باید پس از حذف واقعاً حذف شده باشد');
   });
 
   await seq;
