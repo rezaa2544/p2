@@ -500,7 +500,13 @@ function buildRegionalSnapshot(regionContext = {}, options = {}) {
   const assessmentPatterns = {
     total_exams_surveyed: totalExams,
     hard_exams_count: totalHard,
-    average_difficulty_p_value: totalExams > 0 ? 0.62 : 0.65,
+    /* A-23: این سنجه تا پیش از این یک عددِ ثابتِ تشریفاتی بود — ۰.۶۲ وقتی
+       آزمون هست و ۰.۶۵ وقتی نیست — یعنی آماری نمایشی که از هیچ داده‌ای
+       مشتق نمی‌شد و صرفِ وجود/نبودِ آزمون آن را جابه‌جا می‌کرد. اکنون
+       نسبتِ واقعیِ آزمون‌هایِ دشوار (hard_exams_count / کل) محاسبه
+       می‌شود؛ وقتی هم آزمونی نیست null گزارش می‌شود (الگویِ «پنهان‌نکردنِ
+       دادهٔ غایب» — نه یک عددِ جعلی). */
+    average_difficulty_p_value: totalExams > 0 ? Math.round((totalHard / totalExams) * 100) / 100 : null,
     grade_inflation_clusters_detected: 0
   };
 
