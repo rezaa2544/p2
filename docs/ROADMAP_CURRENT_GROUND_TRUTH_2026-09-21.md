@@ -717,6 +717,46 @@ At `6460e55dfbea4a5cfe82a5d79f7106e367778ed3`, no GitHub Actions workflow run an
 
 All four were merged through PR #345. No known repo-owned defect from this reconciliation remains open.
 
+---
+
+## 2026-09-24 — Intelligence layer remediation (F-EI-01 closed)
+
+Branch `fix/intelligence-layer-defects`. Seven defects in the educational
+intelligence layer were found and remediated; every fix is locked by a new
+regression gate that runs in CI, so regression to the defective state is
+not possible. Full before/after evidence:
+`docs/audit/INTELLIGENCE_LAYER_REMEDIATION_REPORT.md`.
+
+**F-EI-01 (8 orphan engines) is CLOSED.** Eight engines under
+`server/analytics/` — `semantic`, `student-timeline`, `assessment-intelligence`,
+`attendance-intelligence`, `school-health-dashboard`, `parent-360`,
+`teacher-evidence`, `intervention-case-management` (P0-EI-01..08) — had zero
+runtime consumers: present, tested, but never `require`d by any server file.
+They are now served by eight live HTTP endpoints with zero-trust tenant
+isolation, and the release certification catalog covers all 20 engines.
+
+| Defect | Severity | Status | Lock gate |
+|---|---|---|---|
+| D1 optimistic defaults masked missing data (22 sites) | critical | fixed | `tests/no-data-masking.test.js` (9) |
+| D2 stale timestamp + certificate fingerprint collision | critical | fixed | `tests/analytics-timestamps.test.js` (5) |
+| D3 8 orphan engines / F-EI-01 | high | fixed | `tests/analytics-wiring-guard.test.js` (4) + `tests/semantic-analytics-e2e.test.js` (12) |
+| D4 intelligence suite never ran in CI | high | fixed | 7 gates in GitHub Actions + CircleCI |
+| D5 circular release certification | medium | fixed | `tests/certification-non-circular.test.js` (14) |
+| D6 client had zero analytics API calls | medium | fixed | `tests/intelligence-client-render.test.js` (29) |
+| D7 metric drift (reimplemented semantic metrics) | low | fixed | folded into D3 |
+
+Verification at branch head: wiring 21/21 wired · semantic 33/33 · API 30/30 ·
+CI parity 26/26 · certification 8/8.
+
+**One pre-existing, unrelated failure remains:** `generate-write-perms --check`
+reports drift (the generator emits 0 writer-actions vs 199 in the committed
+`authz/write-perms.json`). This reproduces at the pre-branch HEAD and is a
+generator bug, not an authorization regression — `tools/check-authz.js` (the
+actual server permission audit) passes fully. The regenerated file was
+deliberately NOT committed, because it would delete 199 action→role mappings
+and weaken authorization. Tracked here so it is not mistaken for a regression
+introduced by the intelligence work.
+
 ## Evidence boundary
 
 Current code/test wiring is reconciled on the exact main SHA, but a completed GitHub Actions execution for the current code SHA is still required before claiming current-head runtime PASS for migration, OCC, Redis, Outbox, production verifier, observability runtime, SCA/SBOM/DAST, or the full npm test battery.
