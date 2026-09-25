@@ -76,3 +76,19 @@ Current defect sequence remains authoritative:
 Atria Critical/High → Phase A Carry-over Closure → Atria Medium → Atria Low → Full Multi-AI Validation → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification
 
 The architecture track is subordinate to these gates unless an explicit Architecture Review changes the sequence.
+
+
+## Additional modernization candidates registered for future assessment
+
+These are complementary candidates, not commitments to rewrite the application.
+
+- TypeScript: gradual migration for contracts, shared types and new vertical slices.
+- React + Next.js: selective adoption for new UI vertical slices where benefits justify coexistence and migration cost.
+- Three.js: only for a concrete 3D visualization or educational use case.
+- Go: selective service extraction only when a bounded context has measured throughput, latency, isolation or deployment requirements.
+- Redis: distributed cache/ephemeral state; never a replacement for PostgreSQL source of truth.
+- Elasticsearch: derived search/read index for suitable full-text or analytics workloads; not transactional source of truth.
+- Distributed database: research only after capacity, geography, consistency and SLA evidence.
+
+The complete capability backlog is in docs/FUTURE_UPGRADES_AND_CAPABILITY_ROADMAP.md.
+The mandatory code organization contract is in docs/CODEBASE_STRUCTURE_STANDARD.md.
