@@ -73,6 +73,8 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm ci
+    - name: Canonical npm test (including all 30 API suites)
+      run: npm test
     - name: Comprehensive canonical regression runner
       run: npm run test:all
     - name: Runtime Reliability — Lease fencing static contract
@@ -248,4 +250,3 @@ jobs:
     - run: npm run build --if-present
     - name: Smoke harness — jsdom scrollTo five-pass regression
       run: node tests/smoke-jsdom-runtime.test.js
-    - run: npm test
