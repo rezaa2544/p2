@@ -23,7 +23,8 @@ function runTests() {
 
   const chainResult = executeEndToEndChain(mockSignal, { timestamp: '2026-09-18T10:00:00.000Z' });
 
-  assert.strictEqual(chainResult.verified, true, 'زنجیره باید تایید شده باشد');
+  assert.strictEqual(chainResult.verified, false, 'trace شبیه‌سازی‌شده نباید اجرای تولیدی را verified کند');
+  assert.strictEqual(chainResult.execution_mode, 'SYNTHETIC_SIMULATION');
   assert.strictEqual(chainResult.unbroken_loop, true, 'مدار باید کاملاً پیوسته و بدون انقطاع باشد');
   assert.strictEqual(chainResult.human_in_the_loop_preserved, true, 'حاکمیت انسانی باید در مدار حفظ شده باشد');
   assert.strictEqual(chainResult.zero_ranking_preserved, true, 'منع رتبه‌بندی باید در مدار حفظ شده باشد');
