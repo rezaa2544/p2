@@ -76,7 +76,7 @@ fi
 # report path. It self-skips with a loud NOT-RUN when no PostgreSQL is reachable,
 # so a PG-less machine does not go red for a reason it cannot act on. When one IS
 # reachable we REQUIRE it: the gate must not be silently skipped where it can run.
-if [ -n "$DATABASE_URL" ] || (command -v pg_isready >/dev/null 2>&1 && pg_isready -h 127.0.0.1 -p 5432 -q 2>/dev/null); then
+if [ -n "${DATABASE_URL:-}" ] || (command -v pg_isready >/dev/null 2>&1 && pg_isready -h 127.0.0.1 -p 5432 -q 2>/dev/null); then
   export WAVE23_REQUIRE_PG=1
   echo "-- live PostgreSQL detected — wave23-reports-pg is REQUIRED" | tee -a $OUT
 fi
