@@ -113,6 +113,10 @@ function enforceLongitudinalAccessGuard(requester, targetEntity, options = {}) {
     if (targetSchoolId != null && userSchoolId !== targetSchoolId) {
       throw new Error(`LONGITUDINAL_TENANT_ISOLATION_VIOLATION: manager of school ${userSchoolId} cannot access school ${targetSchoolId}`);
     }
+    /* F4: region-level intelligence is not part of a school manager's grant. */
+    if (targetRegionId != null) {
+      throw new Error(`LONGITUDINAL_TENANT_ISOLATION_VIOLATION: manager of school ${userSchoolId} cannot access regional scope ${targetRegionId}`);
+    }
     return true;
   }
 
