@@ -1,5 +1,38 @@
 {
   "schema_version": 1,
   "policy": "docs/STRICT_VERIFICATION_GATE.md",
-  "items": []
+  "items": [
+    {
+      "pattern": "assert(true",
+      "path": "tests/strict-verification-gate.negative.test.js",
+      "owner": "arena-a30",
+      "reason": "A-30 negative fixtures embed scanner pattern labels as literal test data (V-01..V-12 exploit registry strings)",
+      "expires": "2027-09-25",
+      "replacement_test": "tests/strict-verification-gate.negative.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/strict-verification-gate.negative.test.js",
+      "owner": "arena-a30",
+      "reason": "A-30 negative fixtures embed scanner pattern labels as literal test data (V-01..V-12 exploit registry strings)",
+      "expires": "2027-09-25",
+      "replacement_test": "tests/strict-verification-gate.negative.test.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/strict-verification-gate.negative.test.js",
+      "owner": "arena-a30",
+      "reason": "A-30 V-07 fixture embeds a shell false-green string (cmd_volatile || true) as literal adversarial test data",
+      "expires": "2027-09-25",
+      "replacement_test": "tests/strict-verification-gate.negative.test.js"
+    },
+    {
+      "pattern": "0/0 checks",
+      "path": "tests/strict-verification-gate.negative.test.js",
+      "owner": "arena-a30",
+      "reason": "A-30 V-11 fixture describes vacuous 0/0 evidence claims as literal adversarial test data",
+      "expires": "2027-09-25",
+      "replacement_test": "tests/strict-verification-gate.negative.test.js"
+    }
+  ]
 }

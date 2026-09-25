@@ -33,3 +33,23 @@ Authentication/Session، RBAC/ABAC/Policy، Tenant/IDOR/ownership، API/Backend�
 A-01..A-23 در docs/audit/ATRIA_PHASE_A_CARRYOVER.md نیز مشمول این gate هستند؛ deferred یا out of scope clearance نیست.
 
 هدف: حذف مسیرهای false-green و افزایش confidence با evidence مستقل، قابل بازسازی و fail-closed.
+
+A-30 HARDENING CONTRACT (V-01..V-12) — GATE CHECKS
+
+Registry exploits below must be rejected by tools/strict-verification-gate.js with exit 1.
+Negative fixtures: tests/strict-verification-gate.negative.test.js (wired in .github/workflows/strict-verification.yml).
+
+V-01 empty-registry bypass            -> V-01 registry declares a non-empty items array
+V-02 weak evidence binding            -> V-02 evidence binds HEAD+artifact+hash (and registry head_bound == HEAD)
+V-03 reviewer independence            -> V-03 reviewer evidence pairwise distinct (no byte-cloned PASS)
+V-04 status machine                   -> V-04 allowed_statuses == canonical machine; item/verdict membership enforced
+V-05 BLOCKED_UNTIL ignored            -> V-05 top-level status must be in the machine and not BLOCKED*
+V-06 local-only HEAD binding          -> V-06 origin/main resolvable and HEAD contained in origin/main
+V-07 scanner coverage                 -> G7 walks sh/ts/json + self-skip/self-only/expect-true patterns; G6b allowlist entries must be owned (owner/reason/expiry/replacement) and may be path-scoped
+V-08 self-attested intelligence       -> V-08 self-certification modules may not be the sole evidence source
+V-09 certification input injection    -> V-09 every reviewer PASS needs reviews_recorded + item.reviews + slot-identity corroboration
+V-10 human governance fail-open       -> V-10 human_governance absent keys fail; approver must be human (not an AI reviewer), head-bound
+V-11 empty zero-ranking compliance    -> V-11 checks_total >= 1 (no 0/0) and both positive and adversarial evidence present
+V-12 evidence schema                  -> V-12 mandatory schema for evidence/reviewer/run/command/exit/artifact/hash/runtime (docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json, pinned in the gate)
+
+FAIL-CLOSED: any missing/unprovable field above => NOT VERIFIED + exit 1. No fallback green.
