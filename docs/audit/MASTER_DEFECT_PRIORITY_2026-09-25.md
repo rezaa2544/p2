@@ -130,3 +130,16 @@ The project remains:
 Broad ChatGPT × Arena × Atria validation starts **only after the complete open defect queue above is fixed or explicitly dispositioned with evidence and the final hardening SHA is frozen.**
 
 No production GO is implied by this document.
+
+
+## 8. Supervising Engineer self-remediation — 2026-09-25
+
+Direct fixes applied before Atria execution:
+- **F1:** bootstrap seed now preserves legacy `classes.grade` semantics via `grade_level` when the DB column is numeric, advances PostgreSQL identity sequences after explicit-ID seeding, uses a fail-closed fallback insert, and raises `bootstrap_seed_incomplete` instead of silently reporting success when seed/sequence operations fail. The keep-bootstrap path no longer swallows seed failure.
+- **F2:** removed the obsolete PostgreSQL `users.parent_id` query; `parent_links` is now the authoritative PG parent relationship for this scope.
+- **F4:** both quality-governance and longitudinal-intelligence guards now explicitly reject school-manager requests carrying `region_id`.
+
+**Code status:** FIXED-SCOPED / TEST PENDING. CI is pending on current HEAD; no runtime certification is claimed yet.
+
+### Atria count update
+The executor/reviewer team now includes **3 Atria agents**. Until their exact Atria-1/Atria-2/Atria-3 chat identities are mapped, Atria-3 is registered as **independent remediation/review slot — ownership to be assigned without overlapping Atria-1/Atria-2 invariants**.
