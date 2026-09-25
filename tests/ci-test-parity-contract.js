@@ -29,7 +29,7 @@ const dead = [...referenced].filter(t => !fs.existsSync(path.join(ROOT,t)));
 chk('P4 workflow test references exist', dead.length === 0, dead.join(', '));
 chk('P5 at least one workflow executes tests', referenced.size > 0);
 const executed = new Set([...referenced, ...NPM_TEST_ENTRYPOINTS]);
-const comprehensiveRunnerWired = Boolean(pkg.scripts && pkg.scripts['test:all']) && referenced.has('scripts/run-all-tests.sh');
+const comprehensiveRunnerWired = Boolean(pkg.scripts && pkg.scripts['test:all']) && readWorkflows().some(w => w.includes('npm run test:all'));
 if (comprehensiveRunnerWired) {
   for (const t of topLevelTests) if (!t.endsWith('-child.js')) executed.add(t);
 }
