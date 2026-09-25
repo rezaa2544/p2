@@ -4,7 +4,7 @@
    واقعاً نقضِ قرارداد را می‌گیرد (سبزِ جعلی ممنوع).
    هر جهش: نقضی عمدی در server/redis.js یا server/cache.js تزریق و
    tests/wave6-11-redis-live.js اجرا می‌شود — باید قرمز شود؛ بعد restore.
-   بدون redis-server در PATH: self-skip (مثل خودِ گیت).
+   بدون redis-server در PATH: fail-closed prerequisite gate (مثل خودِ گیت).
    اجرا: PATH=...redis-dir:$PATH node tests/wave6-11-redis-live-mutations.js
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
@@ -19,8 +19,8 @@ function hasRedis() {
 }
 if (!hasRedis()) {
   console.log('  ⏭️  live redis mutations — redis-server در PATH نیست');
-  console.log('wave6-11-redis-live-mutations: 0/0 (skip)؛ سبزِ نهایی: ✅');
-  process.exit(0);
+  console.log('wave6-11-redis-live-mutations: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisites are NOT-RUN and exit 2');
+  process.exit(2);
 }
 
 const ROOT = path.join(__dirname, '..');
