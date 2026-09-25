@@ -44,7 +44,9 @@ function runTests() {
   assert.strictEqual(cert.quality_gates_summary.all_passed, true);
   assert.strictEqual(cert.governance_summary.human_decision_sovereignty, 'VERIFIED_STRICT');
   assert.strictEqual(cert.governance_summary.zero_ranking_policy, 'ENFORCED_ZERO_TOLERANCE');
-  assert.strictEqual(cert.e2e_verification.unbroken_closed_loop, true);
+  assert.strictEqual(cert.e2e_verification.unbroken_closed_loop, false);
+  assert.strictEqual(cert.audited_by, null);
+  assert.strictEqual(cert.independent_verification, null);
   assert.ok(cert.certificate_fingerprint.length === 64, 'چک‌سام گواهینامه باید هش معتبر SHA-256 باشد');
 
   // ۲. سناریوی رد صلاحیت در صورت بروز نقض حاکمیت انسانی
