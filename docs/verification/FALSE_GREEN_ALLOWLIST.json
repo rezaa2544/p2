@@ -1,5 +1,78 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "policy": "docs/STRICT_VERIFICATION_GATE.md",
-  "items": []
+  "items": [
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/a11y-interactive.js",
+      "reason": "Final exit follows explicit critical/serious counters and exits 1 on violation.",
+      "owner": "Test-Integrity Reviewer",
+      "expires": "2026-12-31",
+      "test": "tests/a11y-interactive.js runtime gate"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/a11y-runtime.js",
+      "reason": "Final exit follows explicit critical/serious counters and exits 1 on violation.",
+      "owner": "Test-Integrity Reviewer",
+      "expires": "2026-12-31",
+      "test": "tests/a11y-runtime.js runtime gate"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/semantic-layer/runner.js",
+      "reason": "Final branch is PASS/FAIL based on suite and mutation results; failure exits 1.",
+      "owner": "Test-Integrity Reviewer",
+      "expires": "2026-12-31",
+      "test": "tests/semantic-layer/runner.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/server11-child.js",
+      "reason": "Child-process cleanup exit occurs after response handling; it is not a test-success shortcut.",
+      "owner": "Test-Integrity Reviewer",
+      "expires": "2026-12-31",
+      "test": "server11 parent/child protocol"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/session8-gc.js",
+      "reason": "Explicit 5/5 assertions execute before the terminal success exit.",
+      "owner": "Test-Integrity Reviewer",
+      "expires": "2026-12-31",
+      "test": "tests/session8-gc.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/chaos-drill-lib.js",
+      "reason": "psql exit is intentionally tolerated so stderr is captured and classified by explicit ERROR/FATAL checks.",
+      "owner": "Test-Integrity Reviewer",
+      "expires": "2026-12-31",
+      "test": "chaos drill SQL runner"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/config-reference-coverage.js",
+      "reason": "Match is inside an explanatory comment; no executable || true exists at this hit.",
+      "owner": "Test-Integrity Reviewer",
+      "expires": "2026-12-31",
+      "test": "config reference coverage"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/helpers/mutant-kit.js",
+      "reason": "grep cleanup command intentionally tolerates no matches; stdout is then explicitly enumerated and cleanup performed.",
+      "owner": "Test-Integrity Reviewer",
+      "expires": "2026-12-31",
+      "test": "mutant-kit cleanup"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/sim_full3-mutations.js",
+      "reason": "Literal is the mutation payload that intentionally injects || true into a mutant; it is not the gate itself.",
+      "owner": "Test-Integrity Reviewer",
+      "expires": "2026-12-31",
+      "test": "mutation harness"
+    }
+  ]
 }
