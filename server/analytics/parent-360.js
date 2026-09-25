@@ -135,9 +135,9 @@ function buildParent360Profile(params = {}, options = {}) {
     : null;
 
   let attendanceStatus = totalSessions === 0 ? 'NO_DATA' : 'EXCELLENT';
-  if (attendanceRate < 80.0 || unexcusedCount >= 3) attendanceStatus = 'CRITICAL';
-  else if (attendanceRate < 90.0 || unexcusedCount >= 1) attendanceStatus = 'WARNING';
-  else if (attendanceRate < 95.0) attendanceStatus = 'STABLE';
+  if (attendanceRate !== null && (attendanceRate < 80.0 || unexcusedCount >= 3)) attendanceStatus = 'CRITICAL';
+  else if (attendanceRate !== null && (attendanceRate < 90.0 || unexcusedCount >= 1)) attendanceStatus = 'WARNING';
+  else if (attendanceRate !== null && attendanceRate < 95.0) attendanceStatus = 'STABLE';
 
   const attendanceOverview = {
     attendance_rate: attendanceRate,
