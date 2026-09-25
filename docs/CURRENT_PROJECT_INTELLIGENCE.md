@@ -186,3 +186,24 @@ Status rules:
 - only repository evidence can promote completion.
 
 The Supervising Engineer checklist is now mandatory at session start and delivery.
+
+
+
+## FRESH REPOSITORY DEFECT AUDIT — 2026-09-25
+
+Canonical register: `docs/audit/MASTER_DEFECT_PRIORITY_2026-09-25.md`.
+
+### Newly confirmed current-main defects
+- **F1 P0 OPEN:** first-boot bootstrap seeding is fail-silent, does not synchronize identity sequences, and can combine with ID upsert semantics to overwrite seeded identity rows. This is the highest-priority recurrence/root-cause item.
+- **F2 P1 OPEN:** PG parent scope contains a legacy `users.parent_id` query although the relationship is represented by `parent_links`.
+- **F4 P1 OPEN:** quality-governance/longitudinal region branches allow a manager without proving region ownership.
+- **F3/F5:** current main contains targeted mitigations; they are **FIXED-SCOPED / REVALIDATION_REQUIRED**, not certified.
+
+### Execution ownership
+**Atria-1:** F1/F2/F4 + A-31..A-36 + product/runtime security/data root causes.  
+**Atria-2:** A-30/A-37/A-39 preparation + test-integrity/CI/operational carry-over A-01..A-17/A-23 + A-38 preparation.
+
+No overlapping edits to the same invariant are permitted.
+
+### Current phase remains
+**HARDENING / RECONCILIATION — NOT VERIFIED.** The next allowed work is defect remediation only. Broad multi-AI testing/certification remains blocked until the open defect queue is closed or explicitly dispositioned with evidence.
