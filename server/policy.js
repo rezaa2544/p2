@@ -463,8 +463,9 @@ async function resolveStudentScopeOpts(db, store, session, rec) {
       try {
         const r1 = await db.query('SELECT student_id FROM parent_links WHERE parent_id = $1', [pid]);
         if (r1 && r1.rows) r1.rows.forEach(r => kids.add(Number(r.student_id)));
-        const r2 = await db.query('SELECT id FROM users WHERE role = $1 AND parent_id = $2', ['student', pid]);
-        if (r2 && r2.rows) r2.rows.forEach(r => kids.add(Number(r.id)));
+        /* F2: parent_links is the authoritative PG relationship. The old
+           users.parent_id column does not exist in the PostgreSQL schema and
+           turns an otherwise valid parent scope lookup into a production 500/404. */
       } catch (err) {
         console.error('[POLICY] PG parent_links query failed:', err.message);
         if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
