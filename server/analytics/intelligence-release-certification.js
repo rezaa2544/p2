@@ -1019,7 +1019,8 @@ function runPhase3Certification(params = {}, options = {}) {
     qualityGates,
     sovereignty,
     zeroRanking,
-    e2eChain
+    e2eChain,
+    independentVerification: options && options.independentVerification
   }, options);
 
   const result = {
