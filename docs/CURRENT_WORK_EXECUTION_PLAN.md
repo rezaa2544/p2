@@ -523,3 +523,32 @@ Before any future A-30..A-39 or later execution task is delegated, attach a Deli
 No agent may be marked DONE from prose alone. Unpushed or unmerged work remains INCOMPLETE according to the required target.
 
 This control is now part of the execution plan, not a suggestion.
+
+
+
+## 2026-09-25 — MASTER DEFECT PRIORITY / TWO-ATRIA REMEDIATION OVERRIDE
+
+Canonical register: `docs/audit/MASTER_DEFECT_PRIORITY_2026-09-25.md`.
+
+### Immediate P0/P1 queue
+1. **F1 — P0:** bootstrap→PG seed corruption / sequence drift / unsafe ID upsert. Root-cause closure required.
+2. **A-30 — P0:** Strict Verification Gate fail-closed integrity.
+3. **A-37 — P0:** certification-path test inventory and false-green closure.
+4. **F4 — P1:** analytics region authorization boundary.
+5. **F2 — P1:** legacy parent PG schema drift.
+6. **A-31..A-36:** semantic, SMS/PG, authz persistence, sync parity, Mission-5 authz, PG infrastructure.
+7. **A-18/A-20/A-24:** current-head sync/OCC/conflict root-cause closure.
+8. **A-38:** registry rebind only after the hardening SHA is frozen.
+9. **A-39:** E4 reliability/DR acceptance.
+10. Remaining A-01..A-17/A-23 actionable carry-over.
+
+### Two-Atria ownership
+- **Atria-1:** F1/F2/F4 and product/runtime security/data root causes through A-36.
+- **Atria-2:** A-30/A-37/A-39 preparation and test-integrity/CI/operational carry-over, plus A-38 preparation.
+- Same invariant/file may not be concurrently fixed by both Atria agents.
+
+### Fresh-finding disposition
+F3 and F5 are not added as duplicate open fixes: current main contains mitigations. They remain **REVALIDATION_REQUIRED** and must be regression-tested on the final hardening SHA.
+
+### Definition of Done
+**Finding → current-head reproduction → root cause → invariant/all-path audit → fix → permanent regression → execute → SHA-bound evidence → independent review → final registry rebind.**
