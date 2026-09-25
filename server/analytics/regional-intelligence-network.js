@@ -87,27 +87,35 @@ function summarizeRegionalHealth(context = {}) {
   let healthyCount = 0;
   let needsMonitoringCount = 0;
   let needsImmediateActionCount = 0;
+  let noDataCount = 0;
 
   let sumAttendance = 0;
+  let attCount = 0;
   let sumGpa = 0;
+  let gpaCount = 0;
 
   for (const s of schools) {
     const health = s.health_index || {};
-    const status = health.status || 'HEALTHY';
+    // No-Fabrication: مدرسه بدون شاخص سلامت NO_DATA است نه HEALTHY
+    const status = health.status || 'NO_DATA';
     if (status === 'HEALTHY') healthyCount++;
     else if (status === 'NEEDS_MONITORING') needsMonitoringCount++;
     else if (status === 'NEEDS_IMMEDIATE_ACTION') needsImmediateActionCount++;
+    else noDataCount++;
 
-    sumAttendance += Number(s.attendance_summary?.calendar_rate ?? 90.0);
-    sumGpa += Number(s.academic_summary?.average_gpa ?? 15.0);
+    // No-Fabrication: فقط مدارس دارای سنجه واقعی وارد میانگین منطقه می‌شوند (نه ?? 90.0 / ?? 15.0)
+    if (s.attendance_summary?.calendar_rate != null) { sumAttendance += Number(s.attendance_summary.calendar_rate); attCount++; }
+    if (s.academic_summary?.average_gpa != null) { sumGpa += Number(s.academic_summary.average_gpa); gpaCount++; }
   }
 
   const total = schools.length;
-  const avgAtt = total > 0 ? Math.round((sumAttendance / total) * 100) / 100 : 90.0;
-  const avgGpa = total > 0 ? Math.round((sumGpa / total) * 100) / 100 : 15.0;
+  const avgAtt = attCount > 0 ? Math.round((sumAttendance / attCount) * 100) / 100 : null;
+  const avgGpa = gpaCount > 0 ? Math.round((sumGpa / gpaCount) * 100) / 100 : null;
 
   return {
     total_schools: total,
+    no_data_schools_count: noDataCount,
+    data_coverage: { attendance_schools: attCount, gpa_schools: gpaCount },
     healthy_schools_count: healthyCount,
     needs_monitoring_count: needsMonitoringCount,
     needs_immediate_action_count: needsImmediateActionCount,
@@ -426,35 +434,47 @@ function buildRegionalSnapshot(regionContext = {}, options = {}) {
   let totalActiveInterventions = 0;
   let totalUnassignedHigh = 0;
   let sumResolutionRate = 0;
+  let resolutionSchoolCount = 0;
 
   for (const s of rawSchools) {
     totalActiveInterventions += Number(s.intervention_summary?.active_cases_count ?? 0);
     totalUnassignedHigh += Number(s.intervention_summary?.unassigned_high_priority_count ?? 0);
-    sumResolutionRate += Number(s.intervention_summary?.resolution_rate ?? 100.0);
+    // No-Fabrication: مدرسه بدون نرخ حل واقعی وارد میانگین نمی‌شود (نه ?? 100.0)
+    if (s.intervention_summary?.resolution_rate != null) {
+      sumResolutionRate += Number(s.intervention_summary.resolution_rate);
+      resolutionSchoolCount++;
+    }
   }
 
   const schoolCount = rawSchools.length;
-  const overallResolutionRate = schoolCount > 0 ? Math.round((sumResolutionRate / schoolCount) * 10) / 10 : 100.0;
+  const overallResolutionRate = resolutionSchoolCount > 0 ? Math.round((sumResolutionRate / resolutionSchoolCount) * 10) / 10 : null;
 
   const interventionSummary = {
     total_active_cases: totalActiveInterventions,
     unassigned_high_priority_cases: totalUnassignedHigh,
     overall_resolution_rate: overallResolutionRate,
-    effective_interventions_ratio: totalActiveInterventions > 0 ? 0.85 : 1.0
+    // No-Fabrication: هیچ منبع اندازه‌گیری اثربخشی متصل نیست؛ ثابت ساختگی 0.85/1.0 حذف شد
+    effective_interventions_ratio: null,
+    effective_interventions_ratio_status: 'NOT_MEASURED'
   };
 
   // ۴. الگوهای حضور
   let sumChronic = 0;
+  let chronicSchoolCount = 0;
   const peakDays = {};
   for (const s of rawSchools) {
-    sumChronic += Number(s.attendance_summary?.chronic_absence_rate ?? 5.0);
-    const pd = s.attendance_summary?.peak_absence_day || 'wednesday';
-    peakDays[pd] = (peakDays[pd] || 0) + 1;
+    // No-Fabrication: فقط داده واقعی (نه ?? 5.0 و روز جعلی wednesday)
+    if (s.attendance_summary?.chronic_absence_rate != null) {
+      sumChronic += Number(s.attendance_summary.chronic_absence_rate);
+      chronicSchoolCount++;
+    }
+    const pd = s.attendance_summary?.peak_absence_day;
+    if (pd != null) peakDays[pd] = (peakDays[pd] || 0) + 1;
   }
-  const avgChronic = schoolCount > 0 ? Math.round((sumChronic / schoolCount) * 10) / 10 : 5.0;
+  const avgChronic = chronicSchoolCount > 0 ? Math.round((sumChronic / chronicSchoolCount) * 10) / 10 : null;
 
-  let regionalPeakDay = 'wednesday';
-  let maxCount = -1;
+  let regionalPeakDay = null;
+  let maxCount = 0;
   for (const [day, count] of Object.entries(peakDays)) {
     if (count > maxCount) {
       maxCount = count;
@@ -466,7 +486,7 @@ function buildRegionalSnapshot(regionContext = {}, options = {}) {
     average_calendar_rate: healthSummary.average_attendance_rate,
     average_chronic_absence_rate: avgChronic,
     peak_absence_day: regionalPeakDay,
-    temporal_risk_detected: avgChronic >= 8.0
+    temporal_risk_detected: avgChronic != null && avgChronic >= 8.0
   };
 
   // ۵. الگوهای سنجش
@@ -480,7 +500,9 @@ function buildRegionalSnapshot(regionContext = {}, options = {}) {
   const assessmentPatterns = {
     total_exams_surveyed: totalExams,
     hard_exams_count: totalHard,
-    average_difficulty_p_value: totalExams > 0 ? 0.62 : 0.65,
+    // No-Fabrication: p-value دشواری هنوز از داده آزمون واقعی محاسبه نمی‌شود
+    average_difficulty_p_value: null,
+    average_difficulty_p_value_status: 'NOT_MEASURED',
     grade_inflation_clusters_detected: 0
   };
 

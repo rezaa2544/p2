@@ -265,11 +265,12 @@ function generateActionRecommendations(params = {}, options = {}) {
   const lng = params.longitudinalInsights || {};
   const cases = Array.isArray(params.interventionCases) ? params.interventionCases : [];
 
-  // ۱. ارزیابی سیگنال‌های غیبت و حضور
-  const attRate = Number(sch.attendance_rate ?? sch.calendar_rate ?? 90.0);
-  const chronicRate = Number(sch.chronic_absence_rate ?? (attRate < 85 ? 14.2 : 5.0));
+  // ۱. ارزیابی سیگنال‌های غیبت و حضور — No-Fabrication: فقط سیگنال اندازه‌گیری‌شده
+  const attRateRaw = sch.attendance_rate ?? sch.calendar_rate;
+  const attRate = attRateRaw != null ? Number(attRateRaw) : null;
+  const chronicRate = sch.chronic_absence_rate != null ? Number(sch.chronic_absence_rate) : null;
 
-  if (chronicRate >= 10.0 || attRate < 85.0) {
+  if ((chronicRate != null && chronicRate >= 10.0) || (attRate != null && attRate < 85.0)) {
     rawList.push({
       recommendation_id: `ACT-REC-SCH${schoolId}-${now.replace(/[^0-9]/g, '').slice(0, 8)}-ATT01`,
       type: ACTION_TYPES.ATTENDANCE_SUPPORT,
@@ -279,19 +280,21 @@ function generateActionRecommendations(params = {}, options = {}) {
       trigger_source: 'ATTENDANCE_INTELLIGENCE',
       reason: 'chronic absence increasing',
       evidence: {
+        // No-Fabrication: شواهد فقط شامل مقادیر واقعاً اندازه‌گیری‌شده است
         absenceRate: chronicRate,
         chronic_absence_rate: chronicRate,
-        current_value: chronicRate,
+        attendance_rate: attRate,
+        current_value: chronicRate != null ? chronicRate : attRate,
         threshold: 10.0,
         trend: 'DECLINING',
         threshold_exceeded: true
       },
-      severity: chronicRate >= 15.0 ? PRIORITY_LEVELS.CRITICAL : PRIORITY_LEVELS.HIGH,
-      priority: chronicRate >= 15.0 ? PRIORITY_LEVELS.CRITICAL : PRIORITY_LEVELS.HIGH,
+      severity: (chronicRate != null && chronicRate >= 15.0) ? PRIORITY_LEVELS.CRITICAL : PRIORITY_LEVELS.HIGH,
+      priority: (chronicRate != null && chronicRate >= 15.0) ? PRIORITY_LEVELS.CRITICAL : PRIORITY_LEVELS.HIGH,
       suggested_action: 'برگزاری جلسه هم‌اندیشی مشاور با اولیای دانش‌آموزان دارای بیش از ۴ روز غیبت غیرموجه و هماهنگی سرویس تردد',
       responsible_role: 'counselor',
       deadline: options.deadline || '2026-10-15',
-      deadline_type: chronicRate >= 15.0 ? '24H' : 'WEEKLY',
+      deadline_type: (chronicRate != null && chronicRate >= 15.0) ? '24H' : 'WEEKLY',
       approval_status: ACTION_STATUSES.REVIEW_PENDING,
       status: ACTION_STATUSES.REVIEW_PENDING,
       automated_decision: false,
@@ -305,11 +308,11 @@ function generateActionRecommendations(params = {}, options = {}) {
     });
   }
 
-  // ۲. ارزیابی سیگنال‌های تحصیلی و افت نمرات
-  const avgGpa = Number(sch.average_gpa ?? 15.0);
-  const failingRatio = Number(sch.failing_students_ratio ?? 0.05);
+  // ۲. ارزیابی سیگنال‌های تحصیلی و افت نمرات — No-Fabrication
+  const avgGpa = sch.average_gpa != null ? Number(sch.average_gpa) : null;
+  const failingRatio = sch.failing_students_ratio != null ? Number(sch.failing_students_ratio) : null;
 
-  if (avgGpa < 12.0 || failingRatio >= 0.10) {
+  if ((avgGpa != null && avgGpa < 12.0) || (failingRatio != null && failingRatio >= 0.10)) {
     rawList.push({
       recommendation_id: `ACT-REC-SCH${schoolId}-${now.replace(/[^0-9]/g, '').slice(0, 8)}-ACA01`,
       type: ACTION_TYPES.ACADEMIC_REMEDIAL,
@@ -487,38 +490,34 @@ function evaluateActionEffectiveness(params = {}, options = {}) {
   const pre = params.preMetrics || params.pre_metrics || {};
   const post = params.postMetrics || params.post_metrics || {};
 
-  // ۱. دلتای حضور
-  const preAtt = Number(pre.attendance_rate ?? pre.calendar_rate ?? 85.0);
-  const postAtt = Number(post.attendance_rate ?? post.calendar_rate ?? preAtt);
-  const deltaAtt = Math.round((postAtt - preAtt) * 10) / 10;
+  // No-Fabrication: دلتا فقط وقتی محاسبه می‌شود که مبنای pre واقعاً اندازه‌گیری شده باشد
+  const dOf = (preV, postV, digits) => {
+    if (preV == null) return null;
+    const p = Number(preV);
+    const q = postV != null ? Number(postV) : p;
+    const f = Math.pow(10, digits);
+    return Math.round((q - p) * f) / f;
+  };
+  const deltaAtt = dOf(pre.attendance_rate ?? pre.calendar_rate, post.attendance_rate ?? post.calendar_rate, 1);
+  const deltaChronic = dOf(pre.chronic_absence_rate, post.chronic_absence_rate, 1);
+  const deltaGpa = dOf(pre.average_gpa ?? pre.gpa, post.average_gpa ?? post.gpa, 2);
+  const deltaEng = dOf(pre.engagement_score ?? pre.pei, post.engagement_score ?? post.pei, 1);
+  const measuredDeltas = [deltaAtt, deltaChronic, deltaGpa, deltaEng].filter(v => v != null).length;
 
-  // دلتای کاهش غیبت مزمن (کاهش یعنی بهبود)
-  const preChronic = Number(pre.chronic_absence_rate ?? 12.0);
-  const postChronic = Number(post.chronic_absence_rate ?? preChronic);
-  const deltaChronic = Math.round((postChronic - preChronic) * 10) / 10;
-
-  // ۲. دلتای نمرات (GPA)
-  const preGpa = Number(pre.average_gpa ?? pre.gpa ?? 14.0);
-  const postGpa = Number(post.average_gpa ?? post.gpa ?? preGpa);
-  const deltaGpa = Math.round((postGpa - preGpa) * 100) / 100;
-
-  // ۳. دلتای مشارکت (Engagement)
-  const preEng = Number(pre.engagement_score ?? pre.pei ?? 60.0);
-  const postEng = Number(post.engagement_score ?? post.pei ?? preEng);
-  const deltaEng = Math.round((postEng - preEng) * 10) / 10;
-
-  // ارزیابی سطح اثربخشی
+  // ارزیابی سطح اثربخشی — فقط بر پایه دلتاهای واقعاً اندازه‌گیری‌شده
   let efficacy = ACTION_EFFICACY.INEFFECTIVE;
 
-  const isAttendanceSuccess = deltaAtt >= 5.0 || deltaChronic <= -3.0;
-  const isGpaSuccess = deltaGpa >= 1.0;
-  const isMajorImprovement = isAttendanceSuccess || isGpaSuccess || deltaEng >= 15.0;
+  const isAttendanceSuccess = (deltaAtt != null && deltaAtt >= 5.0) || (deltaChronic != null && deltaChronic <= -3.0);
+  const isGpaSuccess = deltaGpa != null && deltaGpa >= 1.0;
+  const isMajorImprovement = isAttendanceSuccess || isGpaSuccess || (deltaEng != null && deltaEng >= 15.0);
 
-  const isWorsened = deltaChronic > 2.0 || deltaGpa < -1.0;
+  const isWorsened = (deltaChronic != null && deltaChronic > 2.0) || (deltaGpa != null && deltaGpa < -1.0);
 
-  if (isMajorImprovement) {
+  if (measuredDeltas === 0) {
+    efficacy = 'NOT_MEASURABLE';
+  } else if (isMajorImprovement) {
     efficacy = ACTION_EFFICACY.HIGHLY_EFFECTIVE;
-  } else if (deltaAtt > 0 || deltaGpa > 0 || deltaEng > 0 || deltaChronic < 0) {
+  } else if ((deltaAtt != null && deltaAtt > 0) || (deltaGpa != null && deltaGpa > 0) || (deltaEng != null && deltaEng > 0) || (deltaChronic != null && deltaChronic < 0)) {
     efficacy = ACTION_EFFICACY.PARTIALLY_EFFECTIVE;
   } else if (isWorsened) {
     efficacy = ACTION_EFFICACY.REQUIRES_ESCALATION;
@@ -536,6 +535,7 @@ function evaluateActionEffectiveness(params = {}, options = {}) {
       average_gpa: deltaGpa,
       engagement_score: deltaEng
     },
+    measured_deltas_count: measuredDeltas,
     pre_metrics: Object.freeze({ ...pre }),
     post_metrics: Object.freeze({ ...post }),
     automated_decision: false,

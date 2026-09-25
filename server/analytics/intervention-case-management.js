@@ -111,9 +111,13 @@ function evaluateEarlyWarningRules(studentContext = {}, options = {}) {
     throw new Error('INVALID_INPUT: valid schoolId is required for evaluateEarlyWarningRules');
   }
 
-  const currentGpa = Number(studentContext.currentGpa ?? studentContext.current_gpa ?? 15.0);
+  // No-Fabrication: نبود سنجه با «مقدار سالم ساختگی» (15.0 / 100.0) جایگزین نمی‌شود؛
+  // قاعده‌های وابسته ارزیابی نمی‌شوند و شکاف داده صریحاً گزارش می‌شود
+  const gpaRaw = studentContext.currentGpa ?? studentContext.current_gpa;
+  const currentGpa = gpaRaw != null ? Number(gpaRaw) : null;
   const previousGpa = studentContext.previousGpa != null ? Number(studentContext.previousGpa) : null;
-  const recentAttendanceRate = Number(studentContext.recentAttendanceRate ?? studentContext.recent_attendance_rate ?? 100.0);
+  const attRaw = studentContext.recentAttendanceRate ?? studentContext.recent_attendance_rate;
+  const recentAttendanceRate = attRaw != null ? Number(attRaw) : null;
   const consecutiveAbsences = Number(studentContext.consecutiveAbsences ?? studentContext.consecutive_absences ?? 0);
   const failingSubjects = Number(studentContext.failingSubjectsCount ?? studentContext.failing_subjects_count ?? 0);
   const unsubmitted = Number(studentContext.unsubmittedAssignmentsCount ?? studentContext.unsubmitted_assignments_count ?? 0);
@@ -121,7 +125,7 @@ function evaluateEarlyWarningRules(studentContext = {}, options = {}) {
   const alerts = [];
 
   // قاعده ۱: ریسک مرکب ترک تحصیل (Compound Dropout Risk) - اولویت بحرانی
-  if (currentGpa < 10.0 && (recentAttendanceRate <= 85.0 || consecutiveAbsences >= 4)) {
+  if (currentGpa != null && currentGpa < 10.0 && ((recentAttendanceRate != null && recentAttendanceRate <= 85.0) || consecutiveAbsences >= 4)) {
     alerts.push({
       trigger_type: 'DROPOUT_RISK_COMPOUND',
       priority: 'CRITICAL',
@@ -131,7 +135,7 @@ function evaluateEarlyWarningRules(studentContext = {}, options = {}) {
   }
 
   // قاعده ۲: افت شدید تحصیلی (Academic Drop)
-  if (currentGpa < 10.0 || (previousGpa != null && (previousGpa - currentGpa) >= 3.0)) {
+  if ((currentGpa != null && currentGpa < 10.0) || (previousGpa != null && currentGpa != null && (previousGpa - currentGpa) >= 3.0)) {
     alerts.push({
       trigger_type: 'CRITICAL_ACADEMIC_DROP',
       priority: 'HIGH',
@@ -143,7 +147,7 @@ function evaluateEarlyWarningRules(studentContext = {}, options = {}) {
   }
 
   // قاعده ۳: غیبت مزمن یا غیبت‌های متوالی (Chronic Absence)
-  if (recentAttendanceRate <= 90.0 || consecutiveAbsences >= 3) {
+  if ((recentAttendanceRate != null && recentAttendanceRate <= 90.0) || consecutiveAbsences >= 3) {
     alerts.push({
       trigger_type: 'CHRONIC_ABSENCE_ALERT',
       priority: 'HIGH',
@@ -221,8 +225,9 @@ function createInterventionCase(params = {}, options = {}) {
 
   const baseline = params.baselineMetrics || params.baseline_metrics || {};
   const baselineMetrics = {
-    gpa: Number(baseline.gpa ?? 10.0),
-    attendance_rate: Number(baseline.attendance_rate ?? baseline.attendanceRate ?? 85.0),
+    // No-Fabrication: خط مبنای اندازه‌گیری‌نشده null است (نه 10.0 / 85.0 ساختگی)
+    gpa: baseline.gpa != null ? Number(baseline.gpa) : null,
+    attendance_rate: (baseline.attendance_rate ?? baseline.attendanceRate) != null ? Number(baseline.attendance_rate ?? baseline.attendanceRate) : null,
     failing_subjects_count: Number(baseline.failing_subjects_count ?? baseline.failingSubjectsCount ?? 0)
   };
 
@@ -382,22 +387,26 @@ function evaluateInterventionOutcome(params = {}, options = {}) {
   const pre = caseRecord.baseline_metrics || {};
   const post = params.postMetrics || params.post_metrics || {};
 
-  const preGpa = Number(pre.gpa ?? 10.0);
-  const postGpa = Number(post.gpa ?? preGpa);
-  const preAtt = Number(pre.attendance_rate ?? 85.0);
-  const postAtt = Number(post.attendance_rate ?? preAtt);
+  // No-Fabrication: دلتا فقط وقتی مبنای pre واقعاً ثبت شده باشد
+  const preGpa = pre.gpa != null ? Number(pre.gpa) : null;
+  const postGpa = post.gpa != null ? Number(post.gpa) : preGpa;
+  const preAtt = pre.attendance_rate != null ? Number(pre.attendance_rate) : null;
+  const postAtt = post.attendance_rate != null ? Number(post.attendance_rate) : preAtt;
 
-  const deltaGpa = Math.round((postGpa - preGpa) * 100) / 100;
-  const deltaAtt = Math.round((postAtt - preAtt) * 100) / 100;
+  const deltaGpa = preGpa != null ? Math.round((postGpa - preGpa) * 100) / 100 : null;
+  const deltaAtt = preAtt != null ? Math.round((postAtt - preAtt) * 100) / 100 : null;
 
   // تعیین سطح اثربخشی
   let efficacyLevel = 'INEFFECTIVE';
   let recommendation = 'CONTINUE_INTERVENTION';
 
-  if (deltaGpa <= -2.0 || deltaAtt <= -10.0) {
+  if (deltaGpa == null && deltaAtt == null) {
+    efficacyLevel = 'NOT_MEASURABLE';
+    recommendation = 'ESTABLISH_BASELINE_METRICS';
+  } else if ((deltaGpa != null && deltaGpa <= -2.0) || (deltaAtt != null && deltaAtt <= -10.0)) {
     efficacyLevel = 'REQUIRES_ESCALATION';
     recommendation = 'ESCALATE';
-  } else if (deltaGpa >= 2.0 || (deltaAtt >= 10.0 && postAtt >= 90.0)) {
+  } else if ((deltaGpa != null && deltaGpa >= 2.0) || (deltaAtt != null && deltaAtt >= 10.0 && postAtt >= 90.0)) {
     efficacyLevel = 'HIGHLY_EFFECTIVE';
     recommendation = 'CLOSURE';
   } else if (deltaGpa > 0 || deltaAtt > 0) {

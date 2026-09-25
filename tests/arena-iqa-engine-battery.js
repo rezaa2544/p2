@@ -435,11 +435,83 @@ async function testFingerprintsAndConsistency() {
   }
 }
 
+/* ── PART D: regional aggregation / recommendation / early-warning No-Fabrication pins ── */
+async function testAggregationAndSignalIntegrity() {
+  console.log('\n════ PART D — regional aggregation, recommendation evidence, early-warning integrity ════');
+
+  /* EI-10: تجمیع منطقه‌ای با مدارس بدون داده */
+  {
+    const RG = require(path.join(ROOT, 'server/analytics/regional-intelligence-network.js'));
+    const E = 'EI-10';
+    const noDataSchools = [
+      { school_id: 1, health_index: { status: 'NO_DATA', score: null }, attendance_summary: { calendar_rate: null, chronic_absence_rate: null, peak_absence_day: null }, academic_summary: { average_gpa: null }, intervention_summary: { resolution_rate: null, active_cases_count: 0 } },
+      { school_id: 2, health_index: { status: 'NO_DATA', score: null }, attendance_summary: { calendar_rate: null, chronic_absence_rate: null, peak_absence_day: null }, academic_summary: { average_gpa: null }, intervention_summary: { resolution_rate: null, active_cases_count: 0 } }
+    ];
+    const h = RG.summarizeRegionalHealth({ schools: noDataSchools });
+    chk(E, 'aggregation: no-data schools do NOT fabricate regional averages (90.0/15.0)', h.average_attendance_rate === null && h.average_gpa === null, JSON.stringify(h).slice(0, 200));
+    chk(E, 'aggregation: no-data schools counted as NO_DATA, never HEALTHY', h.no_data_schools_count === 2 && h.healthy_schools_count === 0, JSON.stringify({ nd: h.no_data_schools_count, hl: h.healthy_schools_count }));
+    const snap = RG.buildRegionalSnapshot({ regionId: 10, schools: noDataSchools });
+    const sJson = JSON.stringify(snap);
+    chk(E, 'snapshot: constant effectiveness ratio 0.85/1.0 eliminated (null + NOT_MEASURED)', snap.intervention_summary.effective_interventions_ratio === null, JSON.stringify(snap.intervention_summary).slice(0, 200));
+    chk(E, 'snapshot: resolution/chronic/p-value not fabricated from constants', snap.intervention_summary.overall_resolution_rate === null && snap.attendance_patterns.average_chronic_absence_rate === null && snap.assessment_patterns.average_difficulty_p_value === null, sJson.slice(0, 200));
+    chk(E, 'snapshot: fabricated peak day (wednesday) eliminated for no-data region', snap.attendance_patterns.peak_absence_day === null, String(snap.attendance_patterns.peak_absence_day));
+    /* با داده واقعی: میانگین صحیح */
+    const realSchools = [
+      { school_id: 1, health_index: { status: 'HEALTHY', score: 90 }, attendance_summary: { calendar_rate: 94.0, chronic_absence_rate: 4.0, peak_absence_day: 'wednesday' }, academic_summary: { average_gpa: 16.0 }, intervention_summary: { resolution_rate: 80.0, active_cases_count: 1 } },
+      { school_id: 2, health_index: { status: 'NO_DATA', score: null }, attendance_summary: { calendar_rate: null, chronic_absence_rate: null, peak_absence_day: null }, academic_summary: { average_gpa: null }, intervention_summary: { resolution_rate: null, active_cases_count: 0 } }
+    ];
+    const h2 = RG.summarizeRegionalHealth({ schools: realSchools });
+    chk(E, 'aggregation: mixed region averages ONLY over schools with real data (94.0/16.0)', h2.average_attendance_rate === 94.0 && h2.average_gpa === 16.0, JSON.stringify({ att: h2.average_attendance_rate, gpa: h2.average_gpa }));
+  }
+
+  /* EI-13: شواهد پیشنهاد بدون مقدار جعلی */
+  {
+    const R = require(path.join(ROOT, 'server/analytics/recommendation-action-planning.js'));
+    const E = 'EI-13';
+    /* فقط سیگنال حضور واقعی؛ chronic اندازه‌گیری نشده */
+    const recs = R.generateActionRecommendations({ schoolId: 1, schoolSnapshot: { attendance_rate: 70.0 } });
+    const attRec = recs.find((r) => r.trigger_source === 'ATTENDANCE_INTELLIGENCE');
+    chk(E, 'recommendation fires on REAL low attendance signal (70%)', !!attRec, 'recs=' + recs.length);
+    if (attRec) {
+      chk(E, 'recommendation evidence carries NO fabricated chronic rate (14.2)', attRec.evidence.chronic_absence_rate === null && attRec.evidence.absenceRate === null, JSON.stringify(attRec.evidence));
+      chk(E, 'recommendation evidence cites the real measured value (attendance 70)', attRec.evidence.attendance_rate === 70.0 && attRec.evidence.current_value === 70.0, JSON.stringify(attRec.evidence));
+    }
+    /* اسنپ‌شات خالی: هیچ پیشنهادی از پیش‌فرض ساخته نمی‌شود */
+    const emptyRecs = R.generateActionRecommendations({ schoolId: 1, schoolSnapshot: {} });
+    chk(E, 'empty snapshot ⇒ zero recommendations (no defaults-driven alarms)', emptyRecs.length === 0, 'recs=' + emptyRecs.length);
+    /* اثربخشی بدون خط مبنا: NOT_MEASURABLE نه دلتای جعلی */
+    const eff = R.evaluateActionEffectiveness({ actionRecord: { recommendation_id: 'X' }, preMetrics: {}, postMetrics: { attendance_rate: 92.0, average_gpa: 15.0 } });
+    chk(E, 'effectiveness without measured baseline ⇒ NOT_MEASURABLE + null deltas', eff.efficacy === 'NOT_MEASURABLE' && eff.deltas.attendance_rate === null && eff.deltas.average_gpa === null, JSON.stringify({ e: eff.efficacy, d: eff.deltas }));
+  }
+
+  /* EI-08: هشدار زودهنگام — نبود داده نه سرکوب هشدار است نه هشدار جعلی */
+  {
+    const IC = require(path.join(ROOT, 'server/analytics/intervention-case-management.js'));
+    const E = 'EI-08';
+    let w1; try { w1 = IC.evaluateEarlyWarningRules({ studentId: 1, schoolId: 1, recentAttendanceRate: 70.0, consecutiveAbsences: 0 }); } catch (e) { w1 = { threw: e.message }; }
+    const w1alerts = Array.isArray(w1) ? w1 : (w1.alerts || []);
+    chk(E, 'early-warning fires on real 70% attendance even when GPA unknown', !w1.threw && w1alerts.some((a) => a.trigger_type === 'CHRONIC_ABSENCE_ALERT'), JSON.stringify(w1).slice(0, 200));
+    chk(E, 'early-warning: unknown GPA does not trigger fabricated academic alerts', !w1.threw && !w1alerts.some((a) => String(a.reason || '').includes('null') || a.trigger_type === 'CRITICAL_ACADEMIC_DROP'), JSON.stringify(w1alerts).slice(0, 250));
+    let oc = null;
+    try {
+      oc = IC.evaluateInterventionOutcome({
+        caseRecord: { case_id: 1, student_id: 1, school_id: 1, status: 'EVALUATING', baseline_metrics: { gpa: null, attendance_rate: null } },
+        postMetrics: { gpa: 18.0, attendance_rate: 95.0 },
+        evaluatorId: 9,
+        evaluatorRole: 'counselor'
+      });
+    } catch (e) { oc = { threw: e.message }; }
+    const effLevel = oc && (oc.efficacy_level || oc.efficacyLevel);
+    chk(E, 'intervention outcome without real baseline ⇒ NOT_MEASURABLE (no fake HIGHLY_EFFECTIVE)', !oc.threw && effLevel === 'NOT_MEASURABLE', oc.threw || String(effLevel));
+  }
+}
+
 (async () => {
   console.log('Arena IQA — 21-engine D1–D7 battery @ ' + require('child_process').execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim());
   await testWiredEngines();
   await testUnwiredEngines();
   await testFingerprintsAndConsistency();
+  await testAggregationAndSignalIntegrity();
   console.log('\n──────────────────────────────────────────────────');
   console.log(`ARENA IQA BATTERY: ${pass} PASS / ${fail} FAIL`);
   if (findings.length) {
