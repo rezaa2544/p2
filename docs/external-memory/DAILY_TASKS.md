@@ -57,3 +57,14 @@ A task is not marked Done because an agent says it is done. It is Done only when
 ## FINAL SYNCHRONIZATION RECEIPT — 2026-09-25
 **Exact main HEAD after this synchronization series:** `7c1a4ce3c29810910bfee72e17358d81032c33ea`.
 This SHA includes the synchronization updates themselves. The verification registry remains intentionally bound to `e4584806c1af2a1e5db648c8452580a8fa8cbcec` until the hardening SHA is frozen and evidence is regenerated; therefore this receipt is a project-state update, not a certification.
+
+
+## 2026-09-25 — ROOT-CAUSE FIRST UPDATE
+
+### New P0 tasks
+1. [ ] Create the Invariant Registry and map A-18/A-20/A-22/A-24/A-34/A-35 to every entrypoint/configuration/state transition.
+2. [ ] Build Reappearance Regression Suite from previously recurring findings; preserve negative/adversarial cases permanently.
+3. [ ] Add automatic REVALIDATION_REQUIRED semantics when material code merges invalidate prior evidence.
+4. [ ] Build mutation/auth/failure configuration inventories and identify untested alternate paths.
+5. [ ] Audit twin policy implementations and move OCC/ownership/tenant/revocation/conflict toward one authoritative contract.
+6. [ ] For every A-30..A-39 item, record why the previous control did not prevent the new observation.
