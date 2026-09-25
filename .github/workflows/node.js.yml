@@ -73,6 +73,8 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm ci
+    - name: Comprehensive canonical regression runner
+      run: npm run test:all
     - name: Runtime Reliability — Lease fencing static contract
       run: node tests/outbox-lease-fencing.test.js
     - name: Security — independent adversarial A-18..A-22 battery
