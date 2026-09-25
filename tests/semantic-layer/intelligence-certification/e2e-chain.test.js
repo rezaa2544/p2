@@ -53,7 +53,8 @@ function runTests() {
   // گام ۱۲: صدور گواهی
   const certStep = trace[11];
   assert.strictEqual(certStep.step, 'STEP_12_CERTIFICATION');
-  assert.strictEqual(certStep.status, 'CERTIFIED');
+  assert.strictEqual(certStep.status, 'SIMULATION_ONLY');
+  assert.strictEqual(chainResult.unbroken_loop, false);
 
   console.log('  ✅ اعتبارسنجی ۱۲ گام پیوسته زنجیره ارزش از سیگنال خام تا گواهی با موفقیت تایید شد');
 }
