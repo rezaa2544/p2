@@ -4,7 +4,7 @@
    واقعاً نقضِ قرارداد را می‌گیرد (سبزِ جعلی ممنوع).
    هر جهش: نقضی عمدی در server/db.js تزریق و tests/wave10-pg-live.js
    اجرا می‌شود — باید قرمز شود (جهش در کپیِ جدا — الگوی امن BH-mut).
-   بدونِ باینری‌هایِ PG (PATH یا PG_LIVE_BIN) یا ماژولِ pg: self-skip.
+   بدونِ باینری‌هایِ PG (PATH یا PG_LIVE_BIN) یا ماژولِ pg: fail-closed prerequisite gate.
    اجرا: PG_LIVE_BIN=/path/to/pg/bin node tests/wave10-pg-live-mutations.js
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
@@ -27,8 +27,8 @@ function findPgBin() {
 function hasPgModule() { try { require.resolve('pg'); return true; } catch (e) { return false; } }
 if (!findPgBin() || !hasPgModule()) {
   console.log('  ⏭️  wave10 pg live mutations — باینری‌هایِ PG یا ماژولِ pg در دسترس نیستند');
-  console.log('wave10-pg-live-mutations: 0/0 (skip)؛ سبزِ نهایی: ✅');
-  process.exit(0);
+  console.log('wave10-pg-live-mutations: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisites are NOT-RUN and exit 2');
+  process.exit(2);
 }
 
 const ROOT = path.join(__dirname, '..');
