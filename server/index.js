@@ -209,6 +209,19 @@ async function seedPgFromBootstrap(store, db) {
       }
       if (!cleanRows.length) continue;
 
+        /* F1 hardening: bootstrap JSON may contain legacy semantic grade strings while
+         PostgreSQL keeps the numeric grade in a separate column. Preserve the
+         semantic value in grade_level instead of letting a type error silently
+         discard the whole row. */
+      if (col === 'classes' && fieldSet.has('grade') && fieldSet.has('grade_level')) {
+        for (const row of cleanRows) {
+          if (row.grade != null && !Number.isFinite(Number(row.grade))) {
+            if (row.grade_level == null) row.grade_level = String(row.grade);
+            delete row.grade;
+          }
+        }
+        fieldSet.delete('grade');
+      }
       const rowFields = Array.from(fieldSet);
       try {
         await db.transaction(async (client) => {
