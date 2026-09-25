@@ -28,7 +28,7 @@ function suspiciousTestHit(label, file, source, index) {
   if(!rel.startsWith('tests/')) return false;
   if(label==='process.exit(0)'){
     const before=source.slice(0,index).replace(/\/\*[\s\S]*?\*\//g,'').replace(/\/\/[^\n]*/g,'');
-    return !/(?:\\bpass\\b|\\bfail\\b|\\bassert\\s*\\(|\\bchk\\s*\\(|\\btest\\s*\\(|\\bexpect\\s*\\()/.test(before);
+    return !/(?:\bpass\b|\bfail\b|\bassert\s*\(|\bchk\s*\(|\btest\s*\(|\bexpect\s*\()/.test(before);
   }
   return true;
 }
