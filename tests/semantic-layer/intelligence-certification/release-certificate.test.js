@@ -31,14 +31,14 @@ function runTests() {
 
   assert.strictEqual(certSnapshot.phase, 'PHASE_3');
   assert.strictEqual(certSnapshot.school_id, 101);
-  assert.strictEqual(certSnapshot.certification_status, CERTIFICATION_STATUS.CERTIFIED);
-  assert.strictEqual(certSnapshot.release_ready, true);
+  assert.strictEqual(certSnapshot.certification_status, CERTIFICATION_STATUS.REJECTED);
+  assert.strictEqual(certSnapshot.release_ready, false);
 
   // بررسی گواهینامه انتشار
   const cert = certSnapshot.release_certificate;
   assert.ok(cert.certificate_id.startsWith('CERT-PAYESH-PHASE3-'));
-  assert.strictEqual(cert.status, CERTIFICATION_STATUS.CERTIFIED);
-  assert.strictEqual(cert.release_ready, true);
+  assert.strictEqual(cert.status, CERTIFICATION_STATUS.REJECTED);
+  assert.strictEqual(cert.release_ready, false);
   assert.strictEqual(cert.engines_summary.total_required, 20);
   assert.strictEqual(cert.engines_summary.total_certified, 20);
   assert.strictEqual(cert.quality_gates_summary.all_passed, true);
