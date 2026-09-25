@@ -132,9 +132,9 @@ function buildParent360Profile(params = {}, options = {}) {
   const attNumerator = presentCount + (lateCount * 0.8);
   const attendanceRate = totalSessions > 0
     ? roundTo((attNumerator / totalSessions) * 100, 1)
-    : 100.0;
+    : null;
 
-  let attendanceStatus = 'EXCELLENT';
+  let attendanceStatus = totalSessions === 0 ? 'NO_DATA' : 'EXCELLENT';
   if (attendanceRate < 80.0 || unexcusedCount >= 3) attendanceStatus = 'CRITICAL';
   else if (attendanceRate < 90.0 || unexcusedCount >= 1) attendanceStatus = 'WARNING';
   else if (attendanceRate < 95.0) attendanceStatus = 'STABLE';
