@@ -7,7 +7,7 @@
    Authorization:
      • list & resolve require `manager` or `superadmin`
      • `manager` is strictly scoped to their own `school_id`
-       (school_id == null conflicts are global and visible to any manager)
+       (global conflicts require superadmin)
      • `superadmin` sees and resolves across all schools
    Persistence:
      • SSoT when PostgreSQL is live: PostgreSQL `sync_conflicts` table
@@ -52,7 +52,7 @@ function createConflicts(ctx) {
         let sql = 'SELECT id, collection, record_id, school_id, base_version, server_version, server_state, incoming, status, winner, resolved_by, resolved_at, reason, created_at, updated_at FROM sync_conflicts WHERE 1=1';
         const params = [];
         if (s.role === 'manager') {
-          sql += ' AND (school_id IS NULL OR school_id = $1)';
+          sql += ' AND school_id = $1';
           params.push(s.school_id);
         }
         sql += ' ORDER BY CASE WHEN status = \'open\' THEN 0 ELSE 1 END, created_at DESC LIMIT 50';
@@ -61,13 +61,14 @@ function createConflicts(ctx) {
           return sendJson(res, 200, { ok: true, conflicts: resPg.rows });
         }
       } catch (err) {
-        console.error('[CONFLICTS] PG apiList query failed, falling back to cache:', err.message);
+        return sendJson(res, 503, { ok: false, code: 'pg_unavailable' });
       }
     }
 
+    if (pgLive) return sendJson(res, 503, { ok: false, code: 'pg_unavailable' });
     if (!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
     const scoped = s.role === 'manager'
-      ? store.sync_conflicts.filter(c => c.school_id == null || Number(c.school_id) === Number(s.school_id))
+      ? store.sync_conflicts.filter(c => c.school_id != null && Number(c.school_id) === Number(s.school_id))
       : store.sync_conflicts;
     scoped.sort((a, b) =>
       ((a.status === 'open') === (b.status === 'open') ? 0 : (a.status === 'open' ? -1 : 1))
@@ -80,6 +81,16 @@ function createConflicts(ctx) {
     if (!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
     if (s.role !== 'manager' && s.role !== 'superadmin')
       return sendJson(res, 403, { ok: false, code: 'role_denied' });
+
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return sendJson(res, 400, { ok: false, code: 'bad_payload' });
+    if (Object.keys(body).some(k => !['conflict_id','id','winner','reason'].includes(k))) return sendJson(res, 400, { ok: false, code: 'unknown_field' });
+    const suppliedId = body.conflict_id !== undefined ? body.conflict_id : body.id;
+    if (typeof suppliedId !== 'number' || !Number.isSafeInteger(suppliedId) || suppliedId < 1 ||
+        (body.id !== undefined && body.conflict_id !== undefined && body.id !== body.conflict_id) ||
+        !['incoming','server'].includes(body.winner) ||
+        (body.reason !== undefined && (typeof body.reason !== 'string' || body.reason.length > 200))) {
+      return sendJson(res, 400, { ok: false, code: 'bad_payload' });
+    }
 
     const trimmed = shallowTrim(body);
     const conflictId = trimmed.conflict_id || trimmed.id;
@@ -133,7 +144,7 @@ function createConflicts(ctx) {
 
     if (!c) return sendJson(res, 404, { ok: false, code: 'not_found' });
 
-    if (s.role === 'manager' && c.school_id != null && Number(c.school_id) !== Number(s.school_id))
+    if (s.role === 'manager' && (c.school_id == null || Number(c.school_id) !== Number(s.school_id)))
       return sendJson(res, 403, { ok: false, code: 'out_of_scope' });
 
     if (c.status === 'resolved')
