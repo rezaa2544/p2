@@ -25,7 +25,7 @@
 |---|---|
 | نسخه | **v1.0.0** — اولین انتشار رسمی |
 | تاریخ | 2026-09-10 |
-| تعداد مسیرها | **۱۲ نسخه‌دار** (`/api/v1/`) + **۱۸ پلتفرمی** + ۱ فقط-تست (جمعاً **۳۱ عملیات** — جدول §۴؛ دو مسیر هنگام تدوین اسپک در کد کشف شد) |
+| تعداد مسیرها | **۱۲ نسخه‌دار پایه** (`/api/v1/` جدول §۴.۱) **+ مسیرهای هوشمندی/گزارش/سیستم** (§۴.۳) + **۱۸ پلتفرمی** + ۱ فقط-تست (جمع جاری را `node tools/openapi-drift.js` اعلام می‌کند؛ جدول §۴ فهرست پایه است نه سقف) |
 | احراز | نشست کوکی‌محور (`HttpOnly; Secure; SameSite=Lax`) + جی‌دابلیوتی سخت‌شده (`iss/aud/iat/exp/jti`) + ابطال روی ردیس مشترک |
 | مجوز | مدل یکتای `server/policy.js` + `authz/write-perms.json` (گیت `check-authz`) |
 | نسخهٔ پروتکل همگام‌سازی | **A01** (§۸ همین سند) |
@@ -78,6 +78,17 @@
 | GET | `/api/health-index` | شاخص سلامت مدرسه (ج.۱) | 👑 سوپرادمین | عمومی | جی‌سان |
 | GET | `/metrics` | اسکراپ پرومتئوس (ویو ۱۴) | توکن `X-Metrics-Token` | — | متن پرومتئوس |
 | GET | `/api/__slow` | 🔧 فقط-تست: اثبات درین | 🔧 با `PAYESH_TEST_SLOW_MS` | — | — |
+
+### ۴.۳ مسیرهای هوشمندی، گزارش و سیستم (افزوده‌شده پس از v1.0.0 — فهرست از اسپک)
+
+| روش | مسیر | توضیح | احراز |
+|---|---|---|---|
+| GET | `/api/v1/analytics/school-intelligence` … `/api/v1/analytics/intelligence-certification` (۱۳ مسیر P0-EI) | هوشمندی آموزشی فاز ۳ | 🍪 |
+| GET | `/api/v1/analytics/semantic-metrics` · `assessment-quality` · `attendance-risk` · `student-timeline` · `intervention-warnings` · `school-health-dashboard` · `parent-360` · `teacher-evidence` (۸ مسیر Phase 9.0) | اتصال هشت موتور F-EI-01 | 🍪 |
+| GET | `/api/v1/reports/academic` · `attendance` · `finance` · `teachers` | گزارش وزارتی Wave 23 | 🍪 |
+| GET | `/api/v1/system/*` · `/api/system/canary/*` | سلامت/گواهی/فدراسیون/ملی/قناری | 🍪 |
+
+> جمع دقیق عملیات‌ها = خروجی `node tools/openapi-drift.js` (امروز ۹۱)؛ این جدول فهرست انسانی است و ابزار، مرجع ماشینی.
 
 ## ۵) تاریخچهٔ تغییرات شکننده
 

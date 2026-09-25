@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // tests/openapi-drift.js — تست تشخیص دریفت بین کد سرور و اسپک (مأموریت ۳۶، چت ۶)
+// قرارداد جاری (MUSE_SPARK 2026-09-25): شمار عملیات از جدول واقعی مشتق می‌شود؛
 // ۱) اجرای ابزار روی ریپو: باید صفر دریفت باشد.
 // ۲) پروندهٔ منفی درون‌حافظه‌ای: حذف یک مسیر از اسپک ⇒ تشخیص درست.
 // ۳) پروندهٔ مثبت کاذب: افزودن مسیر غیرواقعی به اسپک ⇒ تشخیص درست.
@@ -49,8 +50,10 @@ function extractSpec(text) {
   }
   return set;
 }
+/* H-04: __slow فقط-تست و env-gated است؛ در هر دو سو allowlist می‌شود تا محیط، دریفت کاذب نسازد. */
+const TEST_ONLY_ALLOW = new Set(['GET /api/__slow']);
 function diff(codeSet, specSet) {
-  const missing = [...codeSet].filter((k) => !specSet.has(k));
+  const missing = [...codeSet].filter((k) => !specSet.has(k) && !TEST_ONLY_ALLOW.has(k));
   const ghost = [...specSet].filter((k) => !codeSet.has(k));
   return { missing, ghost };
 }
@@ -72,7 +75,7 @@ console.log('\n■ همسانی اسپک و کد');
 const d0 = diff(codeSet, extractSpec(specText));
 chk('هیچ مسیر جاافتاده‌ای نیست', d0.missing.length === 0);
 chk('هیچ مسیر شبحی نیست', d0.ghost.length === 0);
-chk('شمار عملیات کد = ۳۱', codeSet.size === 31);
+chk('شمار عملیات کد با اسپک برابر است (نه عدد جادویی)', codeSet.size === extractSpec(specText).size && codeSet.size > 0);
 chk('دو مسیر کشف‌شده از کد در اسپک هست', codeSet.has('GET /api/health-index') && codeSet.has('GET /metrics'));
 
 console.log(`\nنتیجه: ${fa(pass)} موفق / ${fa(fail)} ناموفق (از ${fa(pass + fail)})`);

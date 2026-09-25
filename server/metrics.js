@@ -369,6 +369,11 @@ const ROUTE_EXACT = new Set([
   '/api/v1/analytics/decision-command', '/api/v1/analytics/operational-execution',
   '/api/v1/analytics/outcome-evaluation', '/api/v1/analytics/intelligence-platform',
   '/api/v1/analytics/intelligence-certification',
+  /* Phase 9.0 semantic engines (MUSE_SPARK 2026-09-25): از allowlist جا مانده بودند و api_unmatched می‌گرفتند */
+  '/api/v1/analytics/semantic-metrics', '/api/v1/analytics/assessment-quality',
+  '/api/v1/analytics/attendance-risk', '/api/v1/analytics/student-timeline',
+  '/api/v1/analytics/intervention-warnings', '/api/v1/analytics/school-health-dashboard',
+  '/api/v1/analytics/parent-360', '/api/v1/analytics/teacher-evidence',
   /* System Health & Certification endpoints */
   '/api/v1/system/scalability-health', '/api/v1/system/event-processing-health',
   '/api/v1/system/observability-health', '/api/v1/system/disaster-recovery-health',

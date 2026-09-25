@@ -16,7 +16,7 @@ catch (e) {
   /* P1-GAP-01/02 (Chat 2 remediation): silent skip (exit 0) ممنوع — jsdom
      موجود نیست یا Node از engines کهنه‌تر است ⇒ قرمزِ صریح، نه سبزِ کاذب. */
   console.error('❌ jsdom بارگیری نشد — ' + ((e && e.message) || e));
-  console.error('   Node ' + process.versions.node + ' — jsdom 30 نیازمند Node >= 22.22 است؛ npm i --no-save jsdom');
+  console.error('   Node ' + process.versions.node + ' — jsdom 30 نیازمند Node >= 22.0.0 است (مطابق engines در package.json)؛ npm i --no-save jsdom');
   process.exit(1);
 }
 

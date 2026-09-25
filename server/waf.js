@@ -159,7 +159,7 @@ async function wafMiddleware(req, res) {
           res.end(body);
           return;
         }
-      } catch (e) { /* fail-open — به حالتِ report برمی‌گردد */ }
+      } catch (e) { /* report-mode fallback: خودِ evaluateInput هرگز throw نمی‌دهد (قرارداد میدلویر)؛ این catch فقط نگهبان نهایی است و در enforce خرابی باید در audit دیده شود */ }
     }
     if (verdict && !w.blocked) { try { await throttledAudit(verdict, ip); } catch (e) {} }
   } catch (e) {

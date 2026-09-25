@@ -124,6 +124,22 @@ test('فونت Vazirmatn به‌صورت base64 جاسازی شده', () => {
   assert(html.includes('data:font/woff2;base64,'), 'فونت جاسازی‌شده یافت نشد');
 });
 
+test('سرویس‌ورکر هیچ fetch خارجی ندارد (L-04)', () => {
+  const sw = read(path.join(ROOT, 'sw.js'));
+  const bad = sw.match(/https?:\/\/(?!localhost|127\.0\.0\.1)[^"'\s]+/gi) || [];
+  assert(bad.length === 0, `یافت شد: ${bad.slice(0, 3).join(' | ')}`);
+});
+
+test('مانیفست فقط دارایی داخلی دارد و آیکن‌ها موجودند (L-05)', () => {
+  const mf = JSON.parse(read(path.join(ROOT, 'manifest.json')));
+  const urls = JSON.stringify(mf).match(/https?:\/\/[^"'\s]+/gi) || [];
+  assert(urls.length === 0, `نشانی خارجی در مانیفست: ${urls.slice(0, 3).join(' | ')}`);
+  for (const ic of (mf.icons || [])) {
+    const rel = String(ic.src || '').replace(/^\//, '');
+    assert(rel && !/^https?:\/\//i.test(rel), `آیکن خارجی: ${ic.src}`);
+  }
+});
+
 test('هیچ درخواست fetch/XHR به دامنه خارجی نیست', () => {
   const bad = html.match(/(?:fetch|XMLHttpRequest)\s*\(\s*["']https?:\/\//gi) || [];
   assert(bad.length === 0, `یافت شد: ${bad.join(' | ')}`);
