@@ -481,3 +481,29 @@ Do not enter the broad Capability/Role/E2E/Performance certification campaign un
 ## FINAL SYNCHRONIZATION RECEIPT — 2026-09-25
 **Exact main HEAD after this synchronization series:** `7c1a4ce3c29810910bfee72e17358d81032c33ea`.
 This SHA includes the synchronization updates themselves. The verification registry remains intentionally bound to `e4584806c1af2a1e5db648c8452580a8fa8cbcec` until the hardening SHA is frozen and evidence is regenerated; therefore this receipt is a project-state update, not a certification.
+
+
+## P0 — ROOT-CAUSE REAPPEARANCE ELIMINATION
+
+A new cross-report analysis is now a prerequisite to A-30..A-39 closure.
+
+### Why this is first priority
+Repeated reports show that a local fix can pass its own regression while a later audit finds the same invariant broken in another route, configuration, state transition, or newer HEAD. The project must therefore prove invariant preservation, not only patch correctness.
+
+### Required controls
+1. Invariant Registry: map each high-risk invariant to all entrypoints, states, configs, failures and reviewers.
+2. Reappearance Suite: permanently preserve every historical recurrence as a regression/negative/adversarial test.
+3. Evidence invalidation: material merge invalidates affected evidence until current-head re-execution.
+4. Complete inventories: REST/sync/worker/client mutations; role/tenant/ownership authorization; PG/Redis/provider/env/legacy/strict/restart failure modes.
+5. Authoritative policies: eliminate semantic drift between twin authorization/OCC implementations.
+6. Root-cause closure: future status reports must include why the previous fix failed to prevent recurrence.
+
+### Priority cases
+A-20 = incomplete mutation inventory.
+A-22 = incomplete configuration/failure matrix.
+A-18/A-24 = multi-path state ownership plus SHA/evidence drift.
+A-34/A-35 = twin authorization gates plus current-head boundary.
+A-31/A-37 = fallback semantics plus certification/test-integrity weakness.
+
+### Gate
+No recurring item can be promoted directly from FIXED to CERTIFIED. It must pass the new root-cause closure contract first.
