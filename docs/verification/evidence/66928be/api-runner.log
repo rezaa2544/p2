@@ -1,0 +1,12 @@
+== COMMAND: node tests/api/runner.js ==
+== HEAD(product tree): 66928be6227567f3d92b2c93a2d5f8146a4601b8 ==
+== DATE: 2026-09-25T07:59:53Z ==
+== RUNTIME: v22.14.0 / PAYESH_ALLOW_DEV_MEMORY_AUTHORITY=1, JSON store, no PG/Redis ==
+== EXIT_CODE: 0 ==
+
+
+کل آزمون‌های API اجبار ظرفیت ملی: 12 آزمون موفق — بدون خطا ✅
+
+────────────────────────────────────────────────────
+نتیجه کلی RESTful API Tests: 30/30 سوئیت موفق — بدون خطا ✅
+────────────────────────────────────────────────────

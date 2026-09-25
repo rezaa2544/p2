@@ -4,6 +4,8 @@ data/*.sqlite
 data/*.db
 data/backups/
 *.log
+# استثنا: artifactهای رجیستری راستی‌آزمایی باید کامیت شوند (A-38)
+!docs/verification/evidence/**
 .DS_Store
 Thumbs.db
 .env
