@@ -82,3 +82,8 @@ The registry is **not current**: it remains bound to `e4584806`. The current mai
 
 ### Definition of Done for every future item
 **Finding → Reproduce → Root Cause → Fix → Regression Test → Execute → Evidence → Independent Review → Current-HEAD Rebind.**
+
+
+## FINAL SYNCHRONIZATION RECEIPT — 2026-09-25
+**Exact main HEAD after this synchronization series:** `7c1a4ce3c29810910bfee72e17358d81032c33ea`.
+This SHA includes the synchronization updates themselves. The verification registry remains intentionally bound to `e4584806c1af2a1e5db648c8452580a8fa8cbcec` until the hardening SHA is frozen and evidence is regenerated; therefore this receipt is a project-state update, not a certification.
