@@ -169,3 +169,18 @@ Registry فعلی هنوز evidence را به `e4584806` bind می‌کند و �
 F-1a..F-5 و drillهای Redis outage / PG outage / worker crash / queue saturation / notification growth / graceful shutdown باید صریحاً در A-25/A-27 باقی بمانند. اینها duplicate item نیستند؛ acceptance criteria تکمیلی‌اند.
 
 **قانون:** هیچ‌یک از A-30..A-39 به‌دلیل گزارش تاریخی green محسوب نمی‌شود.
+
+
+## 2026-09-25 — Current-main synchronization note
+
+Main has moved beyond the 2026-09-25 reconciliation baseline through PR #415/#416 and subsequent documentation synchronization commits. The A-30..A-39 queue therefore remains active and must be evaluated against the final hardening SHA, not automatically against 4938631 or e4584806.
+
+### Current interpretation of recent evidence
+- A-31: verification/publication work is now merged, but semantic/certification residuals remain evidence-gated.
+- A-34: prior sync authorization fixes/evidence exist, but closure requires current-main reconciliation and REST+sync+conflict regression.
+- A-35: product remediation and evidence bundle are present in main history; exact-current-head re-verification is still required.
+- A-24: Arena current-head publication demonstrates strong scoped runtime evidence, but its global invariant remains NOT VERIFIED because legacy missing-base/LWW behavior intentionally fails 30 cells and E4/multi-host/device durability remain outside proof.
+- A-38: registry remains stale by design until the final hardening SHA is frozen.
+
+### Do not close the queue from publication alone
+The repository now contains substantially more evidence, but publication ≠ certification. Every disposition still requires exact SHA, root cause, fix or explicit disposition, regression, execution result, artifact and independent review where required.
