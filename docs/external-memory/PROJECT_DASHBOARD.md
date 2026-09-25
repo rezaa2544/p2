@@ -120,3 +120,36 @@ Every future execution prompt must contain a Delivery Contract:
 STATUS / COMMIT / PUSHED / PR / TARGET / TESTS / EVIDENCE.
 
 This control exists because previous prompts required push but the requirement was not mechanically enforced at handoff.
+
+
+
+## FRESH DEFECT PRIORITY — 2026-09-25
+
+Canonical register: `docs/audit/MASTER_DEFECT_PRIORITY_2026-09-25.md`.
+
+### P0
+- [ ] F1 — bootstrap/PG seed data-loss + identity-sequence/upsert corruption; root-cause fix.
+- [ ] A-30 — Strict Verification Gate closure.
+- [ ] A-37 — test-integrity / false-green closure.
+
+### P1
+- [ ] F4 — analytics region authorization bypass.
+- [ ] F2 — legacy parent PG schema drift.
+- [ ] A-31 — intelligence semantic/certification residuals.
+- [ ] A-32 — SMS/PG mirror/restart/idempotency.
+- [ ] A-33 — PG delegation persistence parity.
+- [ ] A-34 — sync authorization parity.
+- [ ] A-35 — Mission-5 authz recurrence.
+- [ ] A-36 — PG migration/test infrastructure.
+- [ ] A-18/A-20/A-24 — sync/OCC/conflict root-cause closure.
+- [ ] A-38 — final registry rebind.
+
+### Revalidation only
+- [ ] F3 — parent_links pull exposure mitigation, final regression.
+- [ ] F5 — edu_office province-resolution mitigation, final regression.
+
+### Atria ownership
+- [ ] Atria-1: F1/F2/F4 + A-31..A-36 + product/runtime security/data root causes.
+- [ ] Atria-2: A-30/A-37/A-39 preparation + A-01..A-17/A-23 test/CI/operational carry-over + A-38 preparation.
+
+**Project state:** HARDENING / RECONCILIATION — NOT VERIFIED. Broad validation remains blocked.
