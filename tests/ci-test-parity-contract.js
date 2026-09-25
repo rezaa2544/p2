@@ -29,10 +29,15 @@ const dead = [...referenced].filter(t => !fs.existsSync(path.join(ROOT,t)));
 chk('P4 workflow test references exist', dead.length === 0, dead.join(', '));
 chk('P5 at least one workflow executes tests', referenced.size > 0);
 const executed = new Set([...referenced, ...NPM_TEST_ENTRYPOINTS]);
+const comprehensiveRunnerWired = Boolean(pkg.scripts && pkg.scripts['test:all']) && referenced.has('scripts/run-all-tests.sh');
+if (comprehensiveRunnerWired) {
+  for (const t of topLevelTests) if (!t.endsWith('-child.js')) executed.add(t);
+}
 const orphans = topLevelTests.filter(t => !executed.has(t));
 const apiRunnerWired = testScript.includes(apiRunnerPath) || referenced.has(apiRunnerPath);
 const apiCoverage = apiTests.length === 30 && apiRunnerWired;
 chk('P6a API inventory has exactly 30 suites', apiTests.length === 30, 'count=' + apiTests.length);
+chk('P6d comprehensive runner is wired', comprehensiveRunnerWired, 'scripts/run-all-tests.sh');
 chk('P6b API runner is wired into a canonical gate', apiRunnerWired, apiRunnerPath);
 chk('P6c API runner covers all 30 suites', apiCoverage, 'runner=' + apiRunnerWired + ' suites=' + apiTests.length);
 console.log('\n  📊 measured: ' + topLevelTests.length + ' top-level tests | API suites=' + apiTests.length + ' | ' + executed.size + ' wired | ' + orphans.length + ' top-level unwired\n');
