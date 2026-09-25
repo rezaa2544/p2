@@ -13,8 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Checkout exact commit
+      - name: Checkout intended main commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
       - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
@@ -23,11 +25,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Strict verification contract
+        env:
+          STRICT_GATE_EXPECTED_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
         run: node tools/strict-verification-gate.js
       - name: Core tests
         run: npm test
+      - name: Detect production truth gate availability
+        id: prod_truth
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -n "$DATABASE_URL" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Production truth gate
-        if: ${{ env.DATABASE_URL != '' }}
+        if: ${{ steps.prod_truth.outputs.available == 'true' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GATE_REQUIRE_CLEAN: "1"
