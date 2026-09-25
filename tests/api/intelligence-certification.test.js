@@ -97,13 +97,16 @@ async function run() {
     assert.strictEqual(mgrOwnRes.json.school_id, 1);
     assert.ok(mgrOwnRes.json.intelligence_certification);
     assert.strictEqual(mgrOwnRes.json.intelligence_certification.phase, 'PHASE_3');
-    assert.strictEqual(mgrOwnRes.json.intelligence_certification.certification_status, 'CERTIFIED');
-    assert.strictEqual(mgrOwnRes.json.intelligence_certification.release_ready, true);
+    /* A-31 / I-08 + I-09: بدونِ شاهدِ گیت و شاهدِ رانتایم، گواهی «صادر شده»
+       نیست — انتظارِ صادقانه ردِ صدور است، نه ادعای صدور. */
+    assert.strictEqual(mgrOwnRes.json.intelligence_certification.certification_status, 'REJECTED');
+    assert.strictEqual(mgrOwnRes.json.intelligence_certification.release_ready, false);
+    assert.strictEqual(mgrOwnRes.json.intelligence_certification.e2e_chain_execution.verification_mode, 'SIMULATION');
     assert.strictEqual(mgrOwnRes.json.intelligence_certification.engines_completeness.total_required, 20);
     assert.strictEqual(mgrOwnRes.json.intelligence_certification.engines_completeness.active_count, 20);
     assert.ok(mgrOwnRes.json.release_certificate);
     assert.ok(mgrOwnRes.json.release_certificate.certificate_id.startsWith('CERT-PAYESH-PHASE3-'));
-    assert.strictEqual(mgrOwnRes.json.release_certificate.status, 'CERTIFIED');
+    assert.strictEqual(mgrOwnRes.json.release_certificate.status, 'REJECTED');
     assert.strictEqual(mgrOwnRes.json.release_certificate.governance_summary.human_decision_sovereignty, 'VERIFIED_STRICT');
     assert.strictEqual(mgrOwnRes.json.release_certificate.governance_summary.zero_ranking_policy, 'ENFORCED_ZERO_TOLERANCE');
     console.log('  ✅ CRT3: Manager gets 200 with 20-engine Phase 3 release certification snapshot');
@@ -132,8 +135,9 @@ async function run() {
     assert.strictEqual(regRes.status, 200, 'Admin accessing regional intelligence certification must return 200');
     assert.strictEqual(regRes.json.ok, true);
     assert.strictEqual(regRes.json.regional_intelligence_certification.zero_ranking, true);
-    assert.strictEqual(regRes.json.regional_intelligence_certification.certification_status, 'CERTIFIED');
-    assert.strictEqual(regRes.json.regional_intelligence_certification.release_ready, true);
+    /* A-31 / I-08: نمای منطقه‌ای هم بدون شاهد رانتایم ادعای صدور نمی‌کند. */
+    assert.strictEqual(regRes.json.regional_intelligence_certification.certification_status, 'REJECTED');
+    assert.strictEqual(regRes.json.regional_intelligence_certification.release_ready, false);
     console.log('  ✅ CRT6: Regional certification overview strictly enforces zero-ranking policy');
     pass++;
 

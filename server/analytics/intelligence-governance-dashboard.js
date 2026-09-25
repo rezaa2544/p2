@@ -140,11 +140,38 @@ function enforceGovernanceDashboardAccessGuard(requester, targetEntity, options 
  * @returns {Object}
  */
 function calculateAITransparencyScore(metrics = {}, options = {}) {
-  const exp = Math.min(100, Math.max(0, Number(metrics.explainability) || 0));
-  const ev = Math.min(100, Math.max(0, Number(metrics.evidenceAvailability ?? metrics.evidence_availability) || 0));
-  const ha = Math.min(100, Math.max(0, Number(metrics.humanApprovalRate ?? metrics.human_approval_rate) || 0));
-  const ac = Math.min(100, Math.max(0, Number(metrics.auditCoverage ?? metrics.audit_coverage) || 0));
-  const pc = Math.min(100, Math.max(0, Number(metrics.privacyCompliance ?? metrics.privacy_compliance) || 100));
+  /* A-31 / I-07: هر مؤلفه یا مقدارِ واقعی دارد یا غایب است؛ مؤلفهٔ غایب
+     صفرِ پنهان نمی‌گیرد و اگر هر مؤلفهٔ اصلی غایب باشد، کل نمره «نامشخص»
+     است — نه عددی که از دلِ نداشته‌ها ساخته شده باشد. */
+  const clamp = (v) => Math.min(100, Math.max(0, Number(v)));
+  const rawExp = metrics.explainability;
+  const rawEv = metrics.evidenceAvailability ?? metrics.evidence_availability;
+  const rawHa = metrics.humanApprovalRate ?? metrics.human_approval_rate;
+  const rawAc = metrics.auditCoverage ?? metrics.audit_coverage;
+  const pc = clamp(metrics.privacyCompliance ?? metrics.privacy_compliance ?? 100);
+
+  const missing = [rawExp, rawEv, rawHa, rawAc].filter((v) => v == null || v === '').length > 0;
+
+  if (missing) {
+    return deepFreeze({
+      score: null,
+      level: 'NO_DATA',
+      components: {
+        explainability: rawExp != null && rawExp !== '' ? clamp(rawExp) : null,
+        evidence_availability: rawEv != null && rawEv !== '' ? clamp(rawEv) : null,
+        human_approval_rate: rawHa != null && rawHa !== '' ? clamp(rawHa) : null,
+        audit_coverage: rawAc != null && rawAc !== '' ? clamp(rawAc) : null,
+        privacy_compliance: Number(pc.toFixed(1))
+      },
+      data_status: 'NO_DATA',
+      calculated_at: options.timestamp || '2026-09-18T12:00:00.000Z'
+    });
+  }
+
+  const exp = clamp(rawExp);
+  const ev = clamp(rawEv);
+  const ha = clamp(rawHa);
+  const ac = clamp(rawAc);
 
   const weightedSum = (0.30 * exp) + (0.25 * ev) + (0.20 * ha) + (0.15 * ac) + (0.10 * pc);
   const score = Number(weightedSum.toFixed(1));
@@ -186,19 +213,22 @@ function auditHumanApprovalCompliance(actions = [], options = {}) {
   const total = records.length;
 
   if (total === 0) {
+    /* A-31 / I-05: بی‌داده هرگز «منطبق/تأییدِ کامل» نیست. نرخ ۱۰۰٪ و وضعیت
+       COMPLIANT برای مجموعهٔ خالی، مثبتِ کاذبِ حاکمیتی بود. */
     return deepFreeze({
       total_actions: 0,
       approved_count: 0,
       rejected_count: 0,
       override_count: 0,
       unreviewed_count: 0,
-      approval_rate_pct: 100.0,
-      rejection_rate_pct: 0.0,
-      override_rate_pct: 0.0,
-      average_approval_time_hours: 0.0,
+      approval_rate_pct: null,
+      rejection_rate_pct: null,
+      override_rate_pct: null,
+      average_approval_time_hours: null,
       violations_detected: 0,
       violations: [],
-      compliance_status: 'COMPLIANT'
+      compliance_status: 'NO_DATA',
+      data_status: 'NO_DATA'
     });
   }
 
@@ -245,10 +275,16 @@ function auditHumanApprovalCompliance(actions = [], options = {}) {
   }
 
   const reviewedCount = approvedCount + rejectedCount;
-  const approvalRate = reviewedCount > 0 ? Number(((approvedCount / reviewedCount) * 100).toFixed(1)) : 100.0;
-  const rejectionRate = reviewedCount > 0 ? Number(((rejectedCount / reviewedCount) * 100).toFixed(1)) : 0.0;
-  const overrideRate = reviewedCount > 0 ? Number(((overrideCount / reviewedCount) * 100).toFixed(1)) : 0.0;
-  const avgTime = timedApprovalCount > 0 ? Number((totalApprovalTimeHours / timedApprovalCount).toFixed(1)) : 12.0;
+  /* A-31 / I-05: هیچ نرخ/میانگینی بدونِ مخرجِ واقعی ساخته نمی‌شود — اقدامِ
+     بررسی‌نشده یعنی «نامشخص»، نه تأییدِ ۱۰۰٪؛ و میانگینِ زمان بدونِ دادهٔ
+     زمان‌دار، ۱۲ ساعتِ جعلی نیست. */
+  const approvalRate = reviewedCount > 0 ? Number(((approvedCount / reviewedCount) * 100).toFixed(1)) : null;
+  const rejectionRate = reviewedCount > 0 ? Number(((rejectedCount / reviewedCount) * 100).toFixed(1)) : null;
+  const overrideRate = reviewedCount > 0 ? Number(((overrideCount / reviewedCount) * 100).toFixed(1)) : null;
+  const avgTime = timedApprovalCount > 0 ? Number((totalApprovalTimeHours / timedApprovalCount).toFixed(1)) : null;
+
+  const complianceStatus = violations.length > 0 ? 'NON_COMPLIANT'
+    : (reviewedCount === 0 ? 'INSUFFICIENT_DATA' : 'COMPLIANT');
 
   const result = {
     total_actions: total,
@@ -262,7 +298,8 @@ function auditHumanApprovalCompliance(actions = [], options = {}) {
     average_approval_time_hours: avgTime,
     violations_detected: violations.length,
     violations: violations,
-    compliance_status: violations.length > 0 ? 'NON_COMPLIANT' : 'COMPLIANT'
+    compliance_status: complianceStatus,
+    data_status: reviewedCount === 0 ? 'NO_REVIEWED_ACTIONS' : 'COMPLETE'
   };
 
   return deepFreeze(result);
@@ -398,8 +435,10 @@ function generateGovernanceAlerts(data = {}, options = {}) {
   }
 
   // ۲. هشدارهای بالا (HIGH)
-  const approvalRate = Number(data.approval_rate_pct ?? 100);
-  if (approvalRate < 70.0) {
+  /* A-31 / I-05 + I-07: متریکِ غایب، عددِ خوش‌بینانه نمی‌گیرد؛ فقدانِ داده
+     با هشدارِ «داده ناموجود» گزارش می‌شود تا پنهان نماند. */
+  const approvalRate = data.approval_rate_pct != null ? Number(data.approval_rate_pct) : null;
+  if (approvalRate != null && approvalRate < 70.0) {
     alerts.push({
       alert_id: `ALT-HIGH-${entityId}-LOW-APP-RATE`,
       severity: ALERT_SEVERITY.HIGH,
@@ -410,10 +449,21 @@ function generateGovernanceAlerts(data = {}, options = {}) {
       created_at: nowIso,
       resolved: false
     });
+  } else if (approvalRate == null) {
+    alerts.push({
+      alert_id: `ALT-MED-${entityId}-MISSING-APP-DATA`,
+      severity: ALERT_SEVERITY.MEDIUM,
+      code: 'MISSING_HUMAN_APPROVAL_DATA',
+      message: 'دادهٔ تأیید انسانی موجود نیست؛ نرخ تأیید قابل محاسبه نیست و «کامل» فرض نمی‌شود.',
+      entity_type: 'data_pipeline',
+      entity_id: entityId,
+      created_at: nowIso,
+      resolved: false
+    });
   }
 
-  const rejectionRate = Number(data.rejection_rate_pct ?? 0);
-  if (rejectionRate > 40.0) {
+  const rejectionRate = data.rejection_rate_pct != null ? Number(data.rejection_rate_pct) : null;
+  if (rejectionRate != null && rejectionRate > 40.0) {
     alerts.push({
       alert_id: `ALT-HIGH-${entityId}-HIGH-REJ-RATE`,
       severity: ALERT_SEVERITY.HIGH,
@@ -426,8 +476,8 @@ function generateGovernanceAlerts(data = {}, options = {}) {
     });
   }
 
-  const evidenceCoverage = Number(data.evidence_coverage_pct ?? 100);
-  if (evidenceCoverage < 60.0) {
+  const evidenceCoverage = data.evidence_coverage_pct != null ? Number(data.evidence_coverage_pct) : null;
+  if (evidenceCoverage != null && evidenceCoverage < 60.0) {
     alerts.push({
       alert_id: `ALT-HIGH-${entityId}-LOW-EVIDENCE`,
       severity: ALERT_SEVERITY.HIGH,
@@ -455,8 +505,8 @@ function generateGovernanceAlerts(data = {}, options = {}) {
     });
   }
 
-  const dataCompleteness = Number(data.data_completeness_pct ?? 100);
-  if (dataCompleteness < 80.0) {
+  const dataCompleteness = data.data_completeness_pct != null ? Number(data.data_completeness_pct) : null;
+  if (dataCompleteness != null && dataCompleteness < 80.0) {
     alerts.push({
       alert_id: `ALT-MED-${entityId}-DATA-INCOMPLETE`,
       severity: ALERT_SEVERITY.MEDIUM,
@@ -500,11 +550,14 @@ function buildGovernanceSnapshot({ schoolId, regionId, academicYear = '1404-1405
   const insightAudit = analyzeInsightLifecycle(insightsList, options);
 
   // ۴. محاسبه شاخص شفافیت
-  const explainability = data.explainability != null ? Number(data.explainability) : 90.0;
+  /* A-31 / I-07: مؤلفه‌های شفافیت فقط از دادهٔ واقعی می‌آیند؛ پیش‌فرض‌های
+     ۹۰/۹۵ حذف شدند. حریم خصوصی یک ثابتِ سیاستی است و به‌عنوان چنین علامت‌گذاری
+     می‌شود (نه اندازه‌گیری). */
+  const explainability = data.explainability != null ? Number(data.explainability) : null;
   const evidenceAvailability = insightAudit.evidence_coverage_pct;
   const humanApprovalRate = complianceAudit.approval_rate_pct;
-  const auditCoverage = data.audit_coverage != null ? Number(data.audit_coverage) : 95.0;
-  const privacyCompliance = 100.0;
+  const auditCoverage = data.audit_coverage != null ? Number(data.audit_coverage) : null;
+  const privacyCompliance = 100.0; /* ثابت سیاستی — نه متریک اندازه‌گیری‌شده */
 
   const transparencyScore = calculateAITransparencyScore({
     explainability,
@@ -542,16 +595,25 @@ function buildGovernanceSnapshot({ schoolId, regionId, academicYear = '1404-1405
     }
   }
 
-  const rawHealth = (0.50 * transparencyScore.score) + (0.30 * complianceAudit.approval_rate_pct) + (0.20 * privacyCompliance) - alertPenalty;
-  const healthScore = Number(Math.min(100, Math.max(0, rawHealth)).toFixed(1));
+  /* A-31 / I-02 + I-05: بدونِ مؤلفه‌های واقعی (شفافیت/نرخ تأیید)، سلامت
+     «نامشخص» است — هرگز سالم گزارش نمی‌شود. */
+  const hasHealthInputs = transparencyScore.score != null && complianceAudit.approval_rate_pct != null;
+  const rawHealth = hasHealthInputs
+    ? (0.50 * transparencyScore.score) + (0.30 * complianceAudit.approval_rate_pct) + (0.20 * privacyCompliance) - alertPenalty
+    : null;
+  const healthScore = hasHealthInputs ? Number(Math.min(100, Math.max(0, rawHealth)).toFixed(1)) : null;
 
-  let healthStatus = INTELLIGENCE_HEALTH_STATUS.HEALTHY;
-  if (hasCriticalAlert || healthScore < 60.0) {
+  let healthStatus;
+  if (!hasHealthInputs) {
+    healthStatus = 'NO_DATA';
+  } else if (hasCriticalAlert || healthScore < 60.0) {
     healthStatus = INTELLIGENCE_HEALTH_STATUS.CRITICAL;
   } else if (healthScore < 75.0) {
     healthStatus = INTELLIGENCE_HEALTH_STATUS.AT_RISK;
   } else if (healthScore < 90.0) {
     healthStatus = INTELLIGENCE_HEALTH_STATUS.DEGRADED;
+  } else {
+    healthStatus = INTELLIGENCE_HEALTH_STATUS.HEALTHY;
   }
 
   const result = {
@@ -597,6 +659,9 @@ function buildGovernanceSnapshot({ schoolId, regionId, academicYear = '1404-1405
       total_events: actionsList.length,
       recent_events_count: Math.min(5, actionsList.length)
     },
+    data_status: complianceAudit.data_status === 'NO_DATA' || transparencyScore.data_status === 'NO_DATA'
+      ? 'NO_DATA'
+      : (complianceAudit.data_status === 'NO_REVIEWED_ACTIONS' ? 'PARTIAL' : 'COMPLETE'),
     created_at: nowIso,
     automated_decision: false,
     human_controlled_policy: true,
@@ -629,9 +694,15 @@ function buildDistrictGovernanceOverview({ regionId, academicYear = '1404-1405',
   let highAlertsCount = 0;
   let mediumAlertsCount = 0;
 
+  /* A-31 / I-07: میانگینِ منطقه فقط روی مدارسی محاسبه می‌شود که واقعاً
+     متریک دارند؛ فال‌بک‌های ۸۰/۹۰/۸۵/۹۲ حذف شدند. */
+  let countedTransparency = 0;
+  let countedApproval = 0;
   for (const s of snapshots) {
-    totalTransparency += s.transparency_score ? s.transparency_score.score : 80;
-    totalApprovalRate += s.human_control_metrics ? s.human_control_metrics.approval_rate_pct : 90;
+    const tScore = s.transparency_score ? s.transparency_score.score : null;
+    if (tScore != null) { totalTransparency += tScore; countedTransparency++; }
+    const aRate = s.human_control_metrics ? s.human_control_metrics.approval_rate_pct : null;
+    if (aRate != null) { totalApprovalRate += aRate; countedApproval++; }
     for (const alt of (s.governance_alerts || [])) {
       if (alt.severity === ALERT_SEVERITY.CRITICAL) criticalAlertsCount++;
       else if (alt.severity === ALERT_SEVERITY.HIGH) highAlertsCount++;
@@ -639,8 +710,8 @@ function buildDistrictGovernanceOverview({ regionId, academicYear = '1404-1405',
     }
   }
 
-  const avgTransparency = totalSchools > 0 ? Number((totalTransparency / totalSchools).toFixed(1)) : 85.0;
-  const avgApproval = totalSchools > 0 ? Number((totalApprovalRate / totalSchools).toFixed(1)) : 92.0;
+  const avgTransparency = countedTransparency > 0 ? Number((totalTransparency / countedTransparency).toFixed(1)) : null;
+  const avgApproval = countedApproval > 0 ? Number((totalApprovalRate / countedApproval).toFixed(1)) : null;
 
   const result = {
     overview_id: `GOV-REG${normRegionId}-${academicYear}`.replace(/[^A-Za-z0-9_-]/g, '_'),
@@ -657,6 +728,7 @@ function buildDistrictGovernanceOverview({ regionId, academicYear = '1404-1405',
       medium_count: mediumAlertsCount,
       total_active_alerts: criticalAlertsCount + highAlertsCount + mediumAlertsCount
     },
+    data_status: (avgTransparency == null && avgApproval == null) ? 'NO_DATA' : 'COMPLETE',
     zero_ranking: true,
     created_at: nowIso,
     automated_decision: false,

@@ -234,10 +234,15 @@ function generatePrincipalActionCenter(snapshot = {}, options = {}) {
 
   // ۲. طغیان غیبت مزمن
   if (att.chronic_absence_rate >= 10.0) {
+    /* A-31 / I-03: روزِ اوج فقط وقتی ذکر می‌شود که واقعاً محاسبه شده باشد؛
+       ساختنِ «پایان هفته» برای دادهٔ غایب، جعلِ شواهد است. */
+    const peakClause = att.peak_absence_day
+      ? ` و احضار اولیا در روزهای اوج (${att.peak_absence_day})`
+      : ' (روز اوج غیبت هنوز از روی داده محاسبه نشده است)';
     actions.push({
       priority: 'CRITICAL',
       source: 'ATTENDANCE',
-      action: `رسیدگی به طغیان غیبت مزمن (${att.chronic_absence_rate}٪) و احضار اولیا در روزهای اوج (${att.peak_absence_day || 'پایان هفته'})`,
+      action: `رسیدگی به طغیان غیبت مزمن (${att.chronic_absence_rate}٪)${peakClause}`,
       deadline: '24h'
     });
   }

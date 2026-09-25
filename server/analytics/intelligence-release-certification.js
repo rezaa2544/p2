@@ -616,57 +616,68 @@ function validateZeroRankingCompliance(data = {}) {
  * @returns {Object}
  */
 function validateQualityGateStatus(options = {}) {
+  /* A-31 / I-09: وضعیت گیت‌ها فقط از «شاهد اجرا» می‌آید (options.gateResults).
+     بدون شاهد، همهٔ گیت‌ها «اجرا‌نشده» (NOT_RUN) هستند و گواهی صادر نمی‌شود —
+     خوداظهاریِ «همه‌چیز پاس است» حذف شد. */
+  const evidence = (options && options.gateResults) || null;
+  const resolveStatus = (key) => {
+    if (!evidence || typeof evidence !== 'object') return 'NOT_RUN';
+    const e = evidence[key];
+    if (!e || typeof e !== 'object') return 'NOT_RUN';
+    return e.status === 'PASSED' ? 'PASSED' : (e.status === 'FAILED' ? 'FAILED' : 'NOT_RUN');
+  };
+
   const gates = {
     semantic_tests: {
       id: 'GATE_01_SEMANTIC',
       name: 'Educational Semantic Layer Master Runner',
       target: 'tests/semantic-layer/runner.js',
       expected_suites: 33,
-      status: 'PASSED'
+      status: resolveStatus('semantic_tests')
     },
     api_tests: {
       id: 'GATE_02_REST_API',
       name: 'RESTful API Integration Runner',
       target: 'tests/api/runner.js',
       expected_suites: 18,
-      status: 'PASSED'
+      status: resolveStatus('api_tests')
     },
     master_regression: {
       id: 'GATE_03_REGRESSION',
       name: 'Core System Regression & Offline Guarantees',
       target: 'tests/run.js',
       expected_checks: 35,
-      status: 'PASSED'
+      status: resolveStatus('master_regression')
     },
     build_parity: {
       id: 'GATE_04_BUILD',
       name: 'Single-File Deterministic Build Parity',
       target: 'build.js --check',
-      status: 'PASSED'
+      status: resolveStatus('build_parity')
     },
     authorization_parity: {
       id: 'GATE_05_AUTHZ',
       name: 'Server Author Permissions & Write Rules Sync',
       target: 'tools/check-authz.js',
-      status: 'PASSED'
+      status: resolveStatus('authorization_parity')
     },
     secret_scan: {
       id: 'GATE_06_SECRETS',
       name: 'Repository Secret & Credential Leak Scan',
       target: 'tests/secret-scan.js',
-      status: 'PASSED'
+      status: resolveStatus('secret_scan')
     },
     docs_stats_sync: {
       id: 'GATE_07_DOCS_STATS',
       name: 'Documentation Metric & Test Counters Disk Sync',
       target: 'tools/docs-stats-sync.js --check',
-      status: 'PASSED'
+      status: resolveStatus('docs_stats_sync')
     },
     docs_consistency: {
       id: 'GATE_08_DOCS_CONSISTENCY',
       name: 'System Capacity & SLO Consistency Verification',
       target: 'bash tools/docs-consistency-check.sh',
-      status: 'PASSED'
+      status: resolveStatus('docs_consistency')
     }
   };
 
@@ -676,7 +687,9 @@ function validateQualityGateStatus(options = {}) {
     all_passed: allPassed,
     total_gates: Object.keys(gates).length,
     passed_gates: Object.values(gates).filter(g => g.status === 'PASSED').length,
-    failed_gates: Object.values(gates).filter(g => g.status !== 'PASSED').length,
+    failed_gates: Object.values(gates).filter(g => g.status === 'FAILED').length,
+    not_run_gates: Object.values(gates).filter(g => g.status === 'NOT_RUN').length,
+    evidence_source: evidence ? 'PROVIDED' : 'NONE',
     gate_details: gates
   });
 }
@@ -845,13 +858,41 @@ function executeEndToEndChain(inputSignal = {}, options = {}) {
     step12_cert
   ];
 
+  /* A-31 / I-08: این تابع یک شبیه‌سازی قطعی از مدارِ بسته است، نه مشاهدهٔ
+     رانتایمی. بدونِ شاهدِ رانتایم (گزارشِ واقعیِ هر گام)، هرگز تأییدشده
+     اعلام نمی‌شود. قرارداد جدید:
+       - پیش‌فرض: verification_mode='SIMULATION' و verified=false
+       - فقط اگر options.runtimeEvidence گزارشِ مشاهدهٔ هر ۱۲ گام را داشته باشد،
+         verification_mode='RUNTIME' و verified=true می‌شود. */
+  const STEP_KEYS = [
+    'STEP_01', 'STEP_02', 'STEP_03', 'STEP_04', 'STEP_05', 'STEP_06',
+    'STEP_07', 'STEP_08', 'STEP_09', 'STEP_10', 'STEP_11', 'STEP_12'
+  ];
+  const evidence = (options && options.runtimeEvidence) || null;
+  const evidenceOk = !!(evidence && typeof evidence === 'object' &&
+    STEP_KEYS.every((k) => evidence[k] && evidence[k].status === 'OBSERVED'));
+
+  const verificationMode = evidenceOk ? 'RUNTIME' : 'SIMULATION';
+  const traceWithMode = chainTrace.map((step, idx) => {
+    const next = Object.assign({}, step, {
+      evidence_status: evidenceOk ? 'OBSERVED' : 'SIMULATED',
+      observed_at: evidenceOk ? (evidence[STEP_KEYS[idx]].observed_at || null) : null
+    });
+    /* گام پایانی در حالت شبیه‌سازی نباید «صادر شد» گزارش شود. */
+    if (next.step === 'STEP_12_CERTIFICATION' && !evidenceOk) {
+      next.status = 'SIMULATED_ONLY';
+    }
+    return next;
+  });
+
   return deepFreeze({
-    verified: true,
-    total_steps: chainTrace.length,
+    verified: evidenceOk,
+    verification_mode: verificationMode,
+    total_steps: traceWithMode.length,
     human_in_the_loop_preserved: true,
     zero_ranking_preserved: true,
-    unbroken_loop: true,
-    trace: chainTrace
+    unbroken_loop: evidenceOk,
+    trace: traceWithMode
   });
 }
 
@@ -870,11 +911,14 @@ function generatePhase3ReleaseCertificate(params = {}, options = {}) {
   const zeroRanking = params.zeroRanking || validateZeroRankingCompliance(params);
   const e2eChain = params.e2eChain || executeEndToEndChain();
 
+  /* A-31 / I-08: شبیه‌سازی هرگز جای راستی‌آزمایی رانتایمی نمی‌نشیند —
+     زنجیره فقط وقتی معتبر است که مشاهدهٔ رانتایمی داشته باشد. */
   const isEligible = completeness.complete &&
                      qualityGates.all_passed &&
                      sovereignty.compliant &&
                      zeroRanking.compliant &&
-                     e2eChain.verified;
+                     e2eChain.verified === true &&
+                     e2eChain.verification_mode === 'RUNTIME';
 
   const status = isEligible ? CERTIFICATION_STATUS.CERTIFIED : CERTIFICATION_STATUS.REJECTED;
 
@@ -951,7 +995,8 @@ function runPhase3Certification(params = {}, options = {}) {
   };
 
   const completeness = validateEngineCompleteness(CANONICAL_PHASE3_CATALOG, { timestamp: nowIso });
-  const qualityGates = validateQualityGateStatus();
+  /* A-31 / I-09: شاهدِ اجرای گیت‌ها از بیرون می‌آید؛ بدون آن گیت‌ها اجرا‌نشده‌اند. */
+  const qualityGates = validateQualityGateStatus({ gateResults: (options && options.gateResults) || null });
   const sovereignty = validateHumanSovereigntyAcrossPlatform(platformOutputs);
   const zeroRanking = validateZeroRankingCompliance(platformOutputs);
   const e2eChain = executeEndToEndChain({ school_id: schoolId, region_id: regionId }, options);
