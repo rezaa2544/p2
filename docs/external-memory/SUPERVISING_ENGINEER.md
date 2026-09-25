@@ -434,3 +434,58 @@ Chat history، prompt و حافظه مدل منبع نهایی وضعیت missio
 - evidenceهای affected مشخص شوند.
 
 هدف این است که نشست بعدی بتواند بدون اتکا به حافظه conversational، وضعیت واقعی را از repository بازسازی کند.
+
+
+### 12.12 قانون گزارش پیشرفت، تیک‌ها و راستی‌آزمایی Push
+
+برای هر گزارش دریافتی از agent، مهندس ناظر باید وضعیت **همان task/mission مرتبط** را به‌صورت صریح گزارش کند:
+
+- **درصد پیشرفت:** درصد واقعی پیشرفت همان task/mission، بر اساس scope و evidence موجود، نه صرفاً ادعای agent.
+- **موارد انجام‌شده:** با `✅` مشخص شوند.
+- **موارد انجام‌نشده/باقی‌مانده:** با `⬜` مشخص شوند.
+- **موارد ادعایی ولی تأییدنشده:** تا زمان verification با `⬜`/UNVERIFIED باقی بمانند و DONE محسوب نشوند.
+- **Push:** مهندس ناظر باید وضعیت remote را مستقیماً از repository بررسی کند. صرف وجود commit محلی، متن گزارش، یا ادعای agent برای تأیید Push کافی نیست.
+- **تیک Push:** فقط وقتی `✅` مجاز است که commit موردنظر واقعاً روی remote/target branch قابل مشاهده و با SHA مورد انتظار منطبق باشد.
+- **گزارش Push:** در خلاصه نهایی، وضعیت Push فقط با `✅` نمایش داده شود؛ اگر قابل تأیید نیست، تیک تأییدشده داده نشود.
+- **اتصال گزارش به مأموریت:** هر گزارش باید به agent، mission/task، workstream و target مربوطه map شود تا مشخص باشد گزارش مربوط به کدام چت و کدام مأموریت است.
+
+### 12.13 قانون اجباری برای خودِ مهندس ناظر — Repository Delivery First
+
+مهندس ناظر نیز مشمول تمام قوانین Delivery Contract است و برای تغییرات repository خودش هیچ استثنایی ندارد.
+
+هرگاه مهندس ناظر سند، حافظه، هوش پروژه، roadmap، registry، dashboard، task record، changelog یا هر فایل repository-backed دیگری را تغییر دهد:
+
+1. تغییر باید واقعاً در repository ثبت شود.
+2. commit باید ایجاد شود.
+3. تغییر باید طبق target تعیین‌شده **Push** شود.
+4. اگر target طبق سیاست پروژه PR است، PR باید ایجاد/تحویل و در صورت الزام merge شود.
+5. بعد از push/merge، current remote HEAD دوباره خوانده شود.
+6. path، commit SHA، target branch و وضعیت remote با تغییر موردنظر تطبیق داده شوند.
+7. فقط پس از این راستی‌آزمایی، مهندس ناظر مجاز است تغییر را «ثبت‌شده / تحویل‌شده / DONE» گزارش کند.
+
+**ممنوع:** گفتن «در فایل اضافه شد»، «ثبت شد»، «ذخیره شد» یا «Push شد» صرفاً بر اساس موفقیت یک عملیات نوشتن محلی/ابزاری، بدون verification نهایی روی GitHub.
+
+### 12.14 قانون عدم ادعای تحویل
+
+برای مهندس ناظر و تمام agentها:
+
+`WRITE SUCCESS ≠ COMMIT ≠ PUSH ≠ MERGE ≠ VERIFIED DELIVERY`
+
+هر مرحله باید جداگانه تأیید شود.
+
+اگر هر مرحله ناقص باشد، وضعیت واقعی همان مرحله گزارش شود:
+- بدون commit → WORK_INCOMPLETE
+- commit بدون remote → WORK_INCOMPLETE
+- push بدون target/PR لازم → WORK_INCOMPLETE
+- merge لازم ولی انجام نشده → WORK_INCOMPLETE
+- evidence ناسازگار با HEAD → REVALIDATION_REQUIRED
+- repository/evidence تأییدشده → VERIFIED
+
+### 12.15 قانون Self-Update + Self-Verification
+
+هر تغییر مهندس ناظر به این سند یا اسناد کنترل پروژه باید در همان چرخه کاری به‌صورت زنجیره‌ای پیگیری شود:
+
+**EDIT → COMMIT → PUSH/PR/MERGE طبق TARGET → READ REMOTE HEAD → VERIFY FILE AT REMOTE HEAD → UPDATE STATUS → REPORT**
+
+اگر verification نهایی انجام نشده باشد، وضعیت تغییر **UNVERIFIED** است و نباید با `✅` یا DONE گزارش شود.
+
