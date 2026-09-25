@@ -37,7 +37,7 @@
      T8  جدولِ پارتیشن‌شده و سطرهایش رویِ replica هم دیده می‌شوند
 
    بدونِ باینری‌هایِ PostgreSQL (initdb/postgres/pg_ctl در PATH یا
-   PG_LIVE_BIN) یا بدونِ ماژولِ pg: self-skip — CI قرمز نمی‌شود.
+   PG_LIVE_BIN) یا بدونِ ماژولِ pg: fail-closed prerequisite gate — CI قرمز نمی‌شود.
 
    اجرا:
      PG_LIVE_BIN=/path/to/pg/bin node tests/wave10-pg-live.js
@@ -64,7 +64,7 @@ function finish() {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/* ── کشفِ باینری‌ها و ماژول (شرطِ self-skip) ─────────────────────── */
+/* ── کشفِ باینری‌ها و ماژول (شرطِ fail-closed prerequisite gate) ─────────────────────── */
 function findPgBin() {
   const cand = [];
   if (process.env.PG_LIVE_BIN) cand.push(process.env.PG_LIVE_BIN);
@@ -83,8 +83,8 @@ const BIN = findPgBin();
 if (!BIN || !hasPgModule()) {
   skip('wave10 pg live gate', !BIN ? 'باینری‌هایِ PostgreSQL (initdb/postgres/pg_ctl) در PATH/PG_LIVE_BIN نیستند'
     : 'ماژولِ pg نصب نیست');
-  console.log('\nwave10-pg-live: 0/0 (skip)؛ سبزِ نهایی: ✅\n');
-  process.exit(0);
+  console.log('\nwave10-pg-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisites are NOT-RUN and exit 2\n');
+  process.exit(2);
 }
 
 const P_PORT = 55450, R_PORT = 55451;
