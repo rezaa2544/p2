@@ -97,6 +97,8 @@ jobs:
       run: node tests/seed-integrity.js
     - name: Phase 7 verifier contract — fixture/boundary regression
       run: node tests/phase7-production-verifier-contract.test.js
+    - name: A-31 Intelligence semantic/certification integrity
+      run: node tests/semantic-layer/a31-semantic-certification-integrity.test.js
     - name: Critical orphan — server security regression
       run: node tests/security2.js
     - name: Critical orphan — atomic sync batch
