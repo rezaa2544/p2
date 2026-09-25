@@ -15,3 +15,14 @@ Material changes to the Payesh project are recorded here in reverse chronologica
 - Established the rule that task completion requires repository/evidence support, not agent self-attestation.
 
 See: `docs/external-memory/PROJECT_MEMORY_SYSTEM.md`.
+
+
+## 2026-09-25
+
+### Updated — Current project intelligence and execution state
+
+- Synchronized project intelligence and external-memory status to main HEAD `38ecab9599168f8d53b0dcd89d77009dd7596f94`.
+- Recorded merged PR #415 (A-31 verification publication) and PR #416 (current-head Sync/OCC evidence publication).
+- Recorded that A-35 remediation/evidence is present in main history but still requires exact-current-HEAD re-verification.
+- Preserved verification registry binding to `e4584806` until a final hardening SHA is frozen and evidence is regenerated.
+- Added root-cause-driven A-30..A-39 next-step plan and explicit three-AI validation dependency.
