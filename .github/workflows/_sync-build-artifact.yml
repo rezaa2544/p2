@@ -28,3 +28,4 @@ jobs:
           git add index.html USER_GUIDE.html
           git commit -m "chore(build): synchronize generated artifacts"
           git push origin HEAD:$GITHUB_REF_NAME
+
