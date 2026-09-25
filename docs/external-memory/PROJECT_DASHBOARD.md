@@ -218,3 +218,12 @@ Before broad validation:
 **NCR-01 → NCR-02/NCR-03/NCR-05 → NCR-04/NCR-06/NCR-07 → NCR-08..NCR-15 → NCR-16..NCR-23 → NCR-24..NCR-27 → current-head revalidation → final hardening SHA.**
 
 Canonical status remains **HARDENING / RECONCILIATION — NOT VERIFIED**.
+
+
+## 2026-09-25 — Final multi-report synchronization receipt
+
+- Synchronization batch baseline: `7bb19fccba07843008ee410e10f4c405135dca91`.
+- Canonical consolidated audit: `docs/audit/MULTI_REPORT_DEFECT_RECONCILIATION_2026-09-25.md`.
+- NCR-01..NCR-27 are now recorded with severity, disposition and execution order.
+- Stale/duplicate findings are explicitly retained only as REVALIDATION_REQUIRED where current-head evidence shows mitigation.
+- Project state remains **HARDENING / RECONCILIATION — NOT VERIFIED**; broad certification remains blocked.
