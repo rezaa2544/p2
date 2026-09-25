@@ -403,3 +403,76 @@ No item above is marked green by this reconciliation. New/remaining work must en
 `Atria Critical/High → A-30 Gate Hardening → A-31..A-36 Critical/High Closure → A-37 Test Integrity Closure → A-38 Current-Head Registry Rebind → A-25/A-27 Reliability/DR Evidence → Atria Medium → Atria Low → Full Multi-AI Validation → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification`
 
 **No historical PASS is promoted to current HEAD.**
+
+
+## CURRENT-HEAD EXECUTION SYNCHRONIZATION — 2026-09-25
+
+**Current main at synchronization:** 774e7ab16a33ab880c883923fc00564c1b93f9e9.
+
+The earlier 2026-09-24 sequence is superseded by the following hardening order. This is an execution update, not a certification claim.
+
+### Current gate
+**NOT VERIFIED — Hardening/Reconciliation.** The verification registry remains bound to e4584806 and therefore cannot certify main.
+
+### Current workstreams and root-cause plan
+
+#### A-30 — Strict Verification Gate
+**Root cause:** the gate historically validated pieces of the evidence graph without making every dependency mandatory (non-empty registry, exact SHA, independent reviewers, complete evidence schema, blocked-state handling, negative tests).
+**Plan:** close V-01..V-12; add negative tests for empty registry, stale SHA, missing reviewer, injected certification input, blocked-until, incomplete evidence, and scanner gaps; require exact command/exit/artifact hash/runtime/limitation fields; then run the gate against a frozen hardening SHA.
+**Exit evidence:** gate exit, negative-test logs, registry schema validation, exact SHA binding.
+
+#### A-31 — Intelligence semantic/certification integrity
+**Root cause:** default/fallback semantics can convert no-data or empty observations into apparently healthy/compliant values, and some release checks are self-attested rather than causally tied to runtime evidence.
+**Plan:** replace ambiguous defaults with explicit NO_DATA/NOT_VERIFIED; trace every metric to observed engine output; add empty/no-data/malformed/real-route negative tests; make release certification consume independent evidence only.
+**Exit evidence:** current-SHA runtime matrix and non-circular certification artifact.
+
+#### A-32 — SMS / PostgreSQL mirror / restart
+**Root cause:** provider side effects, queue state, PG mirror and wallet debit do not yet have a demonstrated single idempotent transaction boundary; a restart can therefore separate sent from durable mirror state and repeat a send/debit.
+**Plan:** first reproduce with live PG and a controlled provider stub; map queue_id/provider_msg schema; define durable idempotency key; persist intent before external side effect; make replay/restart converge; reconcile queue, sms_log, wallet and audit rows.
+**Exit evidence:** pre-fix reproduction, fixed run, restart/replay run, row-count/wallet/audit proof.
+
+#### A-33 — PG authorization delegation flags
+**Root cause:** authz flags are consumed from policy but their persistence parity through PG hydration is not proven.
+**Plan:** seed users with asset_staff/lib_staff/is_head, persist to PG, authenticate, hydrate session, execute positive delegated actions and negative cross-scope actions; repair schema/model/migration parity if any flag is lost.
+**Exit evidence:** seed→PG→login→policy trace and adversarial authorization matrix.
+
+#### A-34 — Sync authorization parity
+**Root cause:** REST and sync paths historically applied different ownership checks, allowing foreign references or global conflict operations to escape the school boundary.
+**Plan:** reconcile the existing fix to the final mainline, then test REST create/update, offline sync, conflict resolve and negative foreign-school references against the same tenant/role matrix.
+**Exit evidence:** exact-SHA regression + adversarial tenant matrix + DB readback.
+
+#### A-35 — Mission-5 authorization
+**Root cause:** incomplete school anchoring for parent/driver/guard paths and non-canonical phone identity can create cross-tenant read/rate-limit divergence.
+**Plan:** re-run the merged remediation on current HEAD; verify parent_links school equality before fallback; verify foreign teacher/class references; canonicalize phone identity; execute 15/15 regression and adversarial variants.
+**Exit evidence:** 15/15 plus cross-tenant negative matrix and current-SHA SHA-bound artifact.
+
+#### A-36 — PostgreSQL infrastructure
+**Root cause:** migration 012 transaction semantics, seed-ledger continuity and raw table-identifier construction were not jointly protected by the live-PG gate.
+**Plan:** reproduce migration 012 on clean PG17; replay the entire ledger; fix transaction boundaries and seed ordering; replace raw identifiers with a strict allowlist; run migration + rollback + injection regression.
+**Exit evidence:** clean-cluster replay log, ledger continuity, rollback evidence, identifier negative tests.
+
+#### A-37 — Test integrity inventory
+**Root cause:** the repository contains a large amount of test-like code that is not connected to certification gates, making coverage numbers and orphan budgets unreliable.
+**Plan:** classify 513 ZERO-CHECK / 311 ORPHAN / 54 MOCK / ~40 swallowed catches into product tests, harnesses, fixtures, intentionally non-executable artifacts and defects; connect certification-critical suites to gates; make unavailable prerequisites explicit NOT-RUN.
+**Exit evidence:** inventory ledger, owner/status per bucket, gate wiring diff, no hidden red suite.
+
+#### A-38 — Registry rebind
+**Root cause:** evidence registry is tied to an audit SHA and does not automatically follow main.
+**Plan:** freeze the final hardening SHA; regenerate evidence for every mandatory item; record ChatGPT, Arena and Atria independent reviews; only then change registry binding/statuses.
+**Exit evidence:** registry SHA equals final main, three review sets, reproducible artifacts, strict gate PASS.
+
+#### A-39 — Reliability / DR
+**Root cause:** E4 failure-domain and recovery evidence is not continuously available in the current environment.
+**Plan:** prepare in parallel, then execute PG restore, Redis restore/failover, worker crash, queue saturation, notification growth, graceful shutdown, alert→on-call→runbook→recovery drills. Measure RPO/RTO/MTTA/MTTR rather than copying targets.
+**Exit evidence:** independent failure-domain logs, restored DB identity/checksum, measured RPO/RTO/MTTA/MTTR and alert acknowledgement trail.
+
+### Execution options
+1. **Default / safest:** A-30 → A-31..A-36 → A-37 → A-38 → A-39 → three-AI validation → broad certification.
+2. **Parallel infrastructure:** prepare A-39 E4 infrastructure while A-30..A-37 are being fixed; no status promotion until dependencies close.
+3. **Blocked-path investigation:** for an item requiring unavailable credentials/infrastructure, reproduce what is possible, document the exact root cause and unblocker, and mark BLOCKED; never convert NOT-RUN into PASS.
+
+### Sync/OCC current-head rule
+The merged Arena publication contains real evidence for A-18/A-20/A-24 on a later test SHA but explicitly leaves the global invariant NOT VERIFIED because legacy-mode cases still fail and production topology boundaries remain unverified. Therefore strict/production is the required deployment contract; legacy compatibility remains a declared limitation until separately dispositioned.
+
+### Phase transition rule
+Do not enter the broad Capability/Role/E2E/Performance certification campaign until A-30..A-39 have either been fixed and evidence-backed, or explicitly dispositioned as BLOCKED/ACCEPTED RISK with owner, rationale and review point.
