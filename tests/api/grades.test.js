@@ -156,14 +156,14 @@ async function main() {
     });
     assert.strictEqual(rPost.status, 403);
     const rPatch = await req('PATCH', `/api/v1/grades/${seedGrade.id}`, {
-      body: { score: 10 },
+      body: { score: 10, base_version: seedGrade.version || 1 },
       cookie: cookieTchOther
     });
     assert.strictEqual(rPatch.status, 403);
     const rDel = await req('DELETE', `/api/v1/grades/${seedGrade.id}`, { cookie: cookieTchOther });
     assert.strictEqual(rDel.status, 403);
     const rOk = await req('PATCH', `/api/v1/grades/${seedGrade.id}`, {
-      body: { score: seedGrade.score },
+      body: { score: seedGrade.score, base_version: seedGrade.version || 1 },
       cookie: cookieTch1
     });
     assert.strictEqual(rOk.status, 200);
