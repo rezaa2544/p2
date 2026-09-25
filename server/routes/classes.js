@@ -219,8 +219,13 @@ function createClassRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کلاس یافت نشد' } };
     }
 
-    /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
-    const conflict = checkOcc(cls, body, 'کلاس');
+    /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹
+       A-20 (re-audit): `isVersioned=true` مانندِ grades — در محیطِ تولید
+       نبودِ base_version باید رد شود، وگرنه یک نوشتنِ بدونِ نسخه،
+       ویرایشِ هم‌زمانِ دیگری را بی‌هیچ سیگنالِ تعارضی له می‌کند
+       (stale-write اثبات‌شده با tests/reaudit-occ-stale-write.js).
+       در dev/test همچنان سازگاریِ کلاینتِ کهنه حفظ می‌شود (occ.js:8-10). */
+    const conflict = checkOcc(cls, body, 'کلاس', true);
     if (conflict) {
       /* B4: rejected concurrent write ⇒ recorded in sync_conflicts (SSoT) */
       await recordRejectedConflict({ store, db, ids }, { collection: 'classes', rec: cls, user, base: body && (body.base_version !== undefined ? body.base_version : body.version), body });
