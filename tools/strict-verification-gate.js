@@ -20,10 +20,30 @@ let allowed=null;try{allowed=JSON.parse(read(ALLOW));}catch(e){}
 chk('G6 explicit false-green allowlist exists',!!allowed&&Array.isArray(allowed.items));
 chk('G6a canonical alert rules exists',fs.existsSync(ALERT_RULES),path.relative(ROOT,ALERT_RULES));
 function walk(dir,out){out=out||[];for(const e of fs.readdirSync(dir,{withFileTypes:true})){if(['node_modules','.git','dist'].includes(e.name))continue;const p=path.join(dir,e.name);if(e.isSymbolicLink())continue;if(e.isDirectory())walk(p,out);else if(/\.(js|mjs|cjs|yml|yaml)$/.test(e.name))out.push(p);}return out;}
+/* G6b — an allowlist entry only buys exemption when it carries the owner, the
+   reason and a real (never-or-future) expiry that the policy demands. A bare
+   {"pattern":...,"expires":"never"} blanket-silences a pattern across the whole
+   repo: that is a mute button, not an allowlist. */
+function allowlistValid(x){return !!x&&typeof x.owner==='string'&&x.owner.trim().length>0&&typeof x.reason==='string'&&x.reason.trim().length>0&&(x.expires==='never'||(!isNaN(new Date(x.expires).getTime())&&new Date(x.expires)>new Date()));}
 const amap=new Map();
-if(allowed&&Array.isArray(allowed.items))for(const x of allowed.items)amap.set(String(x.pattern),x);
+let rawAllowed=0,badAllow=[];
+if(allowed&&Array.isArray(allowed.items))for(const x of allowed.items){rawAllowed++;if(allowlistValid(x))amap.set(String(x.pattern),x);else badAllow.push(String(x.pattern));}
+chk('G6b allowlist entries carry owner+reason+valid expiry',rawAllowed===0||badAllow.length===0,badAllow.length?('invalid: '+badAllow.join(', ')):'');
 const pats=[['assert(true',/assert\s*\(\s*true\b/gi],['process.exit(0)',/process\.exit\(\s*0\s*\)/g],['|| true',/\|\|\s*true\b/g],['0/0 checks',/0\s*\/\s*0\s*(?:checks?|tests?)/gi]];
 for(const pair of pats){const label=pair[0],re=pair[1];let hits=[];for(const f of walk(ROOT)){const s=read(f);re.lastIndex=0;let m;while((m=re.exec(s)))hits.push(path.relative(ROOT,f)+':'+(s.slice(0,m.index).split('\n').length));}const bad=hits.filter(function(h){for(const a of amap.values()){if(a.pattern===label&&(a.expires==='never'||new Date(a.expires)>new Date()))return false;}return true;});chk('G7 '+label+' has no unapproved hits',bad.length===0,bad.slice(0,15).join(', '));}
+/* G14 — completeness. An empty or partial registry must NOT be green: the
+   registry declares the contract it intends to satisfy, then every declared
+   id must be present exactly once. */
+function uniq(arr){const seen=new Set();for(const v of arr){if(seen.has(v))return false;seen.add(v);}return true;}
+if(!!reg&&Array.isArray(reg.items)){
+ const expected=Array.isArray(reg.expected_ids)?reg.expected_ids.map(String):[];
+ chk('G14a registry declares its expected item contract',expected.length>0,expected.length?expected.length+' ids declared':'expected_ids missing — cannot prove completeness');
+ if(expected.length){
+  const present=new Set(reg.items.map(function(x){return String(x.id||'');}));
+  const missing=expected.filter(function(e){return !present.has(e);});
+  chk('G14b all declared items present ('+expected.length+')',missing.length===0,'missing: '+missing.slice(0,10).join(', '));
+ }
+}
 if(reg&&Array.isArray(reg.items)){
  const ids=new Set();
  for(const item of reg.items){
@@ -32,6 +52,24 @@ if(reg&&Array.isArray(reg.items)){
   for(const r of ['chatgpt','arena','atria']){const v=item[r]||{};chk('G10 '+id+' '+r+' PASS + evidence',v.status==='PASS'&&Array.isArray(v.evidence)&&v.evidence.length>0,v.status||'missing');}
   if(item.status==='CERTIFIED'){chk('G11 '+id+' certified with 3 PASS',['chatgpt','arena','atria'].every(function(r){return item[r]&&item[r].status==='PASS';}));chk('G12 '+id+' has evidence',Array.isArray(item.evidence)&&item.evidence.length>=3);}
   else chk('G13 '+id+' not falsely certified',item.status!=='CERTIFIED',item.status);
+  /* G15 — evidence must be reproducible, not prose. Each entry has to point at
+     a repo artifact or a command, and any tests/tools path it cites must
+     actually exist on this HEAD — a citation to a file that is not there is a
+     fabricated result, not evidence. */
+  for(const r of ['chatgpt','arena','atria']){const v=item[r]||{};
+   if(!Array.isArray(v.evidence))continue;
+   for(const e of v.evidence){
+    const t=String(e||'').trim();
+    chk('G15a '+id+' '+r+' evidence is reproducible pointer',/(?:^|[\s,;])(?:(?:tests|tools|server|docs|infra|migrations|src)\/[^\s,;)]+|(?:^|\s)node\s+|\bhttps?:\/\/)/i.test(t),t.slice(0,70));
+    const m=t.match(/(?:tests|tools)\/[A-Za-z0-9_\-./]+\.(?:js|mjs|cjs)/);
+    if(m)chk('G15b '+id+' '+r+' cited file exists',fs.existsSync(path.join(ROOT,m[0])),m[0]);
+   }
+  }
+  /* G16 — independence. Three reviewers quoting the same text are one review.
+     The three-AI rule is void if the evidence is copied between reviewers. */
+  const texts=['chatgpt','arena','atria'].map(function(r){const v=item[r];return v&&Array.isArray(v.evidence)?v.evidence.map(function(e){return String(e||'').trim();}).join('\n'):null;}).filter(function(x){return x!==null;});
+  const dupes=texts.filter(function(x,i){return texts.indexOf(x)!==i;});
+  chk('G16 '+id+' reviewer evidence is not duplicated',dupes.length===0,dupes.length?('identical evidence across reviewers'):'');
  }
 }
 const certified=reg&&Array.isArray(reg.items)?reg.items.filter(function(x){return x.status==='CERTIFIED';}).length:0;

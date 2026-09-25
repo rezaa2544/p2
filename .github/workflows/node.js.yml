@@ -181,10 +181,23 @@ jobs:
           sudo service redis-server stop || sudo systemctl stop redis-server || true
         fi
         node tests/phase2-redis-fail-closed.js
+    - name: Re-audit A-22 — Redis unavailable end-to-end (fake RESP server)
+      # boots real server instances against a hand-written RESP3 Redis, then
+      # kills/partitions it: boot-gate, distributed session, cross-instance,
+      # expiry, restart, and bounded-partition behaviour.
+      run: node tests/reaudit-redis-outage.js
     - name: OCC across two real instances — 10 concurrent writers (BLOCKER 4)
       run: |
         export DATABASE_URL="$PGURL"
         node tests/phase2-occ-multi.js
+    - name: Re-audit A-20 — OCC stale-write across all 5 PATCH paths
+      # boots a normal + a PAYESH_STRICT_BASE_VERSION=1 instance and proves the
+      # stale-write/clobber path is closed for students/users/classes/attendance/grades.
+      run: node tests/reaudit-occ-stale-write.js
+    - name: Re-audit A-19 — student_id cannot bypass school ownership
+      # cross-school student_id in attendance/grades (manager/teacher/parent),
+      # student_id re-pointing via PATCH, and cross-school student transfer.
+      run: node tests/reaudit-a19-student-id-ownership.js
     - name: Outbox crash/restart replay + real DLQ row (BLOCKER 3)
       run: |
         export DATABASE_URL="$PGURL"
