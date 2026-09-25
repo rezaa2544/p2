@@ -332,6 +332,19 @@ async function seedPgFromBootstrap(store, db) {
   return null;
 });
 
+/* A-22 (re-audit): شکلِ productionِ یکپارچه — همان تعریفی که redis.js
+   (isProduction/prodRethrow/prodNoRedis) برایِ الزامِ ردیس به کار می‌برد.
+   هر استقراری که REDIS_URL یا DATABASE_URL دارد production محسوب می‌شود؛
+   در غیرِ این صورت NODE_ENV، و سپس PAYESH_ENV (با ALLOW_MEMORY_FALLBACK برای
+   dev/test). این تابع تنها ملاکِ «بوت نباید بدونِ کشِ مشترک ادامه یابد»
+   است و در مسیرهایِ پایینِ cache.init آمده است. */
+function isProdShape() {
+  if (process.env.REDIS_URL || process.env.DATABASE_URL) return true;
+  if (process.env.NODE_ENV === 'production') return true;
+  if (process.env.ALLOW_MEMORY_FALLBACK === '1' || process.env.ALLOW_MEMORY_FALLBACK === 'true') return false;
+  return process.env.PAYESH_ENV === 'production';
+}
+
 /* P1: آماده‌سازیِ کش باید پیش از باز شدنِ سوکت به نتیجه برسد. پیش از این
    fire-and-forget بود: با ردیسِ پیکربندی‌شده اما غیرقابلِ دسترس، redis.init
    تا ۳ ثانیه طول می‌کشید و server.listen در همین پنجره سوکت را باز می‌کرد —
@@ -350,8 +363,15 @@ const cacheReady = cache.init().then((r) => {
        forever with health=503: a zombie startup. A configured-but-unreachable
        Redis at boot keeps the same exit (Wave-15 boot contract); runtime
        outages after a healthy boot remain loud degradation (readiness 503,
-       reconnect loop), unchanged. */
-    if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL) {
+       reconnect loop), unchanged.
+       A-22 (re-audit): این مسیرِ انتهایی همچنین باید شکلِ «فقط REDIS_URL» را
+       بپوشاند. redis.js هر استقراری که REDIS_URL دارد به‌عنوانِ تولید می‌بیند
+       (prodRethrow/prodNoRedis به همین معنا fail-closed می‌شوند)، ولی این
+       مسیر فقط NODE_ENV/PAYESH_ENV/DATABASE_URL را می‌سنجید. نتیجه: سرور
+       با ردیسِ پیکربندی‌شده ولی مرده بالا می‌آمد، health=۵۰۳ می‌داد ولی
+       همچنان ترافیک سرو می‌کرد و ابطال در هر درخواست fail-open می‌شد.
+       (اثبات: tests/reaudit-redis-outage.js S1) */
+    if (isProdShape()) {
       try { persistStore(); } catch (e) {}
       try { db.close(); } catch (e) {}
       process.exit(1);
@@ -363,7 +383,7 @@ const cacheReady = cache.init().then((r) => {
   }
 }).catch((err) => {
   console.error('[FATAL] Cache init crashed:', (err && err.message) || err);
-  if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL) process.exit(1);
+  if (isProdShape()) process.exit(1);
 });
 
 /* ── R97 (TODO 2.7) — نگهبانِ شمردنِ شناسه، سطحِ روتر ──────────────
