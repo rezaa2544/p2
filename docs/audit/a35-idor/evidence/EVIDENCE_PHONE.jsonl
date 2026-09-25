@@ -1,0 +1,7 @@
+{"id":"A35-50.1","actor":"ANON","expect":[200,200,429],"actual":200,"op":"sent","note":"send-code base form x1 (expect 429 on #3: per-phone limit=2)","t":"2026-09-25T08:20:24.387Z"}
+{"id":"A35-50.2","actor":"ANON","expect":[200,200,429],"actual":200,"op":"sent","note":"send-code base form x2 (expect 429 on #3: per-phone limit=2)","t":"2026-09-25T08:20:24.398Z"}
+{"id":"A35-50.3","actor":"ANON","expect":[200,200,429],"actual":429,"op":"rate_limited","note":"send-code base form x3 (expect 429 on #3: per-phone limit=2)","t":"2026-09-25T08:20:24.406Z"}
+{"id":"A35-51-+98912","actor":"ANON","expect":[429],"actual":429,"op":"rate_limited","note":"send-code variant +989121000010 after base-form exhaustion (secure: still 429; defect: 200 = fresh bucket)","t":"2026-09-25T08:20:24.414Z"}
+{"id":"A35-51-009891","actor":"ANON","expect":[429],"actual":429,"op":"rate_limited","note":"send-code variant 00989121000010 after base-form exhaustion (secure: still 429; defect: 200 = fresh bucket)","t":"2026-09-25T08:20:24.421Z"}
+{"id":"A35-51-912100","actor":"ANON","expect":[429],"actual":429,"op":"rate_limited","note":"send-code variant 9121000010 after base-form exhaustion (secure: still 429; defect: 200 = fresh bucket)","t":"2026-09-25T08:20:24.428Z"}
+{"id":"A35-52a","actor":"ANON","expect":[200,429],"actual":429,"op":"rate_limited","note":"send-code variant (fresh bucket expected if 51 bypassed) — demo code needed","t":"2026-09-25T08:20:24.437Z"}
