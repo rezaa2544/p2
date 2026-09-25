@@ -91,7 +91,7 @@ This SHA includes the synchronization updates themselves. The verification regis
 ### P1 — next
 4. [ ] **Atria-1 / F4:** close manager→foreign-region analytics authorization path and add negative tests for both analytics modules.
 5. [ ] **Atria-1 / F2:** remove/gate the obsolete `users.parent_id` PG query; preserve authoritative `parent_links` behavior; add legacy PG regression.
-6. [ ] [ ] Atria-1 / A-31..A-36 root-cause closure.
+6. [ ] Atria-1 / A-31..A-36 root-cause closure.
 7. [ ] Atria-1 / A-18/A-20/A-24 current-head sync/OCC/conflict reconciliation.
 8. [ ] Atria-2 / A-38 preparation; do not rebind registry yet.
 
