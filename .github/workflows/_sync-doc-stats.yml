@@ -30,3 +30,4 @@ jobs:
           git add -u docs
           git commit -m "chore(docs): synchronize generated statistics"
           git push origin HEAD:$GITHUB_REF_NAME
+
