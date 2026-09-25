@@ -114,3 +114,12 @@ This SHA includes the synchronization updates themselves. The verification regis
 4. [ ] Run current-head CI and targeted regression for F1/F2/F4.
 5. [ ] Assign exact non-overlapping Atria-3 mission.
 6. [ ] Continue A-30/A-37 and remaining root-cause queue after verification.
+
+
+## 2026-09-25 — Canonical Integration Receipt
+- Canonical main HEAD after integration: eafca3809bb0a89bff68b1375e0292426ff35098
+- Integration PR: #418
+- Legacy PRs reconciled/closed as superseded: #402, #403, #407, #410, #411, #412, #413, #417.
+- Integration method: reconcile each candidate against current main, preserve applicable intent, integrate one logical unit, then verify the resulting remote HEAD.
+- Important: closure of a legacy PR does not mean its original branch was merged verbatim; duplicate/stale/conflicting portions were intentionally superseded when current main already contained the fix or when preserving them verbatim would risk regression.
+- Verification status: NOT VERIFIED. Broad certification remains blocked until current-HEAD evidence is regenerated.
