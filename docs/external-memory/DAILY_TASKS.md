@@ -105,3 +105,12 @@ This SHA includes the synchronization updates themselves. The verification regis
 13. [ ] Start independent ChatGPT + Arena + Atria validation.
 
 **Rule:** no item is DONE from agent prose; commit/push/current-head/evidence must be verified.
+
+
+## 2026-09-25 — Direct fixes completed / verification queue
+1. [x] Supervising Engineer applied F1 bootstrap/identity fail-closed remediation.
+2. [x] Supervising Engineer applied F2 PostgreSQL parent-scope remediation.
+3. [x] Supervising Engineer applied F4 regional manager authorization remediation.
+4. [ ] Run current-head CI and targeted regression for F1/F2/F4.
+5. [ ] Assign exact non-overlapping Atria-3 mission.
+6. [ ] Continue A-30/A-37 and remaining root-cause queue after verification.
