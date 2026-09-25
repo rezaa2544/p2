@@ -78,3 +78,17 @@ Closure rule: FIXED is not root-cause closure. Use ROOT-CAUSE-CLOSED only when s
 **New rule:** push/PR/merge requirements are part of the task's Definition of Done. A verbal completion report without remote repository evidence is not completion.
 
 **Future prompts:** include Delivery Contract and require exact remote commit/PR/merge identifiers.
+
+
+
+## 2026-09-25 — Fresh repository defect audit and two-Atria remediation
+
+**Decision:** Stop broad testing/certification and use the two Atria agents first for complete defect/root-cause remediation. 
+
+**Reason:** The fresh repository audit found three current-main open defects not fully represented by the previous queue (F1, F2, F4), while two other fresh findings (F3, F5) already have current-main mitigations and therefore require revalidation rather than duplicate fixing. The project has also experienced recurrence caused by narrow fixes, incomplete path inventories and stale evidence boundaries.
+
+**Priority:** F1 → A-30 → A-37 → F4 → F2 → A-31..A-36 → A-18/A-20/A-24 → A-38 → A-39 → remaining carry-over.
+
+**Ownership:** Atria-1 owns product/security/data root causes; Atria-2 owns verification/test-integrity/reliability preparation and remaining CI/operational carry-over. Same invariant/file may not be concurrently modified by both.
+
+**Closure rule:** Finding → Reproduce → Root Cause → Invariant/All Paths → Fix → Regression → Current-HEAD Evidence → Independent Review. Historical evidence is never promoted automatically.
