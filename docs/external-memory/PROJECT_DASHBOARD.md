@@ -162,3 +162,12 @@ Canonical register: `docs/audit/MASTER_DEFECT_PRIORITY_2026-09-25.md`.
 - [ ] F1/F2/F4 — current-head CI/runtime/adversarial verification.
 
 **Team:** 1 Supervising Engineer + 5 ChatGPT + 10 Arena + **3 Atria**.
+
+
+## 2026-09-25 — Canonical Integration Receipt
+- Canonical main HEAD after integration: eafca3809bb0a89bff68b1375e0292426ff35098
+- Integration PR: #418
+- Legacy PRs reconciled/closed as superseded: #402, #403, #407, #410, #411, #412, #413, #417.
+- Integration method: reconcile each candidate against current main, preserve applicable intent, integrate one logical unit, then verify the resulting remote HEAD.
+- Important: closure of a legacy PR does not mean its original branch was merged verbatim; duplicate/stale/conflicting portions were intentionally superseded when current main already contained the fix or when preserving them verbatim would risk regression.
+- Verification status: NOT VERIFIED. Broad certification remains blocked until current-HEAD evidence is regenerated.
