@@ -1,0 +1,54 @@
+[
+  {
+    "file": "AGENTS.md",
+    "sha256": "d3779d9ff45c9cb1078f9154349c8735ae914ab6c9f386eb6b0f545fe689d669"
+  },
+  {
+    "file": "docs/PROJECT_INTELLIGENCE.md",
+    "sha256": "990bd46e7875b61f33a882706f46f40f82fceea404e3714ae4e090626a39ae84"
+  },
+  {
+    "file": "docs/CURRENT_PROJECT_INTELLIGENCE.md",
+    "sha256": "470322107d0e4b726839ad77cb8cfdc1be79303842c3f03e2c1c25caf3c35405"
+  },
+  {
+    "file": "docs/CURRENT_WORK_EXECUTION_PLAN.md",
+    "sha256": "77e64b09ab52b65d8762dcab0f89b8f842c514311585603c37f2f0e492df77f1"
+  },
+  {
+    "file": "docs/STRICT_VERIFICATION_GATE.md",
+    "sha256": "72bf118a0d66caed1c26ee77cd3b2d6f74d5f6db6bd6831acd0ce0072e5e869e"
+  },
+  {
+    "file": "docs/ROADMAP_CURRENT_GROUND_TRUTH_2026-09-21.md",
+    "sha256": "48290ad689e66028d8870e8e2de3f9dfac9f027691e97af306d6c9178fc6ed2e"
+  },
+  {
+    "file": "docs/ENGINEERING_EXECUTION_AND_VERIFICATION_POLICY.md",
+    "sha256": "74f7c93b04319b4f2c692e5ae688d0356e199dd790ef7cb604573d0af4392e9c"
+  },
+  {
+    "file": "docs/CAPACITY_MODEL.md",
+    "sha256": "6f939aced476d7b0e8e9f0155ec5c86ce348d7f4bc99a3cd49f5c87a3234ed74"
+  },
+  {
+    "file": "docs/SYNC_PROTOCOL.md",
+    "sha256": "a2658779b478051e87dce461dcee2664a87b9d1dca2b42bc4a833cb0983274c7"
+  },
+  {
+    "file": "docs/CONFLICT_MODEL_DESIGN.md",
+    "sha256": "be53b0a4086abd9477b6fc5ef98df04b8b850707ba13726f33f358e96d6f4ff1"
+  },
+  {
+    "file": "docs/SYNC_RELIABILITY_EVIDENCE.md",
+    "sha256": "326094b05babf475ca98ef231ed52f407cd06ef06690ee24c788f9660b31f39b"
+  },
+  {
+    "file": "docs/audit/ATRIA_PHASE_A_CARRYOVER.md",
+    "sha256": "6e25c2714510b43d4ab850f3afb6e4fbcf66d4df57fe6235975fc5b1db87a353"
+  },
+  {
+    "file": "skills/strict-verification/SKILL.md",
+    "sha256": "fa1628d332459cba5a2fcae1a18aef96baf536b715baa0911067bd3fdddd25d6"
+  }
+]

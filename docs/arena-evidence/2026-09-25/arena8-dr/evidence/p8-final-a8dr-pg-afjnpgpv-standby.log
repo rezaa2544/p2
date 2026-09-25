@@ -1,0 +1,24 @@
+2026-09-22 21:15:44.075 UTC [7503] LOG:  starting PostgreSQL 17.11 (Debian 17.11-0+deb13u1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-09-22 21:15:44.075 UTC [7503] LOG:  listening on Unix socket "/tmp/a8dr-pg-afjnpgpv/standby-socket/.s.PGSQL.55450"
+2026-09-22 21:15:44.077 UTC [7506] LOG:  database system was interrupted; last known up at 2026-09-22 21:15:43 UTC
+2026-09-22 21:15:44.080 UTC [7506] LOG:  starting backup recovery with redo LSN 0/5000028, checkpoint LSN 0/5000080, on timeline ID 1
+2026-09-22 21:15:44.080 UTC [7506] LOG:  entering standby mode
+2026-09-22 21:15:44.080 UTC [7506] LOG:  redo starts at 0/5000028
+2026-09-22 21:15:44.080 UTC [7506] LOG:  completed backup recovery with redo LSN 0/5000028 and end LSN 0/5000120
+2026-09-22 21:15:44.080 UTC [7506] LOG:  consistent recovery state reached at 0/5000120
+2026-09-22 21:15:44.080 UTC [7503] LOG:  database system is ready to accept read-only connections
+2026-09-22 21:15:44.082 UTC [7507] LOG:  started streaming WAL from primary at 0/6000000 on timeline 1
+2026-09-22 21:15:44.171 UTC [7507] FATAL:  could not receive data from WAL stream: server closed the connection unexpectedly
+		This probably means the server terminated abnormally
+		before or while processing the request.
+2026-09-22 21:15:44.175 UTC [7514] FATAL:  could not connect to the primary server: connection to server on socket "/tmp/a8dr-pg-afjnpgpv/socket/.s.PGSQL.55446" failed: server closed the connection unexpectedly
+		This probably means the server terminated abnormally
+		before or while processing the request.
+2026-09-22 21:15:44.175 UTC [7506] LOG:  waiting for WAL to become available at 0/6000018
+2026-09-22 21:15:44.291 UTC [7506] LOG:  received promote request
+2026-09-22 21:15:44.291 UTC [7506] LOG:  redo done at 0/5000120 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.21 s
+2026-09-22 21:15:44.292 UTC [7506] LOG:  selected new timeline ID: 2
+2026-09-22 21:15:44.296 UTC [7506] LOG:  archive recovery complete
+2026-09-22 21:15:44.296 UTC [7504] LOG:  checkpoint starting: force
+2026-09-22 21:15:44.297 UTC [7503] LOG:  database system is ready to accept connections
+2026-09-22 21:15:44.899 UTC [7504] LOG:  checkpoint complete: wrote 9 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=0.603 s, sync=0.001 s, total=0.603 s; sync files=5, longest=0.001 s, average=0.001 s; distance=16384 kB, estimate=16384 kB; lsn=0/60000B8, redo lsn=0/6000060

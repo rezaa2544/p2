@@ -1,0 +1,62 @@
+{
+  "verified_at_utc": "2026-09-25T12:10:53.636970+00:00",
+  "repository": "https://github.com/rezaa2544/p2",
+  "branch": "arena8/workspace-publication-20260925",
+  "verified_commit": "3cd04c337288d71fa7f940202351a366bb832d8c",
+  "github_tree_sha": "3cd04c337288d71fa7f940202351a366bb832d8c",
+  "github_tree_truncated": false,
+  "local_tree_entries": 4424,
+  "github_tree_entries": 4424,
+  "missing": [],
+  "extra": [],
+  "mismatched_blobs_or_modes": [],
+  "artifact_files": 2071,
+  "artifact_mismatches": [],
+  "ref_checks": [
+    {
+      "branch": "arena8/workspace-publication-20260925",
+      "expected_sha": "3cd04c337288d71fa7f940202351a366bb832d8c",
+      "github_sha": "3cd04c337288d71fa7f940202351a366bb832d8c",
+      "match": true
+    },
+    {
+      "branch": "arena-sync/current-head-20260925",
+      "expected_sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+      "github_sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+      "match": true
+    },
+    {
+      "branch": "arena-sync/offline-occ-20260924",
+      "expected_sha": "4b577701b42fd33b61babdacab346b449e11c580",
+      "github_sha": "4b577701b42fd33b61babdacab346b449e11c580",
+      "match": true
+    },
+    {
+      "branch": "arena8/dr-closure-20260923",
+      "expected_sha": "452c7c10eed0274544c71422a772b6448e04a09b",
+      "github_sha": "452c7c10eed0274544c71422a772b6448e04a09b",
+      "match": true
+    },
+    {
+      "branch": "arena8/workspace-backup-20260925/local-main",
+      "expected_sha": "5d4a48f7f3cc0bc8ba144c61fb3996e1b458a7f2",
+      "github_sha": "5d4a48f7f3cc0bc8ba144c61fb3996e1b458a7f2",
+      "match": true
+    },
+    {
+      "branch": "arena8/workspace-backup-20260925/stash-0",
+      "expected_sha": "06885cf8b48907e8796c65dd16224136a862bba8",
+      "github_sha": "06885cf8b48907e8796c65dd16224136a862bba8",
+      "match": true
+    },
+    {
+      "branch": "arena8/workspace-backup-20260925/stash-1",
+      "expected_sha": "89de93a27d3a1eb5e642fa8f945ffd9b0ac6c86e",
+      "github_sha": "89de93a27d3a1eb5e642fa8f945ffd9b0ac6c86e",
+      "match": true
+    }
+  ],
+  "main_sha_at_verification": "e6ba2b20b4ba2a4a26a1bc8a19dabf9def11e86b",
+  "scope": "GitHub REST immutable commit tree plus fresh git ls-remote; verifies publication bytes/modes, not test correctness or production readiness",
+  "complete_push_verified": true
+}

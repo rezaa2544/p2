@@ -1,0 +1,8 @@
+{
+  "sha": "4938631633c9c578db2679905fd46c4daaedd80a",
+  "pass": 211,
+  "fail": 70,
+  "harness_errors": 0,
+  "rows": 281,
+  "scope": "E3 local real PG, two process HTTP route/sync runtime; fixture authentication; not browser/device/multi-host certification"
+}

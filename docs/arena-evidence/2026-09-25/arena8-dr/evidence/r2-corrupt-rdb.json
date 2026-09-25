@@ -1,0 +1,13 @@
+{
+  "id": "r2-corrupt-rdb",
+  "command": [
+    "redis-check-rdb",
+    "/tmp/a8dr-redis-9tf2o1to/corrupt.rdb"
+  ],
+  "environment": {},
+  "utc_start": "2026-09-22T21:11:58.880629+00:00",
+  "elapsed_ms": 5.869629,
+  "exit": 1,
+  "stdout": "[offset 0] Checking RDB file /tmp/a8dr-redis-9tf2o1to/corrupt.rdb\n--- RDB ERROR DETECTED ---\n[offset 20] Unexpected EOF reading RDB file\n[additional info] While doing: read-aux\n[additional info] Reading type 0 (string)\n[info] 0 keys read\n[info] 0 expires\n[info] 0 already expired\n[info] 0 subexpires\n",
+  "stderr": ""
+}

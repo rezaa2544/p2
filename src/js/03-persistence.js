@@ -11,9 +11,8 @@
    ۲. لایهٔ پایداری فوری و همگام: RAM db + پایداری با Store
    ═══════════════════════════════════════════════════════════════════ */
 const LOG_KEY='sms_log_v1', SESSION_KEY='sms_session_v1', BOSS_KEY='sms_boss_v1', PERSONA_KEY='sms_persona_v1';
-/* R95 (بند ۲.۵): مجموعه‌هایِ دارایِ نسخه — باید با VERSION_TRACKED سرور
-   (server/sync.js) یکی باشد؛ server-authority و LWW این‌جا نیستند. */
-const _VERSIONED_C = { grades:1, attendance:1, discipline:1 };
+/* A-24: every queued update/delete includes its original observed base.
+   Production/strict applies OCC also to structural and formerly-LWW data. */
 let log=[];
 /* هنگام بازپخش لاگ یا تولید داده نمونه، صف همگام‌سازی نباید پر شود */
 let SYNC_MUTED=false;
@@ -162,7 +161,7 @@ function applyOp(op,record=true){
     const im=(typeof idxById==='function')?idxById(op.c):null;
     const dup = im? im.has(Number(op.data.id)) : arr.some(x=>x.id===op.data.id);
     if(!dup){
-      if(_VERSIONED_C[op.c] && op.data.version == null) op.data.version = 1; /* R95 */
+      if(op.data.version == null) op.data.version = 1; /* R95 */
       arr.push(op.data);
       /* درج افزایشی به‌جای باطل‌سازی: ایندکس‌های ساخته‌شده زنده
          می‌مانند و درج بعدی مجبور به بازسازی کل مجموعه نیست.
@@ -181,11 +180,12 @@ function applyOp(op,record=true){
       /* R95 (بند ۲.۵): پیش از اعمال، نسخهٔ پایه را ثبت کن و نسخهٔ محلی
          را بچرخان؛ سرور `base_version` را با نسخهٔ خود می‌سنجد و در
          مجموعه‌هایِ نسخه‌دار، تعارض را «حفظ» می‌کند (sync_conflicts). */
-      if(_VERSIONED_C[op.c]){
-        op.base_version = it.version || 1;
-        it.version = (it.version || 1) + 1;
-      }
+      // All queued updates carry the version originally observed, including
+      // structural/LWW collections. Replay must never rebase an existing intent.
+      if (op.base_version == null) op.base_version = it.version || 1;
+      const nextVersion = (it.version || 1) + 1;
       Object.assign(it,op.data);
+      it.version = nextVersion;
     }
   }
   else if(op.t==='del'){
@@ -193,7 +193,10 @@ function applyOp(op,record=true){
     const i=arr.findIndex(x=>x.id===op.id);
     /* اندازهٔ ردیفِ حذف‌شده — برای اصلاحِ شمارندهٔ حجمِ وضعیت (_DB_BYTES) */
     var _delBytes = (i>-1) ? JSON.stringify(arr[i]).length + 2 : 0;
-    if(i>-1)arr.splice(i,1);
+    if(i>-1){
+      if(op.base_version == null) op.base_version = arr[i].version || 1;
+      arr.splice(i,1);
+    }
   }
   else if(typeof idxInvalidate==='function') idxInvalidate(op.c);
   if(record){

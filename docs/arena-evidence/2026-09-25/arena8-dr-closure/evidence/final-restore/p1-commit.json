@@ -1,0 +1,26 @@
+{
+  "id": "p1-commit",
+  "command": [
+    "psql",
+    "-X",
+    "-qAt",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    "INSERT INTO users VALUES(11,'committed-before-target')"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/var/tmp/a8c-pg-6sqt9gko/pbr.conf",
+    "PGHOST": "/var/tmp/a8c-pg-6sqt9gko/socket",
+    "PGPORT": "25310",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:26:24.792350+00:00",
+  "start_monotonic_ns": 1558105921061,
+  "end_monotonic_ns": 1558141469396,
+  "exit": 0,
+  "stdout": "",
+  "stderr": "",
+  "expected": 0
+}

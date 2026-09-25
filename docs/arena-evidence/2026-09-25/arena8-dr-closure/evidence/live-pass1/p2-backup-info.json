@@ -1,0 +1,23 @@
+{
+  "id": "p2-backup-info",
+  "command": [
+    "pgbackrest",
+    "--stanza=payesh",
+    "--output=json",
+    "info"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-qmtv4g8d/socket",
+    "PGPORT": "55320",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:12:01.342917+00:00",
+  "start_monotonic_ns": 694656488574,
+  "end_monotonic_ns": 694668754895,
+  "exit": 0,
+  "stdout": "[{\"archive\":[{\"database\":{\"id\":1,\"repo-key\":1},\"id\":\"17-1\",\"max\":\"000000010000000000000002\",\"min\":\"000000010000000000000001\"}],\"backup\":[{\"archive\":{\"start\":\"000000010000000000000002\",\"stop\":\"000000010000000000000002\"},\"backrest\":{\"format\":5,\"version\":\"2.55.1\"},\"database\":{\"id\":1,\"repo-key\":1},\"error\":false,\"info\":{\"delta\":30918282,\"repository\":{\"delta\":3997385,\"size\":3997385},\"size\":30918282},\"label\":\"20260923-111159F\",\"lsn\":{\"start\":\"0/2000028\",\"stop\":\"0/2000120\"},\"prior\":null,\"reference\":null,\"timestamp\":{\"start\":1790161919,\"stop\":1790161921},\"type\":\"full\"}],\"cipher\":\"none\",\"db\":[{\"id\":1,\"repo-key\":1,\"system-id\":7688686893969774058,\"version\":\"17\"}],\"name\":\"payesh\",\"repo\":[{\"cipher\":\"none\",\"key\":1,\"status\":{\"code\":0,\"message\":\"ok\"}}],\"status\":{\"code\":0,\"lock\":{\"backup\":{\"held\":false}},\"message\":\"ok\"}}]",
+  "stderr": "",
+  "expected": 0
+}

@@ -1,0 +1,23 @@
+{
+  "id": "p3-capture-latest",
+  "command": [
+    "python3",
+    "tools/pitr-manifest.py",
+    "--capture",
+    "/var/tmp/a8c-pg-jtza4blr/latest.json"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/var/tmp/a8c-pg-jtza4blr/pbr.conf",
+    "PGHOST": "/var/tmp/a8c-pg-jtza4blr/socket",
+    "PGPORT": "25330",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:28:43.585472+00:00",
+  "start_monotonic_ns": 1696899044972,
+  "end_monotonic_ns": 1696950244537,
+  "exit": 0,
+  "stdout": "MANIFEST_CAPTURED (expected dataset, not backup/restorability proof)\n",
+  "stderr": "",
+  "expected": 0
+}

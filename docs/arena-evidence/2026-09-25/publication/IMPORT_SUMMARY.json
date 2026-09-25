@@ -1,0 +1,8 @@
+{
+  "artifact_files": 2071,
+  "original_bytes": 37468966,
+  "source_base_sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+  "branch": "arena8/workspace-publication-20260925",
+  "storage_policy": "artifact paths staged and skip-worktree; bulky source retained temporarily outside workspace until remote verification",
+  "existing_working_tree_changes": "Included faithfully in dedicated snapshot; executable-bit losses and missing monitoring symlink require review before any merge."
+}

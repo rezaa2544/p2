@@ -1,0 +1,29 @@
+{
+  "id": "p1-standby-after",
+  "command": [
+    "psql",
+    "-X",
+    "-qAt",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    "SELECT md5(string_agg(grades::text,'|' ORDER BY id)) FROM grades"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-gcn4psyl/standby-socket",
+    "PGPORT": "55312",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user",
+    "OLD_PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+    "OLD_PGPORT": "55310",
+    "PG_FENCE_CHECK": "/tmp/a8c-pg-gcn4psyl/fence"
+  },
+  "utc_start": "2026-09-23T11:11:39.925868+00:00",
+  "start_monotonic_ns": 673239440641,
+  "end_monotonic_ns": 673250651112,
+  "exit": 0,
+  "stdout": "6e6d36f93179f229fe466184d2a19b19\n",
+  "stderr": "",
+  "expected": 0
+}

@@ -1,0 +1,24 @@
+{
+  "id": "p1-stop-source",
+  "command": [
+    "pg_ctl",
+    "-D",
+    "/tmp/a8dr-pg-v6hwr7zv/source",
+    "-m",
+    "immediate",
+    "-w",
+    "stop"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-v6hwr7zv/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-v6hwr7zv/socket",
+    "PGPORT": "55432",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-23T11:05:18.902229+00:00",
+  "elapsed_ms": 102.162313,
+  "exit": 0,
+  "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+  "stderr": ""
+}

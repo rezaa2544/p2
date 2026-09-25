@@ -1,0 +1,26 @@
+{
+  "id": "p1-seed",
+  "command": [
+    "psql",
+    "-X",
+    "-qAt",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    "CREATE TABLE users(id int PRIMARY KEY,value text); INSERT INTO users SELECT i,'seed-1-'||i FROM generate_series(1,10)i;CREATE TABLE schools(id int PRIMARY KEY,value text); INSERT INTO schools SELECT i,'seed-1-'||i FROM generate_series(1,10)i;CREATE TABLE classes(id int PRIMARY KEY,value text); INSERT INTO classes SELECT i,'seed-1-'||i FROM generate_series(1,10)i;CREATE TABLE grades(id int PRIMARY KEY,value text); INSERT INTO grades SELECT i,'seed-1-'||i FROM generate_series(1,10)i;CREATE TABLE attendance(id int PRIMARY KEY,value text); INSERT INTO attendance SELECT i,'seed-1-'||i FROM generate_series(1,10)i"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+    "PGPORT": "55310",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:11:20.246279+00:00",
+  "start_monotonic_ns": 653559840419,
+  "end_monotonic_ns": 653580373316,
+  "exit": 0,
+  "stdout": "",
+  "stderr": "",
+  "expected": 0
+}

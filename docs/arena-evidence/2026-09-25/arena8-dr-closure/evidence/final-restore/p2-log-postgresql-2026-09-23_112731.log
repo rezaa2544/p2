@@ -1,0 +1,25 @@
+2026-09-23 11:27:31.506 GMT [24578] LOG:  starting PostgreSQL 17.11 (Debian 17.11-0+deb13u1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-09-23 11:27:31.506 GMT [24578] LOG:  listening on IPv6 address "::1", port 25321
+2026-09-23 11:27:31.506 GMT [24578] LOG:  listening on IPv4 address "127.0.0.1", port 25321
+2026-09-23 11:27:31.507 GMT [24578] LOG:  listening on Unix socket "/var/tmp/a8c-pg-7lgozoki/named/pitr-PJhXFiSM/run/.s.PGSQL.25321"
+2026-09-23 11:27:31.510 GMT [24582] LOG:  database system was interrupted; last known up at 2026-09-23 11:27:26 GMT
+2026-09-23 11:27:31.528 GMT [24582] LOG:  starting backup recovery with redo LSN 0/2000028, checkpoint LSN 0/2000080, on timeline ID 1
+2026-09-23 11:27:31.577 GMT [24582] LOG:  restored log file "000000010000000000000002" from archive
+2026-09-23 11:27:31.587 GMT [24582] LOG:  starting point-in-time recovery to "arena_committed"
+2026-09-23 11:27:31.588 GMT [24582] LOG:  redo starts at 0/2000028
+2026-09-23 11:27:31.636 GMT [24582] LOG:  restored log file "000000010000000000000003" from archive
+2026-09-23 11:27:31.693 GMT [24582] LOG:  restored log file "000000010000000000000004" from archive
+2026-09-23 11:27:31.711 GMT [24582] LOG:  completed backup recovery with redo LSN 0/2000028 and end LSN 0/2000120
+2026-09-23 11:27:31.711 GMT [24582] LOG:  consistent recovery state reached at 0/2000120
+2026-09-23 11:27:31.711 GMT [24578] LOG:  database system is ready to accept read-only connections
+2026-09-23 11:27:31.711 GMT [24582] LOG:  recovery stopping at restore point "arena_committed", time 2026-09-23 11:27:29.876461+00
+2026-09-23 11:27:31.711 GMT [24582] LOG:  redo done at 0/30003D8 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.12 s
+2026-09-23 11:27:31.711 GMT [24582] LOG:  last completed transaction was at log time 2026-09-23 11:27:29.77972+00
+2026-09-23 11:27:31.759 GMT [24582] LOG:  restored log file "000000010000000000000003" from archive
+2026-09-23 11:27:31.780 GMT [24582] LOG:  selected new timeline ID: 2
+2026-09-23 11:27:31.804 GMT [24582] LOG:  archive recovery complete
+2026-09-23 11:27:31.805 GMT [24580] LOG:  checkpoint starting: end-of-recovery immediate wait
+2026-09-23 11:27:31.810 GMT [24580] LOG:  checkpoint complete: wrote 11 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=0.002 s, sync=0.001 s, total=0.005 s; sync files=7, longest=0.001 s, average=0.001 s; distance=16385 kB, estimate=16385 kB; lsn=0/3000440, redo lsn=0/3000440
+2026-09-23 11:27:31.813 GMT [24578] LOG:  database system is ready to accept connections
+2026-09-23 11:27:33.155 GMT [24578] LOG:  received immediate shutdown request
+2026-09-23 11:27:33.160 GMT [24578] LOG:  database system is shut down

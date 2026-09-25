@@ -849,10 +849,23 @@ async function persistOp(op) {
  * failure so the caller's transaction rolls everything back.
  */
 async function persistOpsBatchWithClient(client, ops) {
+  // A-24: claim BEFORE effects in the SAME transaction. A losing mixed batch
+  // rolls back completely; sync returns retryable 503 and re-checks durable UIDs.
+  // Sorted claims avoid opposite-order batch deadlocks. No best-effort claims.
+  const uids = [...new Set((ops || []).filter(Boolean).map(op => op.uid).filter(Boolean))].sort();
+  for (const uid of uids) {
+    const claim = await client.query(
+      'INSERT INTO server_processed_uids (uid, processed_at) VALUES ($1, NOW()) ON CONFLICT (uid) DO NOTHING RETURNING uid', [uid]);
+    if (!claim.rowCount) {
+      const e = new Error('concurrent UID already committed; retry batch');
+      e.code = 'uid_already_processed';
+      throw e;
+    }
+  }
   let n = 0;
   for (const op of (ops || [])) {
     if (!op || !op.c) continue;
-    await persistOpWithClient(client, op);
+    await persistOpWithClient(client, Object.assign({}, op, { uid: undefined }));
     n++;
   }
   return { ok: true, count: n };

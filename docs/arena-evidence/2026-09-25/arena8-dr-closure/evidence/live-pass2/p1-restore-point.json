@@ -1,0 +1,26 @@
+{
+  "id": "p1-restore-point",
+  "command": [
+    "psql",
+    "-X",
+    "-qAt",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    "SELECT pg_create_restore_point('arena_committed')"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-ukfdjkiu/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-ukfdjkiu/socket",
+    "PGPORT": "55310",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:13:20.392515+00:00",
+  "start_monotonic_ns": 773706087946,
+  "end_monotonic_ns": 773718249418,
+  "exit": 0,
+  "stdout": "0/3000440\n",
+  "stderr": "",
+  "expected": 0
+}

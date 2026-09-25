@@ -1,0 +1,16 @@
+{
+  "id": "r1-aof-restored-marker",
+  "command": [
+    "redis-cli",
+    "-p",
+    "56382",
+    "GET",
+    "arena:identity"
+  ],
+  "environment": {},
+  "utc_start": "2026-09-22T21:11:50.792037+00:00",
+  "elapsed_ms": 3.851469,
+  "exit": 0,
+  "stdout": "\n",
+  "stderr": ""
+}

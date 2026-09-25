@@ -1,0 +1,26 @@
+{
+  "id": "p7-standby-start",
+  "command": [
+    "pg_ctl",
+    "-D",
+    "/tmp/a8dr-pg-68csddw3/standby",
+    "-o",
+    "-p 55448 -k /tmp/a8dr-pg-68csddw3/standby-socket -c archive_mode=off",
+    "-l",
+    "/tmp/a8dr-pg-68csddw3/standby.log",
+    "-w",
+    "start"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-68csddw3/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-68csddw3/socket",
+    "PGPORT": "55444",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:15:01.009390+00:00",
+  "elapsed_ms": 106.922789,
+  "exit": 0,
+  "stdout": "waiting for server to start.... done\nserver started\n",
+  "stderr": ""
+}

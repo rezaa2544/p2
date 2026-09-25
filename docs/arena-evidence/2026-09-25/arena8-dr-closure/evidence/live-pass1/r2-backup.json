@@ -1,0 +1,20 @@
+{
+  "id": "r2-backup",
+  "command": [
+    "bash",
+    "tools/redis-backup.sh"
+  ],
+  "environment": {
+    "REDIS_DIR": "/tmp/a8c-redis-r1rdi854/source",
+    "REDIS_PORT": "56220",
+    "BACKUP_DIR": "/tmp/a8c-redis-r1rdi854/backup",
+    "BACKUP_LOCK": "/tmp/a8c-redis-r1rdi854/lock"
+  },
+  "utc_start": "2026-09-23T11:12:04.512889+00:00",
+  "start_monotonic_ns": 697826462367,
+  "end_monotonic_ns": 699989056835,
+  "exit": 1,
+  "stdout": "",
+  "stderr": "AOF_SNAPSHOT_FAILED: invalid AOF manifest\n",
+  "expected": 0
+}

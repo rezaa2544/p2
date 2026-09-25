@@ -1,0 +1,18 @@
+{
+  "id": "r1-aof-restart-read",
+  "command": [
+    "redis-cli",
+    "-p",
+    "26212",
+    "GET",
+    "arena:identity"
+  ],
+  "environment": {},
+  "utc_start": "2026-09-23T11:27:24.923301+00:00",
+  "start_monotonic_ns": 1618236874236,
+  "end_monotonic_ns": 1618241592506,
+  "exit": 0,
+  "stdout": "run-1\n",
+  "stderr": "",
+  "expected": 0
+}

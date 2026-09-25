@@ -1,0 +1,20 @@
+{
+  "id": "r1-lock",
+  "command": [
+    "bash",
+    "tools/redis-backup.sh"
+  ],
+  "environment": {
+    "REDIS_DIR": "/var/tmp/a8c-redis-r7bhb2a8/source",
+    "REDIS_PORT": "26210",
+    "BACKUP_DIR": "/var/tmp/a8c-redis-r7bhb2a8/backup",
+    "BACKUP_LOCK": "/var/tmp/a8c-redis-r7bhb2a8/lock"
+  },
+  "utc_start": "2026-09-23T11:27:24.868864+00:00",
+  "start_monotonic_ns": 1618182437756,
+  "end_monotonic_ns": 1618187772561,
+  "exit": 75,
+  "stdout": "",
+  "stderr": "[redis-backup 20260923T112724Z] lock busy; no backup created\n",
+  "expected": 75
+}

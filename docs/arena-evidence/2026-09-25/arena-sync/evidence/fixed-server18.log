@@ -1,0 +1,69 @@
+
+▸ server18 — strict request validation
+— U واحد —
+  ✅ U1 الگویِ schema (max + required)
+  ✅ U2 طولِ بیش‌ازحد رد می‌شود
+  ✅ U3 کلیدِ ناشناخته = unknown_field
+  ✅ U4 فیلدِ الزامیِ غایب = missing
+  ✅ P0 حساب‌ها و نمرهٔ مدرسهٔ ۱ موجودند
+  ✅ P1 سرورِ واقعی بالا آمد
+  ✅ P2 سه نشستِ واقعی (مدیر/دبیر/سوپرادمین)
+— A احراز —
+  ✅ A1 send-code با فیلدِ اضافه → 400 unknown_field
+  ✅ A2 send-code با phoneِ عددی → 400 bad_phone
+  ✅ A3 send-code بدونِ phone → bad_phone (حفظ‌شده)
+  ✅ A4 login با فیلدِ اضافه → 400 unknown_field
+  ✅ A5 loginِ ناقص → missing_fields (حفظ‌شده)
+— B پاکت —
+  ✅ B1 کلیدِ اضافه در op → کلِ دسته 403 malformed_op
+  ✅ B2 uidِ ۲۰۰ نویسه‌ای → malformed_op
+  ✅ B3 uidِ عددی → malformed_op
+  ✅ B4 کلیدِ اضافه در بدنه → 400 bad_payload
+  ✅ B5 base_versionِ بدشکل → validation_failed (عملیات‌محور)
+  ✅ B6 base_versionِ بدشکل سطرِ تعارض نساخت
+— C مقدار —
+  ✅ C1 leaves.status=whatever (مدیر) → validation_failed
+  ✅ C2 leaves.status=pending → ok (شاهد)
+  ✅ C3 full_nameِ ۱۰۱ نویسه‌ای → validation_failed
+  ✅ C4 پاسخ، مقدارِ خام را برنمی‌گرداند (قرارداد §4)
+  ✅ C5 phoneِ نامعتبر → validation_failed
+  ✅ C6 phoneِ معتبرِ ۱۱ رقمی → ok
+  ✅ C7 national_idِ ۳ رقمی → validation_failed
+  ✅ C8 score=21 → validation_failed
+  ✅ C9 scoreِ رشته‌ای ('18') → validation_failed
+  ✅ C10 score=18 → ok (شاهد)
+  ✅ C11 تاریخِ نامعتبر (ماه ۱۳) → validation_failed
+  ✅ C12 شناسهٔ رشته‌ایِ نامعتبر ('abc') → validation_failed
+  ✅ C13 شناسهٔ رشته‌ایِ متعارف ('3') → ok (تحملِ DOM)
+  ✅ C14 ایزوله‌بودن: خراب رد + سالم ok در یک دسته
+  ✅ C15 exam_duties.role='boss' → ok (واژگانِ باز؛ گارد، نویسنده است)
+  ❌ C15b دبیر + exam_duties → رد (role_denied در مدل فعلی) — 200 {"uid":"s18-18","ok":false,"code":"role_denied","message":"این عملیات برای نقش شما مجاز نیست"}
+  ✅ C16 preapps.stage='zzz' → validation_failed
+  ✅ C17 ردشده در store نرفت (full_nameِ ۱۰۱ نویسه‌ای نیست)
+  ✅ C18 ردشده در store نرفت (statusِ whatever نیست)
+  ✅ C19 آدیت: sync_validation_failed ثبت شد
+  ✅ C20 آدیت PII ندارد (نام/تلفنِ خراب نیامده)
+— O ترتیب —
+  ✅ O1 دبیر + status=closed → field_denied (fieldGate اول، مثلِ M4x)
+— D داوری —
+  ✅ D1 فیلدِ اضافه → 400 unknown_field
+  ✅ D2 winnerِ نامعتبر → bad_payload (حفظ‌شده)
+  ✅ D3 reasonِ ۲۰۱ نویسه‌ای → 400 bad_payload (ردِّ صریح)
+  ✅ D4 conflict_idِ رشته‌ای → bad_payload
+  ✅ D5 تعارضِ واقعی ساخته شد (base_versionِ کهنه)
+  ✅ D6 داوریِ سالم → ok
+— E بازیابی —
+  ✅ E0 پشتیبان ساخته شد
+  ✅ E1 فیلدِ اضافه → 400 unknown_field
+  ✅ E2 نامِ traversal → 200 + آخرین نسخه (قراردادِ F1)
+  ✅ E3 نامِ الگودارِ ناموجود → 200 + آخرین نسخه (fallback)
+  ✅ E4 بازیابیِ آخرین نسخه → ok (حفظ‌شده)
+  ✅ E5 بدنهٔ 5KB به restore → 413 body_too_large
+— F پیامک —
+  ✅ F1 فیلدِ اضافه → unknown_field (مهاجرت، همان code)
+  ✅ F2 آرایهٔ بدشکل → bad_batch (حفظ‌شده)
+  ✅ F3 آرایهٔ خالی → empty_batch (حفظ‌شده)
+
+server18: 54 سبز، 1 قرمز
+❌ خطاها:
+ - C15b دبیر + exam_duties → رد (role_denied در مدل فعلی) — 200 {"uid":"s18-18","ok":false,"code":"role_denied","message":"این عملیات برای نقش شما مجاز نیست"}

@@ -1,0 +1,29 @@
+{
+  "id": "p3-named",
+  "command": [
+    "bash",
+    "tools/pitr-restore.sh",
+    "--name",
+    "arena_committed",
+    "--dest",
+    "/tmp/a8c-pg-_i46258w/named",
+    "--port",
+    "55331",
+    "--manifest",
+    "/tmp/a8c-pg-_i46258w/expected.json"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-_i46258w/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-_i46258w/socket",
+    "PGPORT": "55330",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:23:05.552002+00:00",
+  "start_monotonic_ns": 1358865576407,
+  "end_monotonic_ns": 1359790405253,
+  "exit": 0,
+  "stdout": "PITR_RUN_DIR=/tmp/a8c-pg-_i46258w/named/pitr-XdBHVV3M\nwaiting for server to start.... done\nserver started\nPITR_VERIFY: PASS identity + complete expected dataset (not E4)\nPITR_READY dir=/tmp/a8c-pg-_i46258w/named/pitr-XdBHVV3M port=55331 socket=/tmp/a8c-pg-_i46258w/named/pitr-XdBHVV3M/run\nCleanup: pg_ctl -D '/tmp/a8c-pg-_i46258w/named/pitr-XdBHVV3M/data' -m fast -w stop\n",
+  "stderr": "",
+  "expected": 0
+}

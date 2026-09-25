@@ -1,0 +1,26 @@
+{
+  "id": "p7-target-start",
+  "command": [
+    "pg_ctl",
+    "-D",
+    "/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data",
+    "-o",
+    "-c config_file=/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/etc/postgresql.conf -c recovery_target_action=promote -c max_connections=100",
+    "-l",
+    "/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/target.log",
+    "-w",
+    "start"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-68csddw3/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-68csddw3/socket",
+    "PGPORT": "55444",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:15:00.578810+00:00",
+  "elapsed_ms": 108.649831,
+  "exit": 0,
+  "stdout": "waiting for server to start.... done\nserver started\n",
+  "stderr": ""
+}

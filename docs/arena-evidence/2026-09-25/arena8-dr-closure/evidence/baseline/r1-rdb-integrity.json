@@ -1,0 +1,13 @@
+{
+  "id": "r1-rdb-integrity",
+  "command": [
+    "redis-check-rdb",
+    "/tmp/a8dr-redis-1qs9k7qw/backup/dump-20260923T110510Z.rdb"
+  ],
+  "environment": {},
+  "utc_start": "2026-09-23T11:05:13.060495+00:00",
+  "elapsed_ms": 9.724378,
+  "exit": 0,
+  "stdout": "[offset 0] Checking RDB file /tmp/a8dr-redis-1qs9k7qw/backup/dump-20260923T110510Z.rdb\n[offset 26] AUX FIELD redis-ver = '8.0.2'\n[offset 40] AUX FIELD redis-bits = '64'\n[offset 52] AUX FIELD ctime = '1790161510'\n[offset 67] AUX FIELD used-mem = '761880'\n[offset 79] AUX FIELD aof-base = '0'\n[offset 81] Selecting DB ID 0\n[offset 119] Checksum OK\n[offset 119] \\o/ RDB looks OK! \\o/\n[info] 1 keys read\n[info] 0 expires\n[info] 0 already expired\n[info] 0 subexpires\n",
+  "stderr": ""
+}

@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/user/p2/tests/infrastructure/disaster-recovery/live-dr-closure.py", line 163, in <module>
+    try:func(n)
+        ~~~~^^^
+  File "/home/user/p2/tests/infrastructure/disaster-recovery/live-dr-closure.py", line 137, in redis_test
+    d=b/'aof-target';d.mkdir();shutil.copytree(aof,d/'appendonlydir');boot('aof-target',port+2,True)
+                                                                      ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/p2/tests/infrastructure/disaster-recovery/live-dr-closure.py", line 126, in boot
+    raise RuntimeError('Redis not ready')
+RuntimeError: Redis not ready

@@ -1,0 +1,23 @@
+{
+  "id": "p2-backup",
+  "command": [
+    "pgbackrest",
+    "--stanza=payesh",
+    "--type=full",
+    "backup"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-ljzsgn0w/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-ljzsgn0w/socket",
+    "PGPORT": "55320",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:22:22.338762+00:00",
+  "start_monotonic_ns": 1315652335742,
+  "end_monotonic_ns": 1317635124963,
+  "exit": 0,
+  "stdout": "",
+  "stderr": "",
+  "expected": 0
+}

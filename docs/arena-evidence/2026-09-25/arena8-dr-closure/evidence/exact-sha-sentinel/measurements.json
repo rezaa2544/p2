@@ -1,0 +1,122 @@
+[
+  {
+    "run": 1,
+    "valid": true,
+    "scope": "E3 Redis service, not application/E4",
+    "failure_utc": "2026-09-23T11:22:02.773906+00:00",
+    "failure_monotonic_ns": 1296087458905,
+    "recovered_monotonic_ns": 1298877295665,
+    "rto_seconds": 2.78983676,
+    "lost_acknowledged_ids": [],
+    "rpo_ack_loss_window_seconds": 0.0,
+    "recovered_point_age_at_failure_seconds": 0.004201899,
+    "acknowledgements": {
+      "0": 1296045257552,
+      "1": 1296049423003,
+      "2": 1296053534833,
+      "3": 1296057560831,
+      "4": 1296061677357,
+      "5": 1296066889637,
+      "6": 1296071059342,
+      "7": 1296075158390,
+      "8": 1296079160041,
+      "9": 1296083257006
+    }
+  },
+  {
+    "run": 2,
+    "valid": true,
+    "scope": "E3 Redis service, not application/E4",
+    "failure_utc": "2026-09-23T11:22:42.463292+00:00",
+    "failure_monotonic_ns": 1335776866590,
+    "recovered_monotonic_ns": 1338497196736,
+    "rto_seconds": 2.720330146,
+    "lost_acknowledged_ids": [],
+    "rpo_ack_loss_window_seconds": 0.0,
+    "recovered_point_age_at_failure_seconds": 0.005362538,
+    "acknowledgements": {
+      "0": 1335720347104,
+      "1": 1335726454328,
+      "2": 1335732250049,
+      "3": 1335738359824,
+      "4": 1335744092655,
+      "5": 1335749778785,
+      "6": 1335755435947,
+      "7": 1335760825862,
+      "8": 1335766277742,
+      "9": 1335771504052
+    }
+  },
+  {
+    "run": 3,
+    "valid": true,
+    "scope": "E3 Redis service, not application/E4",
+    "failure_utc": "2026-09-23T11:23:22.189144+00:00",
+    "failure_monotonic_ns": 1375502717444,
+    "recovered_monotonic_ns": 1378322329689,
+    "rto_seconds": 2.819612245,
+    "lost_acknowledged_ids": [],
+    "rpo_ack_loss_window_seconds": 0.0,
+    "recovered_point_age_at_failure_seconds": 0.005517504,
+    "acknowledgements": {
+      "0": 1375438884728,
+      "1": 1375446266622,
+      "2": 1375453729156,
+      "3": 1375459420880,
+      "4": 1375465067741,
+      "5": 1375471135674,
+      "6": 1375478363706,
+      "7": 1375484736024,
+      "8": 1375491224005,
+      "9": 1375497199940
+    }
+  },
+  {
+    "run": 4,
+    "valid": true,
+    "scope": "E3 Redis service, not application/E4",
+    "failure_utc": "2026-09-23T11:24:07.874288+00:00",
+    "failure_monotonic_ns": 1421187863427,
+    "recovered_monotonic_ns": 1423657234202,
+    "rto_seconds": 2.469370775,
+    "lost_acknowledged_ids": [],
+    "rpo_ack_loss_window_seconds": 0.0,
+    "recovered_point_age_at_failure_seconds": 0.004444301,
+    "acknowledgements": {
+      "0": 1421141066578,
+      "1": 1421145822132,
+      "2": 1421150650555,
+      "3": 1421155992152,
+      "4": 1421160727376,
+      "5": 1421165449621,
+      "6": 1421170068566,
+      "7": 1421174544059,
+      "8": 1421178897787,
+      "9": 1421183419126
+    }
+  },
+  {
+    "run": 5,
+    "valid": true,
+    "scope": "E3 Redis service, not application/E4",
+    "failure_utc": "2026-09-23T11:24:48.526030+00:00",
+    "failure_monotonic_ns": 1461839604892,
+    "recovered_monotonic_ns": 1464670610304,
+    "rto_seconds": 2.831005412,
+    "lost_acknowledged_ids": [],
+    "rpo_ack_loss_window_seconds": 0.0,
+    "recovered_point_age_at_failure_seconds": 0.005074393,
+    "acknowledgements": {
+      "0": 1461792871554,
+      "1": 1461797479835,
+      "2": 1461802172025,
+      "3": 1461806695065,
+      "4": 1461811328420,
+      "5": 1461815955256,
+      "6": 1461820641401,
+      "7": 1461825277072,
+      "8": 1461829971679,
+      "9": 1461834530499
+    }
+  }
+]

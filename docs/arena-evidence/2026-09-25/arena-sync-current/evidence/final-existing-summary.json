@@ -1,0 +1,98 @@
+[
+  {
+    "sha": "abb20b7b0a49642488573c2e1f7bf289549cea40",
+    "test": "phase-c-conflict-resolution",
+    "exit": 0,
+    "level": "existing suite; inspect individual assertions/mocks, not production runtime proof"
+  },
+  {
+    "sha": "abb20b7b0a49642488573c2e1f7bf289549cea40",
+    "test": "sync-dup-claim",
+    "exit": 0,
+    "level": "existing suite; inspect individual assertions/mocks, not production runtime proof"
+  },
+  {
+    "sha": "abb20b7b0a49642488573c2e1f7bf289549cea40",
+    "test": "sync-atomic-batch",
+    "exit": 0,
+    "level": "existing suite; inspect individual assertions/mocks, not production runtime proof"
+  },
+  {
+    "sha": "abb20b7b0a49642488573c2e1f7bf289549cea40",
+    "test": "sync-del-mirror",
+    "exit": 0,
+    "level": "existing suite; inspect individual assertions/mocks, not production runtime proof"
+  },
+  {
+    "sha": "abb20b7b0a49642488573c2e1f7bf289549cea40",
+    "test": "sync-cache-errors",
+    "exit": 0,
+    "level": "existing suite; inspect individual assertions/mocks, not production runtime proof"
+  },
+  {
+    "sha": "abb20b7b0a49642488573c2e1f7bf289549cea40",
+    "test": "sync-mirror-visible",
+    "exit": 0,
+    "level": "existing suite; inspect individual assertions/mocks, not production runtime proof"
+  },
+  {
+    "sha": "abb20b7b0a49642488573c2e1f7bf289549cea40",
+    "test": "sync-chunk",
+    "exit": 0,
+    "level": "existing suite; inspect individual assertions/mocks, not production runtime proof"
+  },
+  {
+    "sha": "abb20b7b0a49642488573c2e1f7bf289549cea40",
+    "test": "sync-sending-revive",
+    "exit": 0,
+    "level": "existing suite; inspect individual assertions/mocks, not production runtime proof"
+  },
+  {
+    "sha": "abb20b7b0a49642488573c2e1f7bf289549cea40",
+    "test": "sync-conflict-ui",
+    "exit": 0,
+    "level": "existing suite; inspect individual assertions/mocks, not production runtime proof"
+  },
+  {
+    "sha": "abb20b7b0a49642488573c2e1f7bf289549cea40",
+    "test": "sync-dlq-retry",
+    "exit": 0,
+    "level": "existing suite; inspect individual assertions/mocks, not production runtime proof"
+  },
+  {
+    "sha": "abb20b7b0a49642488573c2e1f7bf289549cea40",
+    "test": "bgsync",
+    "exit": 1,
+    "level": "existing suite; inspect individual assertions/mocks, not production runtime proof"
+  },
+  {
+    "sha": "abb20b7b0a49642488573c2e1f7bf289549cea40",
+    "test": "delta-sync-hardening",
+    "exit": 0,
+    "level": "existing suite; inspect individual assertions/mocks, not production runtime proof"
+  },
+  {
+    "sha": "abb20b7b0a49642488573c2e1f7bf289549cea40",
+    "test": "wave4-sync",
+    "exit": 0,
+    "level": "existing suite; inspect individual assertions/mocks, not production runtime proof"
+  },
+  {
+    "sha": "abb20b7b0a49642488573c2e1f7bf289549cea40",
+    "test": "wave4-sync-all-collections",
+    "exit": 1,
+    "level": "existing suite; inspect individual assertions/mocks, not production runtime proof"
+  },
+  {
+    "sha": "abb20b7b0a49642488573c2e1f7bf289549cea40",
+    "test": "sync-queue-caps",
+    "exit": 0,
+    "level": "existing suite; inspect individual assertions/mocks, not production runtime proof"
+  },
+  {
+    "sha": "abb20b7b0a49642488573c2e1f7bf289549cea40",
+    "test": "offline-sync-drill",
+    "exit": 0,
+    "level": "existing suite; inspect individual assertions/mocks, not production runtime proof"
+  }
+]

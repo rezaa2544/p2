@@ -1,0 +1,17 @@
+{
+  "id": "s1-post-write",
+  "command": [
+    "redis-cli",
+    "-p",
+    "56611",
+    "SET",
+    "arena:post",
+    "ok"
+  ],
+  "environment": {},
+  "exit": 0,
+  "stdout": "OK\n",
+  "stderr": "",
+  "elapsed_ms": 3.837615,
+  "utc_end": "2026-09-22T21:13:19.891591+00:00"
+}

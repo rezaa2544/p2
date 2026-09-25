@@ -1,0 +1,24 @@
+{
+  "id": "p8-before-target",
+  "command": [
+    "psql",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-d",
+    "payesh",
+    "-tAXc",
+    "INSERT INTO users VALUES(11,'keep'); SELECT pg_create_restore_point('arena_target');"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-afjnpgpv/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-afjnpgpv/socket",
+    "PGPORT": "55446",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:15:42.835199+00:00",
+  "elapsed_ms": 11.103392,
+  "exit": 0,
+  "stdout": "INSERT 0 1\n0/3000408\n",
+  "stderr": ""
+}

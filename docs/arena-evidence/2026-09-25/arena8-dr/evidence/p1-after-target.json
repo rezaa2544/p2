@@ -1,0 +1,24 @@
+{
+  "id": "p1-after-target",
+  "command": [
+    "psql",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-d",
+    "payesh",
+    "-tAXc",
+    "INSERT INTO users VALUES(12,'must-not-restore'); SELECT pg_switch_wal();"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-n8wmb8r7/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-n8wmb8r7/socket",
+    "PGPORT": "55432",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:11:55.768540+00:00",
+  "elapsed_ms": 20.027668,
+  "exit": 0,
+  "stdout": "INSERT 0 1\n0/30004D8\n",
+  "stderr": ""
+}

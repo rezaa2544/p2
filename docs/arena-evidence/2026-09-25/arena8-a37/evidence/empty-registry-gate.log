@@ -1,0 +1,16 @@
+==== PAYESH STRICT VERIFICATION GATE ====
+  OK G1 current HEAD known — 1811cb15cc00262ce5647a27cdc496267c997641
+  OK G2 mandatory policy exists
+  OK G3 registry exists
+  OK G4 registry valid JSON
+  OK G5 three independent reviewers declared
+  OK G6 explicit false-green allowlist exists
+  OK G6a canonical alert rules exists — infra/observability/alert-rules.yml
+  OK G7 assert(true has no unapproved hits
+  OK G7 process.exit(0) has no unapproved hits
+  OK G7 || true has no unapproved hits
+  OK G7 0/0 checks has no unapproved hits
+RESULT 11 pass / 0 fail
+HEAD 1811cb15cc00262ce5647a27cdc496267c997641
+CERTIFIED 0
+VERDICT VERIFIED

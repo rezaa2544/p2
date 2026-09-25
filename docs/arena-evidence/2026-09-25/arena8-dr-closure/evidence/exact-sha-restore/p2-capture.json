@@ -1,0 +1,23 @@
+{
+  "id": "p2-capture",
+  "command": [
+    "python3",
+    "tools/pitr-manifest.py",
+    "--capture",
+    "/tmp/a8c-pg-ljzsgn0w/expected.json"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-ljzsgn0w/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-ljzsgn0w/socket",
+    "PGPORT": "55320",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:22:25.457907+00:00",
+  "start_monotonic_ns": 1318771480579,
+  "end_monotonic_ns": 1318857400870,
+  "exit": 0,
+  "stdout": "MANIFEST_CAPTURED (expected dataset, not backup/restorability proof)\n",
+  "stderr": "",
+  "expected": 0
+}

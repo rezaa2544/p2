@@ -1,0 +1,26 @@
+{
+  "id": "p1-database",
+  "command": [
+    "psql",
+    "-X",
+    "-qAt",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    "CREATE DATABASE payesh"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-ukfdjkiu/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-ukfdjkiu/socket",
+    "PGPORT": "55310",
+    "PGDATABASE": "postgres",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:13:17.075002+00:00",
+  "start_monotonic_ns": 770388575429,
+  "end_monotonic_ns": 770423624633,
+  "exit": 0,
+  "stdout": "",
+  "stderr": "",
+  "expected": 0
+}

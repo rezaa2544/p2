@@ -1,0 +1,108 @@
+
+offline-sync-drill — دور ۱۱: شش سناریوی اتکاپذیری همگام‌سازی آفلاین (کلاینت واقعی + server/sync.js واقعی)
+
+▸ S1 — آفلاین → صفِ ۵ قلم → reconnect → push → integrity
+✅ تم‌های پویا فعال شدند. برای تغییر تم از دستور زیر استفاده کنید:
+switchPayeshTheme("theme-3")
+[demo] staff_posts: ۲۴ هنجار نمونه ساخته شد
+داده نمونه: {
+  'مدارس': 6,
+  'کاربران': 1040,
+  'کلاس‌ها': 36,
+  'حضوروغیاب': 10460,
+  'نمرات': 12555,
+  'انضباطی': 759,
+  'اعلان‌ها': 705,
+  'اقساط': 1561,
+  'تراکنش‌ها': 980
+}
+  ✅ S1a هر ۵ mutation در صفِ آفلاین (queue depth=5)
+  ✅ S1b صفر تماسِ شبکه در آفلاین
+  ✅ S1c هر ۵ قلم روی سرور اعمال شد
+  ✅ S1d صفِ کلاینت تخلیه و دیسک پاک شد
+  ✅ S1e integrity: صفر تغییرِ ناخواسته (grades/conflicts دست‌نخورده)
+  ✅ S1f ‏batch push: یک تماس، نه ۵ تماس
+▸ S2 — ارسالِ ۳بارهٔ همان mutation → dedupe → اثرِ تکی
+  ✅ S2a اثرِ تکی: یک رکورد از ۳ ارسال
+  ✅ S2b ‏dedupe hit: دقیقاً ۲ از ۳ (اولی apply)
+  ✅ S2c هر ۳ پاسخ ok=true (کلاینت retry را موفق می‌بیند — نه خطا)
+  ✅ S2d integrity: side effect تکی (uids=+1)
+▸ S3 — تعارضِ OCC (سرور جدیدتر) → حفظ → داوری/رفع
+✅ تم‌های پویا فعال شدند. برای تغییر تم از دستور زیر استفاده کنید:
+switchPayeshTheme("theme-3")
+[demo] staff_posts: ۲۴ هنجار نمونه ساخته شد
+داده نمونه: {
+  'مدارس': 6,
+  'کاربران': 1040,
+  'کلاس‌ها': 36,
+  'حضوروغیاب': 10460,
+  'نمرات': 12555,
+  'انضباطی': 759,
+  'اعلان‌ها': 705,
+  'اقساط': 1561,
+  'تراکنش‌ها': 980
+}
+  ✅ S3a تعارض شناسایی و *حفظ* شد (نه بازنویسیِ بی‌صدا)
+  ✅ S3b کلاینت قلم را conflict نشان می‌دهد (خارج از چرخهٔ retry)
+  ✅ S3c پس از داوری، صفِ کلاینت پاک می‌شود (reconciliation)
+  ✅ S3d integrity: رکورد سرور در کلِ چرخه دست‌نخورده (score=17, v=4)
+▸ S4 — انحرافِ ساعتِ کلاینت (۵ دقیقه عقب و جلوتر از AT_DRIFT)
+  ✅ S4a ‏skew ‏۵min < حدِ ۱۰min ⇒ اعمال، بدونِ هشدار
+  ✅ S4b ‏skew ‏۳۰min > حد ⇒ اعمال + ثبتِ sync_clock_skew (رصدپذیری)
+  ✅ S4c ‏causal consistency از OCC است نه timestamp: ‏base_version کهنه ⇒ conflict، نه بازنویسی
+  ✅ S4d integrity: دو insert اعمال، صفر خرابی
+▸ S5 — صفِ ۱۲۰تایی → batch push (زیر MAX_BATCH=500) → ترتیب و integrity
+✅ تم‌های پویا فعال شدند. برای تغییر تم از دستور زیر استفاده کنید:
+switchPayeshTheme("theme-3")
+[demo] staff_posts: ۲۴ هنجار نمونه ساخته شد
+داده نمونه: {
+  'مدارس': 6,
+  'کاربران': 1040,
+  'کلاس‌ها': 36,
+  'حضوروغیاب': 10460,
+  'نمرات': 12555,
+  'انضباطی': 759,
+  'اعلان‌ها': 705,
+  'اقساط': 1561,
+  'تراکنش‌ها': 980
+}
+  ✅ S5a صفِ ۱۲۰تایی ساخته و روی دیسک ماندگار شد
+  ✅ S5b هر ۱۲۰ قلم اعمال شد
+  ✅ S5c یک تماسِ batch (نه ۱۲۰ تماس)
+  ✅ S5d ترتیبِ صف حفظ شد (bulk-1000..bulk-1119 به همان ترتیب)
+  ✅ S5e صف و دیسک تخلیه شدند
+  ✅ S5f integrity: persisted == applied == 120
+▸ S6 — ‏reject اعتبارسنجی → dead-letter کلاینت (نه retry بی‌پایان) → قابلِ رؤیت برای کاربر
+✅ تم‌های پویا فعال شدند. برای تغییر تم از دستور زیر استفاده کنید:
+switchPayeshTheme("theme-3")
+[demo] staff_posts: ۲۴ هنجار نمونه ساخته شد
+داده نمونه: {
+  'مدارس': 6,
+  'کاربران': 1040,
+  'کلاس‌ها': 36,
+  'حضوروغیاب': 10460,
+  'نمرات': 12555,
+  'انضباطی': 759,
+  'اعلان‌ها': 705,
+  'اقساط': 1561,
+  'تراکنش‌ها': 980
+}
+  ✅ S6a سرور با کدِ پایدارِ validation_failed رد کرد
+  ✅ S6b کلاینت قلم را rejected/dead-letter کرد — نه retry بی‌پایان، نه گم
+  ✅ S6c برای کاربر قابلِ رؤیت است (rejectedCount>0 — پایهٔ notify در UI)
+  ✅ S6d ‏fix دستی ممکن است: قلمِ اصلاح‌شده (base_version درست) می‌رود و می‌نشیند
+  ✅ S6e integrity: تا پیش از fix هیچ نوشته‌ای ننشست (reject واقعاً بی‌اثر بود)
+▸ محدودیت‌های sandbox (سبزِ جعلی ممنوع):
+  🚫 NOT-RUN: Service Worker Background Sync با تبِ بستهٔ واقعی — نیازمند Chromium — پوششِ منطقِ آینه: tests/bgsync.js
+  🚫 NOT-RUN: قطعِ شبکهٔ واقعی (iptables/tc) — سندباکس بدونِ root شبکه — قطعی با fetch-fault هم‌ارزِ رفتاری شبیه‌سازی شد
+  🚫 NOT-RUN: اندازه‌گیری روی PG/Redis زنده — این drill لایهٔ sync است؛ مسیرِ PG در wave10-pg-live (D1..D4) پوشش دارد
+
+▸ جدولِ metrics:
+  {"scn":"S1","queue_depth":5,"push_ms":12,"conflicts":0,"calls":1,"integrity":true}
+  {"scn":"S2","sends":3,"dedupe_hits":2,"side_effects":1,"push_ms":1,"integrity":true}
+  {"scn":"S3","queue_depth":1,"detect_ms":3,"conflicts":1,"integrity":true}
+  {"scn":"S4","skew_tested_min":[5,30],"audits":1,"reorder":"OCC-based","integrity":true}
+  {"scn":"S5","queue_depth":120,"push_ms":9,"calls":1,"heap_delta_mb":-7,"integrity":true}
+  {"scn":"S6","error_propagation_ms":1,"user_action":"required(fix base_version)","integrity":true}
+
+offline-sync-drill: 29 موفق، 0 ناموفق (+ 3 NOT-RUN ثبت‌شده) — 9.0s

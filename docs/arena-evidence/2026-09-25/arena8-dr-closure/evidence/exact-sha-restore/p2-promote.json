@@ -1,0 +1,24 @@
+{
+  "id": "p2-promote",
+  "command": [
+    "bash",
+    "tools/failover-postgres.sh"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-ljzsgn0w/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-ljzsgn0w/standby-socket",
+    "PGPORT": "55322",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user",
+    "OLD_PGHOST": "/tmp/a8c-pg-ljzsgn0w/socket",
+    "OLD_PGPORT": "55320",
+    "PG_FENCE_CHECK": "/tmp/a8c-pg-ljzsgn0w/fence"
+  },
+  "utc_start": "2026-09-23T11:22:32.231425+00:00",
+  "start_monotonic_ns": 1325544997888,
+  "end_monotonic_ns": 1335603618959,
+  "exit": 1,
+  "stdout": "== failover-postgres: standby=/tmp/a8c-pg-ljzsgn0w/standby-socket:55322 primary=(/tmp/a8c-pg-ljzsgn0w/socket:55320) dry=0 force=0\n\u062f\u0631 \u062d\u0627\u0644\u0650 promote ...\n",
+  "stderr": "WARNING:  terminating connection because of crash of another server process\nDETAIL:  The postmaster has commanded this server process to roll back the current transaction and exit, because another server process exited abnormally and possibly corrupted shared memory.\nHINT:  In a moment you should be able to reconnect to the database and repeat your command.\nserver closed the connection unexpectedly\n\tThis probably means the server terminated abnormally\n\tbefore or while processing the request.\nconnection to server was lost\nFAIL: pg_promote returned false\n",
+  "expected": 0
+}

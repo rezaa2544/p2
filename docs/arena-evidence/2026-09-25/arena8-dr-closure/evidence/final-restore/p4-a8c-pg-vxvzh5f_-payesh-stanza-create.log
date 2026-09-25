@@ -1,0 +1,4 @@
+-------------------PROCESS START-------------------
+2026-09-23 11:29:16.554 P00   INFO: stanza-create command begin 2.55.1: --config=/var/tmp/a8c-pg-vxvzh5f_/pbr.conf --exec-id=30697-2f462f7f --lock-path=/var/tmp/a8c-pg-vxvzh5f_/lock --log-path=/var/tmp/a8c-pg-vxvzh5f_ --pg1-path=/var/tmp/a8c-pg-vxvzh5f_/source --pg1-port=25340 --pg1-socket-path=/var/tmp/a8c-pg-vxvzh5f_/socket --pg1-user=user --repo1-path=/var/tmp/a8c-pg-vxvzh5f_/repo --stanza=payesh
+2026-09-23 11:29:16.560 P00   INFO: stanza-create for stanza 'payesh' on repo1
+2026-09-23 11:29:16.564 P00   INFO: stanza-create command end: completed successfully (12ms)

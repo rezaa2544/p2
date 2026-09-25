@@ -1,0 +1,22 @@
+{
+  "id": "p5-restore-corrupt",
+  "command": [
+    "pgbackrest",
+    "--stanza=payesh",
+    "--pg1-path=/tmp/a8dr-pg-6cn4x7la/bad-target",
+    "--type=immediate",
+    "restore"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-6cn4x7la/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-6cn4x7la/socket",
+    "PGPORT": "55440",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:13:38.319859+00:00",
+  "elapsed_ms": 299.909465,
+  "exit": 0,
+  "stdout": "2026-09-22 21:13:38.324 P00   INFO: restore command begin 2.55.1: --config=/tmp/a8dr-pg-6cn4x7la/pbr.conf --exec-id=5859-1663f162 --lock-path=/tmp/a8dr-pg-6cn4x7la/lock --log-level-console=info --log-path=/tmp/a8dr-pg-6cn4x7la --pg1-path=/tmp/a8dr-pg-6cn4x7la/bad-target --repo1-path=/tmp/a8dr-pg-6cn4x7la/repo --spool-path=/tmp/a8dr-pg-6cn4x7la/spool --stanza=payesh --type=immediate\n2026-09-22 21:13:38.329 P00   INFO: repo1: restore backup set 20260922-211334F, recovery will start at 2026-09-22 21:13:34\n2026-09-22 21:13:38.329 P00   INFO: remap data directory to '/tmp/a8dr-pg-6cn4x7la/bad-target'\n2026-09-22 21:13:38.618 P00   INFO: write updated /tmp/a8dr-pg-6cn4x7la/bad-target/postgresql.auto.conf\n2026-09-22 21:13:38.618 P00   INFO: restore global/pg_control (performed last to ensure aborted restores cannot be started)\n2026-09-22 21:13:38.618 P00   INFO: restore size = 29.5MB, file total = 1284\n2026-09-22 21:13:38.618 P00   INFO: restore command end: completed successfully (295ms)\n",
+  "stderr": ""
+}

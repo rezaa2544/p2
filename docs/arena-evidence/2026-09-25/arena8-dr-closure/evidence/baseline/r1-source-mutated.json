@@ -1,0 +1,17 @@
+{
+  "id": "r1-source-mutated",
+  "command": [
+    "redis-cli",
+    "-p",
+    "56380",
+    "SET",
+    "arena:identity",
+    "new-source-dataset"
+  ],
+  "environment": {},
+  "utc_start": "2026-09-23T11:05:13.133350+00:00",
+  "elapsed_ms": 4.696712,
+  "exit": 0,
+  "stdout": "OK\n",
+  "stderr": ""
+}

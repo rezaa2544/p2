@@ -1,0 +1,389 @@
+---
+name: evidence-integrity-and-commit-accounting
+description: Enforce rigorous evidence integrity, mock vs runtime separation, evidence strength levels (E0-E4), strict commit/SHA accounting, and reproducible verification in engineering reports and audits.
+allowed-tools: Read, Grep, Glob, Bash
+---
+
+# Evidence Integrity & Commit Accounting
+
+## هدف
+تضمین اینکه تمام گزارش‌های مهندسی، تست، ممیزی و تحویل دارای:
+1. شواهد قابل بازتولید (Reproducible Evidence)
+2. تفکیک دقیق کد، تست و مستندات
+3. گزارش صحیح SHA و تاریخچه Git
+4. جلوگیری از ادعاهای غیرقابل اثبات
+باشند.
+
+---
+
+## Rule Set 1 — Evidence Integrity (سخت‌گیری شواهد)
+
+### اصل پایه
+هیچ جمله‌ای در گزارش مجاز نیست مگر اینکه یکی از این سه نوع evidence پشت آن باشد:
+
+#### Type A — Runtime Evidence
+نمونه:
+```text
+COMMAND:
+node tests/server17.js
+
+ENV:
+NODE_ENV=production
+DATABASE_URL=...
+REDIS_URL=...
+
+RESULT:
+70 PASS / 0 FAIL
+
+EXIT CODE:
+0
+```
+- **مجاز:** `server17 passed 70/70`
+- **غیرمجاز:** «سیستم امن است»
+
+#### Type B — Source Evidence
+هر ادعای معماری باید مسیر فایل و خط داشته باشد.
+فرمت اجباری:
+```text
+CLAIM:
+Canary weight update is atomic
+
+SOURCE:
+server/infrastructure/phase6-canary-engine.js
+
+LINES:
+317-350
+
+EVIDENCE:
+authority.updateCanaryWeightWithAudit()
+```
+- **بدون مسیر فایل:** ❌ رد
+
+#### Type C — Git Evidence
+هر تغییر کد باید دارای مشخصات کامل باشد:
+```text
+COMMIT:
+abc123
+
+BRANCH:
+main
+
+PARENT:
+previous_sha
+
+FILES:
+server/a.js
+server/b.js
+
+git status:
+clean
+```
+
+---
+
+## Rule Set 2 — Mock Evidence Separation
+
+هر تست باید برچسب داشته باشد: یکی از:
+- `[REAL-PRODUCTION]`
+- `[REAL-DATABASE]`
+- `[MOCK]`
+- `[UNIT]`
+- `[INTEGRATION]`
+
+**مثال:**
+- **مجاز:**
+  ```text
+  HTTP Trace Test
+  Type: [REAL-PRODUCTION]
+  Database: PostgreSQL 17.11
+  Redis: 8.0.2
+  ```
+- **غیرمجاز:**
+  ```text
+  HTTP Trace Verified
+  (وقتی داخل تست mockTraceDb است)
+  ```
+
+---
+
+## Rule Set 3 — Evidence Strength Level
+
+هر نتیجه یک Level دارد:
+
+| Level | عنوان | شرح | اعتبار |
+| :--- | :--- | :--- | :--- |
+| **E0** | ادعا | بدون تست (`I think fixed`) | ❌ صفر |
+| **E1** | Source Checked | فقط بررسی کد (`grep confirmed`) | کم |
+| **E2** | Automated Test | تست اجرا شده (`PASS`) | متوسط |
+| **E3** | Runtime Proof | سرویس واقعی (`Node` + `PostgreSQL` + `Redis`) | بالا |
+| **E4** | Independent Red Team | تیم جدا (`Attack attempted`, `Failure reproduced`) | بالاترین |
+
+⚠️ هیچ گزارشی نباید **E1** را با زبان **E3** بیان کند.
+
+---
+
+## Rule Set 4 — Commit Accounting (گزارش SHA)
+
+**ممنوع:** یک SHA برای همه چیز (ابهام ایجاد می‌کند):
+```text
+Commit: abc123
+Changes: code + docs + report
+```
+
+**فرمت اجباری:**
+
+### CODE COMMIT
+```text
+CODE_COMMIT_SHA: abc123
+Contains:
+  server/
+  tests/
+Purpose:
+  Implementation change
+```
+
+### DOCUMENTATION COMMIT
+```text
+DOC_COMMIT_SHA: def456
+Contains:
+  docs/
+  HANDOFF.md
+  reports/
+Purpose:
+  Documentation only
+```
+
+### TEST ARTIFACT
+اگر فایل تست جدا commit شده:
+```text
+TEST_COMMIT_SHA: 789xyz
+Contains:
+  tests/
+```
+
+---
+
+## Rule Set 5 — Git Diff Verification
+
+قبل از گزارش، اجرای این دستورها و ثبت خروجی اجباری است:
+```bash
+git status --short
+git diff --stat HEAD^
+git show --stat HEAD
+git rev-parse HEAD
+```
+
+---
+
+## Rule Set 6 — Claim Validation
+
+قبل از نوشتن واژگان قطعی (`VERIFIED`, `PASS`, `COMPLETE`, `READY`, `SECURE`)، این پرسش باید پاسخ داده شود:
+> **Question:** Can another engineer reproduce this result using only this report?
+- **YES:** مجاز
+- **NO:** تنزل لحن ادعا (Downgrade wording)
+
+---
+
+## Rule Set 7 — Final Report Template
+
+هر گزارش فاز باید از این قالب پیروی کند:
+
+```text
+=====================================
+PHASE X REPORT
+=====================================
+
+Implementation:
+CODE_SHA: xxxx
+
+Documentation:
+DOC_SHA: xxxx
+
+Environment:
+Node:
+PostgreSQL:
+Redis:
+
+Evidence:
+
+1. Runtime: [E3]
+Command: ...
+Result: ...
+
+2. Source: [E1]
+File: ...
+Lines: ...
+
+3. Independent: [E4]
+Finding: ...
+
+Known Risks:
+- ...
+
+Verification Status:
+NOT VERIFIED (Pending Independent Review)
+```
+
+---
+
+## Rule Set 8 — Red Flag Detection
+
+اگر هرکدام از این موارد وجود داشته باشد، گزارش باید **FAIL** شود:
+- ❌ Mock presented as production
+- ❌ Missing SHA separation
+- ❌ No git status
+- ❌ No command output
+- ❌ No environment details
+- ❌ "Verified" without independent test
+- ❌ Test file used as proof of runtime behavior
+
+---
+
+## دستور استفاده
+قبل از اجرای هر فاز یا گزارش، اسکیل `evidence-integrity-and-commit-accounting` را فعال کنید. تمام خروجی‌ها باید طبق این اسکیل تولید شوند.
+**تمرکز اصلی:**
+- Evidence Quality
+- SHA Accounting
+- Runtime vs Mock separation
+- Reproducibility
+- عدم صدور ادعای کاذب `VERIFIED` بدون شواهد کافی
+---
+name: verification-before-completion
+description: Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always
+---
+
+# Verification Before Completion
+
+## Overview
+
+**Core principle:** Evidence before claims, always.
+
+**Violating the letter of this rule is violating the spirit of this rule.**
+
+## The Iron Law
+
+```
+NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE
+```
+
+If you haven't run the verification command in this message, you cannot claim it passes.
+
+## The Gate Function
+
+```
+BEFORE claiming any status or expressing satisfaction:
+
+1. IDENTIFY: What command proves this claim?
+2. RUN: Execute the FULL command (fresh, complete)
+3. READ: Full output, check exit code, count failures
+4. VERIFY: Does output confirm the claim?
+   - If NO: State actual status with evidence
+   - If YES: State claim WITH evidence
+5. ONLY THEN: Make the claim
+
+Skip any step = lying, not verifying
+```
+
+## Common Failures
+
+| Claim | Requires | Not Sufficient |
+|-------|----------|----------------|
+| Tests pass | Test command output: 0 failures | Previous run, "should pass" |
+| Linter clean | Linter output: 0 errors | Partial check, extrapolation |
+| Build succeeds | Build command: exit 0 | Linter passing, logs look good |
+| Bug fixed | Test original symptom: passes | Code changed, assumed fixed |
+| Regression test works | Red-green cycle verified | Test passes once |
+| Agent completed | VCS diff shows changes | Agent reports "success" |
+| Requirements met | Line-by-line checklist | Tests passing |
+
+## Red Flags - STOP
+
+- Using "should", "probably", "seems to"
+- Expressing satisfaction before verification ("Great!", "Perfect!", "Done!", etc.)
+- About to commit/push/PR without verification
+- Trusting agent success reports
+- Relying on partial verification
+- Thinking "just this once"
+- Tired and wanting work over
+- **ANY wording implying success without having run verification**
+
+## Rationalization Prevention
+
+| Excuse | Reality |
+|--------|---------|
+| "Should work now" | RUN the verification |
+| "I'm confident" | Confidence ≠ evidence |
+| "Just this once" | No exceptions |
+| "Linter passed" | Linter ≠ compiler |
+| "Agent said success" | Verify independently |
+| "I'm tired" | Exhaustion ≠ excuse |
+| "Partial check is enough" | Partial proves nothing |
+| "Different words so rule doesn't apply" | Spirit over letter |
+
+## Key Patterns
+
+**Tests:**
+```
+✅ [Run test command] [See: 34/34 pass] "All tests pass"
+❌ "Should pass now" / "Looks correct"
+```
+
+**Regression tests (TDD Red-Green):**
+```
+✅ Write → Run (pass) → Revert fix → Run (MUST FAIL) → Restore → Run (pass)
+❌ "I've written a regression test" (without red-green verification)
+```
+
+**Build:**
+```
+✅ [Run build] [See: exit 0] "Build passes"
+❌ "Linter passed" (linter doesn't check compilation)
+```
+
+**Requirements:**
+```
+✅ Re-read plan → Create checklist → Verify each → Report gaps or completion
+❌ "Tests pass, phase complete"
+```
+
+**Agent delegation:**
+```
+✅ Agent reports success → Check VCS diff → Verify changes → Report actual state
+❌ Trust agent report
+```
+
+## When To Apply
+
+**ALWAYS before:**
+- ANY variation of success/completion claims
+- ANY expression of satisfaction
+- ANY positive statement about work state
+- Committing, PR creation, task completion
+- Moving to next task
+- Delegating to agents
+
+**Rule applies to:**
+- Exact phrases
+- Paraphrases and synonyms
+- Implications of success
+- ANY communication suggesting completion/correctness
+---
+name: strict-verification
+description: High-rigor verification for repository missions; read rules and scale first, reproduce before fixing, repeat independent and adversarial tests, and require current-head evidence before VERIFIED.
+---
+
+# Strict Verification
+
+Before work: read repository policies, roadmap, scale/capacity/SLO, evidence rules, relevant skills and prior audit; record HEAD, origin/main, working tree and runtime.
+
+Verification loop: reproduce → diagnose → fix → test → retest → boundary/negative → regression → independent rerun → final evidence.
+
+Critical, runtime, security, concurrency and DR findings require at least two independent successful runs; increase runs when nondeterminism exists.
+
+Check relevant malformed/empty inputs, boundaries, duplicates, concurrency/races, timeout/retry, crash/restart, unavailable dependency, stale state, partial failure and recovery.
+
+Never promote code inspection to runtime proof, E3 to E4, simulation to real evidence, target/policy metrics to measured metrics, or historical SHA evidence to current-head verification.
+
+Repository-owned defects may be fixed, tested, committed and pushed. External dependencies and owner decisions must be documented, never fabricated or bypassed.
+
+If evidence is insufficient, report NOT VERIFIED.

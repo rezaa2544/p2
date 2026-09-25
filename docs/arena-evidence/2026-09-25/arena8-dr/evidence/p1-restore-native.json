@@ -1,0 +1,25 @@
+{
+  "id": "p1-restore-native",
+  "command": [
+    "bash",
+    "tools/pitr-restore.sh",
+    "--native",
+    "--time",
+    "2026-09-23 00:00:00+00",
+    "--no-start",
+    "--dest",
+    "/tmp/a8dr-pg-n8wmb8r7/native"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-n8wmb8r7/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-n8wmb8r7/socket",
+    "PGPORT": "55432",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:11:56.134515+00:00",
+  "elapsed_ms": 1.826953,
+  "exit": 1,
+  "stdout": "\u0645\u0635\u0631\u0641: tools/pitr-restore.sh (--time 'TS'|--name N|--xid ID|--latest) [--no-start] [--no-verify] [--dest DIR] [--port N] [--stanza S]\n",
+  "stderr": ""
+}

@@ -1,0 +1,21 @@
+{
+  "id": "p4-missing-manifest",
+  "command": [
+    "bash",
+    "tools/pitr-verify.sh"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-he4qqyhq/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-he4qqyhq/named/pitr-c3vHiKoj/run",
+    "PGPORT": "55341",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:23:49.260474+00:00",
+  "start_monotonic_ns": 1402574046966,
+  "end_monotonic_ns": 1402576362512,
+  "exit": 1,
+  "stdout": "",
+  "stderr": "FAIL: approved expected manifest and explicit restore data_directory required\n",
+  "expected": "nonzero"
+}

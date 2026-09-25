@@ -1,0 +1,28 @@
+{
+  "id": "p2-restart",
+  "command": [
+    "pg_ctl",
+    "-D",
+    "/tmp/a8c-pg-1f_f4dbe/named/pitr-zxZBlmYM/data",
+    "-o",
+    "-c config_file=/tmp/a8c-pg-1f_f4dbe/named/pitr-zxZBlmYM/etc/postgresql.conf",
+    "-l",
+    "/tmp/a8c-pg-1f_f4dbe/named/pitr-zxZBlmYM/restart.log",
+    "-w",
+    "start"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-1f_f4dbe/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-1f_f4dbe/named/pitr-zxZBlmYM/run",
+    "PGPORT": "55321",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:14:01.360097+00:00",
+  "start_monotonic_ns": 814673670911,
+  "end_monotonic_ns": 814784757650,
+  "exit": 0,
+  "stdout": "waiting for server to start.... done\nserver started\n",
+  "stderr": "",
+  "expected": 0
+}

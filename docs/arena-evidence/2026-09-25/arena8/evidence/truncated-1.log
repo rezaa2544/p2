@@ -1,0 +1,25 @@
+{
+  "command": [
+    "/home/user/arena8/runtime/node_modules/node/bin/node",
+    "/home/user/p2/tools/capacity-saturation-probe.js",
+    "--target",
+    "http://127.0.0.1:38907",
+    "--confirm-staging",
+    "--profile",
+    "read-browse",
+    "--staircase",
+    "2",
+    "--warmup-seconds",
+    "0.03",
+    "--step-seconds",
+    "0.15",
+    "--req-timeout-ms",
+    "100",
+    "--out",
+    "/home/user/arena8/evidence/truncated-1.json"
+  ],
+  "code": 0,
+  "signal": null,
+  "stdout": "کاوشگر اشباع — http://127.0.0.1:38907 · پروفایل read-browse\n── پلهٔ 2 هم‌زمان (گرم‌کردان 0.03s…)\n   throughput=306.7/s · p50/p95/p99=6.3/8.4/9.7ms · 5xx=0٪\n── زانو: none · پایدارِ بیشینه ≈ 306.7 rps\nپاکت: /home/user/arena8/evidence/truncated-1.json\n",
+  "stderr": ""
+}

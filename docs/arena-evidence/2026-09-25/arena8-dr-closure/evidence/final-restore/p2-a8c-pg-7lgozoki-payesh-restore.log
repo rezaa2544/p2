@@ -1,0 +1,34 @@
+-------------------PROCESS START-------------------
+2026-09-23 11:27:30.291 P00   INFO: restore command begin 2.55.1: --config=/var/tmp/a8c-pg-7lgozoki/pbr.conf --exec-id=24502-d7addcd0 --lock-path=/var/tmp/a8c-pg-7lgozoki/lock --log-path=/var/tmp/a8c-pg-7lgozoki --pg1-path=/var/tmp/a8c-pg-7lgozoki/named/pitr-PJhXFiSM/data --repo1-path=/var/tmp/a8c-pg-7lgozoki/repo --spool-path=/var/tmp/a8c-pg-7lgozoki/spool --stanza=payesh --target=arena_committed --target-action=promote --type=name
+2026-09-23 11:27:30.298 P00   INFO: repo1: restore backup set 20260923-112725F, recovery will start at 2026-09-23 11:27:25
+2026-09-23 11:27:30.298 P00   INFO: remap data directory to '/var/tmp/a8c-pg-7lgozoki/named/pitr-PJhXFiSM/data'
+2026-09-23 11:27:31.459 P00   INFO: write updated /var/tmp/a8c-pg-7lgozoki/named/pitr-PJhXFiSM/data/postgresql.auto.conf
+2026-09-23 11:27:31.462 P00   INFO: restore global/pg_control (performed last to ensure aborted restores cannot be started)
+2026-09-23 11:27:31.463 P00   INFO: restore size = 29.5MB, file total = 1284
+2026-09-23 11:27:31.464 P00   INFO: restore command end: completed successfully (1175ms)
+
+-------------------PROCESS START-------------------
+2026-09-23 11:27:33.591 P00   INFO: restore command begin 2.55.1: --config=/var/tmp/a8c-pg-7lgozoki/pbr.conf --exec-id=24754-17398beb --lock-path=/var/tmp/a8c-pg-7lgozoki/lock --log-path=/var/tmp/a8c-pg-7lgozoki --pg1-path=/var/tmp/a8c-pg-7lgozoki/time/pitr-OiVnBF7T/data --repo1-path=/var/tmp/a8c-pg-7lgozoki/repo --spool-path=/var/tmp/a8c-pg-7lgozoki/spool --stanza=payesh --target="2026-09-23 11:27:29.867572+00" --target-action=promote --type=time
+2026-09-23 11:27:33.597 P00   INFO: repo1: restore backup set 20260923-112725F, recovery will start at 2026-09-23 11:27:25
+2026-09-23 11:27:33.597 P00   INFO: remap data directory to '/var/tmp/a8c-pg-7lgozoki/time/pitr-OiVnBF7T/data'
+2026-09-23 11:27:34.955 P00   INFO: write updated /var/tmp/a8c-pg-7lgozoki/time/pitr-OiVnBF7T/data/postgresql.auto.conf
+2026-09-23 11:27:34.958 P00   INFO: restore global/pg_control (performed last to ensure aborted restores cannot be started)
+2026-09-23 11:27:34.959 P00   INFO: restore size = 29.5MB, file total = 1284
+2026-09-23 11:27:34.959 P00   INFO: restore command end: completed successfully (1370ms)
+
+-------------------PROCESS START-------------------
+2026-09-23 11:27:36.553 P00   INFO: restore command begin 2.55.1: --config=/var/tmp/a8c-pg-7lgozoki/pbr.conf --exec-id=24939-4fbbd48f --lock-path=/var/tmp/a8c-pg-7lgozoki/lock --log-path=/var/tmp/a8c-pg-7lgozoki --pg1-path=/var/tmp/a8c-pg-7lgozoki/latest/pitr-gyN0hHeZ/data --repo1-path=/var/tmp/a8c-pg-7lgozoki/repo --spool-path=/var/tmp/a8c-pg-7lgozoki/spool --stanza=payesh --type=default
+2026-09-23 11:27:36.559 P00   INFO: repo1: restore backup set 20260923-112725F, recovery will start at 2026-09-23 11:27:25
+2026-09-23 11:27:36.559 P00   INFO: remap data directory to '/var/tmp/a8c-pg-7lgozoki/latest/pitr-gyN0hHeZ/data'
+2026-09-23 11:27:37.738 P00   INFO: write updated /var/tmp/a8c-pg-7lgozoki/latest/pitr-gyN0hHeZ/data/postgresql.auto.conf
+2026-09-23 11:27:37.741 P00   INFO: restore global/pg_control (performed last to ensure aborted restores cannot be started)
+2026-09-23 11:27:37.742 P00   INFO: restore size = 29.5MB, file total = 1284
+2026-09-23 11:27:37.742 P00   INFO: restore command end: completed successfully (1191ms)
+
+-------------------PROCESS START-------------------
+2026-09-23 11:27:50.385 P00   INFO: restore command begin 2.55.1: --config=/var/tmp/a8c-pg-7lgozoki/pbr.conf --exec-id=25780-b5bc00e0 --lock-path=/var/tmp/a8c-pg-7lgozoki/lock --log-path=/var/tmp/a8c-pg-7lgozoki --pg1-path=/var/tmp/a8c-pg-7lgozoki/corrupt-target --repo1-path=/var/tmp/a8c-pg-7lgozoki/repo --spool-path=/var/tmp/a8c-pg-7lgozoki/spool --stanza=payesh --type=immediate
+2026-09-23 11:27:50.394 P00   INFO: repo1: restore backup set 20260923-112725F, recovery will start at 2026-09-23 11:27:25
+2026-09-23 11:27:50.394 P00   INFO: remap data directory to '/var/tmp/a8c-pg-7lgozoki/corrupt-target'
+2026-09-23 11:28:05.460 P00  ERROR: [029]: raised from local-1 protocol: zlib threw error: [-3] data error
+                                        [FormatError] on 2 retries from 7-15007ms: zlib threw error: [-3] data error
+2026-09-23 11:28:05.460 P00   INFO: restore command end: aborted with exception [029]

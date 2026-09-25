@@ -1,0 +1,26 @@
+{
+  "id": "p1-ack-write-105",
+  "command": [
+    "psql",
+    "-X",
+    "-qAt",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    "INSERT INTO grades VALUES(105,'ack-105')"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-ukfdjkiu/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-ukfdjkiu/socket",
+    "PGPORT": "55310",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:13:26.618366+00:00",
+  "start_monotonic_ns": 779931939913,
+  "end_monotonic_ns": 779939233558,
+  "exit": 0,
+  "stdout": "",
+  "stderr": "",
+  "expected": 0
+}

@@ -1,0 +1,24 @@
+{
+  "id": "p9-seed",
+  "command": [
+    "psql",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-d",
+    "payesh",
+    "-tAXc",
+    "CREATE TABLE users(id int primary key, value text); INSERT INTO users SELECT i,'run9-'||i FROM generate_series(1,10)i;CREATE TABLE schools(id int primary key, value text); INSERT INTO schools SELECT i,'run9-'||i FROM generate_series(1,10)i;CREATE TABLE classes(id int primary key, value text); INSERT INTO classes SELECT i,'run9-'||i FROM generate_series(1,10)i;CREATE TABLE grades(id int primary key, value text); INSERT INTO grades SELECT i,'run9-'||i FROM generate_series(1,10)i;CREATE TABLE attendance(id int primary key, value text); INSERT INTO attendance SELECT i,'run9-'||i FROM generate_series(1,10)i"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+    "PGPORT": "55448",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:16:39.254611+00:00",
+  "elapsed_ms": 10.407272,
+  "exit": 0,
+  "stdout": "CREATE TABLE\nINSERT 0 10\nCREATE TABLE\nINSERT 0 10\nCREATE TABLE\nINSERT 0 10\nCREATE TABLE\nINSERT 0 10\nCREATE TABLE\nINSERT 0 10\n",
+  "stderr": ""
+}

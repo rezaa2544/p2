@@ -1,0 +1,22 @@
+{
+  "id": "p4-already-primary",
+  "command": [
+    "bash",
+    "tools/failover-postgres.sh",
+    "--dry-run"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/var/tmp/a8c-pg-vxvzh5f_/pbr.conf",
+    "PGHOST": "/var/tmp/a8c-pg-vxvzh5f_/latest/pitr-c3GnJNpX/run",
+    "PGPORT": "25341",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:29:28.479519+00:00",
+  "start_monotonic_ns": 1741793093215,
+  "end_monotonic_ns": 1741808153137,
+  "exit": 1,
+  "stdout": "== failover-postgres: standby=/var/tmp/a8c-pg-vxvzh5f_/latest/pitr-c3GnJNpX/run:25341 primary=(127.0.0.1:5432) dry=1 force=0\n",
+  "stderr": "FAIL: \u0645\u0642\u0635\u062f\u0650 \u0627\u0646\u062a\u062e\u0627\u0628\u06cc \u062f\u0631 recovery \u0646\u06cc\u0633\u062a (\u06cc\u0627 \u0627\u0632 \u0642\u0628\u0644 primary \u0627\u0633\u062a \u06cc\u0627 \u062f\u0633\u062a\u0631\u0633\u200c\u067e\u0630\u06cc\u0631 \u0646\u06cc\u0633\u062a) \u2014 \u0628\u0631\u0627\u06cc\u0650 \u0627\u0645\u0646\u06cc\u062a\u0650 \u062f\u0627\u062f\u0647 \u0627\u062f\u0627\u0645\u0647 \u0646\u0645\u06cc\u200c\u062f\u0647\u0645\n",
+  "expected": "nonzero"
+}

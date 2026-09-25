@@ -1,0 +1,99 @@
+{
+  "schema": "CAPACITY_ENVELOPE/1",
+  "meta": {
+    "date": "2026-09-22T09:57:43.072Z",
+    "target": "http://127.0.0.1:42803",
+    "profile": "read-browse",
+    "datasetScale": "NOT-RECORDED",
+    "nodes": "NOT-RECORDED",
+    "args": "--target http://127.0.0.1:42803 --confirm-staging --profile read-browse --staircase 2 --warmup-seconds 0.03 --step-seconds -1 --req-timeout-ms 100 --out /home/user/arena8/evidence/negative-duration-2.json"
+  },
+  "workload": {
+    "profile": "read-browse",
+    "weights": [
+      {
+        "w": 55,
+        "method": "GET",
+        "path": "/api/v1/pull",
+        "kind": "read"
+      },
+      {
+        "w": 20,
+        "method": "GET",
+        "path": "/api/v1/reports/attendance",
+        "kind": "read"
+      },
+      {
+        "w": 15,
+        "method": "GET",
+        "path": "/api/v1/reports/academic",
+        "kind": "read"
+      },
+      {
+        "w": 10,
+        "method": "GET",
+        "path": "/api/auth/me",
+        "kind": "read"
+      }
+    ],
+    "payloadsFile": "پیش‌فرضِ حداقلی (نوشتنِ واقعی سنجه نشده)"
+  },
+  "staircase": [
+    2
+  ],
+  "steps": [
+    {
+      "concurrency": 2,
+      "seconds": -1,
+      "requests": 0,
+      "throughput": 0,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "errorRatePct": 0,
+      "transportErrors": 0,
+      "perEndpoint": {},
+      "metrics": {
+        "status": "OK",
+        "payesh_http_requests_total_delta": "NOT-EXPOSED",
+        "payesh_sync_requests_total_delta": "NOT-EXPOSED",
+        "payesh_cache_hits_total_delta": "NOT-EXPOSED",
+        "payesh_cache_misses_total_delta": "NOT-EXPOSED",
+        "payesh_cache_lookups_total_delta": "NOT-EXPOSED",
+        "payesh_db_query_errors_total_delta": "NOT-EXPOSED",
+        "payesh_db_slow_queries_total_delta": "NOT-EXPOSED",
+        "payesh_auth_login_total_delta": "NOT-EXPOSED",
+        "payesh_auth_otp_requests_total_delta": "NOT-EXPOSED",
+        "payesh_sync_backpressure_rejections_total_delta": "NOT-EXPOSED",
+        "payesh_sync_conflicts_total_delta": "NOT-EXPOSED",
+        "payesh_sync_queue_depth": "NOT-EXPOSED",
+        "payesh_db_pool_total": "NOT-EXPOSED",
+        "payesh_db_pool_idle": "NOT-EXPOSED",
+        "payesh_db_pool_waiting": "NOT-EXPOSED",
+        "payesh_db_up": "NOT-EXPOSED",
+        "cache_hit_ratio_pct": "NOT-COMPUTABLE"
+      },
+      "pg": {
+        "status": "NOT-COLLECTED (بدون --pg-dsn)"
+      },
+      "redis": {
+        "status": "NOT-COLLECTED (بدون --redis-url)"
+      }
+    }
+  ],
+  "knee": {
+    "knee": {
+      "method": "none",
+      "stepIndex": -1,
+      "concurrency": null,
+      "detail": "در بازهٔ نردبان اشباع دیده نشد — نردبان را گسترش بده"
+    },
+    "maxSustainableRps": 0,
+    "candidates": []
+  },
+  "slo": {
+    "p95ms": 300,
+    "verdictP95": "PASS"
+  },
+  "verdict": "این پاکت تا بازبینیِ انسانی «پیش‌نویس» است — قواعد حکم در docs/CAPACITY_ENVELOPE_TEMPLATE.md"
+}

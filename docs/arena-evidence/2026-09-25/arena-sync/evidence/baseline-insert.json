@@ -1,0 +1,1 @@
+{"response":{"status":200,"body":{"ok":true,"results":[{"uid":"stale-race","ok":false,"code":"unknown_field","message":"فیلدِ «version» در این مجموعه تعریف نشده است"}]}},"after":[{"id":1,"school_id":1,"name":"before","version":9,"updated_at":"2026-09-24T18:30:25.696Z"}],"expected":"newer-from-client-B preserved"}

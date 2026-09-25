@@ -1,0 +1,57 @@
+8491:X 23 Sep 2026 11:18:19.528 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+8491:X 23 Sep 2026 11:18:19.529 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+8491:X 23 Sep 2026 11:18:19.529 * Redis version=8.0.2, bits=64, commit=00000000, modified=0, pid=8491, just started
+8491:X 23 Sep 2026 11:18:19.529 * Configuration loaded
+8491:X 23 Sep 2026 11:18:19.529 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+8491:X 23 Sep 2026 11:18:19.529 * monotonic clock: POSIX clock_gettime
+8491:X 23 Sep 2026 11:18:19.530 * Running mode=sentinel, port=56722.
+8491:X 23 Sep 2026 11:18:19.530 * Sentinel new configuration saved on disk
+8491:X 23 Sep 2026 11:18:19.530 * Sentinel ID is 56dbd9c0e34324639ebce7c8c5d487e9f5564eaa
+8491:X 23 Sep 2026 11:18:19.530 # +monitor master arena 127.0.0.1 56720 quorum 2
+8491:X 23 Sep 2026 11:18:19.531 * +slave slave 127.0.0.1:56721 127.0.0.1 56721 @ arena 127.0.0.1 56720
+8491:X 23 Sep 2026 11:18:19.531 * Sentinel new configuration saved on disk
+8491:X 23 Sep 2026 11:18:21.559 * +sentinel sentinel d4073c63e63e040a030aae081336bf50f836b103 127.0.0.1 56724 @ arena 127.0.0.1 56720
+8491:X 23 Sep 2026 11:18:21.560 * Sentinel new configuration saved on disk
+8491:X 23 Sep 2026 11:18:21.578 * +sentinel sentinel 80985122ebe0ff24f36ecf78aa30675380927616 127.0.0.1 56723 @ arena 127.0.0.1 56720
+8491:X 23 Sep 2026 11:18:21.578 * Sentinel new configuration saved on disk
+8491:X 23 Sep 2026 11:18:24.693 * Executing user requested FAILOVER of 'arena'
+8491:X 23 Sep 2026 11:18:24.693 # +new-epoch 1
+8491:X 23 Sep 2026 11:18:24.693 # +try-failover master arena 127.0.0.1 56720
+8491:X 23 Sep 2026 11:18:24.743 * Sentinel new configuration saved on disk
+8491:X 23 Sep 2026 11:18:24.743 # +vote-for-leader 56dbd9c0e34324639ebce7c8c5d487e9f5564eaa 1
+8491:X 23 Sep 2026 11:18:24.743 # +elected-leader master arena 127.0.0.1 56720
+8491:X 23 Sep 2026 11:18:24.743 # +failover-state-select-slave master arena 127.0.0.1 56720
+8491:X 23 Sep 2026 11:18:24.809 # +selected-slave slave 127.0.0.1:56721 127.0.0.1 56721 @ arena 127.0.0.1 56720
+8491:X 23 Sep 2026 11:18:24.809 * +failover-state-send-slaveof-noone slave 127.0.0.1:56721 127.0.0.1 56721 @ arena 127.0.0.1 56720
+8491:X 23 Sep 2026 11:18:24.881 * +failover-state-wait-promotion slave 127.0.0.1:56721 127.0.0.1 56721 @ arena 127.0.0.1 56720
+8491:X 23 Sep 2026 11:18:25.750 * Sentinel new configuration saved on disk
+8491:X 23 Sep 2026 11:18:25.750 # +promoted-slave slave 127.0.0.1:56721 127.0.0.1 56721 @ arena 127.0.0.1 56720
+8491:X 23 Sep 2026 11:18:25.750 # +failover-state-reconf-slaves master arena 127.0.0.1 56720
+8491:X 23 Sep 2026 11:18:25.840 # +failover-end master arena 127.0.0.1 56720
+8491:X 23 Sep 2026 11:18:25.840 # +switch-master arena 127.0.0.1 56720 127.0.0.1 56721
+8491:X 23 Sep 2026 11:18:25.840 * +slave slave 127.0.0.1:56720 127.0.0.1 56720 @ arena 127.0.0.1 56721
+8491:X 23 Sep 2026 11:18:25.840 * Sentinel new configuration saved on disk
+8491:X 23 Sep 2026 11:18:42.358 # +sdown master arena 127.0.0.1 56721
+8491:X 23 Sep 2026 11:18:42.425 # +odown master arena 127.0.0.1 56721 #quorum 2/2
+8491:X 23 Sep 2026 11:18:42.425 # +new-epoch 2
+8491:X 23 Sep 2026 11:18:42.425 # +try-failover master arena 127.0.0.1 56721
+8491:X 23 Sep 2026 11:18:42.425 * Sentinel new configuration saved on disk
+8491:X 23 Sep 2026 11:18:42.425 # +vote-for-leader 56dbd9c0e34324639ebce7c8c5d487e9f5564eaa 2
+8491:X 23 Sep 2026 11:18:42.426 * 80985122ebe0ff24f36ecf78aa30675380927616 voted for 56dbd9c0e34324639ebce7c8c5d487e9f5564eaa 2
+8491:X 23 Sep 2026 11:18:42.426 * d4073c63e63e040a030aae081336bf50f836b103 voted for 56dbd9c0e34324639ebce7c8c5d487e9f5564eaa 2
+8491:X 23 Sep 2026 11:18:42.488 # +elected-leader master arena 127.0.0.1 56721
+8491:X 23 Sep 2026 11:18:42.488 # +failover-state-select-slave master arena 127.0.0.1 56721
+8491:X 23 Sep 2026 11:18:42.551 # +selected-slave slave 127.0.0.1:56720 127.0.0.1 56720 @ arena 127.0.0.1 56721
+8491:X 23 Sep 2026 11:18:42.551 * +failover-state-send-slaveof-noone slave 127.0.0.1:56720 127.0.0.1 56720 @ arena 127.0.0.1 56721
+8491:X 23 Sep 2026 11:18:42.627 * +failover-state-wait-promotion slave 127.0.0.1:56720 127.0.0.1 56720 @ arena 127.0.0.1 56721
+8491:X 23 Sep 2026 11:18:43.336 * Sentinel new configuration saved on disk
+8491:X 23 Sep 2026 11:18:43.336 # +promoted-slave slave 127.0.0.1:56720 127.0.0.1 56720 @ arena 127.0.0.1 56721
+8491:X 23 Sep 2026 11:18:43.336 # +failover-state-reconf-slaves master arena 127.0.0.1 56721
+8491:X 23 Sep 2026 11:18:43.418 # +failover-end master arena 127.0.0.1 56721
+8491:X 23 Sep 2026 11:18:43.418 # +switch-master arena 127.0.0.1 56721 127.0.0.1 56720
+8491:X 23 Sep 2026 11:18:43.418 * +slave slave 127.0.0.1:56721 127.0.0.1 56721 @ arena 127.0.0.1 56720
+8491:X 23 Sep 2026 11:18:43.420 * Sentinel new configuration saved on disk
+8491:X 23 Sep 2026 11:18:53.554 * +convert-to-slave slave 127.0.0.1:56721 127.0.0.1 56721 @ arena 127.0.0.1 56720
+8491:signal-handler (1790162339) Received SIGTERM scheduling shutdown...
+8491:X 23 Sep 2026 11:18:59.087 * User requested shutdown...
+8491:X 23 Sep 2026 11:18:59.087 # Sentinel is now ready to exit, bye bye...

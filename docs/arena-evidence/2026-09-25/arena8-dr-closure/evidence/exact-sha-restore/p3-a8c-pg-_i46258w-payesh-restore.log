@@ -1,0 +1,34 @@
+-------------------PROCESS START-------------------
+2026-09-23 11:23:05.574 P00   INFO: restore command begin 2.55.1: --config=/tmp/a8c-pg-_i46258w/pbr.conf --exec-id=14260-d8258f33 --lock-path=/tmp/a8c-pg-_i46258w/lock --log-path=/tmp/a8c-pg-_i46258w --pg1-path=/tmp/a8c-pg-_i46258w/named/pitr-XdBHVV3M/data --repo1-path=/tmp/a8c-pg-_i46258w/repo --spool-path=/tmp/a8c-pg-_i46258w/spool --stanza=payesh --target=arena_committed --target-action=promote --type=name
+2026-09-23 11:23:05.582 P00   INFO: repo1: restore backup set 20260923-112301F, recovery will start at 2026-09-23 11:23:01
+2026-09-23 11:23:05.582 P00   INFO: remap data directory to '/tmp/a8c-pg-_i46258w/named/pitr-XdBHVV3M/data'
+2026-09-23 11:23:06.026 P00   INFO: write updated /tmp/a8c-pg-_i46258w/named/pitr-XdBHVV3M/data/postgresql.auto.conf
+2026-09-23 11:23:06.026 P00   INFO: restore global/pg_control (performed last to ensure aborted restores cannot be started)
+2026-09-23 11:23:06.026 P00   INFO: restore size = 29.5MB, file total = 1284
+2026-09-23 11:23:06.027 P00   INFO: restore command end: completed successfully (456ms)
+
+-------------------PROCESS START-------------------
+2026-09-23 11:23:07.024 P00   INFO: restore command begin 2.55.1: --config=/tmp/a8c-pg-_i46258w/pbr.conf --exec-id=14457-3b6c7cf4 --lock-path=/tmp/a8c-pg-_i46258w/lock --log-path=/tmp/a8c-pg-_i46258w --pg1-path=/tmp/a8c-pg-_i46258w/time/pitr-Fpyt5OEc/data --repo1-path=/tmp/a8c-pg-_i46258w/repo --spool-path=/tmp/a8c-pg-_i46258w/spool --stanza=payesh --target="2026-09-23 11:23:05.190574+00" --target-action=promote --type=time
+2026-09-23 11:23:07.033 P00   INFO: repo1: restore backup set 20260923-112301F, recovery will start at 2026-09-23 11:23:01
+2026-09-23 11:23:07.033 P00   INFO: remap data directory to '/tmp/a8c-pg-_i46258w/time/pitr-Fpyt5OEc/data'
+2026-09-23 11:23:07.432 P00   INFO: write updated /tmp/a8c-pg-_i46258w/time/pitr-Fpyt5OEc/data/postgresql.auto.conf
+2026-09-23 11:23:07.432 P00   INFO: restore global/pg_control (performed last to ensure aborted restores cannot be started)
+2026-09-23 11:23:07.433 P00   INFO: restore size = 29.5MB, file total = 1284
+2026-09-23 11:23:07.433 P00   INFO: restore command end: completed successfully (412ms)
+
+-------------------PROCESS START-------------------
+2026-09-23 11:23:08.997 P00   INFO: restore command begin 2.55.1: --config=/tmp/a8c-pg-_i46258w/pbr.conf --exec-id=14595-9b90aaa2 --lock-path=/tmp/a8c-pg-_i46258w/lock --log-path=/tmp/a8c-pg-_i46258w --pg1-path=/tmp/a8c-pg-_i46258w/latest/pitr-fo4OSYaD/data --repo1-path=/tmp/a8c-pg-_i46258w/repo --spool-path=/tmp/a8c-pg-_i46258w/spool --stanza=payesh --type=default
+2026-09-23 11:23:09.009 P00   INFO: repo1: restore backup set 20260923-112301F, recovery will start at 2026-09-23 11:23:01
+2026-09-23 11:23:09.009 P00   INFO: remap data directory to '/tmp/a8c-pg-_i46258w/latest/pitr-fo4OSYaD/data'
+2026-09-23 11:23:09.396 P00   INFO: write updated /tmp/a8c-pg-_i46258w/latest/pitr-fo4OSYaD/data/postgresql.auto.conf
+2026-09-23 11:23:09.397 P00   INFO: restore global/pg_control (performed last to ensure aborted restores cannot be started)
+2026-09-23 11:23:09.397 P00   INFO: restore size = 29.5MB, file total = 1284
+2026-09-23 11:23:09.397 P00   INFO: restore command end: completed successfully (402ms)
+
+-------------------PROCESS START-------------------
+2026-09-23 11:23:21.800 P00   INFO: restore command begin 2.55.1: --config=/tmp/a8c-pg-_i46258w/pbr.conf --exec-id=15226-2f191d4e --lock-path=/tmp/a8c-pg-_i46258w/lock --log-path=/tmp/a8c-pg-_i46258w --pg1-path=/tmp/a8c-pg-_i46258w/corrupt-target --repo1-path=/tmp/a8c-pg-_i46258w/repo --spool-path=/tmp/a8c-pg-_i46258w/spool --stanza=payesh --type=immediate
+2026-09-23 11:23:21.811 P00   INFO: repo1: restore backup set 20260923-112301F, recovery will start at 2026-09-23 11:23:01
+2026-09-23 11:23:21.811 P00   INFO: remap data directory to '/tmp/a8c-pg-_i46258w/corrupt-target'
+2026-09-23 11:23:36.893 P00  ERROR: [029]: raised from local-1 protocol: zlib threw error: [-3] data error
+                                        [FormatError] on 2 retries from 5-15006ms: zlib threw error: [-3] data error
+2026-09-23 11:23:36.893 P00   INFO: restore command end: aborted with exception [029]

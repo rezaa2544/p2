@@ -1,0 +1,29 @@
+{
+  "id": "p1-recovery-write",
+  "command": [
+    "psql",
+    "-X",
+    "-qAt",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    "INSERT INTO users VALUES(999,'recovered')"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-dg9xxeg9/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-dg9xxeg9/standby-socket",
+    "PGPORT": "55312",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user",
+    "OLD_PGHOST": "/tmp/a8c-pg-dg9xxeg9/socket",
+    "OLD_PGPORT": "55310",
+    "PG_FENCE_CHECK": "/tmp/a8c-pg-dg9xxeg9/fence"
+  },
+  "utc_start": "2026-09-23T11:22:03.088223+00:00",
+  "start_monotonic_ns": 1296401798052,
+  "end_monotonic_ns": 1296407068361,
+  "exit": 2,
+  "stdout": "",
+  "stderr": "psql: error: connection to server on socket \"/tmp/a8c-pg-dg9xxeg9/standby-socket/.s.PGSQL.55312\" failed: No such file or directory\n\tIs the server running locally and accepting connections on that socket?\n",
+  "expected": 0
+}

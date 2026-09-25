@@ -89,6 +89,30 @@ function createConflicts(ctx) {
     if (winner !== 'incoming' && winner !== 'server')
       return sendJson(res, 400, { ok: false, code: 'invalid_winner', message: 'winner باید incoming یا server باشد' });
 
+    // Never arbitrate PostgreSQL state from a warm process-local cache.
+    if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
+      try {
+        const result = await require('./conflict-transaction').resolveTransaction(db, s, conflictId, winner, body.reason);
+        if (result.status === 200) {
+          const resolved = result.body.conflict, target = result.body.applied_data;
+          if (!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
+          const i = store.sync_conflicts.findIndex(x => String(x.id) === String(resolved.id));
+          if (i < 0) store.sync_conflicts.push(resolved); else store.sync_conflicts[i] = resolved;
+          if (!Array.isArray(store[resolved.collection])) store[resolved.collection] = [];
+          const j = store[resolved.collection].findIndex(x => Number(x.id) === Number(target.id));
+          if (j < 0) store[resolved.collection].push(target); else store[resolved.collection][j] = target;
+          ctx.markDirty();
+          audit('sync_conflict_resolved', { user_id:s.id, conflict_id:resolved.id, collection:resolved.collection, winner, school_id:resolved.school_id });
+        }
+        return sendJson(res, result.status, result.body);
+      } catch (err) {
+        console.error('[CONFLICTS] atomic resolution failed:', err.message);
+        return sendJson(res, 503, { ok:false, code:'conflict_resolution_unavailable' });
+      }
+    }
+    if (db && typeof db.pgExpected === 'function' && db.pgExpected())
+      return sendJson(res, 503, { ok:false, code:'conflict_resolution_unavailable' });
+
     if (!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
     let c = store.sync_conflicts.find(x => String(x.id) === String(conflictId));
 
@@ -121,6 +145,9 @@ function createConflicts(ctx) {
     let target = store[coll].find(x => Number(x.id) === targetId);
 
     if (winner === 'incoming') {
+      const strict = process.env.PAYESH_STRICT_BASE_VERSION === '1' || process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production';
+      if (strict && (!target || Number(target.version) !== Number(c.server_version)))
+        return sendJson(res, 409, { ok:false, code:target ? 'stale_conflict' : 'target_missing' });
       let incData = c.incoming;
       if (typeof incData === 'string') {
         try { incData = JSON.parse(incData); } catch (e) { incData = {}; }

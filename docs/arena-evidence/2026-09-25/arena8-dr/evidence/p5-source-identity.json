@@ -1,0 +1,24 @@
+{
+  "id": "p5-source-identity",
+  "command": [
+    "psql",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-d",
+    "payesh",
+    "-tAXc",
+    "SELECT current_database(),current_setting('data_directory'),system_identifier FROM pg_control_system()"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-6cn4x7la/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-6cn4x7la/socket",
+    "PGPORT": "55440",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:13:37.679606+00:00",
+  "elapsed_ms": 5.599051,
+  "exit": 0,
+  "stdout": "payesh|/tmp/a8dr-pg-6cn4x7la/source|7688470840651404768\n",
+  "stderr": ""
+}

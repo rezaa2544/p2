@@ -1,0 +1,13 @@
+
+▸ بازبین #143 — سقفِ فهرستِ تعارض‌ها نباید بازها را ببلعد
+/home/user/p2/server/conflicts.js:21
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      ^
+
+TypeError: res.setHeader is not a function
+    at sendJson (/home/user/p2/server/conflicts.js:21:7)
+    at Object.apiList (/home/user/p2/server/conflicts.js:76:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /home/user/p2/tests/conflicts-list-cap.js:39:21
+
+Node.js v22.23.3

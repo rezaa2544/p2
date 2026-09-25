@@ -1,0 +1,19 @@
+{
+  "id": "r1-seed",
+  "command": [
+    "redis-cli",
+    "-p",
+    "56210",
+    "SET",
+    "arena:identity",
+    "run-1"
+  ],
+  "environment": {},
+  "utc_start": "2026-09-23T11:22:19.015723+00:00",
+  "start_monotonic_ns": 1312329295880,
+  "end_monotonic_ns": 1312336033838,
+  "exit": 0,
+  "stdout": "OK\n",
+  "stderr": "",
+  "expected": 0
+}

@@ -1,0 +1,29 @@
+{
+  "id": "p1-surviving-acks",
+  "command": [
+    "psql",
+    "-X",
+    "-qAt",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    "SELECT id FROM grades WHERE id>=100 ORDER BY id"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-gcn4psyl/standby-socket",
+    "PGPORT": "55312",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user",
+    "OLD_PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+    "OLD_PGPORT": "55310",
+    "PG_FENCE_CHECK": "/tmp/a8c-pg-gcn4psyl/fence"
+  },
+  "utc_start": "2026-09-23T11:11:39.937398+00:00",
+  "start_monotonic_ns": 673250971226,
+  "end_monotonic_ns": 673261263247,
+  "exit": 0,
+  "stdout": "100\n101\n102\n103\n104\n105\n106\n107\n108\n109\n",
+  "stderr": "",
+  "expected": 0
+}

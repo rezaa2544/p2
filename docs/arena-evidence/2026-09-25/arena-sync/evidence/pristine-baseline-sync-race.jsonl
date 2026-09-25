@@ -1,0 +1,1 @@
+{"response":{"status":200,"body":{"ok":true,"results":[{"uid":"stale-race","ok":true,"serverTime":"2026-09-24T18:40:21.732Z"}]}},"after":[{"id":1,"school_id":1,"name":"older-from-client-A","version":10,"updated_at":"2026-09-24T18:40:21.733Z"}],"expected":"newer-from-client-B preserved"}

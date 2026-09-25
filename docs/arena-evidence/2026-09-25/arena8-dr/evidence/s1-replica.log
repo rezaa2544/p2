@@ -1,0 +1,38 @@
+5257:C 22 Sep 2026 21:13:11.759 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+5257:C 22 Sep 2026 21:13:11.759 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+5257:C 22 Sep 2026 21:13:11.759 * Redis version=8.0.2, bits=64, commit=00000000, modified=0, pid=5257, just started
+5257:C 22 Sep 2026 21:13:11.759 * Configuration loaded
+5257:S 22 Sep 2026 21:13:11.760 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+5257:S 22 Sep 2026 21:13:11.760 * monotonic clock: POSIX clock_gettime
+5257:S 22 Sep 2026 21:13:11.762 * Running mode=standalone, port=56611.
+5257:S 22 Sep 2026 21:13:11.762 * Server initialized
+5257:S 22 Sep 2026 21:13:11.762 * Ready to accept connections tcp
+5257:S 22 Sep 2026 21:13:11.762 * Connecting to MASTER 127.0.0.1:56610
+5257:S 22 Sep 2026 21:13:11.762 * MASTER <-> REPLICA sync started
+5257:S 22 Sep 2026 21:13:11.762 # Error condition on socket for SYNC: Connection refused
+5257:S 22 Sep 2026 21:13:12.771 * Connecting to MASTER 127.0.0.1:56610
+5257:S 22 Sep 2026 21:13:12.771 * MASTER <-> REPLICA sync started
+5257:S 22 Sep 2026 21:13:12.771 * Non blocking connect for SYNC fired the event.
+5257:S 22 Sep 2026 21:13:12.771 * Master replied to PING, replication can continue...
+5257:S 22 Sep 2026 21:13:12.771 * Partial resynchronization not possible (no cached master)
+5257:S 22 Sep 2026 21:13:12.771 * PSYNC is not possible, initialize RDB channel.
+5257:S 22 Sep 2026 21:13:17.786 * Starting to receive RDB and replication stream in parallel.
+5257:S 22 Sep 2026 21:13:17.786 * MASTER <-> REPLICA sync: receiving streamed RDB from master with EOF to disk
+5257:S 22 Sep 2026 21:13:17.786 * MASTER <-> REPLICA sync: Loading DB in memory
+5257:S 22 Sep 2026 21:13:17.786 * MASTER <-> REPLICA sync: Flushing old data
+5257:S 22 Sep 2026 21:13:17.787 * Loading RDB produced by version 8.0.2
+5257:S 22 Sep 2026 21:13:17.787 * RDB age 0 seconds
+5257:S 22 Sep 2026 21:13:17.787 * RDB memory usage when created 0.86 Mb
+5257:S 22 Sep 2026 21:13:17.787 * Done loading RDB, keys loaded: 0, keys expired: 0.
+5257:S 22 Sep 2026 21:13:17.787 * MASTER <-> REPLICA sync: Finished with success
+5257:S 22 Sep 2026 21:13:17.787 * MASTER <-> REPLICA sync: Starting to stream replication buffer into the db (0 bytes).
+5257:S 22 Sep 2026 21:13:17.787 * MASTER <-> REPLICA sync: Successfully streamed replication buffer into the db (0 bytes in total)
+5257:M 22 Sep 2026 21:13:18.034 * Connection with master lost.
+5257:M 22 Sep 2026 21:13:18.034 * Caching the disconnected master state.
+5257:M 22 Sep 2026 21:13:18.034 * Discarding previously cached master state.
+5257:M 22 Sep 2026 21:13:18.034 * Setting secondary replication ID to a43399d00fe9231af5f16701f42215cf829d277e, valid up to offset: 1269. New replication ID is 9d05a29cdc7ca31cbcb198e38774d9029761c64e
+5257:M 22 Sep 2026 21:13:18.034 * MASTER MODE enabled (user request from 'id=15 addr=127.0.0.1:48624 laddr=127.0.0.1:56611 fd=14 name=sentinel-d7e67633-cmd age=6 idle=0 flags=x db=0 sub=0 psub=0 ssub=0 multi=4 watch=0 qbuf=188 qbuf-free=20286 argv-mem=4 multi-mem=169 rbs=8192 rbp=6179 obl=45 oll=0 omem=0 tot-mem=29861 events=r cmd=exec user=default redir=-1 resp=2 lib-name= lib-ver= io-thread=0')
+5257:M 22 Sep 2026 21:13:18.034 * CONFIG REWRITE executed with success.
+5257:signal-handler (1790111599) Received SIGTERM scheduling shutdown...
+5257:M 22 Sep 2026 21:13:19.926 * User requested shutdown...
+5257:M 22 Sep 2026 21:13:19.926 # Redis is now ready to exit, bye bye...

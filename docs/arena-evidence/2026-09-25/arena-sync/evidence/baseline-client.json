@@ -1,0 +1,2 @@
+{"case":"out-of-order pull","actual":[{"id":1,"version":2,"score":3}],"expected":"version9 score20"}
+{"case":"offline pending wrapper overwritten","actual":[{"id":1,"version":9,"score":1}],"expected":"version10 score19"}

@@ -1,0 +1,18 @@
+2026-09-23 11:29:24.035 GMT [31133] LOG:  starting PostgreSQL 17.11 (Debian 17.11-0+deb13u1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-09-23 11:29:24.035 GMT [31133] LOG:  listening on IPv6 address "::1", port 25341
+2026-09-23 11:29:24.035 GMT [31133] LOG:  listening on IPv4 address "127.0.0.1", port 25341
+2026-09-23 11:29:24.036 GMT [31133] LOG:  listening on Unix socket "/var/tmp/a8c-pg-vxvzh5f_/named/pitr-wnzrdS61/run/.s.PGSQL.25341"
+2026-09-23 11:29:24.038 GMT [31138] LOG:  database system was interrupted; last known up at 2026-09-23 11:29:22 GMT
+2026-09-23 11:29:24.046 GMT [31138] LOG:  database system was not properly shut down; automatic recovery in progress
+2026-09-23 11:29:24.047 GMT [31138] LOG:  invalid record length at 0/30004B8: expected at least 24, got 0
+2026-09-23 11:29:24.047 GMT [31138] LOG:  redo is not required
+2026-09-23 11:29:24.049 GMT [31136] LOG:  checkpoint starting: end-of-recovery immediate wait
+2026-09-23 11:29:24.051 GMT [31136] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.001 s, total=0.004 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB; lsn=0/30004B8, redo lsn=0/30004B8
+2026-09-23 11:29:24.053 GMT [31133] LOG:  database system is ready to accept connections
+2026-09-23 11:29:24.197 GMT [31133] LOG:  received fast shutdown request
+2026-09-23 11:29:24.198 GMT [31133] LOG:  aborting any active transactions
+2026-09-23 11:29:24.199 GMT [31133] LOG:  background worker "logical replication launcher" (PID 31141) exited with exit code 1
+2026-09-23 11:29:24.201 GMT [31136] LOG:  shutting down
+2026-09-23 11:29:24.202 GMT [31136] LOG:  checkpoint starting: shutdown immediate
+2026-09-23 11:29:24.205 GMT [31136] LOG:  checkpoint complete: wrote 10 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.001 s, total=0.004 s; sync files=8, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB; lsn=0/3000530, redo lsn=0/3000530
+2026-09-23 11:29:24.208 GMT [31133] LOG:  database system is shut down

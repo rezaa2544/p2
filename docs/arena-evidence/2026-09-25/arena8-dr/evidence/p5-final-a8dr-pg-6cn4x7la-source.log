@@ -1,0 +1,35 @@
+2026-09-22 21:13:34.845 UTC [5608] LOG:  starting PostgreSQL 17.11 (Debian 17.11-0+deb13u1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-09-22 21:13:34.845 UTC [5608] LOG:  listening on Unix socket "/tmp/a8dr-pg-6cn4x7la/socket/.s.PGSQL.55440"
+2026-09-22 21:13:34.846 UTC [5611] LOG:  database system was shut down at 2026-09-22 21:13:34 UTC
+2026-09-22 21:13:34.848 UTC [5608] LOG:  database system is ready to accept connections
+2026-09-22 21:13:34.985 UTC [5609] LOG:  checkpoint starting: immediate force wait
+2026-09-22 21:13:34.989 P00   INFO: archive-push command begin 2.55.1: [pg_wal/000000010000000000000001] --config=/tmp/a8dr-pg-6cn4x7la/pbr.conf --exec-id=5625-ff87729d --lock-path=/tmp/a8dr-pg-6cn4x7la/lock --log-level-console=info --log-path=/tmp/a8dr-pg-6cn4x7la --pg1-path=/tmp/a8dr-pg-6cn4x7la/source --repo1-path=/tmp/a8dr-pg-6cn4x7la/repo --stanza=payesh
+2026-09-22 21:13:34.993 UTC [5609] LOG:  checkpoint complete: wrote 943 buffers (5.8%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.004 s, sync=0.001 s, total=0.009 s; sync files=321, longest=0.001 s, average=0.000 s; distance=11333 kB, estimate=11333 kB; lsn=0/2000080, redo lsn=0/2000028
+2026-09-22 21:13:35.251 P00   INFO: pushed WAL file '000000010000000000000001' to the archive
+2026-09-22 21:13:35.251 P00   INFO: archive-push command end: completed successfully (263ms)
+2026-09-22 21:13:36.610 P00   INFO: archive-push command begin 2.55.1: [pg_wal/000000010000000000000002] --config=/tmp/a8dr-pg-6cn4x7la/pbr.conf --exec-id=5642-7d083d7e --lock-path=/tmp/a8dr-pg-6cn4x7la/lock --log-level-console=info --log-path=/tmp/a8dr-pg-6cn4x7la --pg1-path=/tmp/a8dr-pg-6cn4x7la/source --repo1-path=/tmp/a8dr-pg-6cn4x7la/repo --stanza=payesh
+2026-09-22 21:13:36.673 P00   INFO: pushed WAL file '000000010000000000000002' to the archive
+2026-09-22 21:13:36.673 P00   INFO: archive-push command end: completed successfully (64ms)
+2026-09-22 21:13:36.679 P00   INFO: archive-push command begin 2.55.1: [pg_wal/000000010000000000000002.00000028.backup] --config=/tmp/a8dr-pg-6cn4x7la/pbr.conf --exec-id=5644-ffb7b5c5 --lock-path=/tmp/a8dr-pg-6cn4x7la/lock --log-level-console=info --log-path=/tmp/a8dr-pg-6cn4x7la --pg1-path=/tmp/a8dr-pg-6cn4x7la/source --repo1-path=/tmp/a8dr-pg-6cn4x7la/repo --stanza=payesh
+2026-09-22 21:13:36.679 P00   INFO: pushed WAL file '000000010000000000000002.00000028.backup' to the archive
+2026-09-22 21:13:36.679 P00   INFO: archive-push command end: completed successfully (1ms)
+2026-09-22 21:13:36.735 UTC [5647] LOG:  restore point "arena_target" created at 0/3000408
+2026-09-22 21:13:36.735 UTC [5647] STATEMENT:  INSERT INTO users VALUES(11,'keep'); SELECT pg_create_restore_point('arena_target');
+2026-09-22 21:13:36.760 P00   INFO: archive-push command begin 2.55.1: [pg_wal/000000010000000000000003] --config=/tmp/a8dr-pg-6cn4x7la/pbr.conf --exec-id=5653-e599cf01 --lock-path=/tmp/a8dr-pg-6cn4x7la/lock --log-level-console=info --log-path=/tmp/a8dr-pg-6cn4x7la --pg1-path=/tmp/a8dr-pg-6cn4x7la/source --repo1-path=/tmp/a8dr-pg-6cn4x7la/repo --stanza=payesh
+2026-09-22 21:13:36.770 UTC [5655] LOG:  restore point "pgBackRest Archive Check" created at 0/40000B8
+2026-09-22 21:13:36.770 UTC [5655] STATEMENT:  select pg_catalog.pg_create_restore_point('pgBackRest Archive Check')::text
+2026-09-22 21:13:36.817 P00   INFO: pushed WAL file '000000010000000000000003' to the archive
+2026-09-22 21:13:36.817 P00   INFO: archive-push command end: completed successfully (58ms)
+2026-09-22 21:13:36.823 P00   INFO: archive-push command begin 2.55.1: [pg_wal/000000010000000000000004] --config=/tmp/a8dr-pg-6cn4x7la/pbr.conf --exec-id=5657-860f5b74 --lock-path=/tmp/a8dr-pg-6cn4x7la/lock --log-level-console=info --log-path=/tmp/a8dr-pg-6cn4x7la --pg1-path=/tmp/a8dr-pg-6cn4x7la/source --repo1-path=/tmp/a8dr-pg-6cn4x7la/repo --stanza=payesh
+2026-09-22 21:13:36.883 P00   INFO: pushed WAL file '000000010000000000000004' to the archive
+2026-09-22 21:13:36.883 P00   INFO: archive-push command end: completed successfully (61ms)
+2026-09-22 21:13:37.886 UTC [5609] LOG:  checkpoint starting: immediate force wait
+2026-09-22 21:13:37.894 UTC [5609] LOG:  checkpoint complete: wrote 15 buffers (0.1%); 0 WAL file(s) added, 0 removed, 4 recycled; write=0.001 s, sync=0.001 s, total=0.008 s; sync files=11, longest=0.001 s, average=0.000 s; distance=49152 kB, estimate=49152 kB; lsn=0/5000080, redo lsn=0/5000028
+2026-09-22 21:13:37.945 P00   INFO: archive-push command begin 2.55.1: [pg_wal/000000010000000000000005] --config=/tmp/a8dr-pg-6cn4x7la/pbr.conf --exec-id=5824-bfdce55b --lock-path=/tmp/a8dr-pg-6cn4x7la/lock --log-level-console=info --log-path=/tmp/a8dr-pg-6cn4x7la --pg1-path=/tmp/a8dr-pg-6cn4x7la/source --repo1-path=/tmp/a8dr-pg-6cn4x7la/repo --stanza=payesh
+2026-09-22 21:13:38.008 P00   INFO: pushed WAL file '000000010000000000000005' to the archive
+2026-09-22 21:13:38.008 P00   INFO: archive-push command end: completed successfully (64ms)
+2026-09-22 21:13:38.013 P00   INFO: archive-push command begin 2.55.1: [pg_wal/000000010000000000000005.00000028.backup] --config=/tmp/a8dr-pg-6cn4x7la/pbr.conf --exec-id=5835-1940cd54 --lock-path=/tmp/a8dr-pg-6cn4x7la/lock --log-level-console=info --log-path=/tmp/a8dr-pg-6cn4x7la --pg1-path=/tmp/a8dr-pg-6cn4x7la/source --repo1-path=/tmp/a8dr-pg-6cn4x7la/repo --stanza=payesh
+2026-09-22 21:13:38.014 P00   INFO: pushed WAL file '000000010000000000000005.00000028.backup' to the archive
+2026-09-22 21:13:38.014 P00   INFO: archive-push command end: completed successfully (2ms)
+2026-09-22 21:13:38.074 UTC [5608] LOG:  received immediate shutdown request
+2026-09-22 21:13:38.079 UTC [5608] LOG:  database system is shut down

@@ -1,0 +1,45 @@
+
+▸ R95 بند ۲.۵ — نسخه‌گذاری + حفظِ تعارض + داوری (سرورِ واقعی)
+  ✅ S0a حساب‌ها موجودند
+  ✅ S0b سرورِ واقعی بالا آمد
+  ✅ S0c پنج نشستِ واقعی ساخته شد
+  ✅ C1 ins نمره → ok
+  ✅ C1b رکورد روی disk با version ۱ نشسته است
+  ✅ C2 upd با base_versionِ یکسان → ok
+  ✅ C2b version ۲ + نمرهٔ تازه روی disk
+  ✅ C3 upd کهنه → conflict_preserved (+conflict_id)
+  ✅ C3b sync_conflicts روی disk: open + نسخه‌ها + هر دو نسخه
+  ✅ C3c رکورد دست‌نخورده ماند (نمرهٔ ۱۲٫۵/نسخهٔ ۲) — اعمال نشد
+  ✅ C4 اعلانِ «⚠️ تعارض همگام‌سازی» به مدیرِ مدرسهٔ ۱
+  ✅ C5a ins نمرهٔ دوم → ok
+  ✅ C5 upd بدون base_version → ok (سازگاریِ قدیمی)
+  ✅ C5b اعمال شد + نسخه چرخید (۲)
+  ✅ C6a ins آگهی → ok
+  ✅ C6b LWW: base_versionِ کهنه بی‌اثر → ok (اعمال شد)
+  ✅ C6c عنوانِ تازه روی disk (LWW برنده شد)
+  ✅ C7 ساختار (subjects) با base_versionِ کهنه → stale_base
+  ✅ C7b رکوردِ ساختار دست‌نخورده ماند
+  ✅ C8 ساختار با base_versionِ یکسان (۱) → ok
+  ✅ C8b مقدار + version ۲ روی disk (۱+۱)
+  ✅ C9a ins حضور → ok
+  ✅ C9b حضور: upd کهنه → conflict_preserved
+  ✅ C10a مدرسهٔ ۲: ins نمره → ok
+  ✅ C10b مدرسهٔ ۲: upd کهنه → conflict_preserved
+  ✅ C11a مدیرِ ۱ تعارضِ مدرسهٔ ۱ را می‌بیند، مدرسهٔ ۲ را نه
+  ✅ C11b مدیرِ ۲ برعکس
+  ✅ C11c سوپرادمین هر دو را می‌بیند
+  ✅ C12 GET: دبیر ۴۰ + بدون نشست ۴۰۱
+  ✅ C13 مدیرِ ۲ نمی‌تواند تعارضِ مدرسهٔ ۱ را داوری کند (403 out_of_scope)
+  ✅ C14 دبیر نمی‌تواند داوری کند (403 role_denied)
+  ✅ C15 resolve incoming → ok
+  ✅ C15b دادهٔ کلاینت (۱۳٫۵) اعمال شد + version ۳
+  ✅ C15c رکوردِ تعارض resolved + winner + resolved_by
+  ✅ C16 resolve دوباره → 409 already_resolved
+  ✅ C17a تعارضِ دوم ساخته شد
+  ✅ C17b resolve server → ok
+  ✅ C17c resolved + winner server + reason
+  ✅ C17d رکورد دست‌نخورده ماند (۱۳٫۵/۳) — نسخهٔ سرور برنده شد
+  ✅ C18 audit: sync_conflict_preserved + conflict_resolved
+
+────────────────────────────────────────────────────
+server15 (R95 بند ۲.۵): 40 بررسی — ✅ 40 · ❌ 0

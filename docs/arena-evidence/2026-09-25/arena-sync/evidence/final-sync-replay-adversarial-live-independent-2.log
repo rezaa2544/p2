@@ -1,0 +1,63 @@
+{"check":"r1 race final PG CAS rejects older write","result":"PASS"}
+{"check":"r1 race preserves newer data","result":"PASS"}
+{"check":"r1 insert cannot upsert newer identity","result":"PASS"}
+{"check":"r1 out-of-order older event","result":"PASS"}
+{"check":"r1 raced stale delete refused","result":"PASS"}
+{"check":"r1 pending duplicate not acknowledged before commit","result":"PASS"}
+{"check":"r1 waiting retry survives first rollback","result":"PASS"}
+{"check":"r1 concurrent UID only one transaction commits","result":"PASS"}
+{"check":"r1 exactly one inserted record","result":"PASS"}
+{"check":"r1 duplicate retry acknowledged without reapply","result":"PASS"}
+{"check":"r1 UID persistence failure is not success","result":"PASS"}
+{"check":"r1 failed UID is retryable","result":"PASS"}
+{"check":"r2 race final PG CAS rejects older write","result":"PASS"}
+{"check":"r2 race preserves newer data","result":"PASS"}
+{"check":"r2 insert cannot upsert newer identity","result":"PASS"}
+{"check":"r2 out-of-order older event","result":"PASS"}
+{"check":"r2 raced stale delete refused","result":"PASS"}
+{"check":"r2 pending duplicate not acknowledged before commit","result":"PASS"}
+{"check":"r2 waiting retry survives first rollback","result":"PASS"}
+{"check":"r2 concurrent UID only one transaction commits","result":"PASS"}
+{"check":"r2 exactly one inserted record","result":"PASS"}
+{"check":"r2 duplicate retry acknowledged without reapply","result":"PASS"}
+{"check":"r2 UID persistence failure is not success","result":"PASS"}
+{"check":"r2 failed UID is retryable","result":"PASS"}
+{"check":"r3 race final PG CAS rejects older write","result":"PASS"}
+{"check":"r3 race preserves newer data","result":"PASS"}
+{"check":"r3 insert cannot upsert newer identity","result":"PASS"}
+{"check":"r3 out-of-order older event","result":"PASS"}
+{"check":"r3 raced stale delete refused","result":"PASS"}
+{"check":"r3 pending duplicate not acknowledged before commit","result":"PASS"}
+{"check":"r3 waiting retry survives first rollback","result":"PASS"}
+{"check":"r3 concurrent UID only one transaction commits","result":"PASS"}
+{"check":"r3 exactly one inserted record","result":"PASS"}
+{"check":"r3 duplicate retry acknowledged without reapply","result":"PASS"}
+{"check":"r3 UID persistence failure is not success","result":"PASS"}
+{"check":"r3 failed UID is retryable","result":"PASS"}
+{"check":"r4 race final PG CAS rejects older write","result":"PASS"}
+{"check":"r4 race preserves newer data","result":"PASS"}
+{"check":"r4 insert cannot upsert newer identity","result":"PASS"}
+{"check":"r4 out-of-order older event","result":"PASS"}
+{"check":"r4 raced stale delete refused","result":"PASS"}
+{"check":"r4 pending duplicate not acknowledged before commit","result":"PASS"}
+{"check":"r4 waiting retry survives first rollback","result":"PASS"}
+{"check":"r4 concurrent UID only one transaction commits","result":"PASS"}
+{"check":"r4 exactly one inserted record","result":"PASS"}
+{"check":"r4 duplicate retry acknowledged without reapply","result":"PASS"}
+{"check":"r4 UID persistence failure is not success","result":"PASS"}
+{"check":"r4 failed UID is retryable","result":"PASS"}
+{"check":"r5 race final PG CAS rejects older write","result":"PASS"}
+{"check":"r5 race preserves newer data","result":"PASS"}
+{"check":"r5 insert cannot upsert newer identity","result":"PASS"}
+{"check":"r5 out-of-order older event","result":"PASS"}
+{"check":"r5 raced stale delete refused","result":"PASS"}
+{"check":"r5 pending duplicate not acknowledged before commit","result":"PASS"}
+{"check":"r5 waiting retry survives first rollback","result":"PASS"}
+{"check":"r5 concurrent UID only one transaction commits","result":"PASS"}
+{"check":"r5 exactly one inserted record","result":"PASS"}
+{"check":"r5 duplicate retry acknowledged without reapply","result":"PASS"}
+{"check":"r5 UID persistence failure is not success","result":"PASS"}
+{"check":"r5 failed UID is retryable","result":"PASS"}
+{"result":"PASS","checks":60,"rounds":5,"level":"E3 real PG; in-process independent sync contexts; no production/auth certification"}
+
+STDERR

@@ -1,0 +1,26 @@
+{
+  "id": "p1-primary-crash",
+  "command": [
+    "pg_ctl",
+    "-D",
+    "/var/tmp/a8c-pg-6sqt9gko/source",
+    "-m",
+    "immediate",
+    "-w",
+    "stop"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/var/tmp/a8c-pg-6sqt9gko/pbr.conf",
+    "PGHOST": "/var/tmp/a8c-pg-6sqt9gko/socket",
+    "PGPORT": "25310",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:26:34.552551+00:00",
+  "start_monotonic_ns": 1567866128292,
+  "end_monotonic_ns": 1567968420402,
+  "exit": 0,
+  "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+  "stderr": "",
+  "expected": 0
+}

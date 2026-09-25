@@ -1,0 +1,26 @@
+{
+  "id": "p7-restore-name",
+  "command": [
+    "bash",
+    "tools/pitr-restore.sh",
+    "--name",
+    "arena_target",
+    "--no-start",
+    "--dest",
+    "/tmp/a8dr-pg-68csddw3/restore",
+    "--port",
+    "55445"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-68csddw3/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-68csddw3/socket",
+    "PGPORT": "55444",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:15:00.162035+00:00",
+  "elapsed_ms": 306.344376,
+  "exit": 0,
+  "stdout": "== PITR run: /tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422 (stanza=payesh port=55445 --type=name --target=arena_target)\n2026-09-22 21:15:00.172 P00   INFO: restore command begin 2.55.1: --config=/tmp/a8dr-pg-68csddw3/pbr.conf --delta --exec-id=6426-675d743c --lock-path=/tmp/a8dr-pg-68csddw3/lock --log-level-console=info --log-path=/tmp/a8dr-pg-68csddw3 --pg1-path=/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data --repo1-path=/tmp/a8dr-pg-68csddw3/repo --spool-path=/tmp/a8dr-pg-68csddw3/spool --stanza=payesh --target=arena_target --type=name\n2026-09-22 21:15:00.172 P00   WARN: --delta or --force specified but unable to find 'PG_VERSION' or 'backup.manifest' in '/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data' to confirm that this is a valid $PGDATA directory. --delta and --force have been disabled and if any files exist in the destination directories the restore will be aborted.\n2026-09-22 21:15:00.177 P00   INFO: repo1: restore backup set 20260922-211458F, recovery will start at 2026-09-22 21:14:58\n2026-09-22 21:15:00.177 P00   INFO: remap data directory to '/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data'\n2026-09-22 21:15:00.465 P00   INFO: write updated /tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data/postgresql.auto.conf\n2026-09-22 21:15:00.465 P00   INFO: restore global/pg_control (performed last to ensure aborted restores cannot be started)\n2026-09-22 21:15:00.466 P00   INFO: restore size = 29.5MB, file total = 1284\n2026-09-22 21:15:00.466 P00   INFO: restore command end: completed successfully (295ms)\nOK (--no-start): \u062f\u06cc\u062a\u0627 \u062f\u0631 /tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data \u0622\u0645\u0627\u062f\u0647 \u0627\u0633\u062a\u061b \u0628\u0648\u062a\u0650 \u062f\u0633\u062a\u06cc:\n  pg_ctl -D '/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data' -o \"-c config_file='/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/etc/postgresql.conf'\" -l '/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/log/postgres.log' start\n",
+  "stderr": ""
+}

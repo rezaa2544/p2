@@ -1,0 +1,16 @@
+{
+  "id": "s1-role",
+  "command": [
+    "redis-cli",
+    "-p",
+    "56611",
+    "INFO",
+    "replication"
+  ],
+  "environment": {},
+  "exit": 0,
+  "stdout": "# Replication\nrole:master\nconnected_slaves:0\nmaster_failover_state:no-failover\nmaster_replid:9d05a29cdc7ca31cbcb198e38774d9029761c64e\nmaster_replid2:a43399d00fe9231af5f16701f42215cf829d277e\nmaster_repl_offset:1684\nsecond_repl_offset:1269\nrepl_backlog_active:1\nrepl_backlog_size:1048576\nrepl_backlog_first_byte_offset:810\nrepl_backlog_histlen:875\n",
+  "stderr": "",
+  "elapsed_ms": 3.604313,
+  "utc_end": "2026-09-22T21:13:19.883850+00:00"
+}

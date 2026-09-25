@@ -1,0 +1,20 @@
+{
+  "id": "r2-wrong-directory",
+  "command": [
+    "bash",
+    "tools/redis-backup.sh"
+  ],
+  "environment": {
+    "REDIS_HOST": "127.0.0.1",
+    "REDIS_PORT": "56390",
+    "REDIS_DIR": "/tmp/a8dr-redis-muwfksb1/wrong",
+    "BACKUP_DIR": "/tmp/a8dr-redis-muwfksb1/wrong-backup",
+    "BACKUP_LOCK": "/tmp/a8dr-redis-muwfksb1/lock",
+    "BACKUP_S3": ""
+  },
+  "utc_start": "2026-09-23T11:05:21.281328+00:00",
+  "elapsed_ms": 2052.877256,
+  "exit": 0,
+  "stdout": "[redis-backup 20260923T110521Z] SAVE (RDB snapshot)\u2026\n[redis-backup 20260923T110521Z] RDB \u0630\u062e\u06cc\u0631\u0647 \u0634\u062f: /tmp/a8dr-redis-muwfksb1/wrong-backup/dump-20260923T110521Z.rdb\n[redis-backup 20260923T110521Z] BGREWRITEAOF\u2026\n[redis-backup 20260923T110521Z] \u0647\u0634\u062f\u0627\u0631: \u0641\u0627\u06cc\u0644 AOF \u067e\u06cc\u062f\u0627 \u0646\u0634\u062f \u2014 \u0641\u0642\u0637 RDB \u067e\u0634\u062a\u06cc\u0628\u0627\u0646 \u06af\u0631\u0641\u062a\u0647 \u0634\u062f\n[redis-backup 20260923T110521Z] \u0646\u06af\u0647\u062f\u0627\u0631\u06cc \u0627\u0646\u062c\u0627\u0645 \u0634\u062f (>7 \u0631\u0648\u0632 \u062d\u0630\u0641 \u0634\u062f\u0646\u062f)\n[redis-backup 20260923T110521Z] \u067e\u0627\u06cc\u0627\u0646 \u0645\u0648\u0641\u0642.\n",
+  "stderr": ""
+}

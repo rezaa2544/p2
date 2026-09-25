@@ -1,0 +1,3 @@
+const m=require('/home/user/p2/server/infrastructure/disaster-recovery');
+const fs=require('fs');const rows={node:process.version,defaultBackup:m.verifyBackupIntegrity(),defaultRestore:m.validateRestoreRehearsal(),defaultMetrics:m.calculateRpoRtoMetrics(),negativeMetrics:m.calculateRpoRtoMetrics({achieved_rpo_seconds:-1,estimated_rto_seconds:-1}),negativeDuration:m.validateRestoreRehearsal({duration_seconds:-5,tables_restored:38,records_restored:0}),missingEvidenceSnapshot:m.buildDisasterRecoveryHealthSnapshot({schoolId:1,user:{role:'superadmin'}}),explicitBadBackup:m.verifyBackupIntegrity({postgres_verified:false})};
+console.log(JSON.stringify(rows,null,2));

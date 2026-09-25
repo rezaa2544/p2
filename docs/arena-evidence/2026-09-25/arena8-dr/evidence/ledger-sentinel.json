@@ -1,0 +1,270 @@
+[
+  {
+    "id": "s1-seed",
+    "command": [
+      "redis-cli",
+      "-p",
+      "56610",
+      "SET",
+      "arena:marker",
+      "run-1"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "elapsed_ms": 4.157671,
+    "utc_end": "2026-09-22T21:13:17.813950+00:00"
+  },
+  {
+    "id": "s1-ack",
+    "command": [
+      "redis-cli",
+      "-p",
+      "56610",
+      "WAIT",
+      "1",
+      "2000"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "1\n",
+    "stderr": "",
+    "elapsed_ms": 4.985645,
+    "utc_end": "2026-09-22T21:13:17.819169+00:00"
+  },
+  {
+    "id": "s1-healthy-guard",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--dry-run"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:56612,127.0.0.1:56613,127.0.0.1:56614",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 1,
+    "stdout": "== failover-redis: via 127.0.0.1:56612 name=arena\nmaster \u0641\u0639\u0644\u06cc: 127.0.0.1,56610\n",
+    "stderr": "AUTH failed: ERR AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?\nFAIL: master\u0650 127.0.0.1:56610 \u0632\u0646\u062f\u0647 \u0627\u0633\u062a \u2014 failover\u0650 \u062f\u0633\u062a\u06cc \u0631\u0648\u06cc\u0650 master\u0650 \u0633\u0627\u0644\u0645 \u0631\u06cc\u0633\u06a9\u0650 \u062f\u0648-\u0631\u0626\u06cc\u0633\u061b --force (\u0641\u0642\u0637 \u062f\u0631 maintenance window)\n",
+    "elapsed_ms": 17.304495,
+    "utc_end": "2026-09-22T21:13:17.836730+00:00"
+  },
+  {
+    "id": "s1-forced-failover",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--force"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:56612,127.0.0.1:56613,127.0.0.1:56614",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 1,
+    "stdout": "== failover-redis: via 127.0.0.1:56612 name=arena\nmaster \u0641\u0639\u0644\u06cc: 127.0.0.1,56610\nOK\nfailover \u062a\u062d\u0631\u06cc\u06a9 \u0634\u062f\u061b \u062f\u0631 \u0627\u0646\u062a\u0638\u0627\u0631\u0650 \u0622\u062f\u0631\u0633\u0650 \u062a\u0627\u0632\u0647 ...\nNEW_MASTER=127.0.0.1,56611\n",
+    "stderr": "AUTH failed: ERR AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?\nAUTH failed: ERR AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?\nAUTH failed: ERR AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?\nAUTH failed: ERR AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?\nAUTH failed: ERR AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?\nCould not connect to Redis at 127.0.0.1,56611:127: Name or service not known\nFAIL: 127.0.0.1,56611 \u062e\u0648\u062f \u0631\u0627 master \u0645\u0639\u0631\u0641\u06cc \u0646\u0645\u06cc\u200c\u06a9\u0646\u062f\n",
+    "elapsed_ms": 2039.212363,
+    "utc_end": "2026-09-22T21:13:19.876116+00:00"
+  },
+  {
+    "id": "s1-new-master",
+    "command": [
+      "redis-cli",
+      "-p",
+      "56612",
+      "SENTINEL",
+      "get-master-addr-by-name",
+      "arena"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "127.0.0.1\n56611\n",
+    "stderr": "",
+    "elapsed_ms": 3.681708,
+    "utc_end": "2026-09-22T21:13:19.880066+00:00"
+  },
+  {
+    "id": "s1-role",
+    "command": [
+      "redis-cli",
+      "-p",
+      "56611",
+      "INFO",
+      "replication"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "# Replication\nrole:master\nconnected_slaves:0\nmaster_failover_state:no-failover\nmaster_replid:9d05a29cdc7ca31cbcb198e38774d9029761c64e\nmaster_replid2:a43399d00fe9231af5f16701f42215cf829d277e\nmaster_repl_offset:1684\nsecond_repl_offset:1269\nrepl_backlog_active:1\nrepl_backlog_size:1048576\nrepl_backlog_first_byte_offset:810\nrepl_backlog_histlen:875\n",
+    "stderr": "",
+    "elapsed_ms": 3.604313,
+    "utc_end": "2026-09-22T21:13:19.883850+00:00"
+  },
+  {
+    "id": "s1-marker",
+    "command": [
+      "redis-cli",
+      "-p",
+      "56611",
+      "GET",
+      "arena:marker"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "run-1\n",
+    "stderr": "",
+    "elapsed_ms": 3.63184,
+    "utc_end": "2026-09-22T21:13:19.887627+00:00"
+  },
+  {
+    "id": "s1-post-write",
+    "command": [
+      "redis-cli",
+      "-p",
+      "56611",
+      "SET",
+      "arena:post",
+      "ok"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "elapsed_ms": 3.837615,
+    "utc_end": "2026-09-22T21:13:19.891591+00:00"
+  },
+  {
+    "id": "s2-seed",
+    "command": [
+      "redis-cli",
+      "-p",
+      "56620",
+      "SET",
+      "arena:marker",
+      "run-2"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "elapsed_ms": 4.915644,
+    "utc_end": "2026-09-22T21:13:25.078438+00:00"
+  },
+  {
+    "id": "s2-ack",
+    "command": [
+      "redis-cli",
+      "-p",
+      "56620",
+      "WAIT",
+      "1",
+      "2000"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "1\n",
+    "stderr": "",
+    "elapsed_ms": 3.996341,
+    "utc_end": "2026-09-22T21:13:25.082699+00:00"
+  },
+  {
+    "id": "s2-healthy-guard",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--dry-run"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:56622,127.0.0.1:56623,127.0.0.1:56624",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 1,
+    "stdout": "== failover-redis: via 127.0.0.1:56622 name=arena\nmaster \u0641\u0639\u0644\u06cc: 127.0.0.1,56620\n",
+    "stderr": "AUTH failed: ERR AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?\nFAIL: master\u0650 127.0.0.1:56620 \u0632\u0646\u062f\u0647 \u0627\u0633\u062a \u2014 failover\u0650 \u062f\u0633\u062a\u06cc \u0631\u0648\u06cc\u0650 master\u0650 \u0633\u0627\u0644\u0645 \u0631\u06cc\u0633\u06a9\u0650 \u062f\u0648-\u0631\u0626\u06cc\u0633\u061b --force (\u0641\u0642\u0637 \u062f\u0631 maintenance window)\n",
+    "elapsed_ms": 14.48204,
+    "utc_end": "2026-09-22T21:13:25.097354+00:00"
+  },
+  {
+    "id": "s2-forced-failover",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--force"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:56622,127.0.0.1:56623,127.0.0.1:56624",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 1,
+    "stdout": "== failover-redis: via 127.0.0.1:56622 name=arena\nmaster \u0641\u0639\u0644\u06cc: 127.0.0.1,56620\nOK\nfailover \u062a\u062d\u0631\u06cc\u06a9 \u0634\u062f\u061b \u062f\u0631 \u0627\u0646\u062a\u0638\u0627\u0631\u0650 \u0622\u062f\u0631\u0633\u0650 \u062a\u0627\u0632\u0647 ...\nNEW_MASTER=127.0.0.1,56621\n",
+    "stderr": "AUTH failed: ERR AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?\nAUTH failed: ERR AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?\nAUTH failed: ERR AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?\nAUTH failed: ERR AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?\nCould not connect to Redis at 127.0.0.1,56621:127: Name or service not known\nFAIL: 127.0.0.1,56621 \u062e\u0648\u062f \u0631\u0627 master \u0645\u0639\u0631\u0641\u06cc \u0646\u0645\u06cc\u200c\u06a9\u0646\u062f\n",
+    "elapsed_ms": 1031.100982,
+    "utc_end": "2026-09-22T21:13:26.128634+00:00"
+  },
+  {
+    "id": "s2-new-master",
+    "command": [
+      "redis-cli",
+      "-p",
+      "56622",
+      "SENTINEL",
+      "get-master-addr-by-name",
+      "arena"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "127.0.0.1\n56621\n",
+    "stderr": "",
+    "elapsed_ms": 3.589459,
+    "utc_end": "2026-09-22T21:13:26.132447+00:00"
+  },
+  {
+    "id": "s2-role",
+    "command": [
+      "redis-cli",
+      "-p",
+      "56621",
+      "INFO",
+      "replication"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "# Replication\nrole:master\nconnected_slaves:0\nmaster_failover_state:no-failover\nmaster_replid:b9b510cc47b5ccae3c8e666bbcb7f0ea038fbcbc\nmaster_replid2:1c230bbed0df7525a743bfa3487cbcf4f6b640ba\nmaster_repl_offset:1160\nsecond_repl_offset:876\nrepl_backlog_active:1\nrepl_backlog_size:1048576\nrepl_backlog_first_byte_offset:810\nrepl_backlog_histlen:351\n",
+    "stderr": "",
+    "elapsed_ms": 3.772088,
+    "utc_end": "2026-09-22T21:13:26.136429+00:00"
+  },
+  {
+    "id": "s2-marker",
+    "command": [
+      "redis-cli",
+      "-p",
+      "56621",
+      "GET",
+      "arena:marker"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "run-2\n",
+    "stderr": "",
+    "elapsed_ms": 3.53514,
+    "utc_end": "2026-09-22T21:13:26.140152+00:00"
+  },
+  {
+    "id": "s2-post-write",
+    "command": [
+      "redis-cli",
+      "-p",
+      "56621",
+      "SET",
+      "arena:post",
+      "ok"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "elapsed_ms": 3.540335,
+    "utc_end": "2026-09-22T21:13:26.143858+00:00"
+  }
+]

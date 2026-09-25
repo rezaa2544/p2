@@ -1,0 +1,29 @@
+{
+  "id": "p5-recovery-read",
+  "command": [
+    "psql",
+    "-X",
+    "-qAt",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    "SELECT value FROM users WHERE id=999"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/var/tmp/a8c-pg-hq37s0gq/pbr.conf",
+    "PGHOST": "/var/tmp/a8c-pg-hq37s0gq/standby-socket",
+    "PGPORT": "25352",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user",
+    "OLD_PGHOST": "/var/tmp/a8c-pg-hq37s0gq/socket",
+    "OLD_PGPORT": "25350",
+    "PG_FENCE_CHECK": "/var/tmp/a8c-pg-hq37s0gq/fence"
+  },
+  "utc_start": "2026-09-23T11:30:43.139279+00:00",
+  "start_monotonic_ns": 1816452854354,
+  "end_monotonic_ns": 1816460394637,
+  "exit": 0,
+  "stdout": "recovered\n",
+  "stderr": "",
+  "expected": 0
+}

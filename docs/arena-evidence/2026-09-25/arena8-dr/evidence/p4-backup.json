@@ -1,0 +1,21 @@
+{
+  "id": "p4-backup",
+  "command": [
+    "pgbackrest",
+    "--stanza=payesh",
+    "--type=full",
+    "backup"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-h5f0cei4/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-h5f0cei4/socket",
+    "PGPORT": "55438",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:12:45.280891+00:00",
+  "elapsed_ms": 1489.742737,
+  "exit": 0,
+  "stdout": "2026-09-22 21:12:45.284 P00   INFO: backup command begin 2.55.1: --config=/tmp/a8dr-pg-h5f0cei4/pbr.conf --exec-id=5164-b31e00f4 --lock-path=/tmp/a8dr-pg-h5f0cei4/lock --log-level-console=info --log-path=/tmp/a8dr-pg-h5f0cei4 --pg1-path=/tmp/a8dr-pg-h5f0cei4/source --pg1-port=55438 --pg1-socket-path=/tmp/a8dr-pg-h5f0cei4/socket --pg1-user=user --repo1-path=/tmp/a8dr-pg-h5f0cei4/repo --repo1-retention-full=2 --stanza=payesh --start-fast --type=full\n2026-09-22 21:12:45.289 P00   INFO: execute non-exclusive backup start: backup begins after the requested immediate checkpoint completes\n2026-09-22 21:12:45.301 P00   INFO: backup start archive = 000000010000000000000002, lsn = 0/2000028\n2026-09-22 21:12:45.301 P00   INFO: check archive for prior segment 000000010000000000000001\n2026-09-22 21:12:46.642 P00   INFO: execute non-exclusive backup stop and wait for all WAL segments to archive\n2026-09-22 21:12:46.648 P00   INFO: backup stop archive = 000000010000000000000002, lsn = 0/2000120\n2026-09-22 21:12:46.648 P00   INFO: check archive for segment(s) 000000010000000000000002:000000010000000000000002\n2026-09-22 21:12:46.754 P00   INFO: new backup label = 20260922-211245F\n2026-09-22 21:12:46.769 P00   INFO: full backup size = 29.5MB, file total = 1284\n2026-09-22 21:12:46.769 P00   INFO: backup command end: completed successfully (1486ms)\n2026-09-22 21:12:46.769 P00   INFO: expire command begin 2.55.1: --config=/tmp/a8dr-pg-h5f0cei4/pbr.conf --exec-id=5164-b31e00f4 --lock-path=/tmp/a8dr-pg-h5f0cei4/lock --log-level-console=info --log-path=/tmp/a8dr-pg-h5f0cei4 --repo1-path=/tmp/a8dr-pg-h5f0cei4/repo --repo1-retention-full=2 --stanza=payesh\n2026-09-22 21:12:46.769 P00   INFO: expire command end: completed successfully (0ms)\n",
+  "stderr": ""
+}

@@ -1,0 +1,35 @@
+{
+  "scope": "controlled synthetic fixture executing unmodified current gate, not full-repository PASS",
+  "source_sha256": "4cc5ae1932a9eab8ef54d87f5e2d47381ceb727fc94ca1a34ffa4da6011ec35d",
+  "copied_sha256": "4cc5ae1932a9eab8ef54d87f5e2d47381ceb727fc94ca1a34ffa4da6011ec35d",
+  "registry": {
+    "required_reviewers": [
+      "chatgpt",
+      "arena",
+      "atria"
+    ],
+    "items": []
+  },
+  "allowlist": {
+    "items": [
+      {
+        "pattern": "assert(true",
+        "expires": "never"
+      },
+      {
+        "pattern": "process.exit(0)",
+        "expires": "never"
+      },
+      {
+        "pattern": "|| true",
+        "expires": "never"
+      },
+      {
+        "pattern": "0/0 checks",
+        "expires": "never"
+      }
+    ]
+  },
+  "new_file": "tests/unapproved.js",
+  "new_file_content": "assert(true); process.exit(0);\n"
+}

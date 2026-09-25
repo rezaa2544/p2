@@ -1,0 +1,18 @@
+[
+  "s1-forced-wrapper",
+  "s1-new-master",
+  "s1-old-rejoins",
+  "s1-ack-0",
+  "s1-ack-1",
+  "s1-ack-2",
+  "s1-ack-3",
+  "s1-ack-4",
+  "s1-ack-5",
+  "s1-ack-6",
+  "s1-ack-7",
+  "s1-ack-8",
+  "s1-ack-9",
+  "s1-replica-caught-up",
+  "s1-all-acks-survive",
+  "s1-rejoin-data"
+]

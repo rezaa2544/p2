@@ -1,0 +1,3 @@
+ tests/phase7-production-verifier-contract.test.js | 15 ++++++++++++---
+ tools/production-verifier.sh                      |  3 ++-
+ 2 files changed, 14 insertions(+), 4 deletions(-)

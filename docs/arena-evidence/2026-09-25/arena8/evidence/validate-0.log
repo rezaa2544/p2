@@ -1,0 +1,13 @@
+{
+  "command": [
+    "/home/user/arena8/runtime/node_modules/node/bin/node",
+    "/home/user/p2/tools/capacity-saturation-probe.js",
+    "--validate",
+    "--staircase",
+    "0"
+  ],
+  "code": 1,
+  "signal": null,
+  "stdout": "── طرحِ اجرا (آفلاین؛ هیچ شبکه‌ای در کار نیست) ──\nپروفایل: mixed-national (Σوزن=100)\nنردبان: 0 · هر پله 120s (+گرم‌کردن 15s)\nSLO پذیرش: p95 < 300ms · توقف اضطراری: 5xx > 5٪\nنامزدهای زانو: slo | plateau (بهرهٔ حاشیه‌ای < ۵۰٪) | errors (5xx > 1٪)\nجمع‌آورها: HTTP+‪/metrics‬ (هسته) · redis-info (اختیاری، RESP) · pg-direct (اختیاری، ماژول pg)\n",
+  "stderr": "  ✗ نردبان نامعتبر: 0\n"
+}

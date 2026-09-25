@@ -1,0 +1,24 @@
+{
+  "id": "p6-restore-time",
+  "command": [
+    "bash",
+    "tools/pitr-restore.sh",
+    "--time",
+    "2026-09-23 00:00:00+00",
+    "--no-start",
+    "--dest",
+    "/tmp/a8dr-pg-3jzz4yhf/time"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-3jzz4yhf/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-3jzz4yhf/socket",
+    "PGPORT": "55442",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:13:41.086023+00:00",
+  "elapsed_ms": 12.802063,
+  "exit": 48,
+  "stdout": "== PITR run: /tmp/a8dr-pg-3jzz4yhf/time/pitr-20260922-211341-5915 (stanza=payesh port=54329 --type=time --target=2026-09-23 00:00:00+00)\n",
+  "stderr": "ERROR: [048]: invalid command '00:00:00+00'\n"
+}

@@ -1,0 +1,14 @@
+[DB] no DATABASE_URL — using the JSON/in-memory store. Dev/test only; set ALLOW_MEMORY_FALLBACK=1 to silence this warning. In production this is a startup failure.
+generated JWT secret -> /var/tmp/payesh-api-dr-PqKEZS/jwt.key
+  cursor : enabled — key=keyfile (signed cursors survive restarts, ttl=3600s)
+
+🔍 Testing /api/v1/system/disaster-recovery-health Endpoint
+[CANARY] weights hydrated from PostgreSQL (cluster_weights SSoT, 7 clusters)
+  ✅ DR1: Anonymous request rejected with 401
+  ✅ DR2: Missing params rejected with 400
+  ✅ DR3: Manager gets 200 with Phase 4 disaster recovery health snapshot
+  ✅ DR4: Foreign manager rejected with 403 (Tenant Isolation)
+  ✅ DR5: Unauthorized student role rejected with 403
+  ✅ DR6: Regional disaster recovery overview strictly enforces zero-ranking policy
+
+Disaster Recovery Health API Tests: 6 passed, 0 failed

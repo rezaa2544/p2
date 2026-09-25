@@ -1,0 +1,26 @@
+{
+  "id": "p4-named-stop",
+  "command": [
+    "pg_ctl",
+    "-D",
+    "/var/tmp/a8c-pg-vxvzh5f_/named/pitr-wnzrdS61/data",
+    "-m",
+    "fast",
+    "-w",
+    "stop"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/var/tmp/a8c-pg-vxvzh5f_/pbr.conf",
+    "PGHOST": "/var/tmp/a8c-pg-vxvzh5f_/named/pitr-wnzrdS61/run",
+    "PGPORT": "25341",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:29:24.195086+00:00",
+  "start_monotonic_ns": 1737508659727,
+  "end_monotonic_ns": 1737611480296,
+  "exit": 0,
+  "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+  "stderr": "",
+  "expected": 0
+}

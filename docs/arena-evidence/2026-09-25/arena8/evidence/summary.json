@@ -1,0 +1,474 @@
+[
+  {
+    "name": "ok-1",
+    "code": 0,
+    "signal": null,
+    "fixtureRequests": 146,
+    "steps": [
+      {
+        "requests": 145,
+        "errorRatePct": 0,
+        "transportErrors": 0,
+        "p95": 3.5
+      }
+    ],
+    "slo": {
+      "p95ms": 300,
+      "verdictP95": "PASS"
+    },
+    "knee": {
+      "knee": {
+        "method": "none",
+        "stepIndex": -1,
+        "concurrency": null,
+        "detail": "در بازهٔ نردبان اشباع دیده نشد — نردبان را گسترش بده"
+      },
+      "maxSustainableRps": 966.7,
+      "candidates": []
+    }
+  },
+  {
+    "name": "unauthorized-1",
+    "code": 0,
+    "signal": null,
+    "fixtureRequests": 149,
+    "steps": [
+      {
+        "requests": 147,
+        "errorRatePct": 0,
+        "transportErrors": 0,
+        "p95": 3.1
+      }
+    ],
+    "slo": {
+      "p95ms": 300,
+      "verdictP95": "PASS"
+    },
+    "knee": {
+      "knee": {
+        "method": "none",
+        "stepIndex": -1,
+        "concurrency": null,
+        "detail": "در بازهٔ نردبان اشباع دیده نشد — نردبان را گسترش بده"
+      },
+      "maxSustainableRps": 980,
+      "candidates": []
+    }
+  },
+  {
+    "name": "disconnect-1",
+    "code": 0,
+    "signal": null,
+    "fixtureRequests": 251,
+    "steps": [
+      {
+        "requests": 250,
+        "errorRatePct": 0,
+        "transportErrors": 250,
+        "p95": 2.2
+      }
+    ],
+    "slo": {
+      "p95ms": 300,
+      "verdictP95": "PASS"
+    },
+    "knee": {
+      "knee": {
+        "method": "none",
+        "stepIndex": -1,
+        "concurrency": null,
+        "detail": "در بازهٔ نردبان اشباع دیده نشد — نردبان را گسترش بده"
+      },
+      "maxSustainableRps": 1666.7,
+      "candidates": []
+    }
+  },
+  {
+    "name": "server-error-1",
+    "code": 0,
+    "signal": null,
+    "fixtureRequests": 154,
+    "steps": [
+      {
+        "requests": 152,
+        "errorRatePct": 100,
+        "transportErrors": 0,
+        "p95": 2.9
+      }
+    ],
+    "slo": {
+      "p95ms": 300,
+      "verdictP95": "PASS"
+    },
+    "knee": {
+      "knee": {
+        "method": "errors",
+        "stepIndex": 0,
+        "concurrency": 2,
+        "detail": "5xx=100٪ > 1٪"
+      },
+      "maxSustainableRps": 1013.3,
+      "candidates": [
+        {
+          "method": "errors",
+          "stepIndex": 0,
+          "concurrency": 2,
+          "detail": "5xx=100٪ > 1٪"
+        }
+      ]
+    }
+  },
+  {
+    "name": "truncated-1",
+    "code": 0,
+    "signal": null,
+    "fixtureRequests": 48,
+    "steps": [
+      {
+        "requests": 46,
+        "errorRatePct": 0,
+        "transportErrors": 0,
+        "p95": 8.4
+      }
+    ],
+    "slo": {
+      "p95ms": 300,
+      "verdictP95": "PASS"
+    },
+    "knee": {
+      "knee": {
+        "method": "none",
+        "stepIndex": -1,
+        "concurrency": null,
+        "detail": "در بازهٔ نردبان اشباع دیده نشد — نردبان را گسترش بده"
+      },
+      "maxSustainableRps": 306.7,
+      "candidates": []
+    }
+  },
+  {
+    "name": "zero-1",
+    "code": 0,
+    "signal": null,
+    "fixtureRequests": 0,
+    "steps": [
+      {
+        "requests": 0,
+        "errorRatePct": 0,
+        "transportErrors": 0,
+        "p95": null
+      }
+    ],
+    "slo": {
+      "p95ms": 300,
+      "verdictP95": "PASS"
+    },
+    "knee": {
+      "knee": {
+        "method": "none",
+        "stepIndex": -1,
+        "concurrency": null,
+        "detail": "در بازهٔ نردبان اشباع دیده نشد — نردبان را گسترش بده"
+      },
+      "maxSustainableRps": 0,
+      "candidates": []
+    }
+  },
+  {
+    "name": "invalid-1",
+    "code": 0,
+    "signal": null,
+    "fixtureRequests": 0,
+    "steps": [
+      {
+        "requests": 0,
+        "errorRatePct": 0,
+        "transportErrors": 0,
+        "p95": null
+      }
+    ],
+    "slo": {
+      "p95ms": 300,
+      "verdictP95": "PASS"
+    },
+    "knee": {
+      "knee": {
+        "method": "none",
+        "stepIndex": -1,
+        "concurrency": null,
+        "detail": "در بازهٔ نردبان اشباع دیده نشد — نردبان را گسترش بده"
+      },
+      "maxSustainableRps": 0,
+      "candidates": []
+    }
+  },
+  {
+    "name": "negative-duration-1",
+    "code": 0,
+    "signal": null,
+    "fixtureRequests": 1,
+    "steps": [
+      {
+        "requests": 0,
+        "errorRatePct": 0,
+        "transportErrors": 0,
+        "p95": null
+      }
+    ],
+    "slo": {
+      "p95ms": 300,
+      "verdictP95": "PASS"
+    },
+    "knee": {
+      "knee": {
+        "method": "none",
+        "stepIndex": -1,
+        "concurrency": null,
+        "detail": "در بازهٔ نردبان اشباع دیده نشد — نردبان را گسترش بده"
+      },
+      "maxSustainableRps": 0,
+      "candidates": []
+    }
+  },
+  {
+    "name": "ok-2",
+    "code": 0,
+    "signal": null,
+    "fixtureRequests": 147,
+    "steps": [
+      {
+        "requests": 145,
+        "errorRatePct": 0,
+        "transportErrors": 0,
+        "p95": 3.2
+      }
+    ],
+    "slo": {
+      "p95ms": 300,
+      "verdictP95": "PASS"
+    },
+    "knee": {
+      "knee": {
+        "method": "none",
+        "stepIndex": -1,
+        "concurrency": null,
+        "detail": "در بازهٔ نردبان اشباع دیده نشد — نردبان را گسترش بده"
+      },
+      "maxSustainableRps": 966.7,
+      "candidates": []
+    }
+  },
+  {
+    "name": "unauthorized-2",
+    "code": 0,
+    "signal": null,
+    "fixtureRequests": 157,
+    "steps": [
+      {
+        "requests": 155,
+        "errorRatePct": 0,
+        "transportErrors": 0,
+        "p95": 3.1
+      }
+    ],
+    "slo": {
+      "p95ms": 300,
+      "verdictP95": "PASS"
+    },
+    "knee": {
+      "knee": {
+        "method": "none",
+        "stepIndex": -1,
+        "concurrency": null,
+        "detail": "در بازهٔ نردبان اشباع دیده نشد — نردبان را گسترش بده"
+      },
+      "maxSustainableRps": 1033.3,
+      "candidates": []
+    }
+  },
+  {
+    "name": "disconnect-2",
+    "code": 0,
+    "signal": null,
+    "fixtureRequests": 252,
+    "steps": [
+      {
+        "requests": 250,
+        "errorRatePct": 0,
+        "transportErrors": 250,
+        "p95": 2.2
+      }
+    ],
+    "slo": {
+      "p95ms": 300,
+      "verdictP95": "PASS"
+    },
+    "knee": {
+      "knee": {
+        "method": "none",
+        "stepIndex": -1,
+        "concurrency": null,
+        "detail": "در بازهٔ نردبان اشباع دیده نشد — نردبان را گسترش بده"
+      },
+      "maxSustainableRps": 1666.7,
+      "candidates": []
+    }
+  },
+  {
+    "name": "server-error-2",
+    "code": 0,
+    "signal": null,
+    "fixtureRequests": 154,
+    "steps": [
+      {
+        "requests": 152,
+        "errorRatePct": 100,
+        "transportErrors": 0,
+        "p95": 3
+      }
+    ],
+    "slo": {
+      "p95ms": 300,
+      "verdictP95": "PASS"
+    },
+    "knee": {
+      "knee": {
+        "method": "errors",
+        "stepIndex": 0,
+        "concurrency": 2,
+        "detail": "5xx=100٪ > 1٪"
+      },
+      "maxSustainableRps": 1013.3,
+      "candidates": [
+        {
+          "method": "errors",
+          "stepIndex": 0,
+          "concurrency": 2,
+          "detail": "5xx=100٪ > 1٪"
+        }
+      ]
+    }
+  },
+  {
+    "name": "truncated-2",
+    "code": 0,
+    "signal": null,
+    "fixtureRequests": 46,
+    "steps": [
+      {
+        "requests": 44,
+        "errorRatePct": 0,
+        "transportErrors": 0,
+        "p95": 9.2
+      }
+    ],
+    "slo": {
+      "p95ms": 300,
+      "verdictP95": "PASS"
+    },
+    "knee": {
+      "knee": {
+        "method": "none",
+        "stepIndex": -1,
+        "concurrency": null,
+        "detail": "در بازهٔ نردبان اشباع دیده نشد — نردبان را گسترش بده"
+      },
+      "maxSustainableRps": 293.3,
+      "candidates": []
+    }
+  },
+  {
+    "name": "zero-2",
+    "code": 0,
+    "signal": null,
+    "fixtureRequests": 0,
+    "steps": [
+      {
+        "requests": 0,
+        "errorRatePct": 0,
+        "transportErrors": 0,
+        "p95": null
+      }
+    ],
+    "slo": {
+      "p95ms": 300,
+      "verdictP95": "PASS"
+    },
+    "knee": {
+      "knee": {
+        "method": "none",
+        "stepIndex": -1,
+        "concurrency": null,
+        "detail": "در بازهٔ نردبان اشباع دیده نشد — نردبان را گسترش بده"
+      },
+      "maxSustainableRps": 0,
+      "candidates": []
+    }
+  },
+  {
+    "name": "invalid-2",
+    "code": 0,
+    "signal": null,
+    "fixtureRequests": 0,
+    "steps": [
+      {
+        "requests": 0,
+        "errorRatePct": 0,
+        "transportErrors": 0,
+        "p95": null
+      }
+    ],
+    "slo": {
+      "p95ms": 300,
+      "verdictP95": "PASS"
+    },
+    "knee": {
+      "knee": {
+        "method": "none",
+        "stepIndex": -1,
+        "concurrency": null,
+        "detail": "در بازهٔ نردبان اشباع دیده نشد — نردبان را گسترش بده"
+      },
+      "maxSustainableRps": 0,
+      "candidates": []
+    }
+  },
+  {
+    "name": "negative-duration-2",
+    "code": 0,
+    "signal": null,
+    "fixtureRequests": 1,
+    "steps": [
+      {
+        "requests": 0,
+        "errorRatePct": 0,
+        "transportErrors": 0,
+        "p95": null
+      }
+    ],
+    "slo": {
+      "p95ms": 300,
+      "verdictP95": "PASS"
+    },
+    "knee": {
+      "knee": {
+        "method": "none",
+        "stepIndex": -1,
+        "concurrency": null,
+        "detail": "در بازهٔ نردبان اشباع دیده نشد — نردبان را گسترش بده"
+      },
+      "maxSustainableRps": 0,
+      "candidates": []
+    }
+  },
+  {
+    "name": "validate-0",
+    "code": 1,
+    "signal": null
+  },
+  {
+    "name": "validate-abc",
+    "code": 1,
+    "signal": null
+  }
+]

@@ -1,0 +1,29 @@
+{
+  "id": "p4-recovery-write",
+  "command": [
+    "psql",
+    "-X",
+    "-qAt",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    "INSERT INTO users VALUES(999,'recovered')"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/var/tmp/a8c-pg-vxvzh5f_/pbr.conf",
+    "PGHOST": "/var/tmp/a8c-pg-vxvzh5f_/standby-socket",
+    "PGPORT": "25342",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user",
+    "OLD_PGHOST": "/var/tmp/a8c-pg-vxvzh5f_/socket",
+    "OLD_PGPORT": "25340",
+    "PG_FENCE_CHECK": "/var/tmp/a8c-pg-vxvzh5f_/fence"
+  },
+  "utc_start": "2026-09-23T11:29:39.208471+00:00",
+  "start_monotonic_ns": 1752522045034,
+  "end_monotonic_ns": 1752528838486,
+  "exit": 0,
+  "stdout": "",
+  "stderr": "",
+  "expected": 0
+}

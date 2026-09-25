@@ -1,0 +1,19 @@
+{
+  "id": "p8-verify-correct",
+  "command": [
+    "bash",
+    "tools/pitr-verify.sh"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-afjnpgpv/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-afjnpgpv/restore/pitr-20260922-211543-7343/run",
+    "PGPORT": "55447",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:15:43.812674+00:00",
+  "elapsed_ms": 57.591645,
+  "exit": 0,
+  "stdout": "PASS: \u0627\u062a\u0635\u0627\u0644 \u0628\u0647 instance\u0650 \u0628\u0627\u0632\u06cc\u0627\u0628\u06cc\u200c\u0634\u062f\u0647\nPASS: \u0631\u06cc\u06a9\u0627\u0648\u0631\u06cc \u062a\u0645\u0627\u0645 \u0648 promote \u0634\u062f\u0647 (pg_is_in_recovery=f)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc users (count=10)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc schools (count=10)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc classes (count=10)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc grades (count=10)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc attendance (count=10)\nCHECKSUM table=users rows200md5=83f4fcae81621c81e39fbd4edd222062\nCHECKSUM table=grades rows200md5=83f4fcae81621c81e39fbd4edd222062\nCHECKSUM table=attendance rows200md5=83f4fcae81621c81e39fbd4edd222062\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nPITR_VERIFY: \u0633\u0628\u0632 \u2014 \u0628\u0627\u0632\u06cc\u0627\u0628\u06cc\u0650 payesh \u0645\u0639\u062a\u0628\u0631 \u0627\u0633\u062a\n",
+  "stderr": ""
+}

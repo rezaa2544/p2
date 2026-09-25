@@ -1,0 +1,24 @@
+{
+  "id": "p5-expected",
+  "command": [
+    "psql",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-d",
+    "payesh",
+    "-tAXc",
+    "SELECT count(*),md5(string_agg(users::text,'|' ORDER BY id)) FROM users"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-6cn4x7la/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-6cn4x7la/socket",
+    "PGPORT": "55440",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:13:36.740016+00:00",
+  "elapsed_ms": 5.853631,
+  "exit": 0,
+  "stdout": "11|4ea25ae2b340834ffee65ec27cfcb7ee\n",
+  "stderr": ""
+}

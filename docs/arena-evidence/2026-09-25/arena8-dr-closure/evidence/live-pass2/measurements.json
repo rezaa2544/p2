@@ -1,0 +1,50 @@
+[
+  {
+    "run": 1,
+    "scope": "E3 PostgreSQL DB service; not application/E4",
+    "failure_utc": "2026-09-23T11:13:26.688766+00:00",
+    "failure_monotonic_ns": 780002339358,
+    "recovered_monotonic_ns": 790310745148,
+    "rto_seconds": 10.30840579,
+    "lost_acknowledged_ids": [],
+    "rpo_ack_loss_window_seconds": 0.0,
+    "recovered_point_age_at_failure_seconds": 0.028460328,
+    "acknowledgements": {
+      "100": 779893903898,
+      "101": 779908886743,
+      "102": 779917626477,
+      "103": 779924789496,
+      "104": 779931934798,
+      "105": 779939513519,
+      "106": 779949229332,
+      "107": 779958680508,
+      "108": 779966347462,
+      "109": 779973879030
+    },
+    "definition": "RTO fault injection -> role change + expected dataset + successful new committed write/read. RPO loss window last acknowledged write minus newest recovered acknowledged write; also report point age."
+  },
+  {
+    "run": 2,
+    "scope": "E3 PostgreSQL DB service; not application/E4",
+    "failure_utc": "2026-09-23T11:14:04.662947+00:00",
+    "failure_monotonic_ns": 817976520571,
+    "recovered_monotonic_ns": 828289589504,
+    "rto_seconds": 10.313068933,
+    "lost_acknowledged_ids": [],
+    "rpo_ack_loss_window_seconds": 0.0,
+    "recovered_point_age_at_failure_seconds": 0.029179849,
+    "acknowledgements": {
+      "100": 817883452029,
+      "101": 817891990413,
+      "102": 817898894649,
+      "103": 817906107814,
+      "104": 817912940483,
+      "105": 817919081470,
+      "106": 817926579609,
+      "107": 817934117723,
+      "108": 817941211873,
+      "109": 817947340722
+    },
+    "definition": "RTO fault injection -> role change + expected dataset + successful new committed write/read. RPO loss window last acknowledged write minus newest recovered acknowledged write; also report point age."
+  }
+]

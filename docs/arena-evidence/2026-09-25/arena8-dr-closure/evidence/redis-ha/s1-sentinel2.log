@@ -1,0 +1,20 @@
+7377:X 23 Sep 2026 11:16:48.421 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+7377:X 23 Sep 2026 11:16:48.421 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+7377:X 23 Sep 2026 11:16:48.421 * Redis version=8.0.2, bits=64, commit=00000000, modified=0, pid=7377, just started
+7377:X 23 Sep 2026 11:16:48.421 * Configuration loaded
+7377:X 23 Sep 2026 11:16:48.422 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+7377:X 23 Sep 2026 11:16:48.422 * monotonic clock: POSIX clock_gettime
+7377:X 23 Sep 2026 11:16:48.424 * Running mode=sentinel, port=56714.
+7377:X 23 Sep 2026 11:16:48.425 * Sentinel new configuration saved on disk
+7377:X 23 Sep 2026 11:16:48.425 * Sentinel ID is fd482e6e7baf5a60391c1e91330f1ebc0a7dfc2b
+7377:X 23 Sep 2026 11:16:48.425 # +monitor master arena 127.0.0.1 56710 quorum 2
+7377:X 23 Sep 2026 11:16:50.420 * +sentinel sentinel 276615dcc5f72beba31cabc329c47d9bfb475988 127.0.0.1 56712 @ arena 127.0.0.1 56710
+7377:X 23 Sep 2026 11:16:50.420 * Sentinel new configuration saved on disk
+7377:X 23 Sep 2026 11:16:50.485 * +sentinel sentinel 9aa71c4232dfda083dde8e915a35038ac611979c 127.0.0.1 56713 @ arena 127.0.0.1 56710
+7377:X 23 Sep 2026 11:16:50.486 * Sentinel new configuration saved on disk
+7377:X 23 Sep 2026 11:16:58.464 * +slave slave 127.0.0.1:56711 127.0.0.1 56711 @ arena 127.0.0.1 56710
+7377:X 23 Sep 2026 11:16:58.464 * Sentinel new configuration saved on disk
+7377:X 23 Sep 2026 11:18:18.789 * +reboot slave 127.0.0.1:56711 127.0.0.1 56711 @ arena 127.0.0.1 56710
+7377:signal-handler (1790162299) Received SIGTERM scheduling shutdown...
+7377:X 23 Sep 2026 11:18:19.509 * User requested shutdown...
+7377:X 23 Sep 2026 11:18:19.509 # Sentinel is now ready to exit, bye bye...

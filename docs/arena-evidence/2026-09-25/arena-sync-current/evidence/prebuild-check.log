@@ -1,0 +1,5 @@
+❌ خروجی build با index.html تفاوت دارد.
+   طول اصلی: 1550409 | طول ساخته‌شده: 1550431
+   اولین اختلاف در کاراکتر 233643:
+   اصلی : "const _VERSIONED_C = { grades:1, attendance:1, discipline:1 };\nlet log=[];\nlet S"
+   ساخته: "let log=[];\nlet SYNC_MUTED=false;\nfunction loadLog(){ log = Store.getJSON(LOG_KE"

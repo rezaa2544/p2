@@ -1,0 +1,26 @@
+{
+  "id": "p7-standby-before",
+  "command": [
+    "psql",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-d",
+    "payesh",
+    "-tAXc",
+    "SELECT pg_is_in_recovery(),count(*),md5(string_agg(users::text,'|' ORDER BY id)) FROM users"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-68csddw3/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-68csddw3/standby-socket",
+    "PGPORT": "55448",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh",
+    "OLD_PGHOST": "/tmp/a8dr-pg-68csddw3/socket",
+    "OLD_PGPORT": "55444"
+  },
+  "utc_start": "2026-09-22T21:15:01.116442+00:00",
+  "elapsed_ms": 8.840603,
+  "exit": 0,
+  "stdout": "t|12|02f4dc5cfcab80e439a38c51a908022d\n",
+  "stderr": ""
+}

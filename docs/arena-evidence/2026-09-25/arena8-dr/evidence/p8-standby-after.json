@@ -1,0 +1,26 @@
+{
+  "id": "p8-standby-after",
+  "command": [
+    "psql",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-d",
+    "payesh",
+    "-tAXc",
+    "SELECT pg_is_in_recovery(),count(*),md5(string_agg(users::text,'|' ORDER BY id)) FROM users"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-afjnpgpv/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-afjnpgpv/standby-socket",
+    "PGPORT": "55450",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh",
+    "OLD_PGHOST": "/tmp/a8dr-pg-afjnpgpv/socket",
+    "OLD_PGPORT": "55446"
+  },
+  "utc_start": "2026-09-22T21:15:44.397875+00:00",
+  "elapsed_ms": 5.392679,
+  "exit": 0,
+  "stdout": "f|12|1da23f72effb71d1c96c9c1abd7f94cd\n",
+  "stderr": ""
+}

@@ -1,0 +1,24 @@
+{
+  "id": "p7-stop-data",
+  "command": [
+    "pg_ctl",
+    "-D",
+    "/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data",
+    "-m",
+    "immediate",
+    "-w",
+    "stop"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-68csddw3/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-68csddw3/socket",
+    "PGPORT": "55444",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:15:40.190295+00:00",
+  "elapsed_ms": 101.481089,
+  "exit": 0,
+  "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+  "stderr": ""
+}

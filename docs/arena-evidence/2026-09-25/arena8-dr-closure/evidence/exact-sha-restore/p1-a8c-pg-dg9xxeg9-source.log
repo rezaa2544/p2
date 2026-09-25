@@ -1,0 +1,14 @@
+2026-09-23 11:21:42.241 UTC [11027] LOG:  starting PostgreSQL 17.11 (Debian 17.11-0+deb13u1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-09-23 11:21:42.241 UTC [11027] LOG:  listening on Unix socket "/tmp/a8c-pg-dg9xxeg9/socket/.s.PGSQL.55310"
+2026-09-23 11:21:42.243 UTC [11034] LOG:  database system was shut down at 2026-09-23 11:21:42 UTC
+2026-09-23 11:21:42.246 UTC [11027] LOG:  database system is ready to accept connections
+2026-09-23 11:21:42.407 UTC [11032] LOG:  checkpoint starting: immediate force wait
+2026-09-23 11:21:42.424 UTC [11032] LOG:  checkpoint complete: wrote 943 buffers (5.8%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.009 s, sync=0.001 s, total=0.018 s; sync files=321, longest=0.001 s, average=0.000 s; distance=11333 kB, estimate=11333 kB; lsn=0/2000080, redo lsn=0/2000028
+2026-09-23 11:21:46.138 UTC [11115] LOG:  restore point "arena_committed" created at 0/3000440
+2026-09-23 11:21:46.138 UTC [11115] STATEMENT:  SELECT pg_create_restore_point('arena_committed')
+2026-09-23 11:21:46.176 UTC [11121] LOG:  restore point "pgBackRest Archive Check" created at 0/40000B8
+2026-09-23 11:21:46.176 UTC [11121] STATEMENT:  select pg_catalog.pg_create_restore_point('pgBackRest Archive Check')::text
+2026-09-23 11:21:52.577 UTC [11032] LOG:  checkpoint starting: immediate force wait
+2026-09-23 11:21:52.589 UTC [11032] LOG:  checkpoint complete: wrote 15 buffers (0.1%); 0 WAL file(s) added, 0 removed, 4 recycled; write=0.001 s, sync=0.001 s, total=0.013 s; sync files=11, longest=0.001 s, average=0.001 s; distance=49152 kB, estimate=49152 kB; lsn=0/5000080, redo lsn=0/5000028
+2026-09-23 11:21:52.923 UTC [11027] LOG:  received immediate shutdown request
+2026-09-23 11:21:52.929 UTC [11027] LOG:  database system is shut down

@@ -21,6 +21,12 @@ function chk(name, cond, extra) {
   else { failc++; fails.push(name + (extra ? ' — ' + extra : '')); console.log('  ❌ ' + name + (extra ? ' — ' + extra : '')); }
 }
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+// Wait for the asserted observable, not a fixed 700ms wall-clock guess under
+// jsdom/demo boot load. Bounded failure is still asserted below; no test retry.
+async function waitForMirror(predicate) {
+  const deadline = Date.now() + 5000;
+  while (!predicate() && Date.now() < deadline) await sleep(20);
+}
 
 /* شبیه‌سازِ سبکِ IndexedDB (فقط آنچه OfflineStorage لازم دارد) */
 function fakeIdb() {
@@ -95,7 +101,7 @@ function fakeIdb() {
 
   /* ۱) enqueue → آینهٔ IDB */
   W(`enqueueOp({t:'ins',c:'announcements',data:{school_id:1,title:'آینه'},by:5}); 0;`);
-  await sleep(700); /* debounce 400ms + گذرِ async */
+  await waitForMirror(() => idb._stores.sync_queue.size === 1);
   chk('B1 قلمِ pending در آینهٔ IDB نشست',
     idb._stores.sync_queue.size === 1, 'size=' + idb._stores.sync_queue.size);
   const mirrored = Array.from(idb._stores.sync_queue.values())[0];
@@ -105,7 +111,7 @@ function fakeIdb() {
   /* ۲) bgApplyResult: synced → حذف از صف + آینه؛ lastSync جلو می‌رود */
   const uid1 = W('SYNC.queue[0].uid');
   W(`bgApplyResult({ synced: ['${uid1}'], rejected: [] }); 0;`);
-  await sleep(700);
+  await waitForMirror(() => idb._stores.sync_queue.size === 0);
   chk('B3 قلمِ syncedِ پس‌زمینه از صفِ محلی حذف شد', W('SYNC.queue.length') === 0);
   chk('B4 آینهٔ IDB هم پاک شد (SW قلمِ مرده نمی‌فرستد)',
     idb._stores.sync_queue.size === 0, 'size=' + idb._stores.sync_queue.size);

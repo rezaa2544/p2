@@ -1,0 +1,17 @@
+{
+  "id": "s1-healthy-guard",
+  "command": [
+    "bash",
+    "tools/failover-redis.sh",
+    "--dry-run"
+  ],
+  "environment": {
+    "SENTINELS": "127.0.0.1:56612,127.0.0.1:56613,127.0.0.1:56614",
+    "MASTER_NAME": "arena"
+  },
+  "exit": 1,
+  "stdout": "== failover-redis: via 127.0.0.1:56612 name=arena\nmaster \u0641\u0639\u0644\u06cc: 127.0.0.1,56610\n",
+  "stderr": "AUTH failed: ERR AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?\nFAIL: master\u0650 127.0.0.1:56610 \u0632\u0646\u062f\u0647 \u0627\u0633\u062a \u2014 failover\u0650 \u062f\u0633\u062a\u06cc \u0631\u0648\u06cc\u0650 master\u0650 \u0633\u0627\u0644\u0645 \u0631\u06cc\u0633\u06a9\u0650 \u062f\u0648-\u0631\u0626\u06cc\u0633\u061b --force (\u0641\u0642\u0637 \u062f\u0631 maintenance window)\n",
+  "elapsed_ms": 17.304495,
+  "utc_end": "2026-09-22T21:13:17.836730+00:00"
+}

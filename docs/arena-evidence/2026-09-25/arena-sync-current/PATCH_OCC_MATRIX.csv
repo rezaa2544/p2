@@ -1,0 +1,61 @@
+SHA,route,scenario,PASS,FAIL,runs,evidence
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/students/:id,correct version,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/students/:id,stale explicit version,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/students/:id,missing version strict,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/students/:id,boolean base strict,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/students/:id,legacy missing version after A,0,5,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/students/:id,malformed and empty base boundaries,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/students/:id,version alias,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/students/:id,future version,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/students/:id,boolean base at version1,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/students/:id,two-client concurrent update,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/students/:id,duplicate PATCH replay,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/users/:id,correct version,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/users/:id,stale explicit version,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/users/:id,missing version strict,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/users/:id,boolean base strict,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/users/:id,legacy missing version after A,0,5,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/users/:id,malformed and empty base boundaries,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/users/:id,version alias,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/users/:id,future version,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/users/:id,boolean base at version1,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/users/:id,two-client concurrent update,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/users/:id,duplicate PATCH replay,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/classes/:id,correct version,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/classes/:id,stale explicit version,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/classes/:id,missing version strict,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/classes/:id,boolean base strict,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/classes/:id,legacy missing version after A,0,5,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/classes/:id,malformed and empty base boundaries,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/classes/:id,version alias,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/classes/:id,future version,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/classes/:id,boolean base at version1,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/classes/:id,two-client concurrent update,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/classes/:id,duplicate PATCH replay,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/attendance/:id,correct version,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/attendance/:id,stale explicit version,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/attendance/:id,missing version strict,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/attendance/:id,boolean base strict,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/attendance/:id,legacy missing version after A,0,5,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/attendance/:id,malformed and empty base boundaries,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/attendance/:id,version alias,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/attendance/:id,future version,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/attendance/:id,boolean base at version1,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/attendance/:id,two-client concurrent update,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/attendance/:id,duplicate PATCH replay,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/grades/:id,correct version,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/grades/:id,stale explicit version,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/grades/:id,missing version strict,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/grades/:id,boolean base strict,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/grades/:id,legacy missing version after A,0,5,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/grades/:id,malformed and empty base boundaries,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/grades/:id,version alias,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/grades/:id,future version,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/grades/:id,boolean base at version1,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/grades/:id,two-client concurrent update,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/grades/:id,duplicate PATCH replay,5,0,5,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/students/:id,SIGKILL before commit; reconnect stale retry,1,0,1,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/users/:id,SIGKILL before commit; reconnect stale retry,1,0,1,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/classes/:id,SIGKILL before commit; reconnect stale retry,1,0,1,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/attendance/:id,SIGKILL before commit; reconnect stale retry,1,0,1,evidence/head-ea75623-1/ledger.json
+ea75623dd1a5cb06d72549703204601a5413425f,PATCH /api/v1/grades/:id,SIGKILL before commit; reconnect stale retry,1,0,1,evidence/head-ea75623-1/ledger.json

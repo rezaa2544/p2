@@ -1,0 +1,26 @@
+{
+  "id": "p2-named-stop",
+  "command": [
+    "pg_ctl",
+    "-D",
+    "/tmp/a8c-pg-ljzsgn0w/named/pitr-XoTQAkM8/data",
+    "-m",
+    "fast",
+    "-w",
+    "stop"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-ljzsgn0w/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-ljzsgn0w/named/pitr-XoTQAkM8/run",
+    "PGPORT": "55321",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:22:28.177985+00:00",
+  "start_monotonic_ns": 1321491558536,
+  "end_monotonic_ns": 1321593971036,
+  "exit": 0,
+  "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+  "stderr": "",
+  "expected": 0
+}

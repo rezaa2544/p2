@@ -1,0 +1,29 @@
+{
+  "id": "p2-standby-after",
+  "command": [
+    "psql",
+    "-X",
+    "-qAt",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    "SELECT md5(string_agg(grades::text,'|' ORDER BY id)) FROM grades"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-ljzsgn0w/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-ljzsgn0w/standby-socket",
+    "PGPORT": "55322",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user",
+    "OLD_PGHOST": "/tmp/a8c-pg-ljzsgn0w/socket",
+    "OLD_PGPORT": "55320",
+    "PG_FENCE_CHECK": "/tmp/a8c-pg-ljzsgn0w/fence"
+  },
+  "utc_start": "2026-09-23T11:22:42.290460+00:00",
+  "start_monotonic_ns": 1335603978040,
+  "end_monotonic_ns": 1335610328405,
+  "exit": 2,
+  "stdout": "",
+  "stderr": "psql: error: connection to server on socket \"/tmp/a8c-pg-ljzsgn0w/standby-socket/.s.PGSQL.55322\" failed: No such file or directory\n\tIs the server running locally and accepting connections on that socket?\n",
+  "expected": 0
+}

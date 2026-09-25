@@ -1,0 +1,22 @@
+6597:C 23 Sep 2026 11:13:55.440 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+6597:C 23 Sep 2026 11:13:55.440 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+6597:C 23 Sep 2026 11:13:55.440 * Redis version=8.0.2, bits=64, commit=00000000, modified=0, pid=6597, just started
+6597:C 23 Sep 2026 11:13:55.440 * Configuration loaded
+6597:M 23 Sep 2026 11:13:55.441 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+6597:M 23 Sep 2026 11:13:55.441 * monotonic clock: POSIX clock_gettime
+6597:M 23 Sep 2026 11:13:55.441 * Running mode=standalone, port=56212.
+6597:M 23 Sep 2026 11:13:55.441 * Server initialized
+6597:M 23 Sep 2026 11:13:55.441 * Reading RDB base file on AOF loading...
+6597:M 23 Sep 2026 11:13:55.441 * Loading RDB produced by version 8.0.2
+6597:M 23 Sep 2026 11:13:55.441 * RDB age 2 seconds
+6597:M 23 Sep 2026 11:13:55.441 * RDB memory usage when created 0.80 Mb
+6597:M 23 Sep 2026 11:13:55.441 * RDB is base AOF
+6597:M 23 Sep 2026 11:13:55.441 * Done loading RDB, keys loaded: 1, keys expired: 0.
+6597:M 23 Sep 2026 11:13:55.441 * DB loaded from base file appendonly.aof.2.base.rdb: 0.000 seconds
+6597:M 23 Sep 2026 11:13:55.441 * DB loaded from append only file: 0.000 seconds
+6597:M 23 Sep 2026 11:13:55.441 * Opening AOF incr file appendonly.aof.2.incr.aof on server start
+6597:M 23 Sep 2026 11:13:55.441 * Ready to accept connections tcp
+6597:signal-handler (1790162035) Received SIGTERM scheduling shutdown...
+6597:M 23 Sep 2026 11:13:55.645 * User requested shutdown...
+6597:M 23 Sep 2026 11:13:55.645 * Calling fsync() on the AOF file.
+6597:M 23 Sep 2026 11:13:55.645 # Redis is now ready to exit, bye bye...

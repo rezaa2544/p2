@@ -1,0 +1,11 @@
+-------------------PROCESS START-------------------
+2026-09-23 11:11:59.060 P00   INFO: backup command begin 2.55.1: --config=/tmp/a8c-pg-qmtv4g8d/pbr.conf --exec-id=5632-de2c831c --lock-path=/tmp/a8c-pg-qmtv4g8d/lock --log-path=/tmp/a8c-pg-qmtv4g8d --pg1-path=/tmp/a8c-pg-qmtv4g8d/source --pg1-port=55320 --pg1-socket-path=/tmp/a8c-pg-qmtv4g8d/socket --pg1-user=user --repo1-path=/tmp/a8c-pg-qmtv4g8d/repo --repo1-retention-full=2 --stanza=payesh --start-fast --type=full
+2026-09-23 11:11:59.068 P00   INFO: execute non-exclusive backup start: backup begins after the requested immediate checkpoint completes
+2026-09-23 11:11:59.085 P00   INFO: backup start archive = 000000010000000000000002, lsn = 0/2000028
+2026-09-23 11:11:59.085 P00   INFO: check archive for prior segment 000000010000000000000001
+2026-09-23 11:12:00.995 P00   INFO: execute non-exclusive backup stop and wait for all WAL segments to archive
+2026-09-23 11:12:01.005 P00   INFO: backup stop archive = 000000010000000000000002, lsn = 0/2000120
+2026-09-23 11:12:01.005 P00   INFO: check archive for segment(s) 000000010000000000000002:000000010000000000000002
+2026-09-23 11:12:01.318 P00   INFO: new backup label = 20260923-111159F
+2026-09-23 11:12:01.340 P00   INFO: full backup size = 29.5MB, file total = 1284
+2026-09-23 11:12:01.340 P00   INFO: backup command end: completed successfully (2282ms)

@@ -1,0 +1,38 @@
+{
+  "sha": "452c7c10eed0274544c71422a772b6448e04a09b",
+  "base": "5d4a48f7f3cc0bc8ba144c61fb3996e1b458a7f2",
+  "branch": "arena8/dr-closure-20260923",
+  "tree": "clean",
+  "report_generated_utc": "2026-09-23T11:33:44.578723+00:00",
+  "cwd": "/home/user/p2",
+  "lab_environment": {
+    "TMPDIR": "/var/tmp",
+    "network": "loopback only",
+    "PG": "17.11",
+    "Redis": "8.0.2",
+    "pgBackRest": "2.55.1",
+    "Node": "22.23.2"
+  },
+  "commands": [
+    {
+      "command": "TMPDIR=/var/tmp python3 tests/infrastructure/disaster-recovery/live-dr-closure.py --runs 5 --out /home/user/arena8-dr-closure/evidence/final-restore",
+      "exit": 0,
+      "rounds": 5
+    },
+    {
+      "command": "TMPDIR=/var/tmp python3 tests/infrastructure/disaster-recovery/live-redis-failover.py --out /home/user/arena8-dr-closure/evidence/final-sentinel",
+      "exit": 0,
+      "rounds": 5
+    },
+    {
+      "command": "python3 tests/infrastructure/disaster-recovery/s3-tool-contract.py",
+      "exit": 0,
+      "rounds": 5,
+      "evidence_level": "MOCK ONLY"
+    }
+  ],
+  "remote_push_exit": 128,
+  "PR": null,
+  "merged": false,
+  "GitHub_Actions": "NOT VERIFIED"
+}

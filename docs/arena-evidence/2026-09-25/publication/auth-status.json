@@ -1,0 +1,12 @@
+{
+  "repository": "rezaa2544/p2",
+  "selected_usable_credential": true,
+  "attempts": [
+    {
+      "credential_attempt": 1,
+      "http_status": 200,
+      "repository": "rezaa2544/p2",
+      "push_permission": true
+    }
+  ]
+}

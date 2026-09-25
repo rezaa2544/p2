@@ -1,0 +1,22 @@
+24179:C 23 Sep 2026 11:27:24.889 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+24179:C 23 Sep 2026 11:27:24.889 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+24179:C 23 Sep 2026 11:27:24.889 * Redis version=8.0.2, bits=64, commit=00000000, modified=0, pid=24179, just started
+24179:C 23 Sep 2026 11:27:24.889 * Configuration loaded
+24179:M 23 Sep 2026 11:27:24.889 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+24179:M 23 Sep 2026 11:27:24.889 * monotonic clock: POSIX clock_gettime
+24179:M 23 Sep 2026 11:27:24.890 * Running mode=standalone, port=26212.
+24179:M 23 Sep 2026 11:27:24.890 * Server initialized
+24179:M 23 Sep 2026 11:27:24.890 * Reading RDB base file on AOF loading...
+24179:M 23 Sep 2026 11:27:24.890 * Loading RDB produced by version 8.0.2
+24179:M 23 Sep 2026 11:27:24.890 * RDB age 0 seconds
+24179:M 23 Sep 2026 11:27:24.890 * RDB memory usage when created 0.80 Mb
+24179:M 23 Sep 2026 11:27:24.890 * RDB is base AOF
+24179:M 23 Sep 2026 11:27:24.890 * Done loading RDB, keys loaded: 1, keys expired: 0.
+24179:M 23 Sep 2026 11:27:24.890 * DB loaded from base file appendonly.aof.2.base.rdb: 0.000 seconds
+24179:M 23 Sep 2026 11:27:24.890 * DB loaded from append only file: 0.000 seconds
+24179:M 23 Sep 2026 11:27:24.891 * Opening AOF incr file appendonly.aof.2.incr.aof on server start
+24179:M 23 Sep 2026 11:27:24.891 * Ready to accept connections tcp
+24179:signal-handler (1790162845) Received SIGTERM scheduling shutdown...
+24179:M 23 Sep 2026 11:27:25.094 * User requested shutdown...
+24179:M 23 Sep 2026 11:27:25.094 * Calling fsync() on the AOF file.
+24179:M 23 Sep 2026 11:27:25.095 # Redis is now ready to exit, bye bye...

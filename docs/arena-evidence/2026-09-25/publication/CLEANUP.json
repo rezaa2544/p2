@@ -1,0 +1,10 @@
+{
+  "github_artifact_verification_required_and_passed": true,
+  "workspace_allocated_bytes_before_cleanup": 97846272,
+  "workspace_allocated_bytes_after_cleanup": 87283712,
+  "workspace_after_mib": 83.24,
+  "deleted": "external duplicate artifact staging, superseded loose/object packs after full fsck, empty sudo marker",
+  "preserved": "all GitHub artifact blobs, all local branches/stashes and reachable reflog objects, credentials not revoked",
+  "fsck_exit": 0,
+  "temporary_auth": "not copied to repository; no revocation performed"
+}

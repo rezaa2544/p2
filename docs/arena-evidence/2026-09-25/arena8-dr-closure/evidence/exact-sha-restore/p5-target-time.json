@@ -1,0 +1,26 @@
+{
+  "id": "p5-target-time",
+  "command": [
+    "psql",
+    "-X",
+    "-qAt",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    "SELECT clock_timestamp()::text"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-jwlde0jy/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-jwlde0jy/socket",
+    "PGPORT": "55350",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:24:26.108864+00:00",
+  "start_monotonic_ns": 1439422439378,
+  "end_monotonic_ns": 1439430813378,
+  "exit": 0,
+  "stdout": "2026-09-23 11:24:26.116474+00\n",
+  "stderr": "",
+  "expected": 0
+}

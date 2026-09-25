@@ -1,0 +1,4 @@
+{
+  "backup_equals_old_dataset": true,
+  "manifest": "timestamp=20260923T110521Z\nhost=127.0.0.1:56390\nrdb=/tmp/a8dr-redis-muwfksb1/wrong-backup/dump-20260923T110521Z.rdb\nretention_days=7\n"
+}

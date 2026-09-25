@@ -1,0 +1,85 @@
+2026-09-22 21:15:00.488 GMT [6432] LOG:  starting PostgreSQL 17.11 (Debian 17.11-0+deb13u1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-09-22 21:15:00.488 GMT [6432] LOG:  listening on IPv6 address "::1", port 55445
+2026-09-22 21:15:00.488 GMT [6432] LOG:  listening on IPv4 address "127.0.0.1", port 55445
+2026-09-22 21:15:00.488 GMT [6432] LOG:  listening on Unix socket "/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/run/.s.PGSQL.55445"
+2026-09-22 21:15:00.490 GMT [6436] LOG:  database system was interrupted; last known up at 2026-09-22 21:14:58 GMT
+2026-09-22 21:15:00.495 P00   INFO: archive-get command begin 2.55.1: [00000002.history, pg_wal/RECOVERYHISTORY] --config=/tmp/a8dr-pg-68csddw3/pbr.conf --exec-id=6438-d611af73 --lock-path=/tmp/a8dr-pg-68csddw3/lock --log-level-console=info --log-path=/tmp/a8dr-pg-68csddw3 --pg1-path=/tmp/a8dr-pg-68csddw3/source --repo1-path=/tmp/a8dr-pg-68csddw3/repo --stanza=payesh
+2026-09-22 21:15:00.498 P00  ERROR: [032]: PostgreSQL working directory '/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data' is not the same as option pg1-path '/tmp/a8dr-pg-68csddw3/source'
+                                    HINT: is the PostgreSQL data_directory configured the same as the pg1-path option?
+2026-09-22 21:15:00.498 P00   INFO: archive-get command end: aborted with exception [032]
+2026-09-22 21:15:00.498 GMT [6436] LOG:  starting backup recovery with redo LSN 0/2000028, checkpoint LSN 0/2000080, on timeline ID 1
+2026-09-22 21:15:00.504 P00   INFO: archive-get command begin 2.55.1: [000000010000000000000002, pg_wal/RECOVERYXLOG] --config=/tmp/a8dr-pg-68csddw3/pbr.conf --exec-id=6440-8f5c5212 --lock-path=/tmp/a8dr-pg-68csddw3/lock --log-level-console=info --log-path=/tmp/a8dr-pg-68csddw3 --pg1-path=/tmp/a8dr-pg-68csddw3/source --repo1-path=/tmp/a8dr-pg-68csddw3/repo --stanza=payesh
+2026-09-22 21:15:00.507 P00  ERROR: [032]: PostgreSQL working directory '/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data' is not the same as option pg1-path '/tmp/a8dr-pg-68csddw3/source'
+                                    HINT: is the PostgreSQL data_directory configured the same as the pg1-path option?
+2026-09-22 21:15:00.507 P00   INFO: archive-get command end: aborted with exception [032]
+2026-09-22 21:15:00.507 GMT [6436] LOG:  invalid checkpoint record
+2026-09-22 21:15:00.507 GMT [6436] FATAL:  could not locate required checkpoint record at 0/2000080
+2026-09-22 21:15:00.507 GMT [6436] HINT:  If you are restoring from a backup, touch "/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data/recovery.signal" or "/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data/standby.signal" and add required recovery options.
+	If you are not restoring from a backup, try removing the file "/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data/backup_label".
+	Be careful: removing "/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data/backup_label" will result in a corrupt cluster if restoring from a backup.
+2026-09-22 21:15:00.508 GMT [6432] LOG:  startup process (PID 6436) exited with exit code 1
+2026-09-22 21:15:00.508 GMT [6432] LOG:  terminating any other active server processes
+2026-09-22 21:15:00.509 GMT [6432] LOG:  shutting down due to startup process failure
+2026-09-22 21:15:00.509 GMT [6432] LOG:  database system is shut down
+2026-09-22 21:15:00.602 GMT [6444] LOG:  starting PostgreSQL 17.11 (Debian 17.11-0+deb13u1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-09-22 21:15:00.602 GMT [6444] LOG:  listening on IPv6 address "::1", port 55445
+2026-09-22 21:15:00.602 GMT [6444] LOG:  listening on IPv4 address "127.0.0.1", port 55445
+2026-09-22 21:15:00.602 GMT [6444] LOG:  listening on Unix socket "/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/run/.s.PGSQL.55445"
+2026-09-22 21:15:00.603 GMT [6448] LOG:  database system was interrupted; last known up at 2026-09-22 21:14:58 GMT
+2026-09-22 21:15:00.609 P00   INFO: archive-get command begin 2.55.1: [00000002.history, pg_wal/RECOVERYHISTORY] --config=/tmp/a8dr-pg-68csddw3/pbr.conf --exec-id=6450-458ffacf --lock-path=/tmp/a8dr-pg-68csddw3/lock --log-level-console=info --log-path=/tmp/a8dr-pg-68csddw3 --pg1-path=/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data --repo1-path=/tmp/a8dr-pg-68csddw3/repo --stanza=payesh
+2026-09-22 21:15:00.609 P00   INFO: unable to find 00000002.history in the archive
+2026-09-22 21:15:00.609 P00   INFO: archive-get command end: completed successfully (1ms)
+2026-09-22 21:15:00.610 GMT [6448] LOG:  starting backup recovery with redo LSN 0/2000028, checkpoint LSN 0/2000080, on timeline ID 1
+2026-09-22 21:15:00.615 P00   INFO: archive-get command begin 2.55.1: [000000010000000000000002, pg_wal/RECOVERYXLOG] --config=/tmp/a8dr-pg-68csddw3/pbr.conf --exec-id=6452-a2b70e9b --lock-path=/tmp/a8dr-pg-68csddw3/lock --log-level-console=info --log-path=/tmp/a8dr-pg-68csddw3 --pg1-path=/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data --repo1-path=/tmp/a8dr-pg-68csddw3/repo --stanza=payesh
+2026-09-22 21:15:00.629 P00   INFO: found 000000010000000000000002 in the repo1: 17-1 archive
+2026-09-22 21:15:00.629 P00   INFO: archive-get command end: completed successfully (15ms)
+2026-09-22 21:15:00.630 GMT [6448] LOG:  restored log file "000000010000000000000002" from archive
+2026-09-22 21:15:00.630 GMT [6448] LOG:  starting point-in-time recovery to "arena_target"
+2026-09-22 21:15:00.630 GMT [6448] LOG:  redo starts at 0/2000028
+2026-09-22 21:15:00.635 P00   INFO: archive-get command begin 2.55.1: [000000010000000000000003, pg_wal/RECOVERYXLOG] --config=/tmp/a8dr-pg-68csddw3/pbr.conf --exec-id=6454-0fbf3153 --lock-path=/tmp/a8dr-pg-68csddw3/lock --log-level-console=info --log-path=/tmp/a8dr-pg-68csddw3 --pg1-path=/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data --repo1-path=/tmp/a8dr-pg-68csddw3/repo --stanza=payesh
+2026-09-22 21:15:00.649 P00   INFO: found 000000010000000000000003 in the repo1: 17-1 archive
+2026-09-22 21:15:00.649 P00   INFO: archive-get command end: completed successfully (15ms)
+2026-09-22 21:15:00.650 GMT [6448] LOG:  restored log file "000000010000000000000003" from archive
+2026-09-22 21:15:00.655 P00   INFO: archive-get command begin 2.55.1: [000000010000000000000004, pg_wal/RECOVERYXLOG] --config=/tmp/a8dr-pg-68csddw3/pbr.conf --exec-id=6456-6e0ede3e --lock-path=/tmp/a8dr-pg-68csddw3/lock --log-level-console=info --log-path=/tmp/a8dr-pg-68csddw3 --pg1-path=/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data --repo1-path=/tmp/a8dr-pg-68csddw3/repo --stanza=payesh
+2026-09-22 21:15:00.670 P00   INFO: found 000000010000000000000004 in the repo1: 17-1 archive
+2026-09-22 21:15:00.670 P00   INFO: archive-get command end: completed successfully (16ms)
+2026-09-22 21:15:00.670 GMT [6448] LOG:  restored log file "000000010000000000000004" from archive
+2026-09-22 21:15:00.675 P00   INFO: archive-get command begin 2.55.1: [000000010000000000000005, pg_wal/RECOVERYXLOG] --config=/tmp/a8dr-pg-68csddw3/pbr.conf --exec-id=6458-93f8762d --lock-path=/tmp/a8dr-pg-68csddw3/lock --log-level-console=info --log-path=/tmp/a8dr-pg-68csddw3 --pg1-path=/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data --repo1-path=/tmp/a8dr-pg-68csddw3/repo --stanza=payesh
+2026-09-22 21:15:00.676 P00   INFO: unable to find 000000010000000000000005 in the archive
+2026-09-22 21:15:00.676 P00   INFO: archive-get command end: completed successfully (2ms)
+2026-09-22 21:15:00.676 GMT [6448] LOG:  completed backup recovery with redo LSN 0/2000028 and end LSN 0/2000120
+2026-09-22 21:15:00.676 GMT [6448] LOG:  consistent recovery state reached at 0/2000120
+2026-09-22 21:15:00.676 GMT [6448] LOG:  recovery stopping at restore point "arena_target", time 2026-09-22 21:14:59.784233+00
+2026-09-22 21:15:00.676 GMT [6448] LOG:  redo done at 0/30003A0 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.04 s
+2026-09-22 21:15:00.676 GMT [6444] LOG:  database system is ready to accept read-only connections
+2026-09-22 21:15:00.681 P00   INFO: archive-get command begin 2.55.1: [000000010000000000000003, pg_wal/RECOVERYXLOG] --config=/tmp/a8dr-pg-68csddw3/pbr.conf --exec-id=6460-43e54567 --lock-path=/tmp/a8dr-pg-68csddw3/lock --log-level-console=info --log-path=/tmp/a8dr-pg-68csddw3 --pg1-path=/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data --repo1-path=/tmp/a8dr-pg-68csddw3/repo --stanza=payesh
+2026-09-22 21:15:00.696 P00   INFO: found 000000010000000000000003 in the repo1: 17-1 archive
+2026-09-22 21:15:00.696 P00   INFO: archive-get command end: completed successfully (16ms)
+2026-09-22 21:15:00.696 GMT [6448] LOG:  restored log file "000000010000000000000003" from archive
+2026-09-22 21:15:00.703 P00   INFO: archive-get command begin 2.55.1: [00000002.history, pg_wal/RECOVERYHISTORY] --config=/tmp/a8dr-pg-68csddw3/pbr.conf --exec-id=6464-aabdf0d0 --lock-path=/tmp/a8dr-pg-68csddw3/lock --log-level-console=info --log-path=/tmp/a8dr-pg-68csddw3 --pg1-path=/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data --repo1-path=/tmp/a8dr-pg-68csddw3/repo --stanza=payesh
+2026-09-22 21:15:00.703 P00   INFO: unable to find 00000002.history in the archive
+2026-09-22 21:15:00.703 P00   INFO: archive-get command end: completed successfully (1ms)
+2026-09-22 21:15:00.704 GMT [6448] LOG:  selected new timeline ID: 2
+2026-09-22 21:15:00.713 P00   INFO: archive-get command begin 2.55.1: [00000001.history, pg_wal/RECOVERYHISTORY] --config=/tmp/a8dr-pg-68csddw3/pbr.conf --exec-id=6466-992b1c8d --lock-path=/tmp/a8dr-pg-68csddw3/lock --log-level-console=info --log-path=/tmp/a8dr-pg-68csddw3 --pg1-path=/tmp/a8dr-pg-68csddw3/restore/pitr-20260922-211500-6422/data --repo1-path=/tmp/a8dr-pg-68csddw3/repo --stanza=payesh
+2026-09-22 21:15:00.714 P00   INFO: unable to find 00000001.history in the archive
+2026-09-22 21:15:00.714 P00   INFO: archive-get command end: completed successfully (2ms)
+2026-09-22 21:15:00.714 GMT [6448] LOG:  archive recovery complete
+2026-09-22 21:15:00.714 GMT [6446] LOG:  checkpoint starting: end-of-recovery immediate wait
+2026-09-22 21:15:00.715 GMT [6446] LOG:  checkpoint complete: wrote 11 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=0.001 s, sync=0.001 s, total=0.001 s; sync files=0, longest=0.000 s, average=0.000 s; distance=16384 kB, estimate=16384 kB; lsn=0/3000408, redo lsn=0/3000408
+2026-09-22 21:15:00.716 GMT [6444] LOG:  database system is ready to accept connections
+2026-09-22 21:15:00.904 GMT [6546] ERROR:  relation "users" does not exist at character 22
+2026-09-22 21:15:00.904 GMT [6546] STATEMENT:  SELECT count(*) FROM users
+2026-09-22 21:15:00.910 GMT [6549] ERROR:  relation "schools" does not exist at character 22
+2026-09-22 21:15:00.910 GMT [6549] STATEMENT:  SELECT count(*) FROM schools
+2026-09-22 21:15:00.915 GMT [6552] ERROR:  relation "classes" does not exist at character 22
+2026-09-22 21:15:00.915 GMT [6552] STATEMENT:  SELECT count(*) FROM classes
+2026-09-22 21:15:00.920 GMT [6555] ERROR:  relation "grades" does not exist at character 22
+2026-09-22 21:15:00.920 GMT [6555] STATEMENT:  SELECT count(*) FROM grades
+2026-09-22 21:15:00.925 GMT [6558] ERROR:  relation "attendance" does not exist at character 22
+2026-09-22 21:15:00.925 GMT [6558] STATEMENT:  SELECT count(*) FROM attendance
+2026-09-22 21:15:00.930 GMT [6561] ERROR:  relation "users" does not exist at character 82
+2026-09-22 21:15:00.930 GMT [6561] STATEMENT:  SELECT coalesce(md5(string_agg(t::text,'|' order by id)),'') FROM (SELECT * FROM users ORDER BY id LIMIT 200) t
+2026-09-22 21:15:00.935 GMT [6564] ERROR:  relation "grades" does not exist at character 82
+2026-09-22 21:15:00.935 GMT [6564] STATEMENT:  SELECT coalesce(md5(string_agg(t::text,'|' order by id)),'') FROM (SELECT * FROM grades ORDER BY id LIMIT 200) t
+2026-09-22 21:15:00.940 GMT [6567] ERROR:  relation "attendance" does not exist at character 82
+2026-09-22 21:15:00.940 GMT [6567] STATEMENT:  SELECT coalesce(md5(string_agg(t::text,'|' order by id)),'') FROM (SELECT * FROM attendance ORDER BY id LIMIT 200) t
