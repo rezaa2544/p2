@@ -1,12 +1,12 @@
 'use strict';
 
 const assert = require('assert');
-const { checkIntelligenceChainHealth, buildUnifiedIntelligenceSnapshot } = require('../../../server/analytics/intelligence-platform-integration');
-const { auditHumanApprovalCompliance } = require('../../../server/analytics/intelligence-governance-dashboard');
-const { analyzeRecommendationAccuracy } = require('../../../server/analytics/intelligence-feedback-memory');
-const { buildParent360Profile } = require('../../../server/analytics/parent-360');
-const { buildRegionalSnapshot } = require('../../../server/analytics/regional-intelligence-network');
-const { executeEndToEndChain, generatePhase3ReleaseCertificate } = require('../../../server/analytics/intelligence-release-certification');
+const { checkIntelligenceChainHealth, buildUnifiedIntelligenceSnapshot } = require('../../server/analytics/intelligence-platform-integration');
+const { auditHumanApprovalCompliance } = require('../../server/analytics/intelligence-governance-dashboard');
+const { analyzeRecommendationAccuracy } = require('../../server/analytics/intelligence-feedback-memory');
+const { buildParent360Profile } = require('../../server/analytics/parent-360');
+const { buildRegionalSnapshot } = require('../../server/analytics/regional-intelligence-network');
+const { executeEndToEndChain, generatePhase3ReleaseCertificate } = require('../../server/analytics/intelligence-release-certification');
 
 function run() {
   // I-02: absence of evidence/data is not positive health.
