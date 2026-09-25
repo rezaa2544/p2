@@ -142,7 +142,7 @@ async function main() {
     // دکمه: دانلود در jsdom خطا نمی‌دهد (مسیرِ data-URI)
     const before = W(`S.user=db.users.find(function(u){return u.id===${par.id};});S.persona=null;S.boss=null;S.child=16;S.route='record';S.tab='attendance';renderRoute()`);
     clickAct('ics-export', 16);
-    /* A-17: به‌جایِ assert(true) — خروجیِ واقعیِ قابلِ مشاهده: toastِ
+    /* A-17: assertion ثابت حذف شد؛ خروجیِ واقعیِ قابلِ مشاهده: toastِ
        «فایل تقویم آماده شد» (toastِ خطای «برنامه‌ای یافت نشد» اینجا fail می‌شود) */
     const toastTxt = W(`(function(){ var w=$('#toasts'); if(!w) return '';
       var d=w.querySelectorAll('.toast'); return d.length? d[d.length-1].textContent : ''; })()`);
