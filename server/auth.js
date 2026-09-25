@@ -192,6 +192,14 @@ function createAuth(ctx){
   function hashCode(code, phone){
     return crypto.createHash('sha256').update(code + '|' + phone).digest('hex');
   }
+  /* A-35 — شکلِ کاننیکالِ تلفن برایِ کلیدهایِ احراز (cooldown/codes/rate):
+     فرمت‌هایِ +98/0098/صفرِ پیش‌گیرنده یک‌کاشته می‌شوند تا یک تلفنِ واقعی
+     = یک سطلِ حد؛ userByPhone خود از tail-10 می‌خواند، پس هم‌خوانی کامل است. */
+  function canonicalPhone(p){
+    const d = String(p || '').replace(/\D/g, '');
+    if(!d) return String(p || '');
+    return d.length > 10 ? d.slice(-10) : d;
+  }
   function codeRecOk(rec, code, phone, now){
     if(!rec || now - rec.at >= CODE_TTL_MS) return false;
     const a = Buffer.from(hashCode(code, phone));
@@ -237,7 +245,8 @@ function createAuth(ctx){
       if(v.kind === 'unknown_field') return sendJson(res, 400, { ok: false, code: 'unknown_field', field: v.field });
       return sendJson(res, 400, { ok: false, code: 'bad_phone' });
     }
-    const phone = String(body.phone).replace(/[\s\-()]/g, '');
+    const phoneRaw = String(body.phone).replace(/[\s\-()]/g, '');
+    const phone = canonicalPhone(phoneRaw); /* A-35: canonical key for all auth buckets */
     /* R96: EVERY limit BEFORE the existence check — probing unknown
        phones must cost the same as known ones (equal-shape responses). */
     const now = Date.now();
@@ -296,7 +305,8 @@ function createAuth(ctx){
       if(v.kind === 'unknown_field') return sendJson(res, 400, { ok: false, code: 'unknown_field', field: v.field });
       return sendJson(res, 400, { ok: false, code: 'missing_fields' });
     }
-    const phone = String(body.phone).replace(/[\s\-()]/g, '');
+    const phoneRaw = String(body.phone).replace(/[\s\-()]/g, '');
+    const phone = canonicalPhone(phoneRaw); /* A-35: canonical key for all auth buckets */
     const code  = String(body.code).trim();
     const nid   = String(body.national_id).trim();
 

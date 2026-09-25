@@ -262,9 +262,15 @@ function inScope(session, store, coll, recId, data) {
     if (coll === 'meeting_slots' && data && data.student_id != null && rec && rec.student_id == null)
       return kids.has(Number(data.student_id));
     const sid = rec ? rec.student_id : (data && data.student_id);
-    /* Round 89 — پیوندِ تازه فقط مالِ خودِ والد (جعلِ پیوند برایِ دیگران ⇒ رد) */
-    if (coll === 'parent_links' && !rec && data && Number(data.parent_id) !== u.id) return false;
+    /* Round 89 — پیوندِ تازه فقط مالِ خودِ والد (جعلِ پیوند برایِ دیگران ⇒ رد)
+       A-35 — parent_id در هر عملیاتِ parent_links باید خودِ والد باشد؛
+       انتقالِ فرزندی به والدِ دیگر (هم‌مدرسه یا بین‌مدرسه) از مسیرِ والد ⇒ رد. */
+    if (coll === 'parent_links' && data && data.parent_id != null && Number(data.parent_id) !== u.id) return false;
     if (sid == null) return !!(rec && rec.parent_id === u.id);
+    /* A-35 — مهارِ والدِ دانش‌آموز با مدرسهٔ والد (دفاعِ عمق؛ دادهٔ قدیمیِ
+       جعل‌شده نباید بعد از اصلاحِ دروازهٔ نوشتن باز بماند). */
+    const stuP = ((store && store.users) || []).find((x) => Number(x.id) === Number(sid) && x.role === 'student');
+    if (stuP && stuP.school_id != null && Number(stuP.school_id) !== Number(u.school_id)) return false;
     return kids.has(Number(sid));
   }
   if (u.role === 'teacher') {
@@ -294,12 +300,18 @@ function inScope(session, store, coll, recId, data) {
     if ((coll === 'hw_assignments' || coll === 'vclass_sessions') && t2.class_id != null) {
       const cls2 = ((store && store.classes) || []).find((c) => Number(c.id) === Number(t2.class_id));
       if (!cls2) return false; /* کلاس ناموجود ⇒ رد (مثلِ مسیرِ اصلی) */
+      /* A-35 — کلاسِ مدرسهٔ دیگر هرگز از راهِ برنامهٔ هفتگیِ جعل‌شده باز
+         نمی‌شود: مدرسهٔ کلاس باید با مدرسهٔ دبیر بخواند (fail-closed). */
+      if (cls2.school_id == null || Number(cls2.school_id) !== Number(u.school_id)) return false;
       return teacherClassIds(store, u.id).has(Number(cls2.id));
     }
     const sid = rec ? rec.student_id : (data && data.student_id);
     if (sid != null) {
       const enr = ((store && store.enrollments) || []).find((e) => Number(e.student_id) === Number(sid));
       if (!enr) return false;
+      /* A-35 — دانش‌آموزِ مدرسهٔ دیگر با کلاسِ «تدریسی» جعلی نمی‌چربد. */
+      const stuT = ((store && store.users) || []).find((x) => Number(x.id) === Number(sid) && x.role === 'student');
+      if (stuT && stuT.school_id != null && Number(stuT.school_id) !== Number(u.school_id)) return false;
       return teacherClassIds(store, u.id).has(Number(enr.class_id));
     }
     if (rec && rec.teacher_id != null) return rec.teacher_id === u.id;
@@ -342,6 +354,18 @@ function inScope(session, store, coll, recId, data) {
   }
   /* manager/counselor/driver و بقیه: سطحِ مدرسه — با رشتهٔ student برای
      مجموعه‌های بی‌school_id (R96)؛ بی‌مهارِ قابل‌حل ⇒ رد (fail-closed). */
+  /* A-35 — parent_links بی‌school_id است؛ باید پیش از مسیرِ s==null سنجیده
+     شود (آن مسیر برایِ رشتهٔ student «برمی‌گردَد» و اینجا را رد می‌شود):
+     والدِ پیوند باید در مدرسهٔ همان دانش‌آموز باشد، وگرنه بین‌مدرسه‌ای ⇒ رد. */
+  if (coll === 'parent_links') {
+    const stPL = (rec && rec.student_id != null) ? rec.student_id : (data && data.student_id);
+    const effPid = num((data && data.parent_id != null) ? data.parent_id : (rec && rec.parent_id));
+    const par = effPid != null ? ((store && store.users) || []).find((x) => Number(x.id) === effPid) : null;
+    if (!par || par.school_id == null) return false;
+    const stuPL = stPL != null ? ((store && store.users) || []).find((x) => Number(x.id) === Number(stPL) && x.role === 'student') : null;
+    if (!stuPL || stuPL.school_id == null || Number(par.school_id) !== num(stuPL.school_id)) return false;
+    return true;
+  }
   const s = rec ? rec.school_id : (data && data.school_id);
   if (s == null) {
     const sid2 = (rec && rec.student_id != null) ? rec.student_id
@@ -364,6 +388,29 @@ function inScope(session, store, coll, recId, data) {
     const stu = ((store && store.users) || []).find((x) => Number(x.id) === Number(st) && x.role === 'student');
     if (stu && stu.school_id != null && Number(stu.school_id) !== Number(u.school_id)) return false;
   }
+  /* A-35 — سازگاریِ مرجعِ فرعی با مهارِ سطر: «FK معتبر ≠ مجوز». معلم/کلاسِ
+     مدرسهٔ دیگر با مُهرِ مدرسهٔ نویسنده نمی‌چربد ⇒ رد (fail-closed). */
+  if (coll === 'schedule') {
+    const cid2 = num((data && data.class_id != null) ? data.class_id : (rec && rec.class_id));
+    const cls3 = cid2 != null ? ((store && store.classes) || []).find((x) => Number(x.id) === cid2) : null;
+    const rowSch = s != null ? num(s) : (cls3 ? num(cls3.school_id) : null);
+    if (rowSch == null) return false;
+    const tid2 = num((data && data.teacher_id != null) ? data.teacher_id : (rec && rec.teacher_id));
+    if (tid2 != null) {
+      const tch = ((store && store.users) || []).find((x) => Number(x.id) === tid2);
+      if (!tch || tch.school_id == null || Number(tch.school_id) !== rowSch) return false;
+    }
+    if (cid2 != null && (!cls3 || cls3.school_id == null || Number(cls3.school_id) !== rowSch)) return false;
+    return true;
+  }
+  if ((coll === 'grades' || coll === 'attendance') && data && data.class_id != null) {
+    const cls4 = ((store && store.classes) || []).find((x) => Number(x.id) === num(data.class_id));
+    if (!cls4 || cls4.school_id == null) return false;
+    const stu2 = st != null ? ((store && store.users) || []).find((x) => Number(x.id) === Number(st) && x.role === 'student') : null;
+    const expectSch = (stu2 && stu2.school_id != null) ? num(stu2.school_id) : (s != null ? num(s) : num(u.school_id));
+    if (expectSch == null || Number(cls4.school_id) !== expectSch) return false;
+    return true;
+  }
   return true;
 }
 
@@ -381,6 +428,8 @@ function studentRecordOk(store, session, rec, opts) {
     const kids = (opts && opts.parentChildIds)
       ? opts.parentChildIds
       : childrenOfParent(store, session.id, opts && opts.parentLinks);
+    /* A-35 — مهارِ رکورد با مدرسهٔ والد (دفاعِ عمق علیه پیوندِ جعلیِ قدیمی). */
+    if (rec.school_id != null && Number(rec.school_id) !== num(session.school_id)) return false;
     return kids.has(Number(rec.id));
   }
   if (role === 'teacher') {
@@ -478,7 +527,10 @@ function readOk(store, session, coll, rec, opts) {
 
   if (coll === 'users' && role === 'student') return Number(rec.id) === Number(session.id);
   if (coll === 'users' && role === 'parent') {
-    return Number(rec.id) === Number(session.id) || childrenOfParent(store, session.id).has(Number(rec.id));
+    if (Number(rec.id) === Number(session.id)) return true;
+    /* A-35 — کاربرِ مدرسهٔ دیگر حتی با پیوندِ «دارای» هم دیده نمی‌شود. */
+    if (rec.school_id != null && Number(rec.school_id) !== schoolId) return false;
+    return childrenOfParent(store, session.id).has(Number(rec.id));
   }
 
   if (coll === 'classes') {
@@ -515,7 +567,9 @@ function readOk(store, session, coll, rec, opts) {
   }
 
   /* users (دایرکتوری) برایِ بقیهٔ نقش‌هایِ مدرسه‌ای — آینهٔ pull:
-     مهارِ سختِ مدرسه؛ رکوردِ بی‌مهار (حساب‌هایِ ملی) فقط سوپرامین. */
+     مهارِ سختِ مدرسه؛ رکوردِ بی‌مهار (حساب‌هایِ ملی) فقط سوپرامین.
+     A-35/F4 — خودِ کاربر همیشه پروفایلِ خود را می‌خواند (حتی بی‌مهار). */
+  if (coll === 'users' && Number(rec.id) === Number(session.id)) return true;
   if (rec.school_id == null) return false;
   if (role === 'edu_office') return schoolInOfficeScope(store, session, rec.school_id);
   return Number(rec.school_id) === schoolId;
