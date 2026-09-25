@@ -54,3 +54,16 @@ This is the durable record of **why** material project decisions were made.
 ## FINAL SYNCHRONIZATION RECEIPT — 2026-09-25
 **Exact main HEAD after this synchronization series:** `7c1a4ce3c29810910bfee72e17358d81032c33ea`.
 This SHA includes the synchronization updates themselves. The verification registry remains intentionally bound to `e4584806c1af2a1e5db648c8452580a8fa8cbcec` until the hardening SHA is frozen and evidence is regenerated; therefore this receipt is a project-state update, not a certification.
+
+
+## 2026-09-25 — Root-cause recurrence becomes P0
+
+Decision: Treat recurring/reappearing findings as a systemic engineering problem and prioritize root-cause elimination before broad certification.
+
+Evidence: A-20 was later reproduced across five PATCH entities after earlier narrower classification; A-22 later exposed a configuration-specific Redis boot hole; A-18/A-24 evidence repeatedly crossed branch/SHA boundaries; A-34/A-35 exposed twin policy/current-head boundaries; A-31/A-37 exposed fallback and false-green mechanisms.
+
+Root cause: observed-defect fixes have historically been narrower than the invariant they were intended to protect, while evidence and test coverage do not yet automatically follow every code/configuration/merge boundary.
+
+Decision: establish Invariant Registry, Reappearance Regression Suite, automatic evidence invalidation, complete mutation/auth/failure inventories, and authoritative shared policy contracts.
+
+Closure rule: FIXED is not root-cause closure. Use ROOT-CAUSE-CLOSED only when source fix + alternate-path audit + adversarial regression + current-final-SHA evidence + three independent reviews exist.
