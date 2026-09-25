@@ -703,6 +703,17 @@ async function persistOpWithClient(client, op) {
       .map(f => `${ident(f)} = EXCLUDED.${ident(f)}`)
       .join(', ');
 
+    if (op.insertOnly) {
+      // An offline INSERT is creation, never an unversioned upsert.
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', ['sync-row:' + col + ':' + data.id]);
+      const existing = await client.query(`SELECT 1 FROM ${table} WHERE id=$1`, [data.id]);
+      const reject = () => { const e = new Error('sync insert identity already exists'); e.code = 'record_exists'; e.status = 409; throw e; };
+      if (existing.rows.length) reject();
+      const inserted = await client.query(`INSERT INTO ${table} (${cols}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`, values);
+      if (inserted.rowCount !== 1) reject();
+      return;
+    }
+
     /* Wave 10 (پارتیشن‌بندی): جدولِ پارتیشن‌شده PK (id, created_at) دارد —
        ON CONFLICT (id) دیگر به هیچ uniqueای نمی‌خورد و فرمِ (id, created_at)
        هم idempotency را می‌شکند (id تکراری با created_at متفاوت ⇒ سطرِ
@@ -894,6 +905,25 @@ async function persistOpsBatch(ops) {
   });
 }
 
+/** Sync-only transaction: claim all UIDs before any mutation or derived effect.
+ * Sorted advisory locks serialize independent processes without deadlocks from
+ * reversed batch UID order. Claim and data commit/rollback together.
+ */
+async function persistSyncBatch(ops) {
+  if (!isPostgres()) return persistOpsBatch(ops);
+  const uids = [...new Set((ops || []).filter(op => op && op.uid).map(op => String(op.uid)))].sort();
+  return transaction(async client => {
+    for (const uid of uids) {
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [uid]);
+      const exists = await client.query('SELECT 1 FROM server_processed_uids WHERE uid=$1', [uid]);
+      if (exists.rows.length) { const e = new Error('concurrent duplicate sync; retry will deduplicate'); e.code = 'duplicate_sync'; throw e; }
+    }
+    const result = await persistOpsBatchWithClient(client, (ops || []).map(op => op && op.uid && op.t === 'ins' ? { ...op, insertOnly: true } : op));
+    for (const uid of uids) await client.query('INSERT INTO server_processed_uids(uid,processed_at) VALUES($1,NOW()) ON CONFLICT(uid) DO NOTHING', [uid]);
+    return result;
+  });
+}
+
 /**
  * Check if a UID has been processed (PostgreSQL or memory store)
  */
@@ -1061,6 +1091,7 @@ module.exports = {
   persistOpWithClient,
   persistOpsBatchWithClient,
   persistOpsBatch,
+  persistSyncBatch,
   __setPoolForTests,
   /* Wave 10 (chg_id): کنارگذاریِ ستون‌های داخلی برای خواننده‌های بیرونی (pull/delta) */
   stripInternalColumns,
