@@ -288,11 +288,14 @@ function checkIntelligenceChainHealth(params = {}) {
   const options = params.options || {};
   const issues = [];
 
+  /* A-31 / I-04: حضورِ گره باید از خروجیِ واقعیِ موتورها بیاید — فال‌بکِ
+     `|| true` هر چهار گره را حتی بدونِ هیچ خروجی‌ای «حاضر» جا می‌زد و زنجیرهٔ
+     بی‌داده را سالم نشان می‌داد. */
   const nodes = {
-    insight_engines_present: Boolean(outputs.schoolIntelligence || outputs.insights || true),
-    decision_command_present: Boolean(outputs.decisionCommand || outputs.decisions || true),
-    execution_workflow_present: Boolean(outputs.executionDashboard || outputs.tasks || true),
-    outcome_evaluation_present: Boolean(outputs.outcomeEvaluation || outputs.evaluations || true)
+    insight_engines_present: Boolean(outputs.schoolIntelligence || outputs.insights),
+    decision_command_present: Boolean(outputs.decisionCommand || outputs.decisions),
+    execution_workflow_present: Boolean(outputs.executionDashboard || outputs.tasks),
+    outcome_evaluation_present: Boolean(outputs.outcomeEvaluation || outputs.evaluations)
   };
 
   // چک‌های انسجام و حاکمیت
@@ -311,16 +314,25 @@ function checkIntelligenceChainHealth(params = {}) {
     issues.push('نقض حاکمیت انسانی: پرچم تصمیم خودکار در سیستم مشاهده شد');
   }
 
+  const presentCount = Object.values(nodes).filter(Boolean).length;
+  const dataStatus = presentCount === 0 ? 'NO_DATA'
+    : (presentCount === Object.keys(nodes).length ? 'COMPLETE' : 'PARTIAL');
+
   let chainStatus = PLATFORM_HEALTH_STATUS.HEALTHY;
   if (!zeroRankingGuaranteed || !humanApprovalEnforced) {
     chainStatus = PLATFORM_HEALTH_STATUS.CRITICAL;
-  } else if (!nodes.outcome_evaluation_present || !nodes.execution_workflow_present) {
+  } else if (presentCount === 0) {
+    /* بی‌داده هرگز سالم نیست: هیچ خروجیِ موتوری وجود ندارد. */
     chainStatus = PLATFORM_HEALTH_STATUS.DEGRADED;
-    issues.push('برخی گره‌های زنجیره اجرا یا ارزیابی هنوز تکمیل نشده‌اند');
+    issues.push('هیچ خروجی واقعی از موتورهای زنجیره دریافت نشد — وضعیت سالم اعلام نمی‌شود');
+  } else if (presentCount < Object.keys(nodes).length) {
+    chainStatus = PLATFORM_HEALTH_STATUS.DEGRADED;
+    issues.push('برخی گره‌های زنجیره فاقد خروجی واقعی هستند');
   }
 
   const healthStatus = {
     chain_status: chainStatus,
+    data_status: dataStatus,
     nodes,
     integrity_checks: {
       evidence_presence: evidencePresence,
@@ -355,14 +367,28 @@ function buildUnifiedIntelligenceSnapshot(params = {}) {
   const compatibility = validateEngineCompatibility(catalog, options);
   const chainHealth = checkIntelligenceChainHealth({ engineOutputs: params.engineOutputs, options });
 
-  const summaryMetrics = {
-    school_intelligence_score: 86.5,
-    health_index: 84.0,
-    decision_items_count: 5,
-    operational_tasks_count: 8,
-    evaluations_count: 4,
-    avg_impact_score: 81.2
+  /* A-31 / I-07: متریک‌های خلاصه فقط از خروجیِ واقعیِ موتورها می‌آیند؛
+     اعدادِ سخت‌کد (۸۶.۵/۸۴/۵/۸/۴/۸۱.۲) جای خروجی موتور ننشسته‌اند. */
+  const eo = params.engineOutputs || {};
+  const numOrNull = (v) => {
+    if (v == null || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
   };
+  const countOrNull = (v) => {
+    if (v == null) return null;
+    if (Array.isArray(v)) return v.length;
+    return numOrNull(v);
+  };
+  const summaryMetrics = {
+    school_intelligence_score: eo.schoolIntelligence ? numOrNull(eo.schoolIntelligence.score) : null,
+    health_index: eo.schoolIntelligence ? numOrNull(eo.schoolIntelligence.health_index) : null,
+    decision_items_count: eo.decisionCommand ? countOrNull(eo.decisionCommand.total_decisions != null ? eo.decisionCommand.total_decisions : eo.decisionCommand.items) : null,
+    operational_tasks_count: eo.executionDashboard ? countOrNull(eo.executionDashboard.total_tasks != null ? eo.executionDashboard.total_tasks : eo.executionDashboard.tasks) : null,
+    evaluations_count: eo.outcomeEvaluation ? countOrNull(eo.outcomeEvaluation.evaluations_count != null ? eo.outcomeEvaluation.evaluations_count : eo.outcomeEvaluation.evaluations) : null,
+    avg_impact_score: eo.outcomeEvaluation ? numOrNull(eo.outcomeEvaluation.avg_impact_score) : null
+  };
+  const engineDataStatus = chainHealth.data_status;
 
   const snapshot = {
     snapshot_id: `UNIF-SNAP-SCH${schoolId}-${academicYear}`.replace(/[^A-Za-z0-9_-]/g, '_'),
@@ -376,6 +402,7 @@ function buildUnifiedIntelligenceSnapshot(params = {}) {
     compatibility_report: compatibility,
     chain_health: chainHealth,
     summary_metrics: summaryMetrics,
+    data_status: engineDataStatus,
     automated_decision: false,
     automated_execution: false,
     requires_human_approval: true,
@@ -398,17 +425,31 @@ function generatePlatformHealthReport(params = {}) {
   const options = params.options || {};
   const nowIso = options.timestamp || '2026-09-18T12:00:00.000Z';
 
-  const snapshot = buildUnifiedIntelligenceSnapshot({ schoolId, regionId, options });
+  const snapshot = buildUnifiedIntelligenceSnapshot({ schoolId, regionId, engineOutputs: params.engineOutputs, options });
+
+  /* A-31 / I-07: درصدها و تأییدها از گزارش‌های واقعی مشتق می‌شوند، نه عددِ ثابت. */
+  const compat = snapshot.compatibility_report || {};
+  const totalEngines = Number(compat.total_registered_engines) || 0;
+  const compatibilityPct = totalEngines > 0
+    ? Number(((Number(compat.compatible_engines_count) || 0) / totalEngines * 100).toFixed(1))
+    : null;
+  const nodes = (snapshot.chain_health && snapshot.chain_health.nodes) || {};
+  const nodeValues = Object.values(nodes);
+  const chainIntegrityScore = nodeValues.length > 0
+    ? Number((nodeValues.filter(Boolean).length / nodeValues.length * 100).toFixed(1))
+    : null;
+  const integrity = (snapshot.chain_health && snapshot.chain_health.integrity_checks) || {};
 
   const report = {
     school_id: schoolId,
     region_id: regionId,
     platform_status: snapshot.platform_health,
     integrated_engines_count: snapshot.total_engines_integrated,
-    compatibility_pct: 100.0,
-    chain_integrity_score: 100.0,
-    human_sovereignty_verified: true,
-    zero_ranking_verified: true,
+    compatibility_pct: compatibilityPct,
+    chain_integrity_score: chainIntegrityScore,
+    human_sovereignty_verified: integrity.human_approval_enforced === true,
+    zero_ranking_verified: integrity.zero_ranking_guaranteed === true,
+    data_status: snapshot.data_status,
     reported_at: nowIso
   };
 

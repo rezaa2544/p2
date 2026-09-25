@@ -624,7 +624,9 @@ function createAnalyticsRoutes(ctx) {
       }
 
       const interventions = (store.interventions || []).filter(i => Number(i.school_id) === schoolId);
-      const history = interventions.length > 0 ? interventions.map(inv => ({
+      /* A-31 / I-06: مدرسهٔ بدون مداخله، تاریخچهٔ پیش‌فرضِ جعلی نمی‌گیرد —
+         موفقیتِ ساختگی (ACT-DEFAULT-01) حذف شد؛ بی‌داده همان بی‌داده است. */
+      const history = interventions.map(inv => ({
         action_id: `ACT-${inv.id}`,
         action_type: inv.type || 'ATTENDANCE_SUPPORT',
         decision: inv.status === 'CANCELLED' ? 'REJECTED' : 'APPROVED',
@@ -637,17 +639,7 @@ function createAnalyticsRoutes(ctx) {
           delta_gpa: 0.7,
           delta_engagement: 10.0
         }
-      })) : [
-        {
-          action_id: 'ACT-DEFAULT-01',
-          action_type: 'ATTENDANCE_SUPPORT',
-          decision: 'APPROVED',
-          status: 'COMPLETED',
-          outcome: 'HIGHLY_EFFECTIVE',
-          notes: 'جلسه مشاوره و اصلاح ساعات خواب دانش‌آموز',
-          delta_metrics: { delta_attendance: 5.0, delta_gpa: 0.5, delta_engagement: 10.0 }
-        }
-      ];
+      }));
 
       const profile = buildOrganizationalLearningProfile({
         schoolId,
@@ -743,27 +735,13 @@ function createAnalyticsRoutes(ctx) {
         approval_time_hours: 8.5
       }));
 
+      /* A-31 / I-05 + I-07: اقدامِ پیش‌فرضِ جعلی و ورودی‌های سخت‌کدِ
+         شفافیت/پوشش حذف شدند — مدرسهٔ بدون اقدام، گزارشِ «بی‌داده» می‌گیرد. */
       const snapshot = buildGovernanceSnapshot({
         schoolId,
         regionId: user.region_id || 1,
         academicYear,
-        data: {
-          actions: actions.length > 0 ? actions : [
-            {
-              action_id: 'ACT-DEF-01',
-              recommendation_id: 'REC-DEF-01',
-              action_type: 'ATTENDANCE_SUPPORT',
-              decision: 'APPROVED',
-              status: 'COMPLETED',
-              automated_decision: false,
-              requires_human_confirmation: true,
-              approval_time_hours: 6.0
-            }
-          ],
-          explainability: 92.0,
-          audit_coverage: 98.0,
-          data_completeness_pct: 95.0
-        },
+        data: { actions },
         options: { requester: user }
       });
 
@@ -794,7 +772,8 @@ function createAnalyticsRoutes(ctx) {
         schoolId: Number(s.id),
         regionId: regionId,
         academicYear,
-        data: { actions: [], explainability: 88.0, audit_coverage: 95.0 },
+        /* A-31 / I-07: ورودی‌های سخت‌کدِ نمای منطقه‌ای حذف شد. */
+        data: { actions: [] },
         options: { requester: user }
       });
     });

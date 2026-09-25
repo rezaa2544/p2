@@ -283,10 +283,14 @@ function detectAttendanceRisk(params = {}, options = {}) {
   const minRequiredSessions = options.minRequiredSessions != null ? Number(options.minRequiredSessions) : 5;
 
   if (records.length === 0) {
+    /* A-31 / I-02: بی‌داده هرگز «کم‌ریسک/سالم» تلقی نمی‌شود — نبودِ رکورد
+       یعنی «نامشخص»، نه «همه‌چیز خوب». نرخ صفر و ریسک LOW پیشین، دانش‌آموزِ
+       بدونِ هیچ ثبتی را سالم‌ترین دانش‌آموز نشان می‌داد (مثبتِ کاذب). */
     return {
       student_id: studentId != null ? Number(studentId) : null,
-      risk_level: 'LOW',
-      absence_rate: 0,
+      risk_level: 'NO_DATA',
+      data_status: 'NO_DATA',
+      absence_rate: null,
       total_sessions: 0,
       absent_count: 0,
       excused_count: 0,
@@ -294,7 +298,7 @@ function detectAttendanceRisk(params = {}, options = {}) {
       consecutive_absent_streak: 0,
       is_chronic: false,
       is_critical: false,
-      evidence: [],
+      evidence: ['هیچ رکورد حضور/غیابی برای این دانش‌آموز یافت نشد'],
       periods: []
     };
   }
@@ -514,10 +518,12 @@ function analyzeWeeklyAttendancePattern(params = {}, options = {}) {
   let maxRate = -1;
   let highestRiskDay = null;
   let totalAbsences = 0;
+  let totalSessions = 0;
 
   for (let i = 0; i < dayKeys.length; i++) {
     const k = dayKeys[i];
     const d = days[k];
+    totalSessions += d.total_sessions;
     if (d.total_sessions > 0) {
       d.rate = roundTo((d.count / d.total_sessions) * 100, 2);
       totalAbsences += d.count;
@@ -530,8 +536,13 @@ function analyzeWeeklyAttendancePattern(params = {}, options = {}) {
 
   let patternDetected = false;
   let weekdayRiskProfile = 'NO_PATTERN';
+  /* A-31 / I-03: صفر رویداد هرگز «حضور کامل» نیست. بدونِ حتی یک رکورد،
+     پروفایلِ صریحِ بی‌داده برمی‌گردیم تا غیبتِ داده، «کمال» گزارش نشود. */
+  const dataStatus = totalSessions === 0 ? 'NO_DATA' : 'COMPLETE';
 
-  if (totalAbsences > 0 && highestRiskDay != null && maxRate >= 20.0) {
+  if (totalSessions === 0) {
+    weekdayRiskProfile = 'NO_DATA';
+  } else if (totalAbsences > 0 && highestRiskDay != null && maxRate >= 20.0) {
     patternDetected = true;
     weekdayRiskProfile = `HIGHER_ON_${highestRiskDay.toUpperCase()}`;
   } else if (totalAbsences === 0) {
@@ -548,7 +559,8 @@ function analyzeWeeklyAttendancePattern(params = {}, options = {}) {
     wednesday: days.wednesday,
     highest_risk_day: highestRiskDay,
     pattern_detected: patternDetected,
-    weekday_risk_profile: weekdayRiskProfile
+    weekday_risk_profile: weekdayRiskProfile,
+    data_status: dataStatus
   };
 }
 

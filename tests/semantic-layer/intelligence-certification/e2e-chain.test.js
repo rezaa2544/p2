@@ -23,11 +23,23 @@ function runTests() {
 
   const chainResult = executeEndToEndChain(mockSignal, { timestamp: '2026-09-18T10:00:00.000Z' });
 
-  assert.strictEqual(chainResult.verified, true, 'زنجیره باید تایید شده باشد');
-  assert.strictEqual(chainResult.unbroken_loop, true, 'مدار باید کاملاً پیوسته و بدون انقطاع باشد');
+  /* A-31 / I-08: شبیه‌سازی بدونِ شاهدِ رانتایم هرگز «تأییدشده» نیست. */
+  assert.strictEqual(chainResult.verified, false, 'شبیه‌سازی بدون شاهد رانتایم نباید تاییدشده باشد');
+  assert.strictEqual(chainResult.verification_mode, 'SIMULATION', 'حالت پیش‌فرض باید شبیه‌سازی باشد');
+  assert.strictEqual(chainResult.unbroken_loop, false, 'بدون مشاهده رانتایمی، پیوستگی مدار ادعا نمی‌شود');
   assert.strictEqual(chainResult.human_in_the_loop_preserved, true, 'حاکمیت انسانی باید در مدار حفظ شده باشد');
   assert.strictEqual(chainResult.zero_ranking_preserved, true, 'منع رتبه‌بندی باید در مدار حفظ شده باشد');
   assert.strictEqual(chainResult.total_steps, 12, 'باید دقیقاً ۱۲ گام در ردیابی زنجیره ثبت شده باشد');
+
+  /* کنترل: با شاهدِ رانتایم برای هر ۱۲ گام، تأییدِ رانتایمی صادر می‌شود */
+  const runtimeEvidence = {};
+  for (let i = 1; i <= 12; i++) {
+    runtimeEvidence['STEP_' + String(i).padStart(2, '0')] = { status: 'OBSERVED', observed_at: '2026-09-18T10:05:00.000Z' };
+  }
+  const runtimeChain = executeEndToEndChain(mockSignal, { timestamp: '2026-09-18T10:00:00.000Z', runtimeEvidence });
+  assert.strictEqual(runtimeChain.verified, true, 'با شاهد رانتایم زنجیره تایید می‌شود');
+  assert.strictEqual(runtimeChain.verification_mode, 'RUNTIME', 'حالت باید رانتایمی باشد');
+  assert.strictEqual(runtimeChain.unbroken_loop, true, 'با شاهد رانتایم مدار پیوسته است');
 
   // بررسی گام‌های کلیدی در ردپای زنجیره
   const trace = chainResult.trace;
@@ -49,10 +61,12 @@ function runTests() {
   assert.strictEqual(outcomeStep.engine, PHASE3_ENGINE_ID.EI_19_OUTCOME_EVALUATION);
   assert.strictEqual(outcomeStep.evaluation_nature, 'IPSATIVE_IMPROVEMENT');
 
-  // گام ۱۲: صدور گواهی
+  // گام ۱۲: صدور گواهی — در شبیه‌سازی «صادر شد» اعلام نمی‌شود (A-31 / I-08)
   const certStep = trace[11];
   assert.strictEqual(certStep.step, 'STEP_12_CERTIFICATION');
-  assert.strictEqual(certStep.status, 'CERTIFIED');
+  assert.strictEqual(certStep.status, 'SIMULATED_ONLY');
+  const runtimeCertStep = runtimeChain.trace[11];
+  assert.strictEqual(runtimeCertStep.status, 'CERTIFIED', 'با شاهد رانتایم گام صدور معتبر است');
 
   console.log('  ✅ اعتبارسنجی ۱۲ گام پیوسته زنجیره ارزش از سیگنال خام تا گواهی با موفقیت تایید شد');
 }
