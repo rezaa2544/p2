@@ -131,3 +131,38 @@ ChatGPT 7 is not an executor for this workstream. The transferred work belongs t
 ## FINAL SYNCHRONIZATION RECEIPT — 2026-09-25
 **Exact main HEAD after this synchronization series:** `7c1a4ce3c29810910bfee72e17358d81032c33ea`.
 This SHA includes the synchronization updates themselves. The verification registry remains intentionally bound to `e4584806c1af2a1e5db648c8452580a8fa8cbcec` until the hardening SHA is frozen and evidence is regenerated; therefore this receipt is a project-state update, not a certification.
+
+
+## DEFECT RECURRENCE / ROOT-CAUSE PRIORITY — 2026-09-25
+
+A cross-report review found a recurring system pattern: several findings were previously marked FIXED/NOT A DEFECT/ACCEPTED RISK, then a later audit reproduced the same invariant failure or an omitted path. This is now a first-class project problem.
+
+### Evidence-backed recurrence patterns
+- A-20: earlier scope treated OCC as effectively covered in grades; later adversarial inventory found stale-write/asymmetry across all five PATCH entities. Root cause: fix scope did not equal invariant scope; mutation inventory was incomplete.
+- A-22: later re-audit found a REDIS_URL-only boot/fail-open hole despite earlier Redis hardening. Root cause: configuration/failure matrix was incomplete.
+- A-18/A-24: strong scoped conflict/sync fixes were produced on dedicated SHAs, while current-main/global invariant remained unverified. Root cause: multiple state/persistence paths plus evidence bound to changing SHAs.
+- A-34/A-35: authorization fixes can be strong on one path/base while REST, sync, conflict, role hydration or current-head variants remain separately unverified. Root cause: twin policy gates and evidence lifecycle separation.
+- A-31/A-37: false-positive semantic defaults and test-like artifacts can reintroduce confidence without proving the real invariant. Root cause: fallback semantics and incomplete certification wiring.
+
+### Higher-level root cause
+The recurring problem is not simply "bugs survive". The project has been optimized to fix observed defects, while the controls that must preserve an invariant across every path, configuration, merge and restart are still being hardened.
+
+The four root-cause classes are:
+1. Scope weakness: point fix instead of invariant-wide enforcement.
+2. Path-completeness weakness: incomplete route/config/worker/client inventory.
+3. Change-boundary weakness: evidence can outlive the SHA it proved.
+4. Certification weakness: false-green/test-integrity gaps can hide regressions.
+
+### New P0 program
+The authoritative program is docs/audit/ROOT_CAUSE_REAPPEARANCE_PROGRAM_2026-09-25.md.
+
+Immediate root-cause controls:
+- Invariant Registry for security/data-integrity claims.
+- Automatic evidence invalidation/revalidation after material merge.
+- Mutation/Auth/Failure-configuration inventories.
+- Permanent Reappearance Regression Suite for previously recurring findings.
+- Single-source authoritative policy for OCC, ownership, tenant scope, revocation and conflict.
+- ROOT-CAUSE-CLOSED requires source fix, alternate-path audit, adversarial regression, current-final-SHA evidence and three independent reviews.
+
+### New report rule
+Future reports must explain not only what was fixed, but why the previous fix did not prevent recurrence. FIXED without root-cause closure is FIXED-SCOPED only.
