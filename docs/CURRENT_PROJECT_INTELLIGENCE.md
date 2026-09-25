@@ -84,3 +84,45 @@ The 12 architecture patterns are now part of project intelligence as a prioritiz
 - Cross-cutting: Zero-Trust Service Boundaries.
 
 This registration is not a claim of implementation. Existing architecture remains the baseline until evidence-backed Architecture Review decisions are made.
+
+
+## CURRENT-HEAD SYNCHRONIZATION — 2026-09-25 / 38ecab9
+
+**Current main HEAD:** `38ecab9599168f8d53b0dcd89d77009dd7596f94` (merge PR #416). The previous intelligence baseline was stale at 2026-09-24 and is superseded by this section.
+
+### What changed since the previous intelligence snapshot
+- PR #414 merged the seven-layer external project memory foundation.
+- PR #415 merged Arena2 A-31 verification artifacts: the intelligence workstream is now represented in main with current verification artifacts, but this does **not** equal three-AI certification.
+- PR #416 merged a large Arena8 workspace/publication bundle containing current-head Sync/OCC/offline evidence and reconciliation artifacts. The published report explicitly remains **NOT VERIFIED**; it does not certify the product.
+- A-35 product remediation is present in main (commit `e05d0210883f1eece03714877ae5e19c385e07fd`) with the accompanying A-35 regression/evidence bundle. Its live re-verification on the exact new main HEAD is still required before treating it as independently closed.
+- The current verification registry is intentionally still bound to `e4584806c1af2a1e5db648c8452580a8fa8cbcec`, not to current main. Therefore no historical registry result has been promoted.
+
+### Current phase — precise position
+**Phase:** Hardening / reconciliation before independent three-AI validation.
+**Gate:** NOT VERIFIED.
+**Why:** the code/evidence head moved after the registry baseline; several high findings have current evidence but not merged fixes or three-reviewer evidence; and the registry must be rebuilt against the final hardening SHA.
+
+### Current problem map — root cause → required response
+1. **A-30 / Strict Gate:** certification can be bypassed when registry/evidence/reviewer/HEAD binding is incomplete. Root cause is gate validation relying on incomplete structural contracts rather than proving the evidence graph itself. Response: make registry non-empty, SHA-bound, reviewer-complete, schema-complete and fail-closed; add negative tests for empty/injected/blocked/stale registries.
+2. **A-31 / Intelligence:** semantic defaults can turn absence/empty data into healthy/compliant-looking output, while some platform metrics are not causally tied to engine output. Root cause is fallback/default semantics and self-attested certification paths. Response: no-data/empty/malformed/real-route negative tests; derive metrics only from observed source data; certification must consume independent evidence.
+3. **A-32 / SMS/PG:** application-level "sent/200" can diverge from PostgreSQL mirror state, with restart potentially repeating send/debit. Root cause is non-atomic provider-send, queue/mirror persistence and idempotency boundaries. Response: live PG schema contract, transaction/outbox/idempotency proof, restart replay test, wallet/queue/audit reconciliation.
+4. **A-33 / PG auth flags:** delegated authorization flags may be lost during PG hydration. Root cause is schema/model/persistence parity not proven across seed→DB→session→policy. Response: end-to-end persistence parity test for `asset_staff/lib_staff/is_head`, positive and negative authorization controls.
+5. **A-34 / Sync auth:** foreign teacher/class references and global conflict resolution can bypass school scope. Root cause is REST/sync twin gates not sharing one authoritative ownership policy. Response: reconcile the fix to current main, then run REST + sync + conflict adversarial tests on the same SHA.
+6. **A-35 / Mission-5 authz:** cross-tenant reads/links and phone identity variants can bypass intended scope/rate controls. Root cause is incomplete school anchoring and non-canonical phone identity. Response: re-run the merged fix on current HEAD and preserve 15/15 regression evidence plus adversarial tenant matrix.
+7. **A-36 / PG infrastructure:** migration transaction/seed-ledger assumptions and raw identifier construction create infrastructure-level failure/security risk. Root cause is migration-chain drift and insufficient identifier validation. Response: live PG replay of migrations, ledger continuity proof, safe identifier allowlist, regression.
+8. **A-37 / Test integrity:** 513 ZERO-CHECK, 311 ORPHAN, 54 MOCK and ~40 swallowed catches are inventory signals, not individual defects. Root cause is incomplete executable test inventory and weak ownership of the certification path. Response: classify each bucket, connect required suites to gates, explicitly retire non-product tests, and make missing prerequisites NOT-RUN rather than green.
+9. **A-38 / Registry:** registry is stale relative to main. Root cause is verification evidence being tied to an audit SHA rather than automatically rebased/rebuilt after material merges. Response: freeze the hardening branch, run final gate suites, generate a new registry for the exact final SHA, then obtain ChatGPT/Arena/Atria independent reviews.
+10. **A-39 / Reliability/DR:** restore/failover and failure-domain evidence remains incomplete. Root cause is lack of a persistent E4 environment and acceptance contract. Response: provision independent PG/Redis failure domains, execute restore/failover/worker/queue/notification/shutdown drills, measure RPO/RTO/MTTA/MTTR, preserve artifacts.
+
+### Important new Sync/OCC evidence
+The published Arena current-head audit reports A-18/A-20/A-24 scoped fixes with real PostgreSQL/browser evidence on a later test SHA, but also records **30 intentional legacy-mode failures** and keeps the global invariant **NOT VERIFIED**. Therefore:
+- strict/production OCC is the required production contract;
+- legacy missing-base/LWW behavior remains an explicit limitation, not a PASS;
+- A-24 is only PARTIALLY VERIFIED until the relevant fixes are merged/reconciled and re-tested on the final main SHA;
+- device-power-loss, real Service Worker/IndexedDB durability, multi-host and E4 evidence remain unverified.
+
+### Execution lock
+Do **not** start Capability Matrix / Role Matrix / final E2E / Performance certification as if the hardening gate were closed. First: A-30 → A-31..A-36 → A-37 → A-38 → A-39. Only after the same final SHA is independently reviewed by ChatGPT + Arena + Atria does the project advance to the broad certification campaign.
+
+### Agent ownership invariant
+ChatGPT 7 is not an executor for this workstream. The transferred work belongs to Arena 10 and must remain separately attributed in all future reports.
