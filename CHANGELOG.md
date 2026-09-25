@@ -59,3 +59,13 @@ This SHA includes the synchronization updates themselves. The verification regis
 - Added current-main open root-cause findings F1/F2/F4 and marked F3/F5 for final revalidation rather than duplicate remediation.
 - Established non-overlapping Atria-1 / Atria-2 remediation ownership.
 - Changed execution order to root-cause remediation first, then independent test/certification.
+
+
+## 2026-09-25 — Independent multi-report defect reconciliation
+
+- Added canonical reconciliation: `docs/audit/MULTI_REPORT_DEFECT_RECONCILIATION_2026-09-25.md`.
+- Consolidated independent reports into NCR-01..NCR-27 with severity and current-head disposition.
+- Promoted current-head blockers (server syntax corruption, credential projection, parent_links manager scope, certification boolean trap, intelligence/privacy paths, CI/test detection gaps, migration/SMS schema drift) into the hardening queue.
+- Explicitly prevented stale/duplicate report findings from being counted as new active defects when later current-head evidence shows mitigation; those remain REVALIDATION_REQUIRED.
+- Updated Master Defect Priority, Current Work Execution Plan, Project Intelligence, Dashboard, Daily Tasks, Decision Log, and Supervising Engineer memory.
+- Project status remains **HARDENING / RECONCILIATION — NOT VERIFIED**. No certification or production-readiness claim is made.
