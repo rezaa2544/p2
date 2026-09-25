@@ -96,6 +96,156 @@ REAPPEARANCE → ROOT CAUSE → INVARIANT → ALTERNATE PATHS → FIX → REGRES
 
 FIXED-SCOPED با ROOT-CAUSE-CLOSED یکی نیست.
 
+## 8. Universal Work-Quality Rules — mandatory for every task
+
+این بخش از تجربه گزارش‌های قبلی استخراج شده و از این پس «قانون اجرایی» است، نه توصیه.
+
+### 8.1 Rule Zero — اول کنترل، بعد اقدام
+قبل از هر کار مادی:
+1. همین سند را بخوان.
+2. current main HEAD را از GitHub بخوان و SHA را ثبت کن.
+3. Roadmap/Ground Truth و Project Intelligence را با آن تطبیق بده.
+4. مرحله فعلی و دقیقاً «کار بعدی مجاز» را تعیین کن.
+5. بررسی کن آیا کار قبلاً انجام شده، در branch/PR دیگری در حال انجام است، یا blocker دارد.
+6. فقط اگر کار لازم، non-duplicate و stage-appropriate است شروع کن.
+اگر وضعیت یا مالکیت مبهم است: اول verify؛ کدنویسی نکن.
+
+### 8.2 قانون «کار بیهوده ممنوع»
+هیچ agent نباید صرفاً برای تولید activity کاری انجام دهد.
+کار شروع نشود اگر قبلاً در main حل شده، همان scope را agent دیگری مالک است، نتیجه بدون evidence قابل استفاده نیست، به مرحله فعلی مربوط نیست، فقط برای سبز کردن گزارش است، یا پیش‌نیازش موجود نیست.
+در این شرایط خروجی مطلوب NO-OP / BLOCKED / ALREADY COVERED است، نه تغییر کد.
+
+### 8.3 قانون Source of Truth
+ترتیب اعتبار:
+1. current runtime / E3-E4 evidence و GitHub Actions واقعی
+2. current GitHub main HEAD و کد همان SHA
+3. regression/evidence artifact قابل بازتولید روی همان SHA
+4. گزارش ممیزی
+5. roadmap/planning
+6. اظهارنظر agent یا chat
+گزارش agent جای repository evidence را نمی‌گیرد.
+
+### 8.4 قانون SHA و Evidence
+هر claim باید به exact SHA، scope، command، exit code و artifact/log قابل بازتولید متصل باشد.
+evidence روی SHA قدیمی برای current HEAD معتبر فرض نمی‌شود.
+هر material merge کد، evidence affected را REVALIDATION_REQUIRED می‌کند.
+registry فقط بعد از freeze hardening SHA و بازاجرای evidence همان SHA قابل rebind است.
+
+### 8.5 قانون Root Cause
+برای هر defect:
+Reproduce → Root Cause → Invariant → All Paths → Source Fix → Negative/Adversarial Regression → Current-HEAD Evidence → Independent Review
+اگر defect قبلاً FIXED بوده و دوباره پیدا شد، REAPPEARANCE و root-cause analysis اجباری است.
+FIXED-SCOPED را ROOT-CAUSE-CLOSED گزارش نکن.
+
+### 8.6 قانون Scope Completeness
+قبل از closure، inventory مرتبط باید بررسی شود:
+REST/API، sync/offline، workers/jobs/queues، direct DB writes، client/browser، role/tenant/ownership، configuration/env، restart/failure، legacy/compatibility.
+یک مسیر سبز به‌تنهایی invariant سراسری را ثابت نمی‌کند.
+
+### 8.7 قانون Security / Authorization
+برای security، tenant isolation، ownership، OCC، revocation و conflict:
+- positive و negative test هر دو الزامی؛
+- cross-tenant / cross-school / wrong-role cases الزامی؛
+- bypass از مسیر جایگزین جست‌وجو شود؛
+- policy تا حد امکان single-source باشد؛
+- hydration/persistence parity از seed تا DB تا session/policy اثبات شود؛
+- fail-open، fallback و compatibility path عمداً adversarial تست شوند.
+
+### 8.8 قانون Data Integrity / Persistence
+برای داده حساس: source of truth، transaction boundary و idempotency مشخص باشد؛ restart/replay، DB read-back، partial failure، duplicate execution و reconciliation بین mirror/cache/queue و DB بررسی شود.
+HTTP 200 / sent / success به‌تنهایی اثبات persistence یا delivery نیست.
+
+### 8.9 قانون Test Integrity — False Green ممنوع
+این موارد بدون justification صریح blocker هستند:
+assert(true)، assertion بی‌اثر، process.exit(0) برای سبز کردن، || true، skip خودکار prerequisite و گزارش PASS، mock-only برای ادعای integration/E2E، target اجرا نشده، 0/0، swallowed error/catch، environment شرطی که failure را PASS کند، historical CI برای current HEAD.
+اگر prerequisite موجود نیست: NOT-RUN / BLOCKED؛ هرگز PASS.
+
+### 8.10 قانون Negative / Adversarial / Failure Testing
+هر claim مهم باید تا حد کاربرد شامل happy path، negative، adversarial/bypass، malformed/empty/no-data، permission boundary، restart/recovery، timeout/failure و duplicate/replay باشد.
+برای failure/recovery فقط «سیستم بالا آمد» کافی نیست؛ RPO/RTO/MTTA/MTTR یا معیار پذیرش تعریف‌شده باید اندازه‌گیری و artifact شود.
+
+### 8.11 قانون No Self-Certification
+عامل اجراکننده تنها مرجع نهایی صحت کار خودش نیست.
+برای certification: reviewer مستقل، evidence مستقل، current SHA و در Gate نهایی ChatGPT + Arena + Atria لازم است.
+یک AI PASS = certification نیست.
+
+### 8.12 قانون Parallel Work / Conflict Control
+workstreamها non-overlapping باشند.
+قبل از شروع، فایل/مسیر/مسئله تحت مالکیت سایر agentها بررسی شود.
+اگر دو agent روی یک invariant کار می‌کنند، یکی owner و دیگری reviewer/validator باشد؛ دو fix مستقل ممنوع مگر صریحاً برنامه‌ریزی شده.
+Atria هنگام sweep اختصاصی خود نباید با تغییرات موازی همان scope مختل شود.
+ChatGPT 7 executor نیست؛ work منتقل‌شده متعلق به Arena 10 است.
+
+### 8.13 قانون Minimal Safe Change
+کمترین تغییر لازم برای بستن invariant اعمال شود.
+refactor، rename، formatting و dependency churn نامرتبط ممنوع مگر لازم و ثبت‌شده.
+baseline حفظ شود.
+تغییر destructive یا irreversible بدون تأیید صریح ممنوع.
+force-push/history rewrite ممنوع.
+secret/token هرگز در code، commit، issue، log یا prompt ذخیره نشود.
+
+### 8.14 قانون Regression Permanence
+Regression برای defect مهم باید دائمی و قابل اجرای مجدد باشد.
+اگر test حذف/ضعیف/skip شد، جایگزین قوی‌تر ثبت شود.
+Recurring defects باید در Reappearance Suite باقی بمانند.
+
+### 8.15 قانون Delivery Contract
+هر prompt اجرایی باید مشخص کند:
+OWNER / WORKSTREAM / OBJECTIVE / SCOPE / NON-SCOPE / BASE SHA / TARGET / DEPENDENCIES / REQUIRED TESTS / REQUIRED EVIDENCE / DELIVERY
+تحویل باید شامل:
+STATUS / COMMIT / PUSHED / PR / TARGET / TESTS / EVIDENCE / CURRENT HEAD / BLOCKERS
+باشد.
+DONE فقط وقتی معتبر است که repository state با target موردنظر منطبق باشد.
+
+### 8.16 قانون Stop / Escalate
+در requirement متناقض، target نامعلوم، dependency/access مفقود، محیط تست غیرقابل اعتماد، نقض invariant دیگر، scope creep یا تناقض evidence با code/HEAD، توقف کن.
+وضعیت را BLOCKED یا REVALIDATION_REQUIRED کن و unblocker را ثبت کن.
+
+### 8.17 قانون Final Handoff
+قبل از پایان:
+1. diff را review کن.
+2. changed files را با scope مقایسه کن.
+3. tests را واقعاً اجرا و count/exit code را ثبت کن.
+4. evidence را به SHA bind کن.
+5. remote/PR/merge را verify کن.
+6. current HEAD را دوباره بخوان.
+7. roadmap/intelligence/memory را در صورت material بودن به‌روزرسانی کن.
+8. blocker/limitation را صریح اعلام کن.
+
+### 8.18 قانون گزارش‌نویسی دقیق
+FIXED یعنی source fix موجود است و لزوماً certification نیست.
+FIXED-SCOPED یعنی فقط scope مشخص بسته شده.
+TESTED یعنی test اجرا شده.
+RUNTIME_VERIFIED یعنی runtime evidence روی SHA مشخص وجود دارد.
+ADVERSARIAL_VERIFIED یعنی negative/adversarial evidence هم وجود دارد.
+INDEPENDENTLY_VERIFIED یعنی reviewer مستقل تأیید کرده.
+CERTIFIED یعنی همه شروط Gate برقرار است.
+NOT VERIFIED یعنی اثبات کافی وجود ندارد.
+BLOCKED یعنی پیش‌نیاز/دسترسی مانع اجراست.
+REVALIDATION_REQUIRED یعنی code/evidence boundary تغییر کرده و باید دوباره اثبات شود.
+هرگز برای سرعت، وضعیت بالاتری از evidence واقعی انتخاب نکن.
+
+## 9. Decision Gate — قبل از هر اقدام
+قبل از هر تغییر، این 7 سؤال باید جواب داشته باشد:
+1. چرا این کار الآن لازم است؟
+2. دقیقاً کدام مرحله/آیتم roadmap را جلو می‌برد؟
+3. آیا قبلاً انجام شده یا کسی دیگر مالک آن است؟
+4. Invariant یا outcome مورد انتظار چیست؟
+5. چه evidence ای موفقیت را ثابت می‌کند؟
+6. اگر شکست خورد یا ناقص بود، چگونه تشخیص می‌دهیم؟
+7. تحویل نهایی دقیقاً کجا باید دیده شود؟
+اگر پاسخ روشن نیست، اقدام متوقف می‌شود تا ابهام رفع شود.
+
+## 10. Rule of Efficiency
+هدف «کار بیشتر» نیست؛ هدف کمترین کار لازم برای بیشترین کاهش ریسک و بیشترین evidence معتبر است.
+اولویت با کاری است که blocker فعلی را باز کند، root cause را حذف کند، چند مسیر را با یک invariant/policy درست کند، evidence قابل بازتولید بسازد یا از recurrence جلوگیری کند.
+کار تزئینی، گزارش‌سازی، تست بدون gate و refactor خارج از scope در اولویت نیست.
+
+## 11. Mandatory session-start state
+در شروع هر کار، پس از خواندن این سند و اسناد لازم، این وضعیت باید internally تعیین شود:
+PHASE / CURRENT HEAD / NEXT ALLOWED ACTION / OWNER / DEPENDENCIES / EVIDENCE TARGET / DELIVERY TARGET
+این مرحله تشریفاتی نیست؛ برای جلوگیری از فراموشی، دوباره‌کاری و تصمیم اشتباه است.
+
 ## 6. Session-start mandatory read order
 1. docs/external-memory/SUPERVISING_ENGINEER.md
 2. docs/ROADMAP_CURRENT_GROUND_TRUTH_2026-09-21.md
