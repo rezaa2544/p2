@@ -1,3 +1,17 @@
+> ## 🔴 CURRENT-HEAD INTELLIGENCE SYNC — 2026-09-24
+> مرجع وضعیت جاری: `docs/CURRENT_PROJECT_INTELLIGENCE.md`
+> Intelligence remediation: 21/21 runtime-wired، 0 orphan، F-EI-01 بسته در سطح code/remediation؛ certification نهایی هنوز UNVERIFIED تا اجرای validation campaign.
+> Phase 7 verifier fixes در main reconcile شده‌اند. هیچ checkbox تاریخی صرفاً به دلیل این اصلاحات به PASS ارتقا نمی‌یابد.
+
+---
+
+> ## 🔴 برنامه اجرای اعتبارسنجی نهایی — 2026-09-24
+> این checklist در مرحلهٔ نهایی با برنامه `docs/CURRENT_WORK_EXECUTION_PLAN.md` اجرا می‌شود.
+> ترتیب: Atria Critical/High → Medium → Low → Multi-AI Validation → Capability/Role Matrix → E2E → Failure/Recovery → Performance → Final Certification.
+> هیچ checkbox صرفاً به دلیل وجود کد یا سند تیک نمی‌خورد؛ evidence اجرایی لازم است.
+
+---
+
 # چک‌لیست آمادگی تولید (Production Readiness Gate) — بخش ۲۷ نقشه راه
 
 - **تاریخ بررسی:** 2026-09-10 | **بیس:** `origin/main` @ `351bd10` (پس از PR #45) + شاخهٔ `arena/01a08a2e-p2`
@@ -136,3 +150,8 @@
 | MIGRATION_GUIDE.md | ✅ | چت ۶ (۲۰۲۶-۰۹-۱۰) — سیاست/چرخه/بسط‌انقباض/مهاجرت زنده + تست پوشش `tests/migration-guide-coverage.js` |
 
 **جمع §30:** موجود **۱۴ از ۱۴** — آخرین سند (`LOAD_TEST_RESULTS.md`) با قالب آماده و چارچوب تحلیل تحویل شد؛ فقط پر شدن اعداد به اجرای واقعی آزمون بار ملی (موج ۱۸) مسدود است.
+
+
+## 2026-09-24 Architecture Evolution Gate
+
+See docs/ARCHITECTURE_EVOLUTION_ROADMAP.md. New architectural patterns are future gates, not current production certifications. Any adopted pattern requires executable regression/contract tests and runtime evidence before it is marked ready.

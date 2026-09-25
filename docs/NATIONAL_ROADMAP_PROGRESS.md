@@ -1,3 +1,11 @@
+> ## 🔴 CURRENT-HEAD INTELLIGENCE SYNC — 2026-09-24
+> مرجع وضعیت جاری: `docs/CURRENT_PROJECT_INTELLIGENCE.md`
+> مرجع ترتیب اجرا: `docs/CURRENT_WORK_EXECUTION_PLAN.md`
+> اصلاحات قطعی اخیر: PR #401 لایه هوش را به 21/21 runtime-wired و 0 orphan رساند؛ F-EI-01 در سطح remediation بسته شد. اصلاحات Phase 7 verifier در PRهای #382/#383/#386/#390/#391/#392 نیز در main reconcile شده‌اند.
+> این جدول برای Waves/تاریخچه است؛ certification نهایی فقط با current-head evidence انجام می‌شود.
+
+---
+
 # پیگیری پیشرفت نقشه راه ملی پایش
 
 **مرجع برنامه و زمان‌بندی (۲۰۲۶-۰۹-۲۰ به بعد):** `docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md` — Historical Timeline + Sprint Plan + Gate Model + Dependency Graph. وضعیت Waves در همین فایل باقی می‌ماند، اما **ترتیب اجرا و مدت‌ها از سند مرجع خوانده می‌شود**.

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // tests/openapi-spec.js — پوشش مشخصات اوپن‌ای‌پی‌آی (مأموریت ۳۶، چت ۶)
-// قرارداد ابلاغی: ساختار ۳.۰.۳ + ۱۴ تگ + همهٔ مسیرهای ای‌پی‌آی + اسکیمای امنیتی/خطا/مثال.
+// قرارداد ابلاغی: ساختار ۳.۰.۳ + ۱۵ تگ + همهٔ مسیرهای ای‌پی‌آی + اسکیمای امنیتی/خطا/مثال.
+// (MUSE_SPARK 2026-09-25: تگ analytics که در اسپک بود ولی در این تست جا مانده بود اضافه شد؛ شمار ثابت ۱۴/۳۱ حذف شد)
 // وابستگی به js-yaml نرم است: بدون آن، بررسی ساختاری متنی اجرا می‌شود (قید صادقانه).
 'use strict';
 const fs = require('fs');
@@ -36,17 +37,17 @@ if (doc) {
   chk('دو سرور', (text.match(/- url:/g) || []).length === 2);
 }
 
-grp('تگ‌ها (۱۴ تگ ابلاغی)');
-const TAGS = ['auth', 'students', 'teachers', 'classes', 'grades', 'attendance', 'sync', 'library', 'assets', 'visitors', 'summer', 'feedback', 'admin', 'observability'];
+grp('تگ‌ها (۱۵ تگ ابلاغی)');
+const TAGS = ['auth', 'students', 'teachers', 'classes', 'grades', 'attendance', 'sync', 'library', 'assets', 'visitors', 'summer', 'feedback', 'admin', 'observability', 'analytics'];
 if (doc) {
   const have = (doc.tags || []).map((t) => t.name);
-  chk('۱۴ تگ تعریف شده', have.length === 14);
+  chk('۱۵ تگ تعریف شده', have.length === 15);
   for (const t of TAGS) chk('تگ «' + t + '»', have.includes(t));
 } else {
   for (const t of TAGS) chk('تگ «' + t + '»', new RegExp('name: ' + t + '\\b').test(text));
 }
 
-grp('مسیرها — ۲۹ مسیر ای‌پی‌آی + ۲ کشف‌شده از کد (۳۱ عملیات)');
+grp('مسیرها — فهرست پایه + همهٔ مسیرهای کد (دریفت صفر است)');
 // ۲۹ مسیر طبق موجودی §۴ ای‌پی‌آی‌چنج‌لاگ + /api/health-index و /metrics که در کد هستند
 const OPS = [
   ['post', '/api/auth/send-code'], ['post', '/api/auth/login'], ['get', '/api/auth/me'],
@@ -71,7 +72,7 @@ if (doc) {
     chk(method.toUpperCase() + ' ' + p, ok);
   }
   for (const p of Object.values(doc.paths || {})) total += ['get', 'post', 'put', 'delete', 'patch'].filter((mth) => p[mth]).length;
-  chk('جمع عملیات‌ها = ۳۱', total === 31);
+  chk('جمع عملیات‌های اسپک با ابزار دریفت برابر است', (() => { try { const out = require('child_process').execFileSync(process.execPath, [require('path').join(__dirname, '..', 'tools', 'openapi-drift.js')], { encoding: 'utf8' }); const m = out.match(/اسپک با کد همگام است \((\d+) عملیات\)/); return !!m && Number(m[1]) === total && total > OPS.length; } catch (e) { return false; } })());
   // هر عملیات: تگ + پاسخ دارد
   let opsWithTag = 0, opsWithResp = 0, n = 0;
   for (const p of Object.values(doc.paths || {})) {

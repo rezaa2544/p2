@@ -1,3 +1,10 @@
+> ## 🔴 CURRENT EXECUTION OVERRIDE — 2026-09-24
+> `docs/CURRENT_WORK_EXECUTION_PLAN.md` از نظر ترتیب اجرا بر این سند مقدم است.
+> تا پایان Phase A/B/C آتریا، Arena نباید روی همان ناحیه‌ای که Atria در حال remediation آن است کدنویسی کند. پس از آن، parallel execution فقط با scope مستقل و non-overlapping مجاز است.
+> وضعیت/شواهد جاری: `docs/CURRENT_PROJECT_INTELLIGENCE.md`.
+
+---
+
 # Payesh — Git-Driven Arena Execution Model
 
 **Status:** ACTIVE  

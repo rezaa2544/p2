@@ -94,6 +94,13 @@ function buildRedisConfig(env) {
   const base = {
     maxRetriesPerRequest: 2,
     connectTimeout: 3000,
+    /* A-22 (re-audit): بدونِ commandTimeout، یک پارتیشنِ «اتصال زنده ولی
+       بی‌پاسخ» (blackhole) هر فرمان را بی‌نهایت معلق می‌کند. sessionFrom در
+       هر درخواست دو عملِ ردیس می‌زند، پس یک پارتیشن، کلِ auth را برایِ همیشه
+       می‌خکد — بدونِ پاسخ و بدونِ fail-open. commandTimeout این را به یک
+       خطایِ مشخصه می‌بندد که مسیرهایِ fail-closed/fail-openِ موجود آن را
+       هندل می‌کنند. (اثبات: tests/reaudit-redis-outage.js S6) */
+    commandTimeout: Number(env.PAYESH_REDIS_COMMAND_TIMEOUT_MS) || 2000,
     lazyConnect: true,
     enableOfflineQueue: false,
     retryStrategy: (times) => {

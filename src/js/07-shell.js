@@ -226,6 +226,7 @@ function _renderRouteInner(){
     case 'training':return viewTraining();
     case 'drills':return viewDrills();
     case 'donations':return viewDonations();
+    case 'intelligence':return viewIntelligence();
     default:return viewDashboard();
   }
 }

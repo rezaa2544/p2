@@ -39,8 +39,8 @@ function runTests() {
   assert.ok(cert.certificate_id.startsWith('CERT-PAYESH-PHASE3-'));
   assert.strictEqual(cert.status, CERTIFICATION_STATUS.CERTIFIED);
   assert.strictEqual(cert.release_ready, true);
-  assert.strictEqual(cert.engines_summary.total_required, 12);
-  assert.strictEqual(cert.engines_summary.total_certified, 12);
+  assert.strictEqual(cert.engines_summary.total_required, 20);
+  assert.strictEqual(cert.engines_summary.total_certified, 20);
   assert.strictEqual(cert.quality_gates_summary.all_passed, true);
   assert.strictEqual(cert.governance_summary.human_decision_sovereignty, 'VERIFIED_STRICT');
   assert.strictEqual(cert.governance_summary.zero_ranking_policy, 'ENFORCED_ZERO_TOLERANCE');
@@ -52,7 +52,7 @@ function runTests() {
     sovereignty: { compliant: false, checks: {} },
     zeroRanking: { compliant: true },
     qualityGates: { all_passed: true },
-    completeness: { complete: true, total_required: 12, active_count: 12 },
+    completeness: { complete: true, total_required: 20, active_count: 20 },
     e2eChain: { verified: true, unbroken_loop: true }
   });
   assert.strictEqual(rejectedCert.status, CERTIFICATION_STATUS.REJECTED);

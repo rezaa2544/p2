@@ -54,6 +54,8 @@ const { createGradeRoutes } = require('./routes/grades');
 const { createUserRoutes } = require('./routes/users');
 const { createReportsRoutes } = require('./routes/reports'); /* Wave 23 — گزارش‌دهی پیشرفته */
 const { createAnalyticsRoutes } = require('./routes/analytics'); /* P0-EI-09 — مرکز فرماندهی و هوشمندی مدرسه */
+/* Phase 9.0 (Wiring Gate): اتصال هشت موتور آموزشیِ F-EI-01 به مسیر HTTP واقعی */
+const { createSemanticAnalyticsRoutes } = require('./routes/semantic-analytics');
 const { createBootstrapRoute } = require('./routes/bootstrap');
 const { createSystemRoutes } = require('./routes/system'); /* Phase 4 — P1-SC-01: سلامت زیرساخت و مقیاس‌پذیری */
 const { assertNationalCapacityEnforcement } = require('./infrastructure/national-capacity-enforcement'); /* Phase 5 — P2-NI-05: اینگرس مهار ظرفیت ملی */
@@ -330,7 +332,25 @@ async function seedPgFromBootstrap(store, db) {
   return null;
 });
 
-cache.init().then((r) => {
+/* A-22 (re-audit): شکلِ productionِ یکپارچه — همان تعریفی که redis.js
+   (isProduction/prodRethrow/prodNoRedis) برایِ الزامِ ردیس به کار می‌برد.
+   هر استقراری که REDIS_URL یا DATABASE_URL دارد production محسوب می‌شود؛
+   در غیرِ این صورت NODE_ENV، و سپس PAYESH_ENV (با ALLOW_MEMORY_FALLBACK برای
+   dev/test). این تابع تنها ملاکِ «بوت نباید بدونِ کشِ مشترک ادامه یابد»
+   است و در مسیرهایِ پایینِ cache.init آمده است. */
+function isProdShape() {
+  if (process.env.REDIS_URL || process.env.DATABASE_URL) return true;
+  if (process.env.NODE_ENV === 'production') return true;
+  if (process.env.ALLOW_MEMORY_FALLBACK === '1' || process.env.ALLOW_MEMORY_FALLBACK === 'true') return false;
+  return process.env.PAYESH_ENV === 'production';
+}
+
+/* P1: آماده‌سازیِ کش باید پیش از باز شدنِ سوکت به نتیجه برسد. پیش از این
+   fire-and-forget بود: با ردیسِ پیکربندی‌شده اما غیرقابلِ دسترس، redis.init
+   تا ۳ ثانیه طول می‌کشید و server.listen در همین پنجره سوکت را باز می‌کرد —
+   یعنی درخواست‌ها سرو می‌شدند پیش از آنکه دروازهٔ بوتِ ردیس بتواند
+   process.exit(1) کند. startListening اکنون cacheReady را هم await می‌کند. */
+const cacheReady = cache.init().then((r) => {
   if (r && r.ok === false) {
     /* P0-13: در تولید بدونِ ردیسِ زنده سرویس نمی‌دهیم — فال‌بک به حافظهٔ
        محلی بین نمونه‌ها واگرا می‌شود. خروجی غیرصفر = شکستِ ریدی. */
@@ -343,8 +363,15 @@ cache.init().then((r) => {
        forever with health=503: a zombie startup. A configured-but-unreachable
        Redis at boot keeps the same exit (Wave-15 boot contract); runtime
        outages after a healthy boot remain loud degradation (readiness 503,
-       reconnect loop), unchanged. */
-    if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL) {
+       reconnect loop), unchanged.
+       A-22 (re-audit): این مسیرِ انتهایی همچنین باید شکلِ «فقط REDIS_URL» را
+       بپوشاند. redis.js هر استقراری که REDIS_URL دارد به‌عنوانِ تولید می‌بیند
+       (prodRethrow/prodNoRedis به همین معنا fail-closed می‌شوند)، ولی این
+       مسیر فقط NODE_ENV/PAYESH_ENV/DATABASE_URL را می‌سنجید. نتیجه: سرور
+       با ردیسِ پیکربندی‌شده ولی مرده بالا می‌آمد، health=۵۰۳ می‌داد ولی
+       همچنان ترافیک سرو می‌کرد و ابطال در هر درخواست fail-open می‌شد.
+       (اثبات: tests/reaudit-redis-outage.js S1) */
+    if (isProdShape()) {
       try { persistStore(); } catch (e) {}
       try { db.close(); } catch (e) {}
       process.exit(1);
@@ -356,7 +383,7 @@ cache.init().then((r) => {
   }
 }).catch((err) => {
   console.error('[FATAL] Cache init crashed:', (err && err.message) || err);
-  if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL) process.exit(1);
+  if (isProdShape()) process.exit(1);
 });
 
 /* ── R97 (TODO 2.7) — نگهبانِ شمردنِ شناسه، سطحِ روتر ──────────────
@@ -719,6 +746,7 @@ const gradeRoutes = createGradeRoutes({ store, db, audit, markDirty, ids, delete
 const userRoutes = createUserRoutes({ store, db, audit, markDirty, ids, deleter });
 const reportsRoutes = createReportsRoutes({ store, db, audit, markDirty, ids, deleter }); /* Wave 23 */
 const analyticsRoutes = createAnalyticsRoutes({ store, db, audit, markDirty, ids, deleter }); /* P0-EI-09 */
+const semanticAnalyticsRoutes = createSemanticAnalyticsRoutes({ store, db }); /* Phase 9.0 Wiring Gate */
 const bootstrapRoute = createBootstrapRoute({ store, db });
 const systemRoutes = createSystemRoutes({ store, db }); /* Phase 4 — P1-SC-01 */
 /* Root-cause elimination (RAM-as-authority audit): canary weights MUST be
@@ -1169,16 +1197,22 @@ const onRequest = async (req, res) => {
       const targetProv = req.headers['x-province-code'];
       if (s.role !== 'superadmin' || targetSchool || targetProv) {
         try {
-          let actorWithProv = s;
-          if (!s.province_code && s.school_id) {
-            const sch = (store.schools || []).find(x => x.id === s.school_id);
-            if (sch) {
-              const pCode = sch.province_code || (sch.province_id === 2 ? '07' : sch.province_id === 1 ? '07' : String(sch.province_id).padStart(2, '0'));
-              actorWithProv = Object.assign({}, s, { province_code: pCode });
-            }
-          }
+          /* P1: استانِ عامل از یک منبعِ واحد حل می‌شود (resolveActorProvince:
+             session.province_code → province_id → school → office). پیش از این
+             یک پیش‌فرضِ جادوییِ '۰۷' به‌کار می‌رفت که با هیچ استانِ واقعی
+             تطابق نداشت، استان‌های ۱ و ۲ را یکی می‌کرد، و edu_office را که
+             school_id ندارد کلاً از /api/v1 محروم می‌ساخت.
+             اکنون: اگر استانِ عامل قابلِ تعیین نیست، fail-closed می‌بندیم
+             (هیچ استانِ پیش‌فرضی فرض نمی‌شود). */
+          const actorProv = resolveActorProvince(s, store);
           const effSchool = targetSchool || s.school_id;
-          const effProv = targetProv || actorWithProv.province_code || '07';
+          const effProv = targetProv || actorProv;
+          if (!effProv) {
+            const err = new Error('PHASE6_UNRESOLVED_PROVINCE: استان عامل قابل تعیین نیست؛ دسترسی مسدود شد');
+            err.code = 'PHASE6_TENANT_ISOLATION_BREACH';
+            throw err;
+          }
+          const actorWithProv = Object.assign({}, s, { province_code: actorProv });
           await assertTenantBoundary(actorWithProv, effSchool, effProv);
         } catch (err) {
           return sendJson(res, err.status === 503 ? 503 : 403, {
@@ -1293,6 +1327,41 @@ const onRequest = async (req, res) => {
       // /api/v1/analytics/intelligence-certification (P0-EI-21: گیت انتشار و صدور گواهی نهایی فاز ۳)
       if(p === '/api/v1/analytics/intelligence-certification' && req.method === 'GET'){
         const r = await analyticsRoutes.intelligenceCertificationReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+
+      // ── Phase 9.0 Wiring Gate (F-EI-01): اتصال هشت موتور آموزشی که پیش‌تر
+      //    کد داشتند اما هیچ مسیر رانتایمی به آن‌ها نبود. ──────────────────
+      if(p === '/api/v1/analytics/semantic-metrics' && req.method === 'GET'){
+        const r = await semanticAnalyticsRoutes.semanticReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/analytics/assessment-quality' && req.method === 'GET'){
+        const r = await semanticAnalyticsRoutes.assessmentQualityReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/analytics/attendance-risk' && req.method === 'GET'){
+        const r = await semanticAnalyticsRoutes.attendanceRiskReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/analytics/student-timeline' && req.method === 'GET'){
+        const r = await semanticAnalyticsRoutes.studentTimelineReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/analytics/intervention-warnings' && req.method === 'GET'){
+        const r = await semanticAnalyticsRoutes.interventionWarningsReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/analytics/school-health-dashboard' && req.method === 'GET'){
+        const r = await semanticAnalyticsRoutes.schoolHealthReport(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/analytics/parent-360' && req.method === 'GET'){
+        const r = await semanticAnalyticsRoutes.parent360Report(req, url.searchParams);
+        return sendJson(res, r.status, r.body);
+      }
+      if(p === '/api/v1/analytics/teacher-evidence' && req.method === 'GET'){
+        const r = await semanticAnalyticsRoutes.teacherEvidenceReport(req, url.searchParams);
         return sendJson(res, r.status, r.body);
       }
 
@@ -1663,7 +1732,7 @@ if(TLS_CERT || TLS_KEY){
     process.exit(1);
   }
   if(!fs.existsSync(TLS_CERT) || !fs.existsSync(TLS_KEY)){
-    console.error('TLS file missing: ' + (TLS_CERT + ' / ' + TLS_KEY));
+    console.error('TLS file missing: check PAYESH_TLS_CERT and PAYESH_TLS_KEY paths');
     console.error('generate one:  node server/tls-cert.js');
     process.exit(1);
   }
@@ -1815,15 +1884,36 @@ if(require.main === module){
         console.warn('[CANARY] boot continues WITHOUT persisted weights (loud degradation — see error above)');
       }
     }
+    /* P1: پیش از باز کردنِ سوکت، دروازهٔ آمادگیِ کش (ردیس) هم به نتیجه برسد.
+       در غیر این صورت با ردیسِ غیرقابلِ دسترس، سوکت پیش از exit(1) باز می‌ماند. */
+    try { await cacheReady; }
+    catch (e) {
+      console.error('[FATAL] cache readiness crashed — refusing listen():', e && e.message);
+      process.exit(1);
+    }
     server.listen(PORT, HOST, () => {
     const proto = (TLS_CERT && TLS_KEY) ? 'https' : 'http';
     console.log('payesh-server (phase 1' + (TLS_CERT ? ' + TLS' : '') + ') on ' + proto + '://' + HOST + ':' + PORT);
     console.log('  static : ' + path.join(ROOT, 'index.html'));
     console.log('  api    : /api/health /api/readiness /api/liveness /api/auth/* /api/sync /api/sync/conflicts /api/sync/resolve-conflict /api/students/:id /api/bell/now /api/public-report /api/admin/{backup,restore} /api/sms/send');
-    console.log('  metrics: /metrics (' + (process.env.PAYESH_METRICS_TOKEN ? 'bearer token' : process.env.PAYESH_ENV === 'production' ? 'DISABLED — set PAYESH_METRICS_TOKEN' : 'loopback only') + ')');
+    console.log('  metrics: /metrics (' + (process.env.PAYESH_METRICS_TOKEN ? 'bearer token' : (process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production') ? 'DISABLED — set PAYESH_METRICS_TOKEN' : 'loopback only') + ')');
     console.log('  store  : ' + STORE_FILE + '  (' + (store.users || []).length + ' users)');
     if(BACKUP_EVERY_MS > 0){
-      console.log('  backup : automatic every ' + Math.round(BACKUP_EVERY_MS / 60000) + ' min (retention ' + 10 + ')');
+      /* A-05b: در حالتِ PG-live، تایمرِ بکاپ عمداً مسلح نمی‌شود (PG مرجع
+         است — admin.startAutoBackup هیچ‌وقت فایل نمی‌نویسد). چاپِ «automatic
+         every N min» در این حالت یک قولِ دروغ بود. */
+      if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
+        console.log('  backup : in-process JSON export refused in PG mode — timer NOT armed. ' +
+          'Use pg_dump / pgBackRest / WAL-G at the infrastructure level (docs/RELIABILITY_DR_PLAN.md).');
+      } else {
+        console.log('  backup : automatic every ' + Math.round(BACKUP_EVERY_MS / 60000) + ' min (retention ' + 10 + ')');
+      }
+    } else if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL) {
+      /* A-05: بکاپِ خودکار پیش‌فرض خاموش است و تا پیش از این در زمانِ بوتِ
+         تولید هیچ خطی چاپ نمی‌شد — یک استقرار می‌توانست بدونِ هیچ بکاپی
+         بالا بیاید. اکنون هشدارِ بلند (نه مسدودکننده) داده می‌شود. */
+      console.warn('  ⚠ backup: DISABLED — set PAYESH_BACKUP_EVERY_HOURS (e.g. 24) or PAYESH_BACKUP_EVERY_MS. ' +
+        'No automatic backup will run in this process.');
     }
     });
   };

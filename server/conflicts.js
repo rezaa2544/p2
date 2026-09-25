@@ -134,7 +134,20 @@ function createConflicts(ctx) {
       if (incData && typeof incData === 'object' && incData.data && typeof incData.data === 'object') incData = incData.data;
       if (!incData || typeof incData !== 'object') incData = {};
 
-      const nextVer = (Number(c.server_version) || 1) + 1;
+      /* A-18: تعارضِ سراسری (school_id == null) نباید به مدیرِ یک مدرسه اجازهٔ
+         بازنویسیِ رکوردِ مدرسه‌ای دیگر را بدهد. مدرسهٔ ردیفِ تعارض کافی نیست
+         (ممکن است null باشد) — دامنه را رویِ خودِ رکوردِ هدف می‌سنجیم. */
+      if (s.role === 'manager') {
+        const recSchool = target ? target.school_id : incData.school_id;
+        if (recSchool != null && Number(recSchool) !== Number(s.school_id))
+          return sendJson(res, 403, { ok: false, code: 'out_of_scope', message: 'رکوردِ هدف خارج از محدودهٔ مدرسهٔ شماست' });
+      }
+
+      /* A-18: نسخهٔ جدید باید از هر دو بزرگتر باشد — نسخهٔ زندهٔ رکوردِ هدف
+         و نسخهٔ ثبت‌شدهٔ تعارض. مشتق‌کردن فقط از c.server_versionِ قدیمی،
+         رکورد را به گذشته برمی‌گرداند (مثلاً ۱۰ ← ۴). */
+      const curVer = target ? (Number(target.version) || 0) : 0;
+      const nextVer = Math.max(curVer, Number(c.server_version) || 0) + 1;
       const patch = Object.assign({}, incData, { id: targetId, version: nextVer });
 
       if (target) {

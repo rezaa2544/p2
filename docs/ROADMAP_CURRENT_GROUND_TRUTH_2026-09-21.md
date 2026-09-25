@@ -1,3 +1,20 @@
+> ## 🔴 CURRENT-HEAD INTELLIGENCE SYNC — 2026-09-24
+> **Current documentation HEAD before this sync:** `8da28405e91bab75c7c43be1fae756f47107a771`
+> لایه هوش: 21/21 runtime-wired، 0 orphan، F-EI-01 در سطح remediation بسته.
+> PR #401 merge: `e264932419335ce42da53f2700e362bce31670b9`.
+> اصلاحات verifier: #382/#383/#386/#390/#391/#392 در main reconcile شده‌اند.
+> وضعیت این موارد باید در validation campaign با current-head evidence مستقل دوباره verify شود.
+
+---
+
+> ## 🔴 CURRENT EXECUTION PLAN — 2026-09-24
+> **Canonical execution plan:** `docs/CURRENT_WORK_EXECUTION_PLAN.md`
+> **Current sequence:** Atria Critical/High → **Phase A Carry-over Closure** → Atria Medium → Atria Low → Full Multi-AI Validation → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification.
+> **Atria Phase A carry-over register:** `docs/audit/ATRIA_PHASE_A_CARRYOVER.md` — موارد A-01..A-23 شناسایی‌شده در نخستین sweep که هنوز تعیین‌تکلیف کامل نشده‌اند. این queue بخشی از Ground Truth اجرایی است و قبل از عبور از sweep Medium باید disposition و evidence داشته باشد.
+> این سند همچنان لایهٔ Ground Truth است؛ هر status باید با HEAD جاری و evidence واقعی تطبیق داده شود. گزارش Atria به‌تنهایی certification نیست.
+
+---
+
 # PAYESH — CURRENT ROADMAP GROUND TRUTH
 ## وضعیت اجرایی و برنامه ادامه کار — 2026-09-21
 
@@ -717,6 +734,46 @@ At `6460e55dfbea4a5cfe82a5d79f7106e367778ed3`, no GitHub Actions workflow run an
 
 All four were merged through PR #345. No known repo-owned defect from this reconciliation remains open.
 
+---
+
+## 2026-09-24 — Intelligence layer remediation (F-EI-01 closed)
+
+Branch `fix/intelligence-layer-defects`. Seven defects in the educational
+intelligence layer were found and remediated; every fix is locked by a new
+regression gate that runs in CI, so regression to the defective state is
+not possible. Full before/after evidence:
+`docs/audit/INTELLIGENCE_LAYER_REMEDIATION_REPORT.md`.
+
+**F-EI-01 (8 orphan engines) is CLOSED.** Eight engines under
+`server/analytics/` — `semantic`, `student-timeline`, `assessment-intelligence`,
+`attendance-intelligence`, `school-health-dashboard`, `parent-360`,
+`teacher-evidence`, `intervention-case-management` (P0-EI-01..08) — had zero
+runtime consumers: present, tested, but never `require`d by any server file.
+They are now served by eight live HTTP endpoints with zero-trust tenant
+isolation, and the release certification catalog covers all 20 engines.
+
+| Defect | Severity | Status | Lock gate |
+|---|---|---|---|
+| D1 optimistic defaults masked missing data (22 sites) | critical | fixed | `tests/no-data-masking.test.js` (9) |
+| D2 stale timestamp + certificate fingerprint collision | critical | fixed | `tests/analytics-timestamps.test.js` (5) |
+| D3 8 orphan engines / F-EI-01 | high | fixed | `tests/analytics-wiring-guard.test.js` (4) + `tests/semantic-analytics-e2e.test.js` (12) |
+| D4 intelligence suite never ran in CI | high | fixed | 7 gates in GitHub Actions + CircleCI |
+| D5 circular release certification | medium | fixed | `tests/certification-non-circular.test.js` (14) |
+| D6 client had zero analytics API calls | medium | fixed | `tests/intelligence-client-render.test.js` (29) |
+| D7 metric drift (reimplemented semantic metrics) | low | fixed | folded into D3 |
+
+Verification at branch head: wiring 21/21 wired · semantic 33/33 · API 30/30 ·
+CI parity 26/26 · certification 8/8.
+
+**One pre-existing, unrelated failure remains:** `generate-write-perms --check`
+reports drift (the generator emits 0 writer-actions vs 199 in the committed
+`authz/write-perms.json`). This reproduces at the pre-branch HEAD and is a
+generator bug, not an authorization regression — `tools/check-authz.js` (the
+actual server permission audit) passes fully. The regenerated file was
+deliberately NOT committed, because it would delete 199 action→role mappings
+and weaken authorization. Tracked here so it is not mistaken for a regression
+introduced by the intelligence work.
+
 ## Evidence boundary
 
 Current code/test wiring is reconciled on the exact main SHA, but a completed GitHub Actions execution for the current code SHA is still required before claiming current-head runtime PASS for migration, OCC, Redis, Outbox, production verifier, observability runtime, SCA/SBOM/DAST, or the full npm test battery.
@@ -768,3 +825,55 @@ E3 DR/PITR and Redis HA evidence remains E3. E4 requires production-equivalent t
 | Phase 8.3 | **BLOCKED** | depends on 8.2 exit | `21ec84e1...` | 8.2 exit + E4 load environment |
 | Production GO | **NOT DECLARED** | no production-equivalent E4 gate | `21ec84e1...` | all required E4 evidence |
 
+
+
+## Architecture Evolution Ground Truth — 2026-09-24
+
+Canonical architecture backlog: docs/ARCHITECTURE_EVOLUTION_ROADMAP.md
+
+The repository now records twelve architecture patterns as a controlled evolution track. P0: Modular Monolith/Vertical Slices; Event-Driven; Transactional Outbox; OpenTelemetry; Policy-as-Code. P1: Selective CQRS; Workflow/Saga. Conditional: Event Sourcing; Microservices; Kubernetes; Service Mesh. Cross-cutting: Zero-Trust Service Boundaries.
+
+This is roadmap state, not implementation certification. Current architecture remains the baseline until an evidence-backed Architecture Review changes it. The active execution order remains Atria Critical/High → Phase A Carry-over Closure → Atria Medium → Atria Low → Multi-AI Validation → Capability/Role/E2E → Failure/Recovery → Performance → Final Certification.
+
+
+## Mandatory Strict Verification Gate — 2026-09-24
+
+The repository now has a fail-closed certification policy in `docs/STRICT_VERIFICATION_GATE.md`. No item may be marked PASS/VERIFIED without the evidence contract and independent ChatGPT + Arena + Atria review bound to the same HEAD. The machine gate is `tools/strict-verification-gate.js`, with CI enforcement in `.github/workflows/strict-verification.yml`. An incomplete registry is intentionally NOT VERIFIED.
+
+
+## 2026-09-24 — Multi-AI Report Reconciliation / Current Main 3b98fc1
+
+Current GitHub `main` resolves to `3b98fc19ec49bbbc7362fea578b196c1d4c0f2e9`. The report corpus was reconciled against this SHA. Historical report PASS/VERIFIED labels are not promoted automatically.
+
+### Newly confirmed work queue from report reconciliation
+1. **SYNC-OFFLINE / OCC:** the dedicated Sync/Offline remediation branch is not merged into current main. A-18/A-20 therefore remain open in the canonical queue. The branch evidence also leaves legacy/LWW compatibility, device/browser crash durability, reconnect/production topology and multi-host behavior unverified. Reconcile the branch onto current main, reproduce A-18/A-20, run adversarial stale-write/concurrent/version tests, then regression-test the merged SHA.
+2. **Authorization:** Arena-2 found and fixed five defects on its branch: cross-collection ID collision, tenant-province fallback/parent-office lockout, guard/driver read over-permission, NULL school anchor, and phone canonicalization. Current main already contains the ID-generation remediation path and upstream tenant fixes; these must be independently revalidated on current main rather than duplicated. The Arena-2 branch is not a certification source.
+3. **Security/CI:** Arena-6 reported repo-owned security/false-green gaps requiring explicit reconciliation: F-S04 security workflow/orphan-suite gating; F-S01 scanner extension coverage; F-S02 published example JWT secret rejection; F-S05 supply-chain suite drift; F-S09 OTP mutation oracle; F-S10 configuration-variable drift; F-S07 sync denial envelope contract; F-S06 outbox/tombstone model coverage; F-S11 malformed JSON contract; F-S13 skip-to-incomplete semantics; F-S16 Node-engine guard; F-S12/F-S14 hardening. F-S03 PAT rotation and E4 penetration testing remain external owner blockers.
+4. **Outbox/Worker:** prior Arena evidence identified F-1a processing-claim recovery, F-1b no-handler processing state, F-2 worker timeout/recovery, F-3 processing-depth observability, F-4 missing CI registration, and F-5 terminal dead-letter label consistency. These are not to be re-counted as new defects if already fixed by later commits; current-head revalidation is mandatory before closure.
+5. **DR/HA:** Arena-8 and the DR reports leave E3 as historical/local evidence and E4 unverified. Required work remains current-SHA DR-01 refresh, real PG/Redis restore/failover evidence, independent failure domains, off-site/S3 evidence, RPO/RTO acceptance thresholds, and alert→receiver→on-call→ack→runbook→recovery evidence.
+6. **Architecture/scale:** remaining validation includes RAM-authoritative control-plane remnants, explicit authority mode/fail-closed behavior outside server boot, fragmented tenant enforcement on legacy routes, national-scale load/soak evidence, and measured performance rather than documented targets.
+7. **Release/roadmap integrity:** the master schedule audit identified documentation/execution drift items (Redis target-version mismatch, Node engine-pin mismatch, unsupported critical-path duration claim, and Phase 9.0 dependency wording). These are documentation/plan reconciliation tasks, not runtime defect claims.
+8. **Strict Verification Gate:** the registry is intentionally still empty and therefore BLOCKED. The previous broken `monitoring/alert-rules.yml` finding is no longer reproduced on current main: the path is readable and is a documented compatibility marker pointing to the canonical rules file. The gate itself still requires a real registry and three independent reviews before any certification claim.
+
+### Mandatory execution consequence
+No item above is marked green by this reconciliation. New/remaining work must enter the appropriate workstream, receive exact current-HEAD evidence, and pass the three-AI gate. Historical reports remain evidence records only.
+
+
+## 2026-09-25 — Multi-Report / Current-HEAD Reconciliation
+
+**Current main:** `4938631633c9c578db2679905fd46c4daaedd80a`.
+
+یافته‌های جدید که نسبت به reconciliation قبلی به Ground Truth اضافه شدند:
+
+1. **A-30 / Strict Gate:** V-01..V-12 نشان می‌دهند خود Gate و Registry schema هنوز برای certification fail-closed کافی نیستند.
+2. **A-31 / Intelligence:** I-02..I-09 نشان می‌دهند semantic/certification residuals و synthetic/self-attested paths هنوز باید current-head tested شوند.
+3. **A-32 / SMS:** mirror ستون‌های `queue_id/provider_msg` و restart idempotency باید با live PG اثبات شوند.
+4. **A-33 / Delegation:** parity پرچم‌های `asset_staff/lib_staff/is_head` بین authz model/policy و PG persistence باید اثبات شود.
+5. **A-34 / Sync parity:** patch غیرmerged `6018dd76` سه bypass authorization را بسته؛ reconcile با current main الزامی است.
+6. **A-35 / Mission-5:** A-AUTHZ-03/04/05 به‌عنوان بازظهور ادغام‌نشده باید current-head reproduce شوند.
+7. **A-36 / PG infra:** F-PG-05/06/07 به صف closure اضافه شدند.
+8. **A-37 / Test debt:** 513 ZERO-CHECK، 311 ORPHAN، 54 MOCK و ~40 swallowed catch به‌عنوان debt triage ثبت شدند.
+9. **A-38 / Registry:** registry فعلی به `e4584806` bind است؛ current-head evidence باید از نو ساخته شود.
+10. **A-39 / Reliability/DR:** F-1a..F-5 و failure drills باید در A-25/A-27 acceptance criteria صریح بمانند.
+
+تا بسته‌شدن این موارد با evidence current-head و سه بررسی مستقل، وضعیت کلان **NOT VERIFIED** باقی می‌ماند.

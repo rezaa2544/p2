@@ -43,7 +43,11 @@ const s2 = sectionOf(SECS[1]);
 const vars = new Set();
 for (const line of s2.split('\n')) {
   for (const m of line.matchAll(/`([A-Z_][A-Z0-9_]*)`/g)) {
-    if (!['X', 'POSTGRES_USER', 'PAYESH_ENV', 'NODE_ENV'].includes(m[1]) || true) vars.add(m[1]);
+    /* P2 (تستِ false-green): `|| true` این غربالگری را بی‌اثثر کرده بود و
+       متغیرهایِ واقعی (PAYESH_ENV/NODE_ENV/POSTGRES_USER) هم کنار گذاشته
+       می‌شدند. اکنون فقط توکن‌هایِ نثرِ غیرمتغیر (NEW/BAD/X) کنار گذاشته
+       می‌شوند تا شمارش واقعی باشد. */
+    if (!['NEW', 'BAD', 'X'].includes(m[1])) vars.add(m[1]);
   }
 }
 chk('دست‌کم ۵۰ متغیر مستند (' + fa(vars.size) + ')', vars.size >= 50);

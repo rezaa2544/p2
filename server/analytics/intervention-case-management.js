@@ -20,6 +20,8 @@
 
 'use strict';
 
+const policy = require('../policy');
+
 // وضعیت‌های مجاز چرخه حیات پرونده
 const VALID_CASE_STATUSES = Object.freeze([
   'OPEN',
@@ -61,7 +63,16 @@ function enforceInterventionAccessGuard(requester, caseRecord, options = {}) {
   const requesterSchoolId = requester.school_id != null ? Number(requester.school_id) : null;
 
   // ۱. مدیر سامانه و بازرس آموزش و پرورش
-  if (role === 'superadmin' || role === 'edu_office') {
+  if (role === 'superadmin') {
+    return true;
+  }
+  if (role === 'edu_office') {
+    // بازرس فقط پرونده‌های مدارسِ داخلِ محدودهٔ جغرافیایی دفترِ خودش؛
+    // پروندهٔ مدرسهٔ خارج از حوزه یا مدرسهٔ ناشناس ⇒ رد (fail-closed).
+    const store = options.store || {};
+    if (caseSchoolId == null || !policy.schoolInOfficeScope(store, requester, caseSchoolId)) {
+      throw new Error(`TENANT_ISOLATION_VIOLATION: edu_office scope does not cover school ${caseSchoolId}`);
+    }
     return true;
   }
 
@@ -111,17 +122,36 @@ function evaluateEarlyWarningRules(studentContext = {}, options = {}) {
     throw new Error('INVALID_INPUT: valid schoolId is required for evaluateEarlyWarningRules');
   }
 
-  const currentGpa = Number(studentContext.currentGpa ?? studentContext.current_gpa ?? 15.0);
+  const currentGpa = studentContext.currentGpa != null || studentContext.current_gpa != null
+    ? Number(studentContext.currentGpa ?? studentContext.current_gpa)
+    : null;
   const previousGpa = studentContext.previousGpa != null ? Number(studentContext.previousGpa) : null;
-  const recentAttendanceRate = Number(studentContext.recentAttendanceRate ?? studentContext.recent_attendance_rate ?? 100.0);
+  // D1: پیش‌تر وقتی داده‌ای نبود، حضور ۱۰۰٪ فرض می‌شد و دانش‌آموز «بدون ریسک»
+  // گزارش می‌شد — همین حالا یک دانش‌آموز با صفر داده، has_critical_risk:false
+  // برمی‌گرداند. اکنون غیبت داده، خودش یک سیگنال نیازمند توجه است.
+  const hasAttendanceInput = studentContext.recentAttendanceRate != null || studentContext.recent_attendance_rate != null;
+  const recentAttendanceRate = hasAttendanceInput
+    ? Number(studentContext.recentAttendanceRate ?? studentContext.recent_attendance_rate)
+    : null;
   const consecutiveAbsences = Number(studentContext.consecutiveAbsences ?? studentContext.consecutive_absences ?? 0);
   const failingSubjects = Number(studentContext.failingSubjectsCount ?? studentContext.failing_subjects_count ?? 0);
   const unsubmitted = Number(studentContext.unsubmittedAssignmentsCount ?? studentContext.unsubmitted_assignments_count ?? 0);
 
   const alerts = [];
 
+  // قاعده ۰ (جدید — ضد پنهان‌سازی): داده ناکافی
+  const hasGpa = currentGpa !== null;
+  if (!hasGpa && !hasAttendanceInput) {
+    alerts.push({
+      trigger_type: 'INSUFFICIENT_DATA',
+      priority: 'MEDIUM',
+      title: 'داده کافی برای ارزیابی ریسک وجود ندارد',
+      reason: 'هم معدل و هم نرخ حضور این دانش‌آموز نامشخص است؛ امکان شناسایی افت تحصیلی وجود ندارد.'
+    });
+  }
+
   // قاعده ۱: ریسک مرکب ترک تحصیل (Compound Dropout Risk) - اولویت بحرانی
-  if (currentGpa < 10.0 && (recentAttendanceRate <= 85.0 || consecutiveAbsences >= 4)) {
+  if (hasGpa && recentAttendanceRate !== null && currentGpa < 10.0 && (recentAttendanceRate <= 85.0 || consecutiveAbsences >= 4)) {
     alerts.push({
       trigger_type: 'DROPOUT_RISK_COMPOUND',
       priority: 'CRITICAL',
@@ -131,7 +161,7 @@ function evaluateEarlyWarningRules(studentContext = {}, options = {}) {
   }
 
   // قاعده ۲: افت شدید تحصیلی (Academic Drop)
-  if (currentGpa < 10.0 || (previousGpa != null && (previousGpa - currentGpa) >= 3.0)) {
+  if (hasGpa && (currentGpa < 10.0 || (previousGpa != null && (previousGpa - currentGpa) >= 3.0))) {
     alerts.push({
       trigger_type: 'CRITICAL_ACADEMIC_DROP',
       priority: 'HIGH',
@@ -143,7 +173,7 @@ function evaluateEarlyWarningRules(studentContext = {}, options = {}) {
   }
 
   // قاعده ۳: غیبت مزمن یا غیبت‌های متوالی (Chronic Absence)
-  if (recentAttendanceRate <= 90.0 || consecutiveAbsences >= 3) {
+  if (recentAttendanceRate !== null && (recentAttendanceRate <= 90.0 || consecutiveAbsences >= 3)) {
     alerts.push({
       trigger_type: 'CHRONIC_ABSENCE_ALERT',
       priority: 'HIGH',
@@ -176,7 +206,8 @@ function evaluateEarlyWarningRules(studentContext = {}, options = {}) {
     school_id: schoolId,
     alerts: Object.freeze(alerts),
     has_critical_risk: hasCriticalRisk,
-    highest_priority: highestPriority
+    highest_priority: highestPriority,
+    data_sufficiency: (hasGpa || hasAttendanceInput) ? 'SUFFICIENT' : 'INSUFFICIENT'
   };
 }
 

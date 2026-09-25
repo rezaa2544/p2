@@ -171,16 +171,19 @@ function snap(server) {
     const op = { uid: 'dup-1', by: 5, c: 'announcements', t: 'ins', user_id: 5, school_id: 1,
       at: new Date().toISOString(), data: { school_id: 1, title: 'تکراری', body: 'x' } };
     let dedupeHits = 0;
+    const responseOks = []; /* A-15: پاسخِ دیده‌شده‌ی کلاینت دیگر دور ریخته نمی‌شود */
     const t0 = Date.now();
     for (let i = 0; i < 3; i++) {
       const r = await server.handle(JSON.stringify({ ops: [op] }));
       if (r.body.results[0].code === 'duplicate_ignored') dedupeHits++;
+      responseOks.push(r.body.ok === true);
     }
     const ms = Date.now() - t0;
     const after = snap(server);
     chk('S2a اثرِ تکی: یک رکورد از ۳ ارسال', after.ann === before.ann + 1, 'ann=' + after.ann);
     chk('S2b ‏dedupe hit: دقیقاً ۲ از ۳ (اولی apply)', dedupeHits === 2, 'hits=' + dedupeHits);
-    chk('S2c هر ۳ پاسخ ok=true (کلاینت retry را موفق می‌بیند — نه خطا)', true);
+    chk('S2c هر ۳ پاسخ ok=true (کلاینت retry را موفق می‌بیند — نه خطا)',
+      responseOks.length === 3 && responseOks.every(Boolean), 'oks=' + JSON.stringify(responseOks));
     chk('S2d integrity: side effect تکی (uids=+1)', after.uids === before.uids + 1);
     metric('S2', { sends: 3, dedupe_hits: dedupeHits, side_effects: after.ann - before.ann, push_ms: ms, integrity: after.ann === before.ann + 1 });
   }

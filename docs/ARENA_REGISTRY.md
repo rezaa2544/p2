@@ -1,3 +1,9 @@
+> ## 🔴 CURRENT EXECUTION OVERRIDE — 2026-09-24
+> registry مالکیت عملیاتی است و ترتیب canonical را override نمی‌کند. در زمان Atria sweep، ownership عملیاتیِ همان ناحیه به Atria محدود است؛ سایر Arenaها فقط scope مستقل و non-overlapping را اجرا کنند.
+> مرجع وضعیت: `docs/CURRENT_PROJECT_INTELLIGENCE.md`.
+
+---
+
 # Payesh — Arena Registry
 
 **Status:** ACTIVE  

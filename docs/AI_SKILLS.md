@@ -1,3 +1,12 @@
+> ## 🔴 CURRENT PROJECT INTELLIGENCE — 2026-09-24
+> مرجع وضعیت جاری: `docs/CURRENT_PROJECT_INTELLIGENCE.md`
+> مرجع ترتیب اجرا: `docs/CURRENT_WORK_EXECUTION_PLAN.md`
+> وضعیت فعلی: Atria ابتدا Critical/High → Medium → Low؛ سپس Multi-AI Validation و ماتریس Capability/Role/E2E/Failure-Recovery/Performance.
+> Intelligence layer: 21/21 موتور runtime-wired، 0 orphan، F-EI-01 در سطح remediation بسته؛ certification نهایی هنوز نیازمند current-head evidence مستقل است.
+> این سربرگ وضعیت جاری است؛ محتوای تاریخی/توضیحی پایین سند حفظ شده است.
+
+---
+
 # چارچوب رسمی مهارت‌های مهندسی هوش مصنوعی (AI Skills Framework)
 ## Official AI Engineering Agent Skills for Payesh (`rezaa2544/p2`)
 
@@ -70,3 +79,11 @@ node tools/verify-agent-skills.js
 ```
 
 اسکریپت موجود مهارت‌های `.agent/skills/` را اعتبارسنجی می‌کند؛ مهارت strict-verification نیز در `skills/strict-verification/` ثبت و در policy اجباری پروژه ارجاع شده است.
+
+
+<!-- Architecture evolution track registered 2026-09-24; see docs/ARCHITECTURE_EVOLUTION_ROADMAP.md -->
+
+
+## Architecture-modernization alignment — 2026-09-24
+
+AI agents must read docs/ARCHITECTURE_EVOLUTION_ROADMAP.md before architecture changes. The 12 patterns are not a rewrite instruction. Before implementation, an agent must identify the concrete problem, affected domain, migration boundary, rollback path, tests and evidence. P0: Modular Monolith/Vertical Slices, Event-Driven + Outbox, OpenTelemetry, Policy-as-Code. P1: Selective CQRS, Workflow/Saga. Conditional: Event Sourcing, Microservices, Kubernetes, Service Mesh. Zero-Trust boundaries are cross-cutting.

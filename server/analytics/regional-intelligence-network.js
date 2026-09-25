@@ -90,6 +90,9 @@ function summarizeRegionalHealth(context = {}) {
 
   let sumAttendance = 0;
   let sumGpa = 0;
+  let countedAttendance = 0;
+  let countedGpa = 0;
+  let noDataCount = 0;
 
   for (const s of schools) {
     const health = s.health_index || {};
@@ -97,20 +100,28 @@ function summarizeRegionalHealth(context = {}) {
     if (status === 'HEALTHY') healthyCount++;
     else if (status === 'NEEDS_MONITORING') needsMonitoringCount++;
     else if (status === 'NEEDS_IMMEDIATE_ACTION') needsImmediateActionCount++;
+    if (status === 'NEEDS_IMMEDIATE_ACTION' && health.data_quality && health.data_quality.status === 'NO_DATA') noDataCount++;
 
-    sumAttendance += Number(s.attendance_summary?.calendar_rate ?? 90.0);
-    sumGpa += Number(s.academic_summary?.average_gpa ?? 15.0);
+    // D1: مدارس بدون داده نباید در میانگین منطقه‌ای نرخ ۹۰/معدل ۱۵ بسازند.
+    const calRate = s.attendance_summary?.calendar_rate;
+    if (calRate != null) { sumAttendance += Number(calRate); countedAttendance++; }
+
+    const gpa = s.academic_summary?.average_gpa;
+    if (gpa != null) { sumGpa += Number(gpa); countedGpa++; }
   }
 
   const total = schools.length;
-  const avgAtt = total > 0 ? Math.round((sumAttendance / total) * 100) / 100 : 90.0;
-  const avgGpa = total > 0 ? Math.round((sumGpa / total) * 100) / 100 : 15.0;
+  const avgAtt = countedAttendance > 0 ? Math.round((sumAttendance / countedAttendance) * 100) / 100 : null;
+  const avgGpa = countedGpa > 0 ? Math.round((sumGpa / countedGpa) * 100) / 100 : null;
 
   return {
     total_schools: total,
     healthy_schools_count: healthyCount,
     needs_monitoring_count: needsMonitoringCount,
     needs_immediate_action_count: needsImmediateActionCount,
+    schools_with_no_data_count: noDataCount,
+    schools_reported_in_attendance_average: countedAttendance,
+    schools_reported_in_gpa_average: countedGpa,
     average_attendance_rate: avgAtt,
     average_gpa: avgGpa,
     is_ranked: false,                 // ضمانت صریح عدم رتبه‌بندی
@@ -426,38 +437,47 @@ function buildRegionalSnapshot(regionContext = {}, options = {}) {
   let totalActiveInterventions = 0;
   let totalUnassignedHigh = 0;
   let sumResolutionRate = 0;
+  let countedResolution = 0;
 
   for (const s of rawSchools) {
     totalActiveInterventions += Number(s.intervention_summary?.active_cases_count ?? 0);
     totalUnassignedHigh += Number(s.intervention_summary?.unassigned_high_priority_count ?? 0);
-    sumResolutionRate += Number(s.intervention_summary?.resolution_rate ?? 100.0);
+    // D1 (بازمانده): مدرسه بدون نرخ حل، باید ۱۰۰٪ موفق جلوه نکند.
+    const resRate = s.intervention_summary?.resolution_rate;
+    if (resRate != null) { sumResolutionRate += Number(resRate); countedResolution += 1; }
   }
 
   const schoolCount = rawSchools.length;
-  const overallResolutionRate = schoolCount > 0 ? Math.round((sumResolutionRate / schoolCount) * 10) / 10 : 100.0;
+  const overallResolutionRate = countedResolution > 0 ? Math.round((sumResolutionRate / countedResolution) * 10) / 10 : null;
 
   const interventionSummary = {
     total_active_cases: totalActiveInterventions,
     unassigned_high_priority_cases: totalUnassignedHigh,
+    schools_reported_in_resolution_average: countedResolution,
     overall_resolution_rate: overallResolutionRate,
-    effective_interventions_ratio: totalActiveInterventions > 0 ? 0.85 : 1.0
+    // مقدار ۰.۸۵ یک برآورد دل‌بخواه بود؛ نسبتِ موثّر تنها روی دادهٔ واقعی
+    // محاسبه می‌شود و در نبودِ آن explicit null می‌گردد (نه ۱.۰ نمایشی).
+    effective_interventions_ratio: null
   };
 
   // ۴. الگوهای حضور
   let sumChronic = 0;
+  let countedChronic = 0;
   const peakDays = {};
   for (const s of rawSchools) {
-    sumChronic += Number(s.attendance_summary?.chronic_absence_rate ?? 5.0);
-    const pd = s.attendance_summary?.peak_absence_day || 'wednesday';
-    peakDays[pd] = (peakDays[pd] || 0) + 1;
+    // D1 (بازمانده): مدرسه بدون نرخ غیبتِ مزمن، ۵٪ غیبتِ مزمن ندارد.
+    const chronicRate = s.attendance_summary?.chronic_absence_rate;
+    if (chronicRate != null) { sumChronic += Number(chronicRate); countedChronic += 1; }
+    const pd = s.attendance_summary?.peak_absence_day;
+    if (pd) peakDays[pd] = (peakDays[pd] || 0) + 1;
   }
-  const avgChronic = schoolCount > 0 ? Math.round((sumChronic / schoolCount) * 10) / 10 : 5.0;
+  const avgChronic = countedChronic > 0 ? Math.round((sumChronic / countedChronic) * 10) / 10 : null;
 
-  let regionalPeakDay = 'wednesday';
+  let regionalPeakDay = null;
   let maxCount = -1;
-  for (const [day, count] of Object.entries(peakDays)) {
-    if (count > maxCount) {
-      maxCount = count;
+  for (const [day, cnt] of Object.entries(peakDays)) {
+    if (cnt > maxCount) {
+      maxCount = cnt;
       regionalPeakDay = day;
     }
   }
@@ -480,7 +500,13 @@ function buildRegionalSnapshot(regionContext = {}, options = {}) {
   const assessmentPatterns = {
     total_exams_surveyed: totalExams,
     hard_exams_count: totalHard,
-    average_difficulty_p_value: totalExams > 0 ? 0.62 : 0.65,
+    /* A-23: این سنجه تا پیش از این یک عددِ ثابتِ تشریفاتی بود — ۰.۶۲ وقتی
+       آزمون هست و ۰.۶۵ وقتی نیست — یعنی آماری نمایشی که از هیچ داده‌ای
+       مشتق نمی‌شد و صرفِ وجود/نبودِ آزمون آن را جابه‌جا می‌کرد. اکنون
+       نسبتِ واقعیِ آزمون‌هایِ دشوار (hard_exams_count / کل) محاسبه
+       می‌شود؛ وقتی هم آزمونی نیست null گزارش می‌شود (الگویِ «پنهان‌نکردنِ
+       دادهٔ غایب» — نه یک عددِ جعلی). */
+    average_difficulty_p_value: totalExams > 0 ? Math.round((totalHard / totalExams) * 100) / 100 : null,
     grade_inflation_clusters_detected: 0
   };
 

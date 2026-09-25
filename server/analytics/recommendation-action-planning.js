@@ -266,10 +266,18 @@ function generateActionRecommendations(params = {}, options = {}) {
   const cases = Array.isArray(params.interventionCases) ? params.interventionCases : [];
 
   // ۱. ارزیابی سیگنال‌های غیبت و حضور
-  const attRate = Number(sch.attendance_rate ?? sch.calendar_rate ?? 90.0);
-  const chronicRate = Number(sch.chronic_absence_rate ?? (attRate < 85 ? 14.2 : 5.0));
+  // D1 (بازمانده): نرخ‌ها فقط وقتی موجودند که واقعاً در شات مدرسه باشند؛
+  // مدرسه‌ای بدون دادهٔ حضور نباید با نرخ ۹۰/۵ ارزیابی شود.
+  const attRate = sch.attendance_rate != null || sch.calendar_rate != null
+    ? Number(sch.attendance_rate ?? sch.calendar_rate)
+    : null;
+  const chronicRate = sch.chronic_absence_rate != null ? Number(sch.chronic_absence_rate) : null;
+  const attendanceKnown = attRate != null || chronicRate != null;
 
-  if (chronicRate >= 10.0 || attRate < 85.0) {
+  const chronicAbsent = chronicRate != null && chronicRate >= 10.0;
+  const attendanceLow = attRate != null && attRate < 85.0;
+
+  if (attendanceKnown && (chronicAbsent || attendanceLow)) {
     rawList.push({
       recommendation_id: `ACT-REC-SCH${schoolId}-${now.replace(/[^0-9]/g, '').slice(0, 8)}-ATT01`,
       type: ACTION_TYPES.ATTENDANCE_SUPPORT,

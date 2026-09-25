@@ -19,6 +19,13 @@ const NAMESPACES = new Set(['attendance', 'classes', 'grades', 'users']);
 function createIds({ db, cache }){
   const bootstrapped = new Set(); /* دنباله‌های هم‌ترازشده در این فرایند */
   const chains = new Map();       /* میوتکس فرایندی به‌ازای هر فضانام */
+  /* P2 (A-04): آخرین شناسهٔ صادرشدهٔ هر فضانام. فراخوانِ nextId رکورد را
+     بعد از یک یا چند await به store اضافه می‌کند، پس صرفِ محاسبهٔ localMax
+     زیرِ قفل کافی نیست: درخواستِ دوم ممکن است هنوز-push-نشده ببیند و همان
+     عدد را بگیرد. این شمارندهٔ یکنوایِ صعودی آن را غیرممکن می‌کند
+     (دقیقاً مثلِ رفتارِ یک دنباله: یکتا، و در صورتِ شکستِ درج ممکن است
+     عددی را بشورد). */
+  const lastIssued = new Map();
 
   const localMax = (list) => {
     let m = 0;
@@ -74,14 +81,19 @@ function createIds({ db, cache }){
     }
   };
 
-  /* مکس+۱ محافظت‌شده: میوتکس فرایندی + قفل توزیع‌شده (اگر باشد) */
+  /* مکس+۱ محافظت‌شده: میوتکس فراینی + قفل توزیع‌شده (اگر باشد) + تضمینِ
+     صعودِ یکنوایِ شناسه (lastIssued) حتی اگر درجِ فراخوان هنوز انجام
+     نشده باشد. */
   const guardedMaxPlusOne = async (col, list) => {
     let token = null;
     if(cache){
       try{ token = await cache.acquireLock('ids:' + col, 5); }catch(e){}
     }
     try{
-      return localMax(list) + 1;
+      const base = Math.max(localMax(list), lastIssued.get(col) || 0);
+      const id = base + 1;
+      lastIssued.set(col, id);
+      return id;
     }finally{
       if(cache && token){ try{ await cache.releaseLock('ids:' + col, token); }catch(e){} }
     }

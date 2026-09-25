@@ -33,8 +33,11 @@ for (const line of spec.split('\n')) {
   if (om && curPath) specRoutes.set(om[1].toUpperCase() + ' ' + curPath, true);
 }
 
+/* MUSE_SPARK 2026-09-25 (H-04): مسیر فقط-تستِ env-gated باید صراحتاً allowlist شود،
+   نه اینکه با فرض محیط ثابت پنهان بماند. */
+const TEST_ONLY_ALLOW = new Set(['GET /api/__slow']);
 // ── مقایسه ──
-const inCodeNotSpec = [...codeRoutes.keys()].filter((k) => !specRoutes.has(k)).sort();
+const inCodeNotSpec = [...codeRoutes.keys()].filter((k) => !specRoutes.has(k) && !TEST_ONLY_ALLOW.has(k)).sort();
 const inSpecNotCode = [...specRoutes.keys()].filter((k) => !codeRoutes.has(k)).sort();
 
 console.log('■ دریفت اوپن‌ای‌پی‌آی — کد در برابر اسپک');

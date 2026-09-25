@@ -41,10 +41,28 @@ function createSms(ctx){
 
   const partsOf = (body) => Math.max(1, Math.ceil(String(body || '').length / 66));
   const today = () => new Date().toISOString().slice(0, 10);
+
+  /* A-04/A-06: شمارندهٔ یکنوایِ صعودی — همان الگوی server/ids.js.
+     تا پیش از این هر push، کلِ collection را برای یافتنِ max بعدی پیمایش
+     می‌کرد. رویِ sms_logِ append-only این یک O(n²)ِ پنهان است: یک دستهٔ
+     ۵۰۰تایی رویِ ۲۰۰هزار ردیف ~۲.۵ ثانیه فقط برایِ تخصیصِ شناسه.
+     sms_log و sms_wallet فقط از همین ماژول نوشته می‌شوند (تأیید با grep
+     رویِ کلِ server/) پس این شمارنده از نوشتنِ بیرونی عقب نمی‌ماند.
+     اگر آرایه جایگزین و کوتاه‌تر شود (آبگیریِ دوباره از PG) کش، از طریقِ
+     طول، بی‌اعتبار می‌شود. */
+  const idHigh = new Map();
+  const idHighLen = new Map();
   function nextId(c){
-    let m = 0;
-    for(const x of store[c] || []) if(x.id != null && x.id > m) m = x.id;
-    return m + 1;
+    const list = store[c] || [];
+    let m = idHigh.get(c);
+    if(m === undefined || (list.length || 0) < (idHighLen.get(c) || 0)){
+      m = 0;
+      for(const x of list) if(x.id != null && x.id > m) m = x.id;
+    }
+    const id = m + 1;
+    idHigh.set(c, id);
+    idHighLen.set(c, list.length + 1);
+    return id;
   }
 
   /* سازگارِ درگاه — نقطهٔ تعویض (PLAN §4).
@@ -70,10 +88,46 @@ function createSms(ctx){
   }
 
   /* سقف به واحدِ «قطعهٔ ارسال‌شدهٔ امروز» است (همان معیارِ کلاینت) */
-  function usedToday(sid){
-    const t = today();
+  function usedTodayRaw(sid, t){
     return (store.sms_log || []).reduce((a, l) =>
       (l.school_id === sid && l.created_at === t && l.status === 'sent') ? a + (l.parts || 1) : a, 0);
+  }
+
+  /* A-06: حلقهٔ پیش‌بازرسیِ سقف (پایین‌تر) این تابع را به‌ازایِ هر آیتمِ
+     دسته (تا ۵۰۰) صدا می‌زند و sms_log فقط append است و هرگز هرس نمی‌شود.
+     نتیجه: O(دسته × log) در هر درخواست — ۴.۱ ثانیه رویِ ۲۰۰هزار ردیف —
+     و چون log با هر ارسال می‌گذرد، به‌ازایِ هر درخواست ازِ قبل کندتر است
+     (هیچ حالتِ پایا‌ای وجود ندارد).
+     حلقهٔ پیش‌بازرسی قبل از هر ارسالی و کاملاً همگام (بدونِ await) اجرا
+     می‌شود، پس مقدارِ usedToday در طولِ آن ثابت است. مموی‌سازیِ
+     هردرخواستی آن را O(تعدادِ مدرسه × log) می‌کند — یعنی رفتارِ خروجی
+     یکسان، با حذفِ عاملِ اندازهٔ دسته. */
+  function makeUsedToday(){
+    const day = today();
+    const cache = new Map();
+    return function usedToday(sid){
+      const t = today();
+      if(t !== day) return usedTodayRaw(sid, t); /* عبور از نیمه‌شب: کش بی‌اعتبار است */
+      const key = sid + '|' + t;
+      let v = cache.get(key);
+      if(v === undefined){ v = usedTodayRaw(sid, t); cache.set(key, v); }
+      return v;
+    };
+  }
+
+  /* A-06: سومین نمونهٔ همان الگو — بررسیِ ایدمپوتانس (در حلقهٔ ارسال)
+     به ازایِ هر گیرنده، کلِ sms_log را باِ .some پیمایش می‌کرد: رویِ
+     ۲۰۰هزار ردیف و دستهٔ ۵۰۰تایی، ۱۰۰ میلیون پیمایش. یک ایندکسِ
+     (queue_id|user_id) رویِ رکوردهایِ sent، آن را O(1) می‌کند.
+     یکبار در هر apiSend ساخته می‌شود (قبل از هر ارسال)، پس هیچ
+    stalenessی بینِ درخواست‌ها وجود ندارد و کلیدهایِ این درخواست را
+     قبل از push افزودیم تا آیتمِ خودمان را به‌اشتباه dedupe نکنیم. */
+  function makeSentIndex(){
+    const idx = new Set();
+    (store.sms_log || []).forEach((l) => {
+      if(l && l.status === 'sent' && l.queue_id != null && l.user_id != null) idx.add(l.queue_id + '|' + l.user_id);
+    });
+    return idx;
   }
 
   async function apiSend(req, res, body){
@@ -99,10 +153,19 @@ function createSms(ctx){
     const users = store.users || [];
     const out = { sent: 0, skipped_already: 0, skipped_credit: 0, failed: 0, credits_used: 0, dry_run: DRY_RUN };
 
+    const usedToday = makeUsedToday(); /* A-06: یک پازش به ازایِ مدرسه، نه به ازایِ آیتم */
+    const sentIndex = makeSentIndex(); /* A-06: ایندکسِ ایدمپوتانس، نه پازشِ هر گیرنده */
+
+    /* A-06: نفسِ الگو برایِ جستجویِ صف: find درونِ حلقه به ازایِ هر
+       queue_id کلِ notify_queue را پیمایش می‌کرد (O(دسته × صف)). یک
+       ایندکسِ یک‌بار، آن را O(دسته + صف) می‌کند — خروجی یکسان است. */
+    const queueById = new Map();
+    (store.notify_queue || []).forEach(q => { if(q && q.id != null) queueById.set(q.id, q); });
+
     /* جمع‌بندیِ دسته + پیش‌بازرسیِ سقف (طرحِ قفل‌شده: عبور = 429 daily_cap برایِ کلِ دسته) */
     const items = [];
     for(const qid of ids){
-      const q = (store.notify_queue || []).find(x => x.id === qid);
+      const q = queueById.get(qid);
       if(!q || q.status !== 'pending'){ out.skipped_already++; continue; }
       const parents = (q.parent_ids || []).map(pid => users.find(u => u.id === pid)).filter(Boolean);
       if(!parents.length){ out.skipped_already++; continue; }
@@ -159,12 +222,13 @@ function createSms(ctx){
       if(!Array.isArray(store.sms_log)) store.sms_log = [];
       const itemOps = []; /* Wave1-W: نوشت‌هایِ آیتم — یک تراکنش برایِ همه */
       for(const r of results){
-        const dup = store.sms_log.some(l => l.status === 'sent' && l.queue_id === qid && l.user_id === r.parent.id);
+        const dup = sentIndex.has(qid + '|' + r.parent.id);
         if(dup) continue;                       /* ایدمپوتانس */
         const lrec = { id: nextId('sms_log'), school_id: q.school_id,
           user_id: r.parent.id, phone: r.phone, body: q.body, parts: r.parts,
           status: 'sent', provider_msg: r.msg, queue_id: qid, created_at: today() };
         store.sms_log.push(lrec);
+        sentIndex.add(qid + '|' + r.parent.id); /* A-06: ایندکسِ همین درخواست را تازه نگه می‌دارد */
         itemOps.push({ c: 'sms_log', t: 'ins', data: lrec });
       }
       w.balance = Number(w.balance || 0) - cost;

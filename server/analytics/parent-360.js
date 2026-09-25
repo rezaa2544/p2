@@ -83,11 +83,22 @@ function buildParent360Profile(params = {}, options = {}) {
   const studentId = student.id || params.studentId || options.studentId;
   const parentId = parent.id || params.parentId || options.parentId;
 
-  // اعمال گارد امنیتی والد-فرزند
-  enforceParentChildAccessGuard(parentId, studentId, parentLinks, {
-    student,
-    expectedSchoolId: options.expectedSchoolId
-  });
+  // مسیر مجاز برای نقش‌های مدرسه (manager/teacher/counselor): وقتی صراحتاً
+  // مدرسهٔ مورد نظر تأیید شده باشد، نیازی به پیوند والد-فرزند نیست.
+  // route این گزینه را فقط بعد از گذراندن گارد دسترسی مدرسه فعال می‌کند.
+  if (options.schoolScopedAccess === true && options.expectedSchoolId != null) {
+    if (student && student.school_id != null && Number(student.school_id) !== Number(options.expectedSchoolId)) {
+      const err = new Error(`TENANT_ISOLATION_VIOLATION: student school ${student.school_id} !== expected ${options.expectedSchoolId}`);
+      err.code = 'TENANT_ISOLATION_VIOLATION';
+      throw err;
+    }
+  } else {
+    // اعمال گارد امنیتی والد-فرزند
+    enforceParentChildAccessGuard(parentId, studentId, parentLinks, {
+      student,
+      expectedSchoolId: options.expectedSchoolId
+    });
+  }
 
   if (options.expectedSchoolId != null) {
     enforceTenantIsolation(attendance, options.expectedSchoolId);

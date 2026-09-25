@@ -1,31 +1,53 @@
-# Use the latest 2.1 version of CircleCI pipeline process engine.
-# See: https://circleci.com/docs/reference/configuration-reference/
+# Payesh — CircleCI real gate.
+#
+# D4 remediation: the previous configuration's only job (`say-hello`) ran
+# `echo Hello, World!`. It was the sole green check on the current HEAD while
+# executing no test at all — a textbook false-green. This job runs the actual
+# build-integrity and educational-intelligence suites so the "success" check
+# means something. `cimg/base:current` ships Node.js (>=22 required).
 version: 2.1
 
-# Define a job to be invoked later in a workflow.
-# See: https://circleci.com/docs/guides/orchestrate/jobs-steps/#jobs-overview & https://circleci.com/docs/reference/configuration-reference/#jobs
 jobs:
-  say-hello:
-    # Specify the execution environment. You can specify an image from Docker Hub or use one of our convenience images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/guides/execution-managed/executor-intro/ & https://circleci.com/docs/reference/configuration-reference/#executor-job
+  payesh-node-gate:
     docker:
-      # Specify the version you desire here
-      # See: https://circleci.com/developer/images/image/cimg/base
       - image: cimg/base:current
-
-    # Add steps to the job
-    # See: https://circleci.com/docs/guides/orchestrate/jobs-steps/#steps-overview & https://circleci.com/docs/reference/configuration-reference/#steps
     steps:
-      # Checkout the code as the first step.
       - checkout
       - run:
-          name: "Say hello"
-          command: "echo Hello, World!"
+          name: "Report Node version (must be >= 22)"
+          command: |
+            node --version
+            MAJOR=$(node --version | sed 's/v\([0-9]*\).*/\1/')
+            if [ "$MAJOR" -lt 22 ]; then
+              echo "Node >= 22 required, found $MAJOR — failing loudly instead of silently skipping."
+              exit 1
+            fi
+      - run:
+          name: "Client build integrity + offline guarantees (tests/run.js)"
+          command: node tests/run.js
+      - run:
+          name: "Educational intelligence semantic suite (33 suites)"
+          command: node tests/semantic-layer/runner.js
+      - run:
+          name: "Analytics wiring guard (rejects orphan engines)"
+          command: node tests/analytics-wiring-guard.test.js
+      - run:
+          name: "No-data-masking gate (D1)"
+          command: node tests/no-data-masking.test.js
+      - run:
+          name: "Real timestamps + fingerprint uniqueness (D2)"
+          command: node tests/analytics-timestamps.test.js
+      - run:
+          name: "Phase 9.0 wiring gate E2E (D3)"
+          command: node tests/semantic-analytics-e2e.test.js
+      - run:
+          name: "Non-circular release certification (D5)"
+          command: node tests/certification-non-circular.test.js
+      - run:
+          name: "Client consumer render gate (D6)"
+          command: node tests/intelligence-client-render.test.js
 
-# Orchestrate jobs using workflows
-# See: https://circleci.com/docs/guides/orchestrate/workflows/ & https://circleci.com/docs/reference/configuration-reference/#workflows
 workflows:
-  say-hello-workflow: # This is the name of the workflow, feel free to change it to better match your workflow.
-    # Inside the workflow, you define the jobs you want to run.
+  payesh-gate:
     jobs:
-      - say-hello
+      - payesh-node-gate

@@ -17,9 +17,22 @@
 const crypto = require('crypto');
 
 /**
- * شناسه‌های رسمی ۱۲ موتور هوشمندی پلتفرم فاز ۳
+ * شناسه‌های رسمی موتورهای هوشمندی پلتفرم (۲۰ موتور)
+ *
+ * توجه (رفع عیب D5): کاتالوگ پیش از این تنها ۱۲ موتور فاز ۳ (EI-09..EI-20) را
+ * پوشش می‌داد و هشت موتور لایه معنایی (P0-EI-01..P0-EI-08) به‌کل غایب بودند.
+ * این هشت موتور درFinding F-EI-01 به‌عنوان کد یتیم (بدون مصرف‌کننده رانتایم)
+ * شناسایی و در Phase 9.0 Wiring Gate متصل شدند؛ اکنون بخش رسمی کاتالوگ هستند.
  */
 const PHASE3_ENGINE_ID = Object.freeze({
+  EI_01_SEMANTIC: 'P0-EI-01-Semantic',
+  EI_02_STUDENT_TIMELINE: 'P0-EI-02-StudentTimeline',
+  EI_03_ASSESSMENT: 'P0-EI-03-AssessmentIntelligence',
+  EI_04_ATTENDANCE: 'P0-EI-04-AttendanceIntelligence',
+  EI_05_SCHOOL_HEALTH_DASHBOARD: 'P0-EI-05-SchoolHealthDashboard',
+  EI_06_PARENT_360: 'P0-EI-06-Parent360',
+  EI_07_TEACHER_EVIDENCE: 'P0-EI-07-TeacherEvidence',
+  EI_08_INTERVENTION_CASES: 'P0-EI-08-InterventionCaseManagement',
   EI_09_SCHOOL_INTELLIGENCE: 'EI-09-SchoolIntelligence',
   EI_10_REGIONAL_NETWORK: 'EI-10-RegionalIntelligenceNetwork',
   EI_11_QUALITY_GOVERNANCE: 'EI-11-QualityGovernance',
@@ -49,6 +62,7 @@ const CERTIFICATION_STATUS = Object.freeze({
 const CANONICAL_PHASE3_CATALOG = Object.freeze([
   {
     engine_id: PHASE3_ENGINE_ID.EI_09_SCHOOL_INTELLIGENCE,
+    module: 'school-intelligence-center',
     name: 'مرکز هوشمندی مدرسه',
     contract_version: '1.0.0',
     domain: 'ANALYTICS',
@@ -57,6 +71,7 @@ const CANONICAL_PHASE3_CATALOG = Object.freeze([
   },
   {
     engine_id: PHASE3_ENGINE_ID.EI_10_REGIONAL_NETWORK,
+    module: 'regional-intelligence-network',
     name: 'شبکه هوشمندی منطقه‌ای',
     contract_version: '1.0.0',
     domain: 'REGIONAL',
@@ -65,6 +80,7 @@ const CANONICAL_PHASE3_CATALOG = Object.freeze([
   },
   {
     engine_id: PHASE3_ENGINE_ID.EI_11_QUALITY_GOVERNANCE,
+    module: 'quality-governance',
     name: 'حاکمیت کیفیت داده‌ها',
     contract_version: '1.0.0',
     domain: 'GOVERNANCE',
@@ -73,6 +89,7 @@ const CANONICAL_PHASE3_CATALOG = Object.freeze([
   },
   {
     engine_id: PHASE3_ENGINE_ID.EI_12_LONGITUDINAL_MONITORING,
+    module: 'longitudinal-intelligence-monitoring',
     name: 'پایش طولی و تحلیل مسیر تحصیلی',
     contract_version: '1.0.0',
     domain: 'ANALYTICS',
@@ -81,6 +98,7 @@ const CANONICAL_PHASE3_CATALOG = Object.freeze([
   },
   {
     engine_id: PHASE3_ENGINE_ID.EI_13_ACTION_RECOMMENDATION,
+    module: 'recommendation-action-planning',
     name: 'موتور پیشنهاددهنده و برنامه‌ریزی اقدام',
     contract_version: '1.0.0',
     domain: 'DECISION',
@@ -89,6 +107,7 @@ const CANONICAL_PHASE3_CATALOG = Object.freeze([
   },
   {
     engine_id: PHASE3_ENGINE_ID.EI_14_FEEDBACK_MEMORY,
+    module: 'intelligence-feedback-memory',
     name: 'حافظه سازمانی و حلقه بازخورد',
     contract_version: '1.0.0',
     domain: 'LEARNING',
@@ -97,6 +116,7 @@ const CANONICAL_PHASE3_CATALOG = Object.freeze([
   },
   {
     engine_id: PHASE3_ENGINE_ID.EI_15_INTELLIGENCE_GOVERNANCE,
+    module: 'intelligence-governance-dashboard',
     name: 'داشبورد حاکمیت و شفافیت هوش مصنوعی',
     contract_version: '1.0.0',
     domain: 'GOVERNANCE',
@@ -105,6 +125,7 @@ const CANONICAL_PHASE3_CATALOG = Object.freeze([
   },
   {
     engine_id: PHASE3_ENGINE_ID.EI_16_POLICY_SIMULATION,
+    module: 'policy-simulation-engine',
     name: 'موتور شبیه‌سازی خط‌مشی‌های آموزشی',
     contract_version: '1.0.0',
     domain: 'SIMULATION',
@@ -113,6 +134,7 @@ const CANONICAL_PHASE3_CATALOG = Object.freeze([
   },
   {
     engine_id: PHASE3_ENGINE_ID.EI_17_DECISION_COMMAND,
+    module: 'decision-intelligence-command',
     name: 'ارکستراسیون فرماندهی و هوش تصمیم',
     contract_version: '1.0.0',
     domain: 'COMMAND',
@@ -121,6 +143,7 @@ const CANONICAL_PHASE3_CATALOG = Object.freeze([
   },
   {
     engine_id: PHASE3_ENGINE_ID.EI_18_OPERATIONAL_EXECUTION,
+    module: 'operational-intelligence-execution',
     name: 'لایه اجرای عملیاتی وظایف مدرسه',
     contract_version: '1.0.0',
     domain: 'EXECUTION',
@@ -129,6 +152,7 @@ const CANONICAL_PHASE3_CATALOG = Object.freeze([
   },
   {
     engine_id: PHASE3_ENGINE_ID.EI_19_OUTCOME_EVALUATION,
+    module: 'outcome-evaluation-optimization',
     name: 'ارزیابی پیامد و بهینه‌سازی مستمر',
     contract_version: '1.0.0',
     domain: 'OPTIMIZATION',
@@ -137,11 +161,84 @@ const CANONICAL_PHASE3_CATALOG = Object.freeze([
   },
   {
     engine_id: PHASE3_ENGINE_ID.EI_20_PLATFORM_INTEGRATION,
+    module: 'intelligence-platform-integration',
     name: 'لایه یکپارچه‌سازی و رجیستری پلتفرم هوشمندی',
     contract_version: '1.0.0',
     domain: 'INTEGRATION',
     status: 'ACTIVE',
     dependencies: [PHASE3_ENGINE_ID.EI_19_OUTCOME_EVALUATION]
+  },
+  {
+    engine_id: PHASE3_ENGINE_ID.EI_01_SEMANTIC,
+    module: 'semantic',
+    name: 'لایه معنایی آموزشی',
+    contract_version: '1.0.0',
+    domain: 'SEMANTIC',
+    status: 'ACTIVE',
+    dependencies: []
+  },
+  {
+    engine_id: PHASE3_ENGINE_ID.EI_02_STUDENT_TIMELINE,
+    module: 'student-timeline',
+    name: 'موتور تایم‌لاین طولی دانش‌آموز',
+    contract_version: '1.0.0',
+    domain: 'ANALYTICS',
+    status: 'ACTIVE',
+    dependencies: [PHASE3_ENGINE_ID.EI_01_SEMANTIC]
+  },
+  {
+    engine_id: PHASE3_ENGINE_ID.EI_03_ASSESSMENT,
+    module: 'assessment-intelligence',
+    name: 'موتور هوشمندی سنجش و ارزشیابی',
+    contract_version: '1.0.0',
+    domain: 'ANALYTICS',
+    status: 'ACTIVE',
+    dependencies: [PHASE3_ENGINE_ID.EI_01_SEMANTIC]
+  },
+  {
+    engine_id: PHASE3_ENGINE_ID.EI_04_ATTENDANCE,
+    module: 'attendance-intelligence',
+    name: 'موتور هوشمندی حضور و غیاب',
+    contract_version: '1.0.0',
+    domain: 'ANALYTICS',
+    status: 'ACTIVE',
+    dependencies: [PHASE3_ENGINE_ID.EI_01_SEMANTIC]
+  },
+  {
+    engine_id: PHASE3_ENGINE_ID.EI_05_SCHOOL_HEALTH_DASHBOARD,
+    module: 'school-health-dashboard',
+    name: 'داشبورد سلامت مدرسه و مرکز تصمیم',
+    contract_version: '1.0.0',
+    domain: 'ANALYTICS',
+    status: 'ACTIVE',
+    dependencies: [PHASE3_ENGINE_ID.EI_01_SEMANTIC]
+  },
+  {
+    engine_id: PHASE3_ENGINE_ID.EI_06_PARENT_360,
+    module: 'parent-360',
+    name: 'نمای ۳۶۰ درجه والدین و مرکز اقدام خانواده',
+    contract_version: '1.0.0',
+    domain: 'ANALYTICS',
+    status: 'ACTIVE',
+    dependencies: [PHASE3_ENGINE_ID.EI_01_SEMANTIC]
+  },
+  {
+    engine_id: PHASE3_ENGINE_ID.EI_07_TEACHER_EVIDENCE,
+    module: 'teacher-evidence',
+    name: 'چارچوب شواهد تدریس و کیفیت‌بخشی معلمان',
+    contract_version: '1.0.0',
+    domain: 'ANALYTICS',
+    status: 'ACTIVE',
+    dependencies: [PHASE3_ENGINE_ID.EI_01_SEMANTIC]
+  },
+  {
+    engine_id: PHASE3_ENGINE_ID.EI_08_INTERVENTION_CASES,
+    module: 'intervention-case-management',
+    name: 'مدیریت پرونده‌های مداخله زودهنگام',
+    contract_version: '1.0.0',
+    domain: 'DECISION',
+    status: 'ACTIVE',
+    dependencies: [PHASE3_ENGINE_ID.EI_04_ATTENDANCE, PHASE3_ENGINE_ID.EI_03_ASSESSMENT]
   }
 ]);
 
@@ -204,12 +301,134 @@ function enforceCertificationAccessGuard(user, target = {}) {
 }
 
 /**
- * اعتبارسنجی جامعیت و کمال رجیستری ۱۲ موتور فاز ۳ (validateEngineCompleteness)
+ * اسکن واقعی گراف require سرور برای یافتن موتورهای دارای مسیر رانتایم زنده.
+ *
+ * رفع عیب D5: نسخهٔ پیشین فقط کاتالوگِ خود را چک می‌کرد تا ببیند آیا همهٔ
+ * که آیا همهٔ شناسه‌ها در همان کاتالوگ present و ACTIVE هستند یا نه. این
+ * بررسی کاملاً چرخشی بود: یک موتور یتیم (بدون هیچ مصرف‌کنندهٔ رانتایم)
+ * تا ابد در گزارش‌ها «پیاده‌سازی‌شده» می‌نمود. این تابع، گراف require واقعی
+ * را از فایل‌های زندهٔ سرور (غیر analytics) پیمایش می‌کند تا فقط موتورهایی
+ * «متصل» حساب شوند که از یک ریشهٔ زنده قابل دسترسی باشند.
+ *
+ * @param {Object} options - { rootDir }
+ * @returns {Object} { wired: Set, orphans: Array, modulesOnDisk: Array }
+ */
+function computeRuntimeWiring(options = {}) {
+  const fs = require('fs');
+  const path = require('path');
+  const rootDir = options.rootDir || path.join(__dirname, '..', '..');
+  const analyticsDir = path.join(rootDir, 'server', 'analytics');
+
+  const modulesOnDisk = (() => {
+    try {
+      return fs.readdirSync(analyticsDir)
+        .filter((f) => f.endsWith('.js'))
+        .map((f) => f.replace(/\.js$/, ''));
+    } catch (e) {
+      return [];
+    }
+  })();
+  const moduleNames = new Set(modulesOnDisk);
+
+  const sites = [];
+  const serverDir = path.join(rootDir, 'server');
+  const queue = [serverDir];
+  const seen = new Set();
+  while (queue.length > 0) {
+    const dir = queue.pop();
+    if (seen.has(dir)) continue;
+    seen.add(dir);
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (e) {
+      continue;
+    }
+    for (const ent of entries) {
+      const full = path.join(dir, ent.name);
+      if (ent.isDirectory()) {
+        queue.push(full);
+      } else if (ent.name.endsWith('.js')) {
+        sites.push(full);
+      }
+    }
+  }
+
+  const readText = (p) => {
+    try {
+      return fs.readFileSync(p, 'utf8');
+    } catch (e) {
+      return '';
+    }
+  };
+
+  const analyticsRequiresOf = (text) => {
+    const out = new Set();
+    const re = /require\(\s*['"]([^'"]+)['"]\s*\)/g;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const base = m[1].split('/').pop().replace(/\.js$/, '');
+      if (moduleNames.has(base)) out.add(base);
+    }
+    return out;
+  };
+
+  // یال‌های گراف: از فایل سروری به موتورها، و از موتور به موتور.
+  const edges = new Map();
+  for (const file of sites) {
+    const text = readText(file);
+    const isAnalytics = file.split(path.sep).includes('analytics');
+    edges.set(file, analyticsRequiresOf(text));
+    if (isAnalytics) {
+      const base = path.basename(file, '.js');
+      if (moduleNames.has(base)) {
+        if (!edges.has(base)) edges.set(base, new Set());
+        for (const tgt of analyticsRequiresOf(text)) edges.get(base).add(tgt);
+      }
+    }
+  }
+
+  // BFS از ریشه‌های زنده (فایل‌های سروری غیر-analytics) درون گراف موتورها.
+  const live = new Set();
+  const stack = [];
+  for (const file of sites) {
+    if (file.split(path.sep).includes('analytics')) continue;
+    for (const tgt of edges.get(file) || []) {
+      if (!live.has(tgt)) {
+        live.add(tgt);
+        stack.push(tgt);
+      }
+    }
+  }
+  while (stack.length > 0) {
+    const node = stack.pop();
+    for (const tgt of edges.get(node) || []) {
+      if (!live.has(tgt)) {
+        live.add(tgt);
+        stack.push(tgt);
+      }
+    }
+  }
+
+  return {
+    wired: live,
+    orphans: modulesOnDisk.filter((m) => !live.has(m)),
+    modulesOnDisk
+  };
+}
+
+/**
+ * اعتبارسنجی جامعیت و کمال رجیستری موتورهای هوشمندی (validateEngineCompleteness)
+ *
+ * رفع عیب D5: علاوه بر کاتالوگ، اتصال رانتایم واقعی هر موتور را بررسی می‌کند.
+ * یک موتور که در کاتالوگ ACTIVE است اما هیچ مصرف‌کنندهٔ رانتایمی ندارد،
+ * «کد مرده» است و گواهی انتشار نباید صادر شود.
  *
  * @param {Array} catalog - لیست موتورها (پیش‌فرض: CANONICAL_PHASE3_CATALOG)
+ * @param {Object} options - { runtimeWiring } برای تزریق در تست‌ها
  * @returns {Object}
  */
-function validateEngineCompleteness(catalog = CANONICAL_PHASE3_CATALOG) {
+function validateEngineCompleteness(catalog = CANONICAL_PHASE3_CATALOG, options = {}) {
   const engines = Array.isArray(catalog) ? catalog : CANONICAL_PHASE3_CATALOG;
   const requiredEngineIds = Object.values(PHASE3_ENGINE_ID);
   const presentEngineIds = new Set(engines.map(e => e.engine_id));
@@ -217,20 +436,60 @@ function validateEngineCompleteness(catalog = CANONICAL_PHASE3_CATALOG) {
   const missing = requiredEngineIds.filter(id => !presentEngineIds.has(id));
   const activeEngines = engines.filter(e => e.status === 'ACTIVE' && e.contract_version === '1.0.0');
 
-  const complete = missing.length === 0 && activeEngines.length >= 12;
+  // ── بررسی اتصال واقعی رانتایم (D5) ──────────────────────────────────
+  // یک موتور در کاتالوگ می‌تواند ACTIVE باشد و در عین حال هیچ مسیر زنده‌ای
+  // به آن نباشد (کد مرده). این بخش، نسخهٔ چرخشیِ قدیمی را غیرچرخشی می‌کند:
+  // منبع حقیقت، فایل‌های سرور روی دیسک هستند، نه اظهارنامهٔ خود کاتالوگ.
+  const totalRequired = requiredEngineIds.length;
+  const wiring = options.runtimeWiring || computeRuntimeWiring();
+  const wiredSet = wiring.wired instanceof Set ? wiring.wired : new Set(wiring.wired || []);
+  // مهر زمان باید از مهر تزریقیِ فراخوانی گرفته شود تا قطعیت در اجراهای
+  // متوالی (آزمون deterministic) حفظ شود؛ زمانِ دیواری اینجا مجاز نیست.
+  const wiringTimestamp = options.timestamp || options.now || null;
+
+  // موتورهایی که در کاتالوگ ACTIVE اعلام شده‌اند اما هیچ مصرف‌کننده‌ای ندارند.
+  const deadActiveEngines = engines
+    .filter(e => e.status === 'ACTIVE' && e.module && !wiredSet.has(e.module))
+    .map(e => e.module);
+
+  // موتورهای موجود روی دیسک که اصلاً در کاتالوگ ثبت نشده‌اند (از قلم افتاده).
+  // خودِ این ماژول (دروازهٔ صدور گواهی) شامل نمی‌شود: گواهی‌دهنده نمی‌تواند
+  // همزمان مورد گواهی واقع شود — ارجاع آن خودارجاع است، نه یتیمی.
+  const SELF_MODULE = 'intelligence-release-certification';
+  const registeredModules = new Set(engines.map(e => e.module).filter(Boolean));
+  registeredModules.add(SELF_MODULE);
+  const unregisteredModules = (wiring.modulesOnDisk || [])
+    .filter(m => !registeredModules.has(m));
+
+  const complete = missing.length === 0 &&
+                   activeEngines.length === totalRequired &&
+                   deadActiveEngines.length === 0;
 
   return deepFreeze({
     complete,
-    total_required: 12,
+    total_required: totalRequired,
     total_present: engines.length,
     active_count: activeEngines.length,
     missing_engines: missing,
+    runtime_wiring: {
+      modules_on_disk: (wiring.modulesOnDisk || []).length,
+      wired_count: wiredSet.size,
+      orphan_count: (wiring.orphans || []).length,
+      orphans: (wiring.orphans || []).slice(),
+      // موتورهای ACTIVE در کاتالوگ که مسیر رانتایم ندارند → گواهی مسدود می‌شود
+      dead_active_modules: deadActiveEngines,
+      // موتورهای روی دیسک که در کاتالوگ رسمی غایب‌اند → شکاف ثبت
+      unregistered_modules: unregisteredModules,
+      wiring_verified_at: wiringTimestamp
+    },
     catalog_snapshot: engines.map(e => ({
       engine_id: e.engine_id,
+      module: e.module,
       name: e.name,
       contract_version: e.contract_version,
       domain: e.domain,
-      status: e.status
+      status: e.status,
+      wired: e.module ? wiredSet.has(e.module) : null
     }))
   });
 }
@@ -605,7 +864,7 @@ function executeEndToEndChain(inputSignal = {}, options = {}) {
  */
 function generatePhase3ReleaseCertificate(params = {}, options = {}) {
   const nowIso = options.timestamp || '2026-09-18T12:00:00.000Z';
-  const completeness = params.completeness || validateEngineCompleteness();
+  const completeness = params.completeness || validateEngineCompleteness(CANONICAL_PHASE3_CATALOG, { timestamp: nowIso });
   const qualityGates = params.qualityGates || validateQualityGateStatus();
   const sovereignty = params.sovereignty || validateHumanSovereigntyAcrossPlatform(params);
   const zeroRanking = params.zeroRanking || validateZeroRankingCompliance(params);
@@ -691,7 +950,7 @@ function runPhase3Certification(params = {}, options = {}) {
     requires_human_approval: true
   };
 
-  const completeness = validateEngineCompleteness();
+  const completeness = validateEngineCompleteness(CANONICAL_PHASE3_CATALOG, { timestamp: nowIso });
   const qualityGates = validateQualityGateStatus();
   const sovereignty = validateHumanSovereigntyAcrossPlatform(platformOutputs);
   const zeroRanking = validateZeroRankingCompliance(platformOutputs);
@@ -731,6 +990,7 @@ module.exports = {
   CANONICAL_PHASE3_CATALOG,
   deepFreeze,
   enforceCertificationAccessGuard,
+  computeRuntimeWiring,
   validateEngineCompleteness,
   validateHumanSovereigntyAcrossPlatform,
   validateZeroRankingCompliance,

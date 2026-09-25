@@ -161,6 +161,18 @@ function createClassRoutes(ctx) {
     }
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
+
+    /* A-21: homeroom_teacher_id یک FK بیرون‌کنترل بود — دبیرِ مدرسه‌ای دیگر
+       می‌توانست به کلاسِ مدرسهٔ دیگر انتساب یابد. این کار teacherClassIdsِ
+       آن دبیر را با کلاسِ این مدرسه آلوده می‌کند و چون بازویِ دبیرِ
+       policy.inScope بررسیِ مدرسه نمی‌کند، به او دسترسیٔ نوشتن روی دادهٔ
+       مدرسه‌ای دیگر می‌دهد (cross-tenant escalation). */
+    if (body.homeroom_teacher_id) {
+      const ht = (store.users || []).find((u) => Number(u.id) === Number(body.homeroom_teacher_id));
+      if (!ht || ht.role !== 'teacher' || Number(ht.school_id) !== Number(schoolId))
+        return { status: 400, body: { ok: false, code: 'invalid_homeroom_teacher', message: 'معلمِ مسئول باید دبیرِ همین مدرسه باشد' } };
+    }
+
     /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
     const nextId = await ids.nextId('classes', store.classes);
 
@@ -207,12 +219,25 @@ function createClassRoutes(ctx) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کلاس یافت نشد' } };
     }
 
-    /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
-    const conflict = checkOcc(cls, body, 'کلاس');
+    /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹
+       A-20 (re-audit): `isVersioned=true` مانندِ grades — در محیطِ تولید
+       نبودِ base_version باید رد شود، وگرنه یک نوشتنِ بدونِ نسخه،
+       ویرایشِ هم‌زمانِ دیگری را بی‌هیچ سیگنالِ تعارضی له می‌کند
+       (stale-write اثبات‌شده با tests/reaudit-occ-stale-write.js).
+       در dev/test همچنان سازگاریِ کلاینتِ کهنه حفظ می‌شود (occ.js:8-10). */
+    const conflict = checkOcc(cls, body, 'کلاس', true);
     if (conflict) {
       /* B4: rejected concurrent write ⇒ recorded in sync_conflicts (SSoT) */
       await recordRejectedConflict({ store, db, ids }, { collection: 'classes', rec: cls, user, base: body && (body.base_version !== undefined ? body.base_version : body.version), body });
       return conflict;
+    }
+
+    /* A-21: همان بررسیِ مسیرِ ساخت — ویرایش هم نباید دبیرِ مدرسه‌ای دیگر
+       را به کلاس منتسب کند (cross-tenant escalation via teacherClassIds). */
+    if (body.homeroom_teacher_id) {
+      const ht = (store.users || []).find((u) => Number(u.id) === Number(body.homeroom_teacher_id));
+      if (!ht || ht.role !== 'teacher' || Number(ht.school_id) !== Number(cls.school_id))
+        return { status: 400, body: { ok: false, code: 'invalid_homeroom_teacher', message: 'معلمِ مسئول باید دبیرِ همین مدرسه باشد' } };
     }
 
     /* Wave 1: patch روی کپی محاسبه می‌شود؛ store فقط پس از کامیت PG لمس می‌شود. */

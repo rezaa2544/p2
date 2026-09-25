@@ -13,18 +13,18 @@ info:
     - احراز: نشست کوکی‌محور `HttpOnly; Secure; SameSite=Lax` + جی‌دابلیوتی سخت‌شده.
     - همگام‌سازی: پروتکل ای۰۱ (`docs/SYNC_PROTOCOL.md`) — پول کرسورمحور + پوش عملیات + سنگ‌قبر.
     - نرخ‌بندی: ۴۲۹ با بدنهٔ خطای استاندارد؛ مسیرهای حساس ریت محدود دارند.
-    - مسیر `/api/__slow` فقط-تست است و بدون متغیر محیطی `PAYESH_TEST_SLOW_MS` وجود ندارد.
+    - مسیر `/api/__slow` فقط-تست است و بدون متغیر محیطی `PAYESH_TEST_SLOW_MS` وجود ندارد (ابزار دریفت آن را allowlist می‌کند).
+    - پروانهٔ این مخزن MIT است (`package.json`) و `info.license` همین را منعکس می‌کند؛ سرورهای زیر دامنهٔ رزرو RFC (‎.invalid‎) و غیرقابل مسیریابی‌اند.
   contact:
-    name: تیم پایش — چت ۶ (مستندات و انتشار)
-    url: https://arena.ai
+    name: تیم پایش
   license:
-    name: Proprietary — تمام حقوق برای کارفرما محفوظ است
-    url: https://example.ir/license
+    name: MIT
+    url: https://opensource.org/licenses/MIT
 
 servers:
-  - url: https://payesh.example.ir
-    description: تولید — نشانی قطعی پس از تصمیم کارفرما دربارهٔ میزبان/دامنه نهایی می‌شود (قید صادقانه)
-  - url: https://staging.payesh.example.ir
+  - url: https://payesh.example.invalid
+    description: تولید — نشانی قطعی پس از تصمیم کارفرما دربارهٔ میزبان/دامنه نهایی می‌شود (قید صادقانه؛ دامنه example.invalid رزرو RFC و غیرقابل مسیریابی است)
+  - url: https://staging.payesh.example.invalid
     description: استیجینگ — هنوز برپا نشده؛ مانع پ0 در docs/P0_BLOCKER_TRACKER.md
 
 security:
@@ -58,9 +58,9 @@ tags:
   - name: admin
     description: عملیات ادمین/سوپرادمین — پشتیبان، ری‌استور، پیامک، شاخص سلامت
   - name: observability
+    description: سلامت و پایش‌پذیری — liveness/readiness/health و مسیر فقط-تست
   - name: analytics
-    description: هوشمندی آموزشی و راهبری (فاز ۳ — P0-EI-09 تا P0-EI-21؛ فقط‌خواندنی، کوکی‌محور)
-    description: سلامت و آمادگی — liveness/readiness/health و مسیر فقط-تست
+    description: هوشمندی آموزشی و راهبری (فاز ۳؛ فقط‌خواندنی، کوکی‌محور)
 
 paths:
 
@@ -1087,6 +1087,182 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/semantic-metrics:
+    get:
+      tags: [analytics]
+      summary: سنجه‌های معنایی آموزشی (Phase 9.0 — موتور semantic.js)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: گزارش هوشمندی
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/assessment-quality:
+    get:
+      tags: [analytics]
+      summary: کیفیت ارزشیابی (Phase 9.0 — موتور assessment-intelligence.js)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: گزارش هوشمندی
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/attendance-risk:
+    get:
+      tags: [analytics]
+      summary: ریسک حضور و غیاب (Phase 9.0 — موتور attendance-intelligence.js)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: گزارش هوشمندی
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/student-timeline:
+    get:
+      tags: [analytics]
+      summary: خط زمانی دانش‌آموز (Phase 9.0 — موتور student-timeline.js)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: گزارش هوشمندی
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/intervention-warnings:
+    get:
+      tags: [analytics]
+      summary: هشدارهای مداخله (Phase 9.0 — موتور intervention-case-management.js)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: گزارش هوشمندی
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/school-health-dashboard:
+    get:
+      tags: [analytics]
+      summary: داشبورد سلامت مدرسه (Phase 9.0 — موتور school-health-dashboard.js)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: گزارش هوشمندی
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/parent-360:
+    get:
+      tags: [analytics]
+      summary: نمای ۳۶۰ والد (Phase 9.0 — موتور parent-360.js)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: گزارش هوشمندی
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /api/v1/analytics/teacher-evidence:
+    get:
+      tags: [analytics]
+      summary: شواهد دبیر (Phase 9.0 — موتور teacher-evidence.js)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: school_id
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: گزارش هوشمندی
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnalyticsReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '500': { $ref: '#/components/responses/InternalError' }
 
   /api/v1/analytics/intelligence-certification:

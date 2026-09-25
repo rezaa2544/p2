@@ -28,11 +28,33 @@ function runTest() {
     'Manager of another school must be rejected'
   );
 
-  // ۳. ناظر اداره آموزش و پرورش منطقه و مدیر ارشد سامانه: مجاز
-  const eduOffice = { id: 201, role: 'edu_office' };
+  // ۳. ناظر اداره آموزش و پرورش: فقط مدارسِ داخلِ محدودهٔ جغرافیاییِ دفترش
+  // (اصلاحِ Phase B: پیش از این edu_office بدونِ هیچ مهاری مجاز شمرده می‌شد).
+  const officeStore = {
+    offices: [{ id: 7, province_id: 1 }],
+    schools: [{ id: 25, province_id: 1 }, { id: 30, province_id: 2 }]
+  };
+  const eduOffice = { id: 201, role: 'edu_office', office_id: 7 };
+  const eduOfficeForeign = { id: 202, role: 'edu_office', office_id: 8 };
+  const eduOfficeNoOffice = { id: 203, role: 'edu_office' };
   const superadmin = { id: 1, role: 'superadmin' };
-  assert.strictEqual(enforceSchoolIntelligenceAccessGuard(eduOffice, targetSchoolId), true);
+  assert.strictEqual(enforceSchoolIntelligenceAccessGuard(eduOffice, targetSchoolId, { store: officeStore }), true);
   assert.strictEqual(enforceSchoolIntelligenceAccessGuard(superadmin, targetSchoolId), true);
+  assert.throws(
+    () => enforceSchoolIntelligenceAccessGuard(eduOffice, 30, { store: officeStore }),
+    /TENANT_ISOLATION_VIOLATION/,
+    'edu_office must not access a school outside its office scope'
+  );
+  assert.throws(
+    () => enforceSchoolIntelligenceAccessGuard(eduOfficeForeign, targetSchoolId, { store: officeStore }),
+    /TENANT_ISOLATION_VIOLATION/,
+    'edu_office with an unknown office must fail closed'
+  );
+  assert.throws(
+    () => enforceSchoolIntelligenceAccessGuard(eduOfficeNoOffice, targetSchoolId, { store: officeStore }),
+    /TENANT_ISOLATION_VIOLATION/,
+    'edu_office without an office must fail closed, not pass open'
+  );
 
   // ۴. نقش‌های غیرمجاز: معلم، دانش‌آموز، والد، راننده
   const teacher = { id: 301, role: 'teacher', school_id: 25 };

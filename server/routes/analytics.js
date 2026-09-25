@@ -26,6 +26,8 @@ const {
   summarizeDistrictQualityGovernance
 } = require('../analytics/quality-governance');
 
+const policy = require('../policy');
+
 const {
   enforceLongitudinalAccessGuard,
   buildLongitudinalSchoolProfile,
@@ -85,6 +87,14 @@ function createAnalyticsRoutes(ctx) {
 
   const pgLive = () => db && typeof db.isPostgres === 'function' && db.isPostgres();
 
+  // D2 remediation: موتورها برای قطعیتِ تست‌ها، پیش‌فرض timestamp ثابت
+  // 2026-09-18 دارند و routeها هیچ چیزی به آن‌ها نمی‌رساندند — پس هر گزارش
+  // API با همان تاریخِ چندین ماه پیش مهر می‌شد و دو گواهی در روزهای مختلف،
+  // fingerprint یکسان می‌گرفتند. اکنون route مهر زمان واقعی را تزریق می‌کند
+  // (مگر اینکه tests آن را با env override مساوی‌سازی کند).
+  const ROUTE_NOW = process.env.PAYESH_ANALYTICS_FIXED_NOW || new Date().toISOString();
+  const nowOptions = (extra) => Object.assign({ timestamp: ROUTE_NOW, now: ROUTE_NOW }, extra || {});
+
   async function schoolIntelligenceReport(req, searchParams) {
     const user = req.user || req.session;
     const schoolIdParam = searchParams.get('school_id');
@@ -106,7 +116,7 @@ function createAnalyticsRoutes(ctx) {
     }
 
     try {
-      enforceSchoolIntelligenceAccessGuard(user, schoolId);
+      enforceSchoolIntelligenceAccessGuard(user, schoolId, { store });
     } catch (err) {
       return {
         status: 403,
@@ -138,6 +148,12 @@ function createAnalyticsRoutes(ctx) {
         cases = (rCases && rCases.rows) || [];
         teacherNotes = (rTN && rTN.rows) || [];
       } catch (e) {
+        /* A-03: این فال‌بک یک مسیرِ واقعی است که در فشارِ pool (۶ اتصال به
+           ازایِ هر درخواست رویِ poolِ ۲۰تایی) یا قطعیِ PG اجرا می‌شود، ولی
+           ساکت بود — گزارش، دادهٔ آینهٔ ممکن‌است-کهنه را بدونِ هیچ لاگ یا
+           چرخشِ سنجه‌ای سرو می‌کرد. اکنون اعلام می‌شود. */
+        console.warn('[analytics] PG read failed for school', schoolId, '— serving in-memory mirror:',
+          (e && e.message) || e);
         grades = (store.grades || []).filter(g => Number(g.school_id) === schoolId);
         attendance = (store.attendance || []).filter(a => Number(a.school_id) === schoolId);
         classes = (store.classes || []).filter(c => Number(c.school_id) === schoolId);
@@ -162,7 +178,8 @@ function createAnalyticsRoutes(ctx) {
       classes,
       schedule,
       cases,
-      teacherNotes
+      teacherNotes,
+      options: nowOptions()
     });
 
     return {
@@ -207,23 +224,54 @@ function createAnalyticsRoutes(ctx) {
     let schools = [];
     if (pgLive() && typeof db.query === 'function') {
       try {
-        const rS = await db.query('SELECT * FROM schools WHERE region_id = $1 OR district_id = $1', [regionId]);
+        /* A-01: ستونِ region_id در جدولِ schools وجود ندارد (schema.sql:
+           county_id / district_id / province_id) — این کوئری در PG زنده
+           همیشه «column does not exist» می‌گرفت و catch ساکت به آینهٔ
+           درون‌حافظه‌ای برمی‌گشت. یعنی مسیرِ PG در عمل هیچ‌وقت اجرا نمی‌شد.
+           در data model، وقتی region_id غایب است «منطقه» همان district_id
+           است (هیچ مدرسهٔ seedی region_id ندارد) پس این نگاشتِ وفادار
+           به فال‌بکِ JSON است. */
+        const rS = await db.query('SELECT * FROM schools WHERE district_id = $1', [regionId]);
         schools = (rS && rS.rows) || [];
       } catch (e) {
+        console.warn('[analytics] regional schools query failed — falling back to in-memory mirror:',
+          (e && e.message) || e);
         schools = (store.schools || []).filter(s => Number(s.region_id || s.district_id) === regionId);
       }
     } else {
       schools = (store.schools || []).filter(s => Number(s.region_id || s.district_id) === regionId);
     }
 
+    /* A-01: در PG-live، داده‌هایِ مدارس هم باید از همان منبعِ زنده خوانده
+       شوند، نه از آینه — در غیر این صورت، وقتی آینه کامل نیست (مثلاً وقتی
+       PAYESH_PG_HYDRATE_LIMIT تنظیم شده)، مدارسِ واقعی بدونِ داده به‌درستی
+       «نیازمندِ اقدامِ فوری» پرچم می‌شوند و گزارش ساکت غلط می‌دهد. این
+       همان درزِ خواندنِ Wave-1 است که routes/students.js:37 استفاده می‌کند.
+       هر مجموعه یک‌بار خوانده می‌شود (نه به ازایِ هر مدرسه) و فیلترِ
+       school_id مثلِ قبل در حافظه انجام می‌شود. هر مجموعه فال‌بکِ
+       مستقلِ خود را دارد تا شکستِ یک جدول، کلِ گزارش را نیندازد. */
+    const REGION_COLL = ['grades', 'attendance', 'classes', 'schedule', 'counselor_refs', 'teacher_notes'];
+    const liveColl = {};
+    if (pgLive() && typeof db.readCollection === 'function') {
+      for (const cn of REGION_COLL) {
+        try { liveColl[cn] = await db.readCollection(cn); }
+        catch (e) {
+          console.warn('[analytics] readCollection(' + cn + ') failed — in-memory mirror used:',
+            (e && e.message) || e);
+          liveColl[cn] = null; /* فال‌بکِ مجموعه به store زیر */
+        }
+      }
+    }
+    const collFor = (cn) => (Array.isArray(liveColl[cn]) ? liveColl[cn] : (store[cn] || []));
+
     const schoolSnapshots = schools.map(sch => {
       const sid = Number(sch.id);
-      const grades = (store.grades || []).filter(g => Number(g.school_id) === sid);
-      const attendance = (store.attendance || []).filter(a => Number(a.school_id) === sid);
-      const classes = (store.classes || []).filter(c => Number(c.school_id) === sid);
-      const schedule = (store.schedule || []).filter(s => Number(s.school_id) === sid);
-      const cases = (store.counselor_refs || []).filter(c => Number(c.school_id) === sid);
-      const teacherNotes = (store.teacher_notes || []).filter(t => Number(t.school_id) === sid);
+      const grades = collFor('grades').filter(g => Number(g.school_id) === sid);
+      const attendance = collFor('attendance').filter(a => Number(a.school_id) === sid);
+      const classes = collFor('classes').filter(c => Number(c.school_id) === sid);
+      const schedule = collFor('schedule').filter(s => Number(s.school_id) === sid);
+      const cases = collFor('counselor_refs').filter(c => Number(c.school_id) === sid);
+      const teacherNotes = collFor('teacher_notes').filter(t => Number(t.school_id) === sid);
 
       return buildSchoolIntelligenceSnapshot({
         schoolId: sid,
@@ -240,7 +288,8 @@ function createAnalyticsRoutes(ctx) {
     const snapshot = buildRegionalSnapshot({
       regionId,
       academicYear,
-      schools: schoolSnapshots
+      schools: schoolSnapshots,
+      options: nowOptions()
     }, { requester: user });
 
     return {
@@ -284,7 +333,8 @@ function createAnalyticsRoutes(ctx) {
         schoolId,
         grades,
         attendanceSessions: attendance,
-        cases
+        cases,
+        options: nowOptions()
       });
 
       const pillars = evaluateQualityPillars(snapshot);
@@ -315,7 +365,8 @@ function createAnalyticsRoutes(ctx) {
       const sSnapshot = buildSchoolIntelligenceSnapshot({
         schoolId: sid,
         grades: (store.grades || []).filter(g => Number(g.school_id) === sid),
-        attendanceSessions: (store.attendance || []).filter(a => Number(a.school_id) === sid)
+        attendanceSessions: (store.attendance || []).filter(a => Number(a.school_id) === sid),
+        options: nowOptions()
       });
       return evaluateQualityPillars(sSnapshot);
     });
@@ -381,7 +432,8 @@ function createAnalyticsRoutes(ctx) {
       const profile = buildLongitudinalSchoolProfile({
         schoolId: entityId,
         snapshots,
-        periodRange
+        periodRange,
+        options: nowOptions()
       });
 
       return {
@@ -418,7 +470,8 @@ function createAnalyticsRoutes(ctx) {
         const sProfile = buildLongitudinalSchoolProfile({
           schoolId: sid,
           snapshots: sSnapshots,
-          periodRange
+          periodRange,
+          options: nowOptions()
         });
         return {
           school_id: sid,
@@ -431,7 +484,8 @@ function createAnalyticsRoutes(ctx) {
       const trendMap = buildRegionalTrendMap({
         regionId: entityId,
         schools: schoolTrendSummaries,
-        periodRange
+        periodRange,
+        options: nowOptions()
       });
 
       return {
@@ -487,7 +541,8 @@ function createAnalyticsRoutes(ctx) {
           chronic_absence_rate: 14.5,
           average_gpa: 14.5,
           failing_students_ratio: 0.08
-        }
+        },
+        options: nowOptions()
       });
 
       const actionBoard = generatePrincipalActionBoard({
@@ -523,7 +578,8 @@ function createAnalyticsRoutes(ctx) {
       regionalSnapshot: {
         region_id: regionId,
         priority_support_needed_count: schools.length
-      }
+      },
+      options: nowOptions()
     });
 
     const actionBoard = generatePrincipalActionBoard({
@@ -1163,7 +1219,7 @@ function createAnalyticsRoutes(ctx) {
         regionId: user.region_id || 1,
         academicYear,
         user
-      });
+      }, nowOptions());
 
       return {
         status: 200,
@@ -1194,7 +1250,7 @@ function createAnalyticsRoutes(ctx) {
       regionId,
       academicYear,
       user
-    });
+    }, nowOptions());
 
     return {
       status: 200,

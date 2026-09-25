@@ -68,7 +68,7 @@ function canOp(role, coll, t){
 
 /* P0-2: سطحِ نقش‌ها — قاعدهٔ «بدونِ ارتقاء»: نویسنده نمی‌تواند رکوردی
    با نقشِ بالاترِ خود بسازد (superadmin آزاد است). */
-const ROLE_LEVEL = { student: 0, parent: 1, driver: 1, counselor: 3, teacher: 3, edu_office: 3, manager: 4, superadmin: 5 };
+const ROLE_LEVEL = { student: 0, parent: 1, driver: 1, guard: 1, counselor: 3, teacher: 3, edu_office: 3, manager: 4, superadmin: 5 }; /* MUSE_SPARK 2026-09-25 (M-09): guard جا مانده بود و قاعدهٔ بدون ارتقاء برایش نامشخص بود */
 /* کلیدهایِ مالکیت: مقدرشان همیشه خودِ نشست است (inject نمی‌شوند) */
 const OWNERSHIP_KEYS = { messages: 'from_id', counselor_msgs: 'author_id', hw_submissions: 'graded_by' };
 /* مجموعه‌هایی که نویسندهٔ اصلی (نه فقط مدیر) می‌تواند status را عوض کند */

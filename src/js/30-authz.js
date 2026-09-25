@@ -16,12 +16,12 @@
 
 /** روت‌هایی که در NAV نیستند ولی برای نقش مجازند (زیرصفحه یا مقصد پیمایش) */
 var EXTRA_ROUTES = {
-  superadmin: ['dashboard','adminsubs','officedash','officeschools','record','geo','offices','lifecycle'],
-  manager:    ['record','corrections','teachers','exams','tuition','association','lifecycle','atrisk','meetings','growth','formssms','import','schoolyear'],
+  superadmin: ['dashboard','adminsubs','officedash','officeschools','record','geo','offices','lifecycle','intelligence'],
+  manager:    ['record','corrections','teachers','exams','tuition','association','lifecycle','atrisk','meetings','growth','formssms','import','schoolyear','intelligence'],
   teacher:    ['record','exams','meetings'],
   student:    ['record','mytuition','notifications','announcements','subscription'],
   parent:     ['children','record','family','mytuition','notifications','announcements','subscription','calendar','meetings'],
-  edu_office: ['officedash','officeschools','notifications','announcements'],
+  edu_office: ['officedash','officeschools','notifications','announcements','intelligence'],
   /* 🔴 محدودیت مشاور: فقط صف ارجاع و صفحه‌های عمومی (COMMON_ROUTES).
      record/attendance/users و بقیه عمداً نیستند — مشاور پروندهٔ
      کامل دانش‌آموز را نمی‌بیند، فقط دادهٔ ارجاع. */

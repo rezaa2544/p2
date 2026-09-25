@@ -14,6 +14,7 @@ const { deltaRowsSql, deltaRowsByChgSql, CHG_TABLES } = require('./syncdelta'); 
 const { createCursor } = require('./cursor'); /* Delta Hardening Phase 2 (gap 2) */
 const { sendJsonCompressed } = require('./compress'); /* Delta Phase 4 (gap 2) */
 const metrics = require('./metrics'); /* Delta Phase 4 (gaps 2+4) */
+const policy = require('./policy'); /* P0 (حریمِ داده): محدودهٔ جغرافیایی دفتر */
 
 /* ── Gap 1 (Delta Hardening Phase 2): long-lived delta cutoff ─────────
    A delta whose `since` is older than DELTA_MAX_AGE_DAYS (default 7) is
@@ -167,9 +168,12 @@ function createPull(ctx) {
       }
       if (role === 'parent') {
         // اولیا به رکوردهای فرزندان و خودشان دسترسی دارند
-        const children = (store.users || []).filter(u => u.role === 'student' && (u.parent_id === userId || (u.parent_national_ids && u.parent_national_ids.includes(session.national_id))));
-        const childIds = children.map(ch => ch.id).concat([userId]);
-        return records.filter(u => childIds.includes(u.id)).map(u => projectUserByRole(u, role));
+        /* P1: حلِ فرزندان باید از منبعِ یکتا (policy.childrenOfParent) بیاید
+           که parent_links را هم می‌بیند؛ users.parent_id به‌تنهایی در داده‌های
+           واقعی پر نیست و باعث می‌شد ولی نمرات/حضورِ فرزندش را نبیند. */
+        const childIds = policy.childrenOfParent(store, userId);
+        childIds.add(userId);
+        return records.filter(u => childIds.has(u.id)).map(u => projectUserByRole(u, role));
       }
       return records.filter(u => Number(u.school_id) === schoolId).map(u => projectUserByRole(u, role));
     }
@@ -190,9 +194,8 @@ function createPull(ctx) {
         return records.filter(cl => clsIds.includes(Number(cl.id)));
       }
       if (role === 'parent') {
-        const children = (store.users || []).filter(u => u.role === 'student' && u.parent_id === userId);
-        const childIds = children.map(ch => ch.id);
-        const enr = (store.enrollments || []).filter(e => childIds.includes(Number(e.student_id)));
+        const childIds = policy.childrenOfParent(store, userId);
+        const enr = (store.enrollments || []).filter(e => childIds.has(Number(e.student_id)));
         const clsIds = enr.map(e => Number(e.class_id));
         return records.filter(cl => clsIds.includes(Number(cl.id)));
       }
@@ -226,15 +229,31 @@ function createPull(ctx) {
         return records.filter(r => Number(r.student_id) === userId);
       }
       if (role === 'parent') {
-        const children = (store.users || []).filter(u => u.role === 'student' && u.parent_id === userId);
-        const childIds = children.map(ch => ch.id);
-        return records.filter(r => childIds.includes(Number(r.student_id)));
+        const childIds = policy.childrenOfParent(store, userId);
+        return records.filter(r => childIds.has(Number(r.student_id)));
       }
       return records.filter(r => Number(r.school_id) === schoolId);
     }
 
-    // مجموعه‌های عمومی مدرسه
-    return records.filter(r => r.school_id == null || Number(r.school_id) === schoolId);
+    /* P0 (حریمِ داده): ردیف‌های سراسری (school_id == null) نباید به هر
+       کاربری سرو شوند — این پیش از این، کلِ جدول‌های بدونِ مدرسه
+       (parent_links، parent_subscriptions، offices، bus_locations و ...)
+       را برای همهٔ نقش‌ها، حتی دانش‌آموز/ولیِ مدرسهٔ دیگر نشانت می‌داد.
+       فقط مجموعه‌هایی که صراحتاً «عمومیِ مدرسه‌ای»‌اند می‌توانند ردیفِ
+       سراسری داشته باشند؛ بقیه فقط ردیف‌های مدرسهٔ دامنهٔ کاربر را می‌دهند. */
+    const UNSCOPED_PUBLIC_COLLECTIONS = new Set(['subjects', 'announcements']);
+    if (UNSCOPED_PUBLIC_COLLECTIONS.has(c)) {
+      return records.filter(r => r.school_id == null || Number(r.school_id) === schoolId);
+    }
+    if (role === 'edu_office') {
+      /* edu_office مدرسهٔ واحدی ندارد؛ فقط مدارسِ زیرِ پوششِ جغرافیاییِ
+         دفترِ خودش را می‌بیند (همان دروازهٔ یکتا). */
+      const office = policy.userOffice(store, session);
+      const inOffice = (s) => office != null && policy.officeCoversSchool(office, s);
+      const officeSchoolIds = new Set(((store.schools) || []).filter(inOffice).map(s => Number(s.id)));
+      return records.filter(r => officeSchoolIds.has(Number(r.school_id)));
+    }
+    return records.filter(r => r.school_id != null && Number(r.school_id) === schoolId);
   }
 
   /**
@@ -338,7 +357,22 @@ function createPull(ctx) {
       'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
     ];
 
-    const targetCols = requestedCols ? requestedCols.filter(c => store[c] != null || ALL_COLLECTIONS.includes(c)) : ALL_COLLECTIONS;
+    const targetCols = requestedCols ? requestedCols.filter(c => ALL_COLLECTIONS.includes(c)) : ALL_COLLECTIONS;
+
+    /* P0 (حریمِ داده): مجموعه‌هایی که دادهٔ محرمانهٔ اداری/مالی/مکانِ زنده
+       در خود دارند و فقط نقش‌های مجازِ مدرسه‌ای باید آن‌ها را ببینند.
+       پیش از این، «sync_conflicts» از طریقِ همین مسیر برای دانش‌آموز/ولی
+       هم سرو می‌شد در حالی که endpointِ اختصاصیِ آن manager-only است. */
+    const RESTRICTED_COLLECTIONS = new Set(['sync_conflicts', 'counselor_refs', 'counselor_msgs']);
+    const RESTRICTED_ROLES = new Set(['manager', 'counselor', 'superadmin', 'edu_office']);
+    if (targetCols.some(c => RESTRICTED_COLLECTIONS.has(c)) && !RESTRICTED_ROLES.has(session.role)) {
+      return sendJson(res, 403, { ok: false, code: 'forbidden', message: 'دسترسی به این مجموعه برای نقش شما مجاز نیست' });
+    }
+    /* P0 (حریمِ داده): درخواستِ هر کلکشنی که در store وجود دارد اما در
+       فهرستِ استانداردِ سامانه نیست (مثل bus_locations با مختصاتِ زندهٔ
+       دانش‌آموز، parent_subscriptions با دادهٔ مالیِ خانواده‌ها، offices،
+       parent_links و tombstones) اکنون به‌جای سرو شدن، نادیده گرفته می‌شود. */
+    const droppedUnknown = requestedCols ? requestedCols.filter(c => !ALL_COLLECTIONS.includes(c)) : [];
 
     /* Wave 10 (cursor v3): نشانگرِ آبِ **نخست** (pre-read) — فقط وقتی
        کرسر فعال است (امضا لازم است) و دلتای chg معنا دارد. */
@@ -457,6 +491,10 @@ function createPull(ctx) {
       /* P0-2: مجموعه‌هایی که سرور به‌خاطر کران بریده است — کلاینت snapshot
          این‌ها را «جزئی» علامت می‌زند (نشانگرِ دادهٔ جزئی در گزارش‌ها). */
       partial_collections: partialCollections.length ? partialCollections : undefined,
+      /* P0 (حریمِ داده): مجموعه‌هایی که کلاینت درخواست کرد اما خارج از
+         فهرستِ استانداردِ سامانه است — سرو نشدند (null نشانگرِ «نادیده
+         گرفته شد» است، نه «خالی»). */
+      ignored_unknown_collections: droppedUnknown.length ? droppedUnknown : undefined,
       /* پ۳ — resume (کامنت ۱ بازبین #129): دلتایِ بریده = کلاینت باید برای
          این مجموعه‌ها یک snapshot کاملِ کران‌دار بگیرد تا همگرا شود؛ وگرنه
          تغییراتِ حذف‌شده پشتِ کرسرِ جلورفته گم می‌شوند. */

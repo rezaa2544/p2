@@ -48,9 +48,9 @@ async function full() {
     chk('مسیرها تعریف شده‌اند', !!doc.paths && Object.keys(doc.paths).length >= 25);
     chk('securitySchemes: cookieAuth + csrfToken', !!(doc.components && doc.components.securitySchemes && doc.components.securitySchemes.cookieAuth && doc.components.securitySchemes.csrfToken));
     const ops = Object.values(doc.paths).reduce((n, p) => n + ['get', 'post', 'put', 'delete', 'patch'].filter((m) => p[m]).length, 0);
-    chk('شمار عملیات‌ها = ۳۱ (منطبق با کد)', ops === 31);
+    chk('شمار عملیات‌های اسپک با ابزار دریفت برابر است (نه عدد جادویی)', (() => { try { const out = require('child_process').execFileSync(process.execPath, [require('path').join(__dirname, 'openapi-drift.js')], { encoding: 'utf8' }); const m = out.match(/اسپک با کد همگام است \((\d+) عملیات\)/); return !!m && Number(m[1]) === ops; } catch (e) { return false; } })());
     const tags = (doc.tags || []).map((t) => t.name);
-    for (const t of ['auth', 'students', 'teachers', 'classes', 'grades', 'attendance', 'sync', 'library', 'assets', 'visitors', 'summer', 'feedback', 'admin', 'observability']) {
+    for (const t of ['auth', 'students', 'teachers', 'classes', 'grades', 'attendance', 'sync', 'library', 'assets', 'visitors', 'summer', 'feedback', 'admin', 'observability', 'analytics']) {
       chk('تگ «' + t + '»', tags.includes(t));
     }
     chk('اسکیمای خطا (Error)', !!(doc.components.schemas && doc.components.schemas.Error));

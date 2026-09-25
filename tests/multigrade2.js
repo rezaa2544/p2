@@ -178,7 +178,9 @@ setTimeout(async () => {
     W(`(function(){
       (db.class_subject_members||[]).filter(function(x){return x.class_id===${cls1};}).forEach(function(x){remove('class_subject_members',x.id);});
     })()`);
-    assert(true, 'پاک شد');
+    /* A-17: به‌جایِ assert(true) — اثرِ قابلِ مشاهده: هیچ عضوی برایِ cls1 نمانده */
+    const left = W(`(db.class_subject_members||[]).filter(function(x){return x.class_id===${cls1};}).length`);
+    assert(left === 0, 'پاک‌سازی کامل نبود — ' + left + ' رکورد برایِ cls=' + cls1 + ' باقی ماند');
   });
 
   await seq;

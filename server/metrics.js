@@ -369,6 +369,11 @@ const ROUTE_EXACT = new Set([
   '/api/v1/analytics/decision-command', '/api/v1/analytics/operational-execution',
   '/api/v1/analytics/outcome-evaluation', '/api/v1/analytics/intelligence-platform',
   '/api/v1/analytics/intelligence-certification',
+  /* Phase 9.0 semantic engines (MUSE_SPARK 2026-09-25): از allowlist جا مانده بودند و api_unmatched می‌گرفتند */
+  '/api/v1/analytics/semantic-metrics', '/api/v1/analytics/assessment-quality',
+  '/api/v1/analytics/attendance-risk', '/api/v1/analytics/student-timeline',
+  '/api/v1/analytics/intervention-warnings', '/api/v1/analytics/school-health-dashboard',
+  '/api/v1/analytics/parent-360', '/api/v1/analytics/teacher-evidence',
   /* System Health & Certification endpoints */
   '/api/v1/system/scalability-health', '/api/v1/system/event-processing-health',
   '/api/v1/system/observability-health', '/api/v1/system/disaster-recovery-health',
@@ -753,7 +758,12 @@ function scrapeGate(req) {
   const env = process.env;
   if (env.PAYESH_METRICS === '0') return { ok: false, status: 404, code: 'not_found' };
   const token = env.PAYESH_METRICS_TOKEN;
-  const isProd = env.PAYESH_ENV === 'production';
+  /* P1: دروازهٔ تولید باید هر دو پرچمِ تولید را ببیند — مثلِ دروازه‌هایِ
+     بوتِ DB/Redis/TLS. پیش از این فقط PAYESH_ENV چک می‌شد؛ با NODE_ENV=production
+     و بدونِ توکن، شاخص‌ها از مسیرِ loopback باز می‌شدند و پشتِ یک پروکسیِ
+     هم‌میزبانی (که remoteAddress را ۱۲۷.۰.۰.۱ می‌کند) برای هر کسی قابلِ
+     خواندن بودند. */
+  const isProd = env.PAYESH_ENV === 'production' || env.NODE_ENV === 'production';
   if (token) {
     const h = (req && req.headers && req.headers.authorization) || '';
     const m = /^Bearer\s+(.+)$/.exec(h);
