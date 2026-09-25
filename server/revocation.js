@@ -31,7 +31,8 @@ async function revokeSession(jti, ttlSeconds) {
   }
 }
 
-/* آیا این jti در denylist است؟ (خطا = false؛ ابطالِ محلی در jwtVerify جداست) */
+/* A-22: revocation reads are security decisions. Redis failure must not
+   become "not revoked"; callers must fail closed. */
 async function isRevoked(jti) {
   if (!jti || typeof jti !== 'string') return false;
   try {
@@ -41,11 +42,14 @@ async function isRevoked(jti) {
       const { audit } = require('./audit');
       audit('revocation_redis_error', { op: 'isRevoked', jti, error: e && e.message ? e.message : String(e) });
     } catch (_) {}
-    return false;
+    const err = new Error('REVOCATION_UNAVAILABLE');
+    err.code = 'REVOCATION_UNAVAILABLE';
+    throw err;
   }
 }
 
-/* ابطالِ همهٔ نشست‌های یک کاربر؛ خروجی = نسخهٔ جدید (۱، ۲، …). خطا = ۰. */
+/* A-22: revoke-all must not report success/degraded zero when Redis is
+   unavailable. Throw so the security-sensitive caller can fail closed. */
 async function revokeAllUserSessions(userId) {
   if (userId === null || userId === undefined) return 0;
   try {
@@ -53,11 +57,13 @@ async function revokeAllUserSessions(userId) {
     try { await cache.invalidateUser(userId); } catch (_) {}
     return res;
   } catch (e) {
-    return 0;
+    const err = new Error('REVOCATION_UNAVAILABLE');
+    err.code = 'REVOCATION_UNAVAILABLE';
+    throw err;
   }
 }
 
-/* نسخهٔ جاریِ نشستِ کاربر (۰ = هنوز revoke-all نشده). خطا = ۰. */
+/* A-22: a missing session-version read is not equivalent to version 0. */
 async function getSessionVersion(userId) {
   if (userId === null || userId === undefined) return 0;
   try {
@@ -69,7 +75,9 @@ async function getSessionVersion(userId) {
       const { audit } = require('./audit');
       audit('revocation_redis_error', { op: 'getSessionVersion', userId, error: e && e.message ? e.message : String(e) });
     } catch (_) {}
-    return 0;
+    const err = new Error('REVOCATION_UNAVAILABLE');
+    err.code = 'REVOCATION_UNAVAILABLE';
+    throw err;
   }
 }
 
