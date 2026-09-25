@@ -207,3 +207,15 @@ No overlapping edits to the same invariant are permitted.
 
 ### Current phase remains
 **HARDENING / RECONCILIATION — NOT VERIFIED.** The next allowed work is defect remediation only. Broad multi-AI testing/certification remains blocked until the open defect queue is closed or explicitly dispositioned with evidence.
+
+
+## Supervising Engineer direct remediation — 2026-09-25
+
+Before handing the queue to Atria, the Supervising Engineer directly fixed the code-level portions that were safely actionable:
+- F1 bootstrap seed: legacy numeric-grade mismatch handling, identity-sequence advancement, fail-closed seed failures, and no silent successful fallback.
+- F2 PostgreSQL parent scope: removed the obsolete `users.parent_id` query; `parent_links` remains authoritative.
+- F4 analytics: school managers are explicitly denied regional (`region_id`) scopes in quality-governance and longitudinal guards.
+
+These are **FIXED-SCOPED**, not VERIFIED. Current CI status is pending.
+
+**Team correction:** Atria count is now **3**. Atria-3 must be assigned a non-overlapping scope before execution.
