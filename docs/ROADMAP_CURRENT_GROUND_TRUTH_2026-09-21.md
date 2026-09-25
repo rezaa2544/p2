@@ -910,3 +910,25 @@ No current certification claim may be derived from historical CI or from a repor
 ## FINAL SYNCHRONIZATION RECEIPT — 2026-09-25
 **Exact main HEAD after this synchronization series:** `7c1a4ce3c29810910bfee72e17358d81032c33ea`.
 This SHA includes the synchronization updates themselves. The verification registry remains intentionally bound to `e4584806c1af2a1e5db648c8452580a8fa8cbcec` until the hardening SHA is frozen and evidence is regenerated; therefore this receipt is a project-state update, not a certification.
+
+
+
+## 2026-09-25 — SUPERVISING ENGINEER FRESH DEFECT RECONCILIATION
+
+**Audit baseline:** `79b1d187275981c862876d36dad0909db67038b5`  
+**Canonical defect register:** `docs/audit/MASTER_DEFECT_PRIORITY_2026-09-25.md`
+
+A fresh repository/source audit was reconciled against Ground Truth, Project Intelligence, Current Work Plan, Atria carry-over and the latest independent fresh-defect report.
+
+### Newly reconciled findings
+- **F1 P0 OPEN:** bootstrap JSON→PG seed can silently lose typed/incompatible rows, leaves identity sequences unsynchronized, and later ID allocation can overwrite seeded identity rows through the current upsert path.
+- **F2 P1 OPEN:** legacy parent scope still references PostgreSQL-nonexistent `users.parent_id`; production masks the schema drift as a 404.
+- **F3 P1 FIXED-SCOPED / REVALIDATION_REQUIRED:** current `pull` allowlist/scoping no longer exposes arbitrary `parent_links`; final hardening regression required.
+- **F4 P1 OPEN:** manager access is not rejected when analytics target is a foreign `region_id`; outer school/province guard does not establish region ownership.
+- **F5 P1 FIXED-SCOPED / REVALIDATION_REQUIRED:** current province resolution includes `office_id → offices.province_id/province_code`; final hardening regression required.
+
+### New execution priority
+Root-cause defects now precede ordinary defect-ID closure:
+**F1 → A-30 → A-37 → F4 → F2 → A-31..A-36 → A-18/A-20/A-24 → A-38 → A-39 → remaining A-01..A-17/A-23 → broad multi-AI validation.**
+
+Two-Atria ownership is now explicit and non-overlapping in the master defect register. No broad validation phase may start while open P0/P1 root-cause defects remain.
