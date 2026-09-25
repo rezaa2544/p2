@@ -9,12 +9,13 @@
     "build:check": "node build.js --check",
     "dev": "node scripts/dev-server.js",
     "start": "node server/index.js",
-    "test": "node tests/run.js && node --expose-gc --max-old-space-size=2048 tests/smoke.js",
+    "test": "node tests/run.js && node --expose-gc --max-old-space-size=2048 tests/smoke.js && node tests/api/runner.js",
     "clean": "rm -rf dist",
     "build:android": "node tools/build-android.js",
     "test:smoke": "node tests/smoke.js",
     "truth-gate": "node tools/production-truth-gate.js",
-    "strict-verification": "node tools/strict-verification-gate.js"
+    "strict-verification": "node tools/strict-verification-gate.js",
+    "test:all": "bash scripts/run-all-tests.sh"
   },
   "keywords": [
     "school-management",
