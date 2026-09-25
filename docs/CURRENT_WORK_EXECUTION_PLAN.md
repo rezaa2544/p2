@@ -507,3 +507,19 @@ A-31/A-37 = fallback semantics plus certification/test-integrity weakness.
 
 ### Gate
 No recurring item can be promoted directly from FIXED to CERTIFIED. It must pass the new root-cause closure contract first.
+
+
+## P0 — DELIVERY / PUSH ENFORCEMENT
+
+Before any future A-30..A-39 or later execution task is delegated, attach a Delivery Contract:
+1. exact target branch;
+2. exact required commit/change scope;
+3. push requirement;
+4. PR requirement;
+5. merge-to-main requirement when applicable;
+6. tests/evidence;
+7. final GitHub verification.
+
+No agent may be marked DONE from prose alone. Unpushed or unmerged work remains INCOMPLETE according to the required target.
+
+This control is now part of the execution plan, not a suggestion.
