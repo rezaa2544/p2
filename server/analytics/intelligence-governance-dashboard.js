@@ -192,13 +192,13 @@ function auditHumanApprovalCompliance(actions = [], options = {}) {
       rejected_count: 0,
       override_count: 0,
       unreviewed_count: 0,
-      approval_rate_pct: 100.0,
-      rejection_rate_pct: 0.0,
-      override_rate_pct: 0.0,
-      average_approval_time_hours: 0.0,
+      approval_rate_pct: null,
+      rejection_rate_pct: null,
+      override_rate_pct: null,
+      average_approval_time_hours: null,
       violations_detected: 0,
       violations: [],
-      compliance_status: 'COMPLIANT'
+      compliance_status: 'NO_DATA'
     });
   }
 
@@ -245,10 +245,10 @@ function auditHumanApprovalCompliance(actions = [], options = {}) {
   }
 
   const reviewedCount = approvedCount + rejectedCount;
-  const approvalRate = reviewedCount > 0 ? Number(((approvedCount / reviewedCount) * 100).toFixed(1)) : 100.0;
-  const rejectionRate = reviewedCount > 0 ? Number(((rejectedCount / reviewedCount) * 100).toFixed(1)) : 0.0;
-  const overrideRate = reviewedCount > 0 ? Number(((overrideCount / reviewedCount) * 100).toFixed(1)) : 0.0;
-  const avgTime = timedApprovalCount > 0 ? Number((totalApprovalTimeHours / timedApprovalCount).toFixed(1)) : 12.0;
+  const approvalRate = reviewedCount > 0 ? Number(((approvedCount / reviewedCount) * 100).toFixed(1)) : null;
+  const rejectionRate = reviewedCount > 0 ? Number(((rejectedCount / reviewedCount) * 100).toFixed(1)) : null;
+  const overrideRate = reviewedCount > 0 ? Number(((overrideCount / reviewedCount) * 100).toFixed(1)) : null;
+  const avgTime = timedApprovalCount > 0 ? Number((totalApprovalTimeHours / timedApprovalCount).toFixed(1)) : null;
 
   const result = {
     total_actions: total,
@@ -398,8 +398,8 @@ function generateGovernanceAlerts(data = {}, options = {}) {
   }
 
   // ۲. هشدارهای بالا (HIGH)
-  const approvalRate = Number(data.approval_rate_pct ?? 100);
-  if (approvalRate < 70.0) {
+  const approvalRate = data.approval_rate_pct == null ? null : Number(data.approval_rate_pct);
+  if (approvalRate != null && approvalRate < 70.0) {
     alerts.push({
       alert_id: `ALT-HIGH-${entityId}-LOW-APP-RATE`,
       severity: ALERT_SEVERITY.HIGH,
@@ -412,8 +412,8 @@ function generateGovernanceAlerts(data = {}, options = {}) {
     });
   }
 
-  const rejectionRate = Number(data.rejection_rate_pct ?? 0);
-  if (rejectionRate > 40.0) {
+  const rejectionRate = data.rejection_rate_pct == null ? null : Number(data.rejection_rate_pct);
+  if (rejectionRate != null && rejectionRate > 40.0) {
     alerts.push({
       alert_id: `ALT-HIGH-${entityId}-HIGH-REJ-RATE`,
       severity: ALERT_SEVERITY.HIGH,
@@ -426,8 +426,8 @@ function generateGovernanceAlerts(data = {}, options = {}) {
     });
   }
 
-  const evidenceCoverage = Number(data.evidence_coverage_pct ?? 100);
-  if (evidenceCoverage < 60.0) {
+  const evidenceCoverage = data.evidence_coverage_pct == null ? null : Number(data.evidence_coverage_pct);
+  if (evidenceCoverage != null && evidenceCoverage < 60.0) {
     alerts.push({
       alert_id: `ALT-HIGH-${entityId}-LOW-EVIDENCE`,
       severity: ALERT_SEVERITY.HIGH,
@@ -455,8 +455,8 @@ function generateGovernanceAlerts(data = {}, options = {}) {
     });
   }
 
-  const dataCompleteness = Number(data.data_completeness_pct ?? 100);
-  if (dataCompleteness < 80.0) {
+  const dataCompleteness = data.data_completeness_pct == null ? null : Number(data.data_completeness_pct);
+  if (dataCompleteness != null && dataCompleteness < 80.0) {
     alerts.push({
       alert_id: `ALT-MED-${entityId}-DATA-INCOMPLETE`,
       severity: ALERT_SEVERITY.MEDIUM,
@@ -542,10 +542,10 @@ function buildGovernanceSnapshot({ schoolId, regionId, academicYear = '1404-1405
     }
   }
 
-  const rawHealth = (0.50 * transparencyScore.score) + (0.30 * complianceAudit.approval_rate_pct) + (0.20 * privacyCompliance) - alertPenalty;
+  const rawHealth = (0.50 * transparencyScore.score) + (0.30 * (complianceAudit.approval_rate_pct ?? 0)) + (0.20 * privacyCompliance) - alertPenalty;
   const healthScore = Number(Math.min(100, Math.max(0, rawHealth)).toFixed(1));
 
-  let healthStatus = INTELLIGENCE_HEALTH_STATUS.HEALTHY;
+  let healthStatus = actionsList.length === 0 && insightsList.length === 0 ? INTELLIGENCE_HEALTH_STATUS.AT_RISK : INTELLIGENCE_HEALTH_STATUS.HEALTHY;
   if (hasCriticalAlert || healthScore < 60.0) {
     healthStatus = INTELLIGENCE_HEALTH_STATUS.CRITICAL;
   } else if (healthScore < 75.0) {
@@ -622,6 +622,8 @@ function buildDistrictGovernanceOverview({ regionId, academicYear = '1404-1405',
 
   const snapshots = Array.isArray(schoolSnapshots) ? schoolSnapshots : [];
   const totalSchools = snapshots.length;
+  let countedTransparency = 0;
+  let countedApproval = 0;
 
   let totalTransparency = 0;
   let totalApprovalRate = 0;
@@ -630,8 +632,8 @@ function buildDistrictGovernanceOverview({ regionId, academicYear = '1404-1405',
   let mediumAlertsCount = 0;
 
   for (const s of snapshots) {
-    totalTransparency += s.transparency_score ? s.transparency_score.score : 80;
-    totalApprovalRate += s.human_control_metrics ? s.human_control_metrics.approval_rate_pct : 90;
+    if (s.transparency_score?.score != null) { totalTransparency += Number(s.transparency_score.score); countedTransparency++; }
+    if (s.human_control_metrics?.approval_rate_pct != null) { totalApprovalRate += Number(s.human_control_metrics.approval_rate_pct); countedApproval++; }
     for (const alt of (s.governance_alerts || [])) {
       if (alt.severity === ALERT_SEVERITY.CRITICAL) criticalAlertsCount++;
       else if (alt.severity === ALERT_SEVERITY.HIGH) highAlertsCount++;
@@ -639,8 +641,8 @@ function buildDistrictGovernanceOverview({ regionId, academicYear = '1404-1405',
     }
   }
 
-  const avgTransparency = totalSchools > 0 ? Number((totalTransparency / totalSchools).toFixed(1)) : 85.0;
-  const avgApproval = totalSchools > 0 ? Number((totalApprovalRate / totalSchools).toFixed(1)) : 92.0;
+  const avgTransparency = countedTransparency > 0 ? Number((totalTransparency / countedTransparency).toFixed(1)) : null;
+  const avgApproval = countedApproval > 0 ? Number((totalApprovalRate / countedApproval).toFixed(1)) : null;
 
   const result = {
     overview_id: `GOV-REG${normRegionId}-${academicYear}`.replace(/[^A-Za-z0-9_-]/g, '_'),
