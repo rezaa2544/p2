@@ -625,3 +625,11 @@ Old PR A + Old PR B + Old PR C → merge هم‌زمان → چند HEAD مبه�
 CANDIDATE / SOURCE SHA / CANONICAL BASE SHA / SCOPE PRESERVED / CONFLICTS / COMMIT / PUSHED / MERGED / TESTS / EVIDENCE / NEW CANONICAL HEAD / REMAINING PRs / NEXT ACTION
 
 هیچ integration تا زمانی که **NEW CANONICAL HEAD** از GitHub خوانده و محتوای موردنظر روی همان SHA تأیید نشده باشد، VERIFIED محسوب نمی‌شود.
+
+
+## 12.20 — Final Canonical HEAD After Integration Batch — 2026-09-25
+- Integration PR #418 was merged successfully.
+- Canonical main HEAD is now **1853fb08676c34fbb07f7a65f2c907dcf53583df** after the required post-merge synchronization commits.
+- Legacy PRs #402, #403, #407, #410, #411, #412, #413 and #417 are closed as superseded by the canonical integration. Their applicable changes were reconciled into #418; they were not blindly merged because several were stale/conflicting and some were superseded by newer fixes.
+- The single-HEAD rule is now operational: this SHA is the only current baseline for subsequent work.
+- Verification/certification remains **NOT VERIFIED**; material integration invalidates historical evidence that depended on older SHAs.
