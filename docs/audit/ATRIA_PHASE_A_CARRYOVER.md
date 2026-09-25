@@ -112,3 +112,60 @@ The multi-AI reconciliation adds the following explicit closure work around the 
 - **A-29 — Roadmap integrity reconciliation:** Redis/Node version drift, unsupported critical-path duration, and Phase 9.0 dependency wording from the schedule audit.
 
 These additions remain subject to the same disposition contract and do not permit Phase A carry-over closure until evidence is complete.
+
+
+## 2026-09-25 — Multi-Report / Current-HEAD Reconciliation Addendum
+
+**Current main HEAD:** `4938631633c9c578db2679905fd46c4daaedd80a` (`4938631`).
+
+یافته‌های گزارش‌های Arena/ChatGPT/Atria با کد واقعی current main مقایسه شدند. هیچ موردی صرفاً با گزارش تاریخی سبز نشده است.
+
+### A-30 — Strict Verification Gate integrity / certification bypasses
+V-01..V-12 باید در خود Gate بسته شوند: empty-registry bypass؛ evidence binding ناقص؛ عدم enforce استقلال واقعی سه reviewer؛ عدم enforce `allowed_statuses`؛ نادیده‌گرفتن `BLOCKED_UNTIL...`؛ binding فقط به local HEAD؛ scanner ناقص؛ quality-gateهای self-attested در intelligence؛ certification input injection؛ human-approval fail-open روی فیلدهای غایب؛ empty zero-ranking compliance؛ و نبود schema اجباری برای evidence/reviewer/run/command/exit/artifact/hash/runtime.
+
+**Disposition:** OPEN / HIGH-CRITICAL. Gate باید قبل از هر certification fail-closed شود.
+
+### A-31 — Intelligence semantic/certification residuals
+I-02..I-09: no-data می‌تواند HEALTHY/LOW_RISK/100% شود؛ peak-day و attendance fabrication؛ approval/accuracy false-positive؛ `|| true` در platform integration؛ hard-coded platform metrics؛ و E2E simulation با `verified:true`. همچنین `intelligence-release-certification.js` بخشی از quality gates را self-attested می‌سازد.
+
+**Disposition:** OPEN. نیازمند no-data/empty/malformed/real-route/certification-negative tests روی current HEAD.
+
+### A-32 — SMS PostgreSQL mirror schema drift + restart duplicate
+`server/sms.js` در current HEAD هنوز `queue_id` و `provider_msg` را در `sms_log` mirror می‌کند، درحالی‌که migration/schema inventory فعلی وجود این ستون‌ها را اثبات نمی‌کند. گزارش Arena E2E نشان داده بود که این می‌تواند 200/sent را بدون mirror PG و سپس duplicate send/debit پس از restart ایجاد کند.
+
+**Disposition:** HIGH / REPRODUCE ON CURRENT HEAD. Live PG send، schema/row/wallet/queue/audit و restart/idempotency باید اثبات شوند.
+
+### A-33 — PG authorization delegation flags drift
+`asset_staff`، `lib_staff` و `is_head` در authz model/policy مصرف می‌شوند، اما parity آنها با PG users schema/migrations اثبات نشده است. گزارش Arena نشان داد PG hydration می‌تواند این flags را از بین ببرد و delegated action را 403 کند.
+
+**Disposition:** HIGH / REPRODUCE ON CURRENT HEAD. Seed→PG→login→delegated action + positive control + persisted-state proof.
+
+### A-34 — Sync authorization parity / twin-gate bypass
+Arena-2 روی branch غیرmerged `6018dd76` سه نقص را زنده بست: foreign teacher در `schedule.teacher_id`/homeroom می‌توانست teacher scope را آلوده کند؛ teacher `inScope` school scope کافی نداشت؛ و manager می‌توانست global conflict را از مسیر resolve بازنویسی کند.
+
+**Disposition:** HIGH/CRITICAL / MERGE-RECONCILE REQUIRED. Patch باید با `4938631` reconcile شود و سپس REST+sync+conflict runtime regression اجرا شود.
+
+### A-35 — Mission-5 authz findings reappearing
+A-AUTHZ-03/04/05 در گزارش Arena-2 به‌عنوان بازظهور ادغام‌نشده ثبت شدند: over-read نگهبان/راننده، NULL school anchor برای parent/student، و دو identity برای دو شکل شماره تلفن. Fix قدیمی merge نشده است.
+
+**Disposition:** CURRENT-HEAD REPRODUCTION + disposition required.
+
+### A-36 — PostgreSQL migration/test infrastructure
+F-PG-05: migration 012 در `wave23-reports-pg` با 2D000؛ F-PG-06: پس از seed زنجیره ledger در 009 می‌شکند و به 8/21 می‌رسد؛ F-PG-07: `pull.js:134` table identifier را raw concatenate می‌کند و QA13 قرمز است.
+
+**Disposition:** HIGH/MEDIUM/LOW respectively; live PG reproduction + regression required.
+
+### A-37 — Test inventory debt beyond A-07..A-17
+Arena-10: پس از اصلاح false-greenهای اصلی، inventory هنوز 513 ZERO-CHECK، 311 ORPHAN، 54 MOCK و حدود 40 swallowed `catch{}` دارد. این اعداد به‌خودی‌خود defect واحد نیستند، اما certification-path و gate suites باید مالک‌دار و executable باشند.
+
+**Disposition:** OPEN / TEST-INTEGRITY PROGRAM.
+
+### A-38 — Current-head Registry rebind
+Registry فعلی هنوز evidence را به `e4584806` bind می‌کند و فقط Atria review دارد؛ current main `4938631` است. هیچ evidence تاریخی نباید به current HEAD ارتقا یابد.
+
+**Disposition:** BLOCKED UNTIL REBIND. پس از A-30، registry برای current HEAD باید از نو evidence بگیرد و ChatGPT + Arena + Atria را مستقل ثبت کند.
+
+### A-39 — Reliability/DR acceptance criteria
+F-1a..F-5 و drillهای Redis outage / PG outage / worker crash / queue saturation / notification growth / graceful shutdown باید صریحاً در A-25/A-27 باقی بمانند. اینها duplicate item نیستند؛ acceptance criteria تکمیلی‌اند.
+
+**قانون:** هیچ‌یک از A-30..A-39 به‌دلیل گزارش تاریخی green محسوب نمی‌شود.

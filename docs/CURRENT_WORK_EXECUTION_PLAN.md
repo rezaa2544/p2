@@ -382,3 +382,24 @@ Current GitHub `main` resolves to `3b98fc19ec49bbbc7362fea578b196c1d4c0f2e9`. Th
 
 ### Mandatory execution consequence
 No item above is marked green by this reconciliation. New/remaining work must enter the appropriate workstream, receive exact current-HEAD evidence, and pass the three-AI gate. Historical reports remain evidence records only.
+
+
+## 2026-09-25 — Current-HEAD Reconciliation Addendum (A-30..A-39)
+
+صف جدید پس از مقایسه گزارش‌ها با `main@4938631633c9c578db2679905fd46c4daaedd80a`:
+
+- **A-30:** Strict Verification Gate hardening؛ V-01..V-12.
+- **A-31:** Intelligence semantic/certification integrity؛ I-02..I-09.
+- **A-32:** SMS PG mirror schema/idempotency؛ `queue_id/provider_msg` + restart duplicate proof.
+- **A-33:** PG delegation flags parity؛ `asset_staff/lib_staff/is_head`.
+- **A-34:** Sync twin-gate authorization؛ reconcile `6018dd76`.
+- **A-35:** Mission-5 authz reappearance؛ A-AUTHZ-03/04/05.
+- **A-36:** PG migration/test infrastructure؛ F-PG-05/06/07.
+- **A-37:** ZERO-CHECK/ORPHAN/MOCK/swallowed-catch triage، با اولویت certification path.
+- **A-38:** Registry rebind از `e4584806` به current HEAD فقط با evidence جدید.
+- **A-39:** نگه‌داشتن F-1a..F-5 و DR drills به‌عنوان acceptance criteria در A-25/A-27.
+
+### Updated execution sequence
+`Atria Critical/High → A-30 Gate Hardening → A-31..A-36 Critical/High Closure → A-37 Test Integrity Closure → A-38 Current-Head Registry Rebind → A-25/A-27 Reliability/DR Evidence → Atria Medium → Atria Low → Full Multi-AI Validation → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification`
+
+**No historical PASS is promoted to current HEAD.**
