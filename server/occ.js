@@ -32,6 +32,9 @@ function checkOcc(rec, body, entityLabel, isVersioned = false) {
     };
   }
   if (base === undefined || base === null || base === '') return null; /* کلاینت کهنه غیر نسخه دار */
+  if (typeof base !== 'number' || !Number.isSafeInteger(base) || base < 1) {
+    return { status: 400, body: { ok: false, code: 'bad_base_version', field: 'base_version' } };
+  }
   const serverVersion = Number(rec.version) || 1;
   if (Number(base) !== serverVersion) {
     return {

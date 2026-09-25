@@ -799,6 +799,8 @@ function createSync(ctx){
 
     const derived = [];  /* Wave1-W: نوشت‌هایِ مشتقِ سرور (نوتیفیکیشن‌ها) — با mirror در یک تراکنش */
     const apply = [];
+    const plannedVersions = new Map(), authoritativeRows = new Map();
+    const strictBaseVersion = process.env.PAYESH_STRICT_BASE_VERSION === '1' || process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production';
     for(const op of ops){
       /* پاکتِ عملیات (validate.js): کلیدِ ناشناخته یا uid/c/id/atِ بدشکل =
          malformed (کلِ دسته، مثلِ رفتارِ موجود). مقدارِ t این‌جا سنجیده
@@ -864,14 +866,14 @@ function createSync(ctx){
       /* base_versionِ بدشکل (غیرِ عددِ صحیحِ مثبت) = ردِّ عملیات — وگرنه در
          مجموعهٔ نسخه‌دار، سطرِ تعارضِ بیهوده می‌ساخت. */
       if((op.t === 'upd' || op.t === 'del') && op.base_version != null &&
-         (typeof op.base_version !== 'number' || !Number.isInteger(op.base_version) || op.base_version < 1)){
+         (typeof op.base_version !== 'number' || !Number.isSafeInteger(op.base_version) || op.base_version < 1)){
         audit('sync_validation_failed', { user_id: s.id, uid: op.uid, collection: op.c, field: 'base_version', reason: 'bad_base_version' });
         results.push({ uid: op.uid, ok: false, code: 'validation_failed', field: 'base_version', message: 'مقدارِ «base_version» معتبر نیست' });
         continue;
       }
-      /* P1-05: mandatory base_version on VERSIONED resource updates when in strict mode or production */
-      const strictBaseVersion = process.env.PAYESH_STRICT_BASE_VERSION === '1' || process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production';
-      if((op.t === 'upd' || op.t === 'del') && VERSIONED[op.c] && op.base_version == null && strictBaseVersion){
+      /* A-24: production/strict requires a base for ALL client updates/deletes.
+         Legacy receipt-order behavior is retained only outside strict mode. */
+      if((op.t === 'upd' || op.t === 'del') && op.base_version == null && strictBaseVersion){
         audit('sync_validation_failed', { user_id: s.id, uid: op.uid, collection: op.c, field: 'base_version', reason: 'missing_base_version' });
         results.push({ uid: op.uid, ok: false, code: 'missing_base_version', field: 'base_version', message: 'مقدارِ «base_version» برای مجموعه‌های نسخه‌دار الزامی است' });
         continue;
@@ -915,14 +917,18 @@ function createSync(ctx){
         const vid = Number(op.id != null ? op.id : (op.data && op.data.id));
         let vrec = null;
         if(db && typeof db.isPostgres === 'function' && db.isPostgres() && typeof db.readOne === 'function'){
-          try { vrec = await db.readOne(op.c, vid); } catch(_) {}
+          try { vrec = await db.readOne(op.c, vid); } catch(_) {
+            return sendJson(res, 503, { ok:false, code:'sync_read_unavailable', results:[] });
+          }
         }
         if(!vrec){
           vrec = (store[op.c] || []).find(x => x.id === vid);
         }
-        const cur = vrec ? (vrec.version || 1) : 0;
+        const key = op.c + ':' + vid;
+        if (vrec && !authoritativeRows.has(key)) authoritativeRows.set(key, Object.assign({}, vrec));
+        const cur = plannedVersions.has(key) ? plannedVersions.get(key) : (vrec ? (vrec.version || 1) : 0);
         const versionedMismatch = !!VERSIONED[op.c] && Number(op.base_version) !== cur;
-        const structuralMismatch = !versionedMismatch && !!STRUCTURAL[op.c] && Number(op.base_version) !== cur;
+        const structuralMismatch = !versionedMismatch && (!!STRUCTURAL[op.c] || strictBaseVersion) && Number(op.base_version) !== cur;
         /* Delta Hardening Phase 2 (gap 4): conflict-detection latency — the
            locate+compare step itself (before any conflict bookkeeping), on
            every versioned write. Closed label set: conflict|stale|clean. R1:
@@ -1005,6 +1011,9 @@ function createSync(ctx){
       }
       results.push({ uid: op.uid, ok: true, serverTime: new Date().toISOString() });
       apply.push(op);
+      if (op.base_version != null && (op.t === 'upd' || op.t === 'del')) {
+        plannedVersions.set(op.c + ':' + Number(op.id != null ? op.id : (op.data && op.data.id)), op.t === 'del' ? 0 : op.base_version + 1);
+      }
     }
 
     /* Wave 1: PG-first two-phase. Phase 1 applies to the store; phase 2 commits the
@@ -1050,7 +1059,7 @@ function createSync(ctx){
         const data = Object.assign({}, op.data);
         const prot = stripProtected(data); /* R98 — ممنوع‌ها جدا؛ بعداً صریح */
         if(data.id == null) data.id = await serverId(op.c); /* Wave 1: ids service (PG sequences when live) */
-        if(VERSION_TRACKED[op.c] && data.version == null) data.version = 1; /* R95 */
+        if((VERSION_TRACKED[op.c] || strictBaseVersion) && data.version == null) data.version = 1; /* R95 */
         /* Wave 1: hydrate cross-instance misses from PG before the upsert check. */
         const ex = await findForApply(op.c, data.id, undo);
         if(ex){
@@ -1077,6 +1086,11 @@ function createSync(ctx){
         if(rec){
           const uRec = undo ? undo.items.push({ k: 'rec', c: op.c, id: rec.id,
             before: JSON.parse(JSON.stringify(rec)) }) - 1 : -1;   /* باگ ۲ */
+          const key = op.c + ':' + rec.id;
+          if (authoritativeRows.has(key)) {
+            Object.assign(rec, authoritativeRows.get(key));
+            authoritativeRows.delete(key);
+          }
           const clean = Object.assign({}, op.data); /* R98 — op.data برایِ hookها دست‌نخورده */
           const prot = stripProtected(clean);
           if(op.c === 'users' && clean.role && rec.role !== clean.role){
@@ -1084,9 +1098,9 @@ function createSync(ctx){
           }
           Object.assign(rec, clean, { id: rec.id, updated_at: new Date().toISOString() });
           Object.assign(rec, prot); /* مقادیرِ اعتبارسنجی‌شده — صریح، نه inject */
-          if(VERSION_TRACKED[op.c]) rec.version = (rec.version || 1) + 1; /* R95 */
+          if(VERSION_TRACKED[op.c] || strictBaseVersion || op.base_version != null) rec.version = (op.base_version != null ? op.base_version : (rec.version || 1)) + 1; /* R95 */
           if(undo) undo.items[uRec].after = JSON.parse(JSON.stringify(rec));   /* باگ ۲ */
-          mirror.push({ uid: op.uid, c: op.c, t: 'upd', data: rec });   /* P1-14 */
+          mirror.push({ uid: op.uid, c: op.c, t: 'upd', base_version: op.base_version, data: Object.assign({}, rec) });   /* P1-14 */
         }
       }else if(op.t === 'del'){
         const delId = Number(op.id != null ? op.id : (op.data && op.data.id));
@@ -1106,7 +1120,7 @@ function createSync(ctx){
            مجموعه‌ها اشتباه می‌گرفت (grades:42 vs announcements:42). */
         if(undo) undo.items.push({ k: 'popDelRec', idx: store.__deleted_records.length - 1, id: delId, c: op.c, at: tomb.at, ref: tomb });
         audit('record_deleted', { user_id: s.id, role: s.role, school_id: s.school_id, collection: op.c, record_id: delId, summary: 'حذف رکورد ' + delId + ' از ' + op.c });
-        mirror.push({ uid: op.uid, c: op.c, t: 'del', id: delId });   /* P1-14 */
+        mirror.push({ uid: op.uid, c: op.c, t: 'del', id: delId, base_version: op.base_version });   /* P1-14 */
       }
       store.__server_version = (store.__server_version || 0) + 1;
       if(undo) undo.bumps++;   /* باگ ۲: فقط افزایش‌های خودِ این درخواست */
