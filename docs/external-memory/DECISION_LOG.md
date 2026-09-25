@@ -49,3 +49,8 @@ This is the durable record of **why** material project decisions were made.
 1. Evidence-first hardening (default): close A-30..A-39 in dependency order.
 2. Parallel E4 preparation: provision DR infrastructure while code/gate work proceeds, without promoting status.
 3. Investigation-only for blocked items: document root cause and unblocker, with no artificial PASS.
+
+
+## FINAL SYNCHRONIZATION RECEIPT — 2026-09-25
+**Exact main HEAD after this synchronization series:** `7c1a4ce3c29810910bfee72e17358d81032c33ea`.
+This SHA includes the synchronization updates themselves. The verification registry remains intentionally bound to `e4584806c1af2a1e5db648c8452580a8fa8cbcec` until the hardening SHA is frozen and evidence is regenerated; therefore this receipt is a project-state update, not a certification.
