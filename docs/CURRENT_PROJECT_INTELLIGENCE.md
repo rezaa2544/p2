@@ -166,3 +166,23 @@ Immediate root-cause controls:
 
 ### New report rule
 Future reports must explain not only what was fixed, but why the previous fix did not prevent recurrence. FIXED without root-cause closure is FIXED-SCOPED only.
+
+
+## SUPERVISING ENGINEER / DELIVERY ENFORCEMENT — 2026-09-25
+
+A new mandatory control document exists: docs/external-memory/SUPERVISING_ENGINEER.md.
+
+### Root cause of prior push non-compliance
+The previous push requirement was prompt-level but lacked an explicit delivery contract and repository-state gate at handoff. Agents could finish analysis or create commits/branches while reporting completion without satisfying the actual target delivery.
+
+### Permanent fix
+Future execution prompts must define:
+target branch, required commit, required push, required PR/merge, tests, evidence and exact delivery identifiers.
+
+Status rules:
+- no remote commit = WORK_INCOMPLETE;
+- remote commit but required PR absent = WORK_INCOMPLETE;
+- PR open when merge-to-main was required = WORK_INCOMPLETE;
+- only repository evidence can promote completion.
+
+The Supervising Engineer checklist is now mandatory at session start and delivery.
