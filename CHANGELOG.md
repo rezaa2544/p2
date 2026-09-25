@@ -40,3 +40,11 @@ This SHA includes the synchronization updates themselves. The verification regis
 - Recorded recurrence patterns across A-18/A-20/A-22/A-24/A-31/A-34/A-35/A-37.
 - Added P0 controls: Invariant Registry, Reappearance Regression Suite, evidence invalidation, complete path/config inventories and authoritative policy contracts.
 - Changed future reporting rule: FIXED is scoped unless the reason previous controls failed to prevent recurrence is identified and root-cause closure is proven.
+
+
+## 2026-09-25
+
+### Added — Supervising Engineer control
+- Added docs/external-memory/SUPERVISING_ENGINEER.md.
+- Added mandatory delivery contract and push/PR/merge completion rules.
+- Recorded the root cause of prior push non-compliance as a missing enforcement/hand-off gate rather than a missing prompt instruction.
