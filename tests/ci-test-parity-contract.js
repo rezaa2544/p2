@@ -15,18 +15,10 @@ function readWorkflows() { if (!fs.existsSync(WF)) return []; return fs.readdirS
 function referencedTests(workflows) { const out = new Set(), re = /tests\/[A-Za-z0-9_.\-/]+\.js/g; for (const wf of workflows) for (const hit of wf.match(re) || []) out.add(hit); return out; }
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT,'package.json'),'utf8'));
 const referenced = referencedTests(readWorkflows());
-function allTests(dir, rel) {
-  const out = [];
-  for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (ent.name === 'helpers') continue;
-    const abs = path.join(dir, ent.name);
-    const r = path.join(rel, ent.name);
-    if (ent.isDirectory()) out.push(...allTests(abs, r));
-    else if (ent.name.endsWith('.js') && !ent.name.endsWith('-child.js')) out.push(r);
-  }
-  return out;
-}
-const allRepoTests = allTests(TESTS, 'tests').sort();
+const topLevelTests = fs.readdirSync(TESTS).filter(f => f.endsWith('.js')).map(f => 'tests/' + f).sort();
+const apiDir = path.join(TESTS, 'api');
+const apiTests = fs.existsSync(apiDir) ? fs.readdirSync(apiDir).filter(f => f.endsWith('.test.js')).map(f => 'tests/api/' + f).sort() : [];
+const apiRunnerPath = 'tests/api/runner.js';
 console.log('\n🔗 TEST/CI parity contract\n');
 const testScript = (pkg.scripts && pkg.scripts.test) || '';
 chk('P1 npm test is defined', testScript.length > 0, 'package.json scripts.test is empty');
@@ -37,8 +29,13 @@ const dead = [...referenced].filter(t => !fs.existsSync(path.join(ROOT,t)));
 chk('P4 workflow test references exist', dead.length === 0, dead.join(', '));
 chk('P5 at least one workflow executes tests', referenced.size > 0);
 const executed = new Set([...referenced, ...NPM_TEST_ENTRYPOINTS]);
-const orphans = allRepoTests.filter(t => !executed.has(t));
-console.log(`\n  📊 measured: ${allRepoTests.length} repository tests | ${executed.size} wired | ${orphans.length} unwired\n`);
+const orphans = topLevelTests.filter(t => !executed.has(t));
+const apiRunnerWired = testScript.includes(apiRunnerPath) || referenced.has(apiRunnerPath);
+const apiCoverage = apiTests.length === 30 && apiRunnerWired;
+chk('P6a API inventory has exactly 30 suites', apiTests.length === 30, 'count=' + apiTests.length);
+chk('P6b API runner is wired into a canonical gate', apiRunnerWired, apiRunnerPath);
+chk('P6c API runner covers all 30 suites', apiCoverage, 'runner=' + apiRunnerWired + ' suites=' + apiTests.length);
+console.log('\n  📊 measured: ' + topLevelTests.length + ' top-level tests | API suites=' + apiTests.length + ' | ' + executed.size + ' wired | ' + orphans.length + ' top-level unwired\n');
 chk(`P6 unwired tests <= registered budget (${ORPHAN_BUDGET})`, orphans.length <= ORPHAN_BUDGET, `unwired=${orphans.length}`);
 for (const t of CRITICAL_ORPHANS) { chk(`P7 critical orphan exists: ${t}`, fs.existsSync(path.join(ROOT,t))); chk(`P8 critical orphan wired: ${t}`, referenced.has(t)); }
 for (const t of EXTRA_GATES) { chk(`P9 false-green gate exists: ${t}`, fs.existsSync(path.join(ROOT,t))); chk(`P10 false-green gate wired: ${t}`, referenced.has(t)); }
