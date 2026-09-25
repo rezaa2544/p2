@@ -877,3 +877,31 @@ No item above is marked green by this reconciliation. New/remaining work must en
 10. **A-39 / Reliability/DR:** F-1a..F-5 و failure drills باید در A-25/A-27 acceptance criteria صریح بمانند.
 
 تا بسته‌شدن این موارد با evidence current-head و سه بررسی مستقل، وضعیت کلان **NOT VERIFIED** باقی می‌ماند.
+
+
+## 2026-09-25 — CURRENT PROJECT STATE RECONCILIATION
+
+**Current main HEAD after synchronization:** 774e7ab16a33ab880c883923fc00564c1b93f9e9.
+
+### Current position
+**Phase 8.2 / Hardening-to-Gate reconciliation remains active.** The project has not advanced to a certified Phase 8.3 state. The newer A-30..A-39 hardening queue is now the immediate gate before broad validation.
+
+### New authoritative reconciliation facts
+- Main advanced through PR #415 and PR #416 after the previous intelligence snapshot.
+- PR #416 publishes extensive current-head Sync/OCC/offline evidence, but its own verdict is NOT VERIFIED and records 30 intentional legacy-mode failures; it does not grant production clearance.
+- A-35 remediation is present in main history, but current-head re-verification remains required.
+- The verification registry remains bound to e4584806; this is a deliberate evidence boundary, not a missing update. It must be rebound only after the final hardening SHA is frozen and three independent reviews are complete.
+
+### Current gate chain
+**A-30 Gate Hardening → A-31..A-36 defect closure/reconciliation → A-37 test-integrity closure → A-38 registry rebind → A-39 E4 reliability/DR → ChatGPT + Arena + Atria independent validation → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification.**
+
+### Transition rule
+A later phase may be prepared in parallel, but may not be recorded as passed merely because its scripts/docs exist. Runtime evidence must be produced on the same final SHA.
+
+### Evidence hierarchy
+1. E3/E4 runtime and current GitHub evidence
+2. current code/tests on main
+3. SHA-bound audit evidence
+4. planning/history
+
+No current certification claim may be derived from historical CI or from a report whose tested SHA differs from the final main SHA.
