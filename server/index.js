@@ -298,12 +298,8 @@ async function seedPgFromBootstrap(store, db) {
     } catch (e) { /* tables missing ⇒ not a clean-empty PG — hydrate as before */ }
     if (keepBootstrap) {
       console.log('[store] PG is empty and a bootstrap JSON store is present — hydration SKIPPED (P0-BUG-04 guard); seeding PG from the bootstrap store now (one-time)...');
-      try {
-        const r = await seedPgFromBootstrap(store, db);
-        console.log('[store] bootstrap→PG seed done: ' + r.rows + ' row(s) / ' + r.tables + ' table(s)' + (r.skipped ? ' — skipped ' + r.skipped + ' non-mappable row(s)' : ''));
-      } catch (e) {
-        console.warn('[store] bootstrap→PG seed failed (bootstrap mode stays; retried next boot):', e.message);
-      }
+      const r = await seedPgFromBootstrap(store, db);
+      console.log('[store] bootstrap→PG seed done: ' + r.rows + ' row(s) / ' + r.tables + ' table(s)');
     } else
     /* Wave 1: PG is authoritative — replace store domain collections with
        PG truth at boot (per-table failures warn and keep going). */
