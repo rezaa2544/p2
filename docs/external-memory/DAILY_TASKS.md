@@ -68,3 +68,13 @@ This SHA includes the synchronization updates themselves. The verification regis
 4. [ ] Build mutation/auth/failure configuration inventories and identify untested alternate paths.
 5. [ ] Audit twin policy implementations and move OCC/ownership/tenant/revocation/conflict toward one authoritative contract.
 6. [ ] For every A-30..A-39 item, record why the previous control did not prevent the new observation.
+
+
+## 2026-09-25 — SUPERVISING ENGINEER / DELIVERY CONTROL
+
+### P0
+- [ ] Add Delivery Contract to every future agent execution prompt.
+- [ ] Verify claimed completion against remote GitHub state.
+- [ ] Treat unpushed commits as WORK_INCOMPLETE.
+- [ ] Treat unmerged PRs as WORK_INCOMPLETE when main merge was required.
+- [ ] After each material change, update intelligence + memory + roadmap as applicable.
