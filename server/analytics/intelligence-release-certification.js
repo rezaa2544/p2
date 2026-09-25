@@ -693,6 +693,8 @@ function validateQualityGateStatus(options = {}) {
  */
 function executeEndToEndChain(inputSignal = {}, options = {}) {
   const timestamp = options.timestamp || '2026-09-18T12:00:00.000Z';
+  // این تابع فقط trace شبیه‌سازی‌شده می‌سازد؛ بدون evidence مستقل از runtime
+  // نباید آن را به عنوان اجرای واقعی/تولیدی verified کرد.
   const schoolId = inputSignal.school_id || 101;
   const regionId = inputSignal.region_id || 1;
 
@@ -846,7 +848,9 @@ function executeEndToEndChain(inputSignal = {}, options = {}) {
   ];
 
   return deepFreeze({
-    verified: true,
+    verified: false,
+    execution_mode: 'SYNTHETIC_SIMULATION',
+    verification_reason: 'Synthetic chain trace is not production execution evidence',
     total_steps: chainTrace.length,
     human_in_the_loop_preserved: true,
     zero_ranking_preserved: true,
@@ -874,7 +878,8 @@ function generatePhase3ReleaseCertificate(params = {}, options = {}) {
                      qualityGates.all_passed &&
                      sovereignty.compliant &&
                      zeroRanking.compliant &&
-                     e2eChain.verified;
+                     e2eChain.verified === true &&
+                     e2eChain.execution_mode === 'PRODUCTION_RUNTIME';
 
   const status = isEligible ? CERTIFICATION_STATUS.CERTIFIED : CERTIFICATION_STATUS.REJECTED;
 
