@@ -92,3 +92,12 @@ Closure rule: FIXED is not root-cause closure. Use ROOT-CAUSE-CLOSED only when s
 **Ownership:** Atria-1 owns product/security/data root causes; Atria-2 owns verification/test-integrity/reliability preparation and remaining CI/operational carry-over. Same invariant/file may not be concurrently modified by both.
 
 **Closure rule:** Finding → Reproduce → Root Cause → Invariant/All Paths → Fix → Regression → Current-HEAD Evidence → Independent Review. Historical evidence is never promoted automatically.
+
+
+## 2026-09-25 — Canonical Integration Receipt
+- Canonical main HEAD after integration: eafca3809bb0a89bff68b1375e0292426ff35098
+- Integration PR: #418
+- Legacy PRs reconciled/closed as superseded: #402, #403, #407, #410, #411, #412, #413, #417.
+- Integration method: reconcile each candidate against current main, preserve applicable intent, integrate one logical unit, then verify the resulting remote HEAD.
+- Important: closure of a legacy PR does not mean its original branch was merged verbatim; duplicate/stale/conflicting portions were intentionally superseded when current main already contained the fix or when preserving them verbatim would risk regression.
+- Verification status: NOT VERIFIED. Broad certification remains blocked until current-HEAD evidence is regenerated.
