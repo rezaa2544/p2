@@ -20,8 +20,15 @@ let allowed=null;try{allowed=JSON.parse(read(ALLOW));}catch(e){}
 chk('G6 explicit false-green allowlist exists',!!allowed&&Array.isArray(allowed.items));
 chk('G6a canonical alert rules exists',fs.existsSync(ALERT_RULES),path.relative(ROOT,ALERT_RULES));
 function walk(dir,out){out=out||[];for(const e of fs.readdirSync(dir,{withFileTypes:true})){if(['node_modules','.git','dist'].includes(e.name))continue;const p=path.join(dir,e.name);if(e.isSymbolicLink())continue;if(e.isDirectory())walk(p,out);else if(/\.(js|mjs|cjs|yml|yaml)$/.test(e.name))out.push(p);}return out;}
-const amap=new Map();
-if(allowed&&Array.isArray(allowed.items))for(const x of allowed.items)amap.set(String(x.pattern),x);
+const allowItems=allowed&&Array.isArray(allowed.items)?allowed.items:[];
+function allowedHit(label, hit) {
+  const rel=String(hit).split(':')[0].replace(/\\/g,'/');
+  return allowItems.some(function(a){
+    if(String(a.pattern)!==label) return false;
+    if(a.expires!=='never'&&new Date(a.expires)<=new Date()) return false;
+    return !a.path || String(a.path)===rel;
+  });
+}
 const pats=[['assert(true',/assert\s*\(\s*true\b/gi],['process.exit(0)',/process\.exit\(\s*0\s*\)/g],['|| true',/\|\|\s*true\b/g],['0/0 checks',/0\s*\/\s*0\s*(?:checks?|tests?)/gi]];
 function suspiciousTestHit(label, file, source, index) {
   const rel=path.relative(ROOT,file).replace(/\\/g,'/');
@@ -32,7 +39,7 @@ function suspiciousTestHit(label, file, source, index) {
   }
   return true;
 }
-for(const pair of pats){const label=pair[0],re=pair[1];let hits=[];for(const f of walk(ROOT)){if(f===__filename)continue;const source=read(f);re.lastIndex=0;let m;while((m=re.exec(source))){if(suspiciousTestHit(label,f,source,m.index))hits.push(path.relative(ROOT,f)+':'+(source.slice(0,m.index).split('\\n').length));}}const bad=hits.filter(function(h){for(const a of amap.values()){if(a.pattern===label&&(a.expires==='never'||new Date(a.expires)>new Date()))return false;}return true;});chk('G7 '+label+' has no suspicious unapproved test hits',bad.length===0,bad.slice(0,15).join(', '));}
+for(const pair of pats){const label=pair[0],re=pair[1];let hits=[];for(const f of walk(ROOT)){if(f===__filename)continue;const source=read(f);re.lastIndex=0;let m;while((m=re.exec(source))){if(suspiciousTestHit(label,f,source,m.index))hits.push(path.relative(ROOT,f)+':'+(source.slice(0,m.index).split('\\n').length));}}const bad=hits.filter(function(h){return !allowedHit(label,h);});chk('G7 '+label+' has no suspicious unapproved test hits',bad.length===0,bad.slice(0,15).join(', '));}
 if(reg&&Array.isArray(reg.items)){
  const ids=new Set();
  for(const item of reg.items){
