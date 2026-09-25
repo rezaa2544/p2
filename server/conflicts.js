@@ -139,7 +139,12 @@ function createConflicts(ctx) {
          (ممکن است null باشد) — دامنه را رویِ خودِ رکوردِ هدف می‌سنجیم. */
       if (s.role === 'manager') {
         const recSchool = target ? target.school_id : incData.school_id;
-        if (recSchool != null && Number(recSchool) !== Number(s.school_id))
+        if (recSchool == null)
+          /* Phase C verify (Arena): رکوردِ بی‌مدرسه (سراسری) در صلاحیتِ مدیرِ
+             مدرسه نیست — حلِ تعارض نباید دورزنِ مهارِ مدرسه‌ایِ مسیرِ سینک شود
+             (آزمونِ مستقلِ B3-C3: بازنویسیِ اطلاعیهٔ سراسری توسطِ مدیر). */
+          return sendJson(res, 403, { ok: false, code: 'out_of_scope', message: 'رکوردِ هدف سراسری است و در محدودهٔ مدرسهٔ شما نیست' });
+        if (Number(recSchool) !== Number(s.school_id))
           return sendJson(res, 403, { ok: false, code: 'out_of_scope', message: 'رکوردِ هدف خارج از محدودهٔ مدرسهٔ شماست' });
       }
 

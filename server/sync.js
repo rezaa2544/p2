@@ -386,6 +386,41 @@ let store_ref = null;
 function get_store(){ return store_ref; }
 function attach(store){ store_ref = store; }
 
+/* Phase C verify (Arena) — هم‌سازیِ مسیرِ سینک با گاردهای A-21 (که فقط رویِ
+   مسیرهای REST نشسته بودند). دو نقطهٔ آلودگیِ teacherClassIds:
+     ۱) classes.homeroom_teacher_id ← دبیرِ مدرسهٔ دیگر (ins/upd)
+     ۲) schedule.teacher_id        ← دبیرِ مدرسهٔ دیگر (ins/upd)
+   هر دو اجازه می‌دادند دبیرِ بیگانه در بازویِ بدونِ‌بررسیِ‌مدرسهٔ inScope
+   روی دادهٔ این مدرسه بنویسد/بخواند (رکوردِ آزمونِ مستقلِ B2b).
+   فوق‌العاده (superadmin) معاف است؛ بقیه ⇒ ردِ عملیات با کدِ invalid_fk. */
+function syncFkIntegrity(op, s){
+  if(!op || !s) return null;
+  if(s.role === 'superadmin') return null;
+  const st = store_ref || {};
+  const users = st.users || [];
+  const classes = st.classes || [];
+  const findUser = (id) => users.find((u) => Number(u.id) === Number(id));
+  if(op.c === 'classes' && op.data && op.data.homeroom_teacher_id != null && op.data.homeroom_teacher_id !== ''){
+    const clsRec = op.id != null ? classes.find((c) => Number(c.id) === Number(op.id)) : null;
+    const clsSchool = clsRec && clsRec.school_id != null ? clsRec.school_id
+      : (op.data.school_id != null ? op.data.school_id : null);
+    if(clsSchool == null) return { field: 'homeroom_teacher_id', reason: 'class_school_unknown' };
+    const ht = findUser(op.data.homeroom_teacher_id);
+    if(!ht || ht.role !== 'teacher' || Number(ht.school_id) !== Number(clsSchool))
+      return { field: 'homeroom_teacher_id', reason: 'homeroom_school_mismatch' };
+  }
+  if(op.c === 'schedule' && op.data && op.data.teacher_id != null && op.data.teacher_id !== ''){
+    const schRec = op.id != null ? (st.schedule || []).find((x) => Number(x.id) === Number(op.id)) : null;
+    const rowSchool = schRec && schRec.school_id != null ? schRec.school_id
+      : (op.data.school_id != null ? op.data.school_id : null);
+    if(rowSchool == null) return { field: 'teacher_id', reason: 'schedule_school_unknown' };
+    const t = findUser(op.data.teacher_id);
+    if(!t || Number(t.school_id) !== Number(rowSchool))
+      return { field: 'teacher_id', reason: 'teacher_school_mismatch' };
+  }
+  return null;
+}
+
 /* §13.1 — روزِ غیرحضوری (virtual): عملیاتِ فیزیکی مسدود است.
    آینهٔ سمتِ سرور از گاردِ کلاینت (schoolVirtual — 57-school-mode.js، بند ۱۶).
    عملیات‌های فیزیکی:
@@ -850,6 +885,14 @@ function createSync(ctx){
       if(fv){
         audit('sync_field_gate', { user_id: s.id, uid: op.uid, collection: op.c, code: fv.code });
         results.push({ uid: op.uid, ok: false, code: fv.code, message: fv.msg });
+        continue;
+      }
+      /* Phase C verify (Arena): یکپارچگیِ FKهای انتسابِ دبیر در مسیرِ سینک —
+         هم‌سطحِ گاردهای A-21 در REST (classes.js). ردِّ عملیات‌محور. */
+      const fkv = syncFkIntegrity(op, s);
+      if(fkv){
+        audit('sync_fk_rejected', { user_id: s.id, uid: op.uid, collection: op.c, field: fkv.field, reason: fkv.reason });
+        results.push({ uid: op.uid, ok: false, code: 'invalid_fk', field: fkv.field, message: 'ارجاعِ «' + fkv.field + '» خارج از محدودهٔ مدرسه است' });
         continue;
       }
       /* لایهٔ مقدار (validate.js): طولِ رشته / enum / عدد / تاریخ — ردِّ
@@ -1371,4 +1414,4 @@ function createSync(ctx){
 
   return { apiSync, canWrite, inScope };
 }
-module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, virtualDayOfflineBasis, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED };
+module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, virtualDayOfflineBasis, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED, syncFkIntegrity };

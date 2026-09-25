@@ -294,12 +294,22 @@ function inScope(session, store, coll, recId, data) {
     if ((coll === 'hw_assignments' || coll === 'vclass_sessions') && t2.class_id != null) {
       const cls2 = ((store && store.classes) || []).find((c) => Number(c.id) === Number(t2.class_id));
       if (!cls2) return false; /* کلاس ناموجود ⇒ رد (مثلِ مسیرِ اصلی) */
+      /* Phase C verify (Arena): بازویِ دبیر پیش‌تر مدرسه را نمی‌سنجید؛ اگر
+         teacherClassIds از راهِ برنامهٔ درسی/سرپرستیِ آلوده شاملِ کلاسِ مدرسهٔ
+         دیگر می‌شد، نوشتار/خوانشِ بین‌مدرسه‌ای ممکن بود. کلاسِ بی‌مدرسه هم
+         مهار نمی‌دهد (fail-closed). */
+      if (cls2.school_id == null || Number(cls2.school_id) !== Number(u.school_id)) return false;
       return teacherClassIds(store, u.id).has(Number(cls2.id));
     }
     const sid = rec ? rec.student_id : (data && data.student_id);
     if (sid != null) {
       const enr = ((store && store.enrollments) || []).find((e) => Number(e.student_id) === Number(sid));
       if (!enr) return false;
+      /* Phase C verify (Arena): بررسیِ مدرسهٔ کلاسِ دانش‌آموز — دفاع در عمق
+         در برابرِ آلودگیِ teacherClassIds (سناریویِ آزمونِ B2b: برنامهٔ درسیِ
+         جعلی با دبیرِ مدرسهٔ دیگر). */
+      const clsE = ((store && store.classes) || []).find((c) => Number(c.id) === Number(enr.class_id));
+      if (!clsE || clsE.school_id == null || Number(clsE.school_id) !== Number(u.school_id)) return false;
       return teacherClassIds(store, u.id).has(Number(enr.class_id));
     }
     if (rec && rec.teacher_id != null) return rec.teacher_id === u.id;
