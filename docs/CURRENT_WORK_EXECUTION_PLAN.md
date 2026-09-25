@@ -552,3 +552,15 @@ F3 and F5 are not added as duplicate open fixes: current main contains mitigatio
 
 ### Definition of Done
 **Finding → current-head reproduction → root cause → invariant/all-path audit → fix → permanent regression → execute → SHA-bound evidence → independent review → final registry rebind.**
+
+
+## 2026-09-25 — DIRECT SUPERVISING-ENGINEER REMEDIATION
+
+The Supervising Engineer fixed the safely actionable portions of F1/F2/F4 before Atria execution. They remain **FIXED-SCOPED / TEST PENDING** until current-HEAD CI/runtime/adversarial evidence exists.
+
+### Updated executor pool
+- Atria-1 — Product/Security/Data root causes
+- Atria-2 — Gate/Test-integrity/Reliability
+- **Atria-3 — new independent executor/reviewer slot; exact non-overlapping ownership must be assigned before code changes**
+
+No Atria agent may duplicate the already-applied F1/F2/F4 changes without first reproducing a residual defect.
