@@ -23,7 +23,7 @@ chk('G3 registry exists',fs.existsSync(REG));
 let reg=null;try{reg=JSON.parse(read(REG));}catch(e){}
 chk('G4 registry valid JSON',!!reg);
 let allowed=null;try{allowed=JSON.parse(read(ALLOW));}catch(e){}
-chk('G5 allowlist valid JSON',!!allowed&&Array.isArray(allowed.items));
+chk('G5 allowlist schema is version 2',!!allowed&&allowed.schema_version===2&&Array.isArray(allowed.items));
 const amap=new Map();
 if(allowed&&Array.isArray(allowed.items))for(const x of allowed.items){if(x&&typeof x.pattern==='string')amap.set(x.pattern,x);}
 const now=Date.now();
@@ -33,15 +33,15 @@ const pats=[[['assert','true'].join('('),/assert\s*\(\s*true\b/gi],[['assert','c
 for(const [label,re] of pats){let hits=[];for(const f of walk(ROOT)){let s=read(f);re.lastIndex=0;let m;while((m=re.exec(s)))hits.push(path.relative(ROOT,f)+':'+(s.slice(0,m.index).split('\\n').length));}const bad=hits.filter(()=>!allowedHit(label));chk('G6 '+label+' has no unapproved hits',bad.length===0,bad.slice(0,15).join(', '));}
 chk('G7 canonical alert rules exists',fs.existsSync(ALERT_RULES),path.relative(ROOT,ALERT_RULES));
 const items=reg&&Array.isArray(reg.items)?reg.items:null;
-chk('G8 registry items is non-empty',Array.isArray(items)&&items.length>0,items?String(items.length):'missing');
+chk('G8 registry schema is version 2',!!reg&&reg.schema_version===2);\nchk('G9 registry items is non-empty',Array.isArray(items)&&items.length>0,items?String(items.length):'missing');
 if(reg){
- chk('G9 allowed_statuses exactly enforced',Array.isArray(reg.allowed_statuses)&&JSON.stringify(reg.allowed_statuses)===JSON.stringify(ALLOWED_STATUSES));
- chk('G10 required reviewers exactly declared',Array.isArray(reg.required_reviewers)&&JSON.stringify(reg.required_reviewers)===JSON.stringify(REQUIRED_REVIEWERS));
- chk('G11 registry head_bound is exact SHA',sha(reg.head_bound));
- chk('G12 registry head_bound equals intended HEAD',reg.head_bound===intended,`registry=${reg.head_bound} intended=${intended}`);
- chk('G13 registry status is allowed',ALLOWED_STATUSES.includes(reg.status),String(reg.status));
+ chk('G10 allowed_statuses exactly enforced',Array.isArray(reg.allowed_statuses)&&JSON.stringify(reg.allowed_statuses)===JSON.stringify(ALLOWED_STATUSES));
+ chk('G11 required reviewers exactly declared',Array.isArray(reg.required_reviewers)&&JSON.stringify(reg.required_reviewers)===JSON.stringify(REQUIRED_REVIEWERS));
+ chk('G12 registry head_bound is exact SHA',sha(reg.head_bound));
+ chk('G13 registry head_bound equals intended HEAD',reg.head_bound===intended,`registry=${reg.head_bound} intended=${intended}`);
+ chk('G14 registry status is allowed',ALLOWED_STATUSES.includes(reg.status),String(reg.status));
  const blocked=/^BLOCKED_UNTIL_(.+)$/.exec(String(reg.status||''));
- if(blocked){chk('G14 blocked-until condition is explicit and fail-closed',false,'registry is blocked: '+reg.status);}
+ if(blocked){chk('G15 blocked-until condition is explicit and fail-closed',false,'registry is blocked: '+reg.status);}
 }
 const ids=new Set();
 let certified=0;
