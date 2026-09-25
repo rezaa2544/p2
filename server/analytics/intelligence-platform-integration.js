@@ -289,14 +289,14 @@ function checkIntelligenceChainHealth(params = {}) {
   const issues = [];
 
   const nodes = {
-    insight_engines_present: Boolean(outputs.schoolIntelligence || outputs.insights || true),
-    decision_command_present: Boolean(outputs.decisionCommand || outputs.decisions || true),
-    execution_workflow_present: Boolean(outputs.executionDashboard || outputs.tasks || true),
-    outcome_evaluation_present: Boolean(outputs.outcomeEvaluation || outputs.evaluations || true)
+    insight_engines_present: Boolean(outputs.schoolIntelligence || outputs.insights),
+    decision_command_present: Boolean(outputs.decisionCommand || outputs.decisions),
+    execution_workflow_present: Boolean(outputs.executionDashboard || outputs.tasks),
+    outcome_evaluation_present: Boolean(outputs.outcomeEvaluation || outputs.evaluations)
   };
 
   // چک‌های انسجام و حاکمیت
-  let evidencePresence = true;
+  const evidencePresence = Boolean(outputs.evidence || outputs.evidence_bundle || outputs.evidence_count > 0);
   let humanApprovalEnforced = true;
   let auditTrailPreserved = true;
   let zeroRankingGuaranteed = true;
@@ -314,9 +314,9 @@ function checkIntelligenceChainHealth(params = {}) {
   let chainStatus = PLATFORM_HEALTH_STATUS.HEALTHY;
   if (!zeroRankingGuaranteed || !humanApprovalEnforced) {
     chainStatus = PLATFORM_HEALTH_STATUS.CRITICAL;
-  } else if (!nodes.outcome_evaluation_present || !nodes.execution_workflow_present) {
+  } else if (!nodes.insight_engines_present || !nodes.decision_command_present || !nodes.outcome_evaluation_present || !nodes.execution_workflow_present || !evidencePresence) {
     chainStatus = PLATFORM_HEALTH_STATUS.DEGRADED;
-    issues.push('برخی گره‌های زنجیره اجرا یا ارزیابی هنوز تکمیل نشده‌اند');
+    issues.push('زنجیره یا شواهد عینی ناقص است');
   }
 
   const healthStatus = {
@@ -355,13 +355,15 @@ function buildUnifiedIntelligenceSnapshot(params = {}) {
   const compatibility = validateEngineCompatibility(catalog, options);
   const chainHealth = checkIntelligenceChainHealth({ engineOutputs: params.engineOutputs, options });
 
+  const eo = params.engineOutputs || {};
   const summaryMetrics = {
-    school_intelligence_score: 86.5,
-    health_index: 84.0,
-    decision_items_count: 5,
-    operational_tasks_count: 8,
-    evaluations_count: 4,
-    avg_impact_score: 81.2
+    school_intelligence_score: eo.schoolIntelligence?.score ?? null,
+    health_index: eo.healthIndex?.score ?? eo.health_index ?? null,
+    decision_items_count: eo.decisionCommand?.total_decisions ?? eo.decisions?.length ?? null,
+    operational_tasks_count: eo.executionDashboard?.total_tasks ?? eo.tasks?.length ?? null,
+    evaluations_count: eo.outcomeEvaluation?.evaluations_count ?? eo.evaluations?.length ?? null,
+    avg_impact_score: eo.outcomeEvaluation?.avg_impact_score ?? eo.outcomeEvaluation?.impact_score ?? null,
+    data_quality: Object.values(eo).length > 0 ? 'SOURCE_DERIVED' : 'NO_DATA'
   };
 
   const snapshot = {
@@ -405,10 +407,10 @@ function generatePlatformHealthReport(params = {}) {
     region_id: regionId,
     platform_status: snapshot.platform_health,
     integrated_engines_count: snapshot.total_engines_integrated,
-    compatibility_pct: 100.0,
-    chain_integrity_score: 100.0,
-    human_sovereignty_verified: true,
-    zero_ranking_verified: true,
+    compatibility_pct: snapshot.compatibility_report?.compatibility_pct ?? null,
+    chain_integrity_score: snapshot.chain_health?.chain_status === PLATFORM_HEALTH_STATUS.HEALTHY ? 100.0 : null,
+    human_sovereignty_verified: snapshot.chain_health?.integrity_checks?.human_approval_enforced === true,
+    zero_ranking_verified: snapshot.chain_health?.integrity_checks?.zero_ranking_guaranteed === true,
     reported_at: nowIso
   };
 
