@@ -476,3 +476,8 @@ The merged Arena publication contains real evidence for A-18/A-20/A-24 on a late
 
 ### Phase transition rule
 Do not enter the broad Capability/Role/E2E/Performance certification campaign until A-30..A-39 have either been fixed and evidence-backed, or explicitly dispositioned as BLOCKED/ACCEPTED RISK with owner, rationale and review point.
+
+
+## FINAL SYNCHRONIZATION RECEIPT — 2026-09-25
+**Exact main HEAD after this synchronization series:** `7c1a4ce3c29810910bfee72e17358d81032c33ea`.
+This SHA includes the synchronization updates themselves. The verification registry remains intentionally bound to `e4584806c1af2a1e5db648c8452580a8fa8cbcec` until the hardening SHA is frozen and evidence is regenerated; therefore this receipt is a project-state update, not a certification.
