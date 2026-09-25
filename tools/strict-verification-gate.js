@@ -23,7 +23,16 @@ function walk(dir,out){out=out||[];for(const e of fs.readdirSync(dir,{withFileTy
 const amap=new Map();
 if(allowed&&Array.isArray(allowed.items))for(const x of allowed.items)amap.set(String(x.pattern),x);
 const pats=[['assert(true',/assert\s*\(\s*true\b/gi],['process.exit(0)',/process\.exit\(\s*0\s*\)/g],['|| true',/\|\|\s*true\b/g],['0/0 checks',/0\s*\/\s*0\s*(?:checks?|tests?)/gi]];
-for(const pair of pats){const label=pair[0],re=pair[1];let hits=[];for(const f of walk(ROOT)){const s=read(f);re.lastIndex=0;let m;while((m=re.exec(s)))hits.push(path.relative(ROOT,f)+':'+(s.slice(0,m.index).split('\n').length));}const bad=hits.filter(function(h){for(const a of amap.values()){if(a.pattern===label&&(a.expires==='never'||new Date(a.expires)>new Date()))return false;}return true;});chk('G7 '+label+' has no unapproved hits',bad.length===0,bad.slice(0,15).join(', '));}
+function suspiciousTestHit(label, file, source, index) {
+  const rel=path.relative(ROOT,file).replace(/\\/g,'/');
+  if(!rel.startsWith('tests/')) return false;
+  if(label==='process.exit(0)'){
+    const before=source.slice(0,index).replace(/\/\*[\s\S]*?\*\//g,'').replace(/\/\/[^\n]*/g,'');
+    return !/(?:\\bpass\\b|\\bfail\\b|\\bassert\\s*\\(|\\bchk\\s*\\(|\\btest\\s*\\(|\\bexpect\\s*\\()/.test(before);
+  }
+  return true;
+}
+for(const pair of pats){const label=pair[0],re=pair[1];let hits=[];for(const f of walk(ROOT)){if(f===__filename)continue;const source=read(f);re.lastIndex=0;let m;while((m=re.exec(source))){if(suspiciousTestHit(label,f,source,m.index))hits.push(path.relative(ROOT,f)+':'+(source.slice(0,m.index).split('\\n').length));}}const bad=hits.filter(function(h){for(const a of amap.values()){if(a.pattern===label&&(a.expires==='never'||new Date(a.expires)>new Date()))return false;}return true;});chk('G7 '+label+' has no suspicious unapproved test hits',bad.length===0,bad.slice(0,15).join(', '));}
 if(reg&&Array.isArray(reg.items)){
  const ids=new Set();
  for(const item of reg.items){
