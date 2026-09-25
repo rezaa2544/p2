@@ -531,3 +531,19 @@ For every Atria report the Supervising Engineer must immediately map:
 **AGENT → MISSION → FINDING IDs → SCOPE → BASE SHA → COMMIT → PUSHED → TARGET → TESTS → EVIDENCE → CURRENT HEAD → REMAINING ITEMS → NEXT ACTION**.
 
 Progress percentage is based on verified scope/evidence, not claimed activity. Each item is shown as **✅** only after the corresponding delivery/evidence gate is actually verified; otherwise it remains **⬜ / UNVERIFIED**.
+
+
+## 12.17 — Direct Remediation Before Atria Handoff — 2026-09-25
+
+The Supervising Engineer must not defer a safely actionable defect merely because an executor agent exists. Before Atria execution, the following direct source fixes were applied:
+
+- **F1:** hardened `seedPgFromBootstrap()` against the observed bootstrap/PG integrity failure: semantic grade preservation for legacy `classes.grade`, explicit identity-sequence advancement, fail-closed fallback insertion, and hard failure on skipped seed/sequence operations. The first-boot caller no longer converts seed failure into a warning-only successful boot.
+- **F2:** removed the obsolete `users.parent_id` PostgreSQL lookup from parent scope resolution. `parent_links` is the authoritative relation.
+- **F4:** added explicit manager denial for regional targets in both quality-governance and longitudinal-intelligence authorization guards.
+
+**Delivery state:** code is **FIXED-SCOPED / TEST PENDING**. CI on the latest code HEAD is currently pending, so these fixes must not be reported as VERIFIED/CERTIFIED.
+
+### Team correction
+The executor team is now **1 Supervising Engineer + 5 ChatGPT + 10 Arena + 3 Atria**.
+
+Atria-3 is a new execution/review slot. Its exact mission must be assigned from the remaining queue without overlapping Atria-1/Atria-2 or redoing F1/F2/F4 unless fresh residual evidence requires it.
