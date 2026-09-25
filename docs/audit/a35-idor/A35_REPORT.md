@@ -1,6 +1,6 @@
 # A-35 — Authorization Bypass / Data-Leak Audit (A-AUTHZ-03/04/05)
 
-**Date:** 2026-09-25 · **PIN (reviewed):** `4bff3bcb757162f040e82ffa26f3d40e46eb7a36` · **Fix commit:** `b3833a4e017f97fd0a9bd9e10f67a3f2dca492cc` (parent = PIN, branch `main`)
+**Date:** 2026-09-25 · **PIN (reviewed):** `4bff3bcb757162f040e82ffa26f3d40e46eb7a36` · **Fix commit on GitHub:** `e05d021` on base `2baa7c1` (remote had advanced past the PIN before push; A-35 files unchanged upstream, fix re-verified 15/15 on the new base) · **Audit bundle commit:** `31145f0` · **Branch:** `main`
 **Method:** static mapping (policy.js/sync.js/auth.js/index.js/model.json) → live runtime proof (2-school fixture, 20 users, PG+Redis, prod env) → reproduce → fix → red→green regression → adversarial retest.
 **Status:** 4 confirmed defects (1 CRITICAL, 2 MEDIUM, 1 LOW functional) — **all fixed, all regression-pinned, adversarially retested.** Not a certification; feeds the 3-AI verification gate.
 
@@ -58,3 +58,9 @@ teacher A→B (reads 404, writes 403/404); manager A→B (`out_of_scope`/403); f
 - `/home/user/idor-evidence-a35-main.jsonl` (round 1, 40 probes) · `idor-evidence-a35-round2.jsonl` (16) · `idor-evidence-a35-round3.jsonl` (7) · `idor-evidence-a35-phone.jsonl` (pre-patch 200-variants) + post-patch 429 output captured in session log.
 - Repro fixtures: `a35-overlay.js` + `env-bootstrap.sh` (rebuild ~25s). Harnesses: `idor-a35-{main,round2,round3,phone}.js` (all uid-per-run, OTP injection via Redis `payesh:otp:state` with canonical keys).
 - Commit: `b3833a4e017f97fd0a9bd9e10f67a3f2dca492cc` on `main` (parent `4bff3bcb…`). Working tree additionally holds prior-session obs/audit files (uncommitted, untouched by this commit).
+
+## 8. Push confirmation (GitHub)
+- Pushed 2026-09-25: `2baa7c1..31145f0 main -> main` (https://github.com/rezaa2544/p2).
+- Fix commit `e05d021` (server/policy.js +62/−6, server/auth.js +14/−2, tests/a35-regression.js +175) — same content as the local pre-push commit `b3833a4`, new SHA because it was re-based onto the advanced remote tip `2baa7c1` (12 upstream commits; none touched the A-35 files or the inScope call path).
+- Audit bundle `31145f0`: 22 files (+2541) under docs/audit/a35-idor/ + 3 IDOR runtime harnesses in tests/.
+- Regression re-run on the pushed base: **15 PASS / 0 FAIL / 0 SKIP** (live app, PG+Redis, prod env).
