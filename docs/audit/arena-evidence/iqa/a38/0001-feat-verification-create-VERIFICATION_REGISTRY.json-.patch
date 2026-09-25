@@ -1,0 +1,575 @@
+From f796b0d1364e49fcbdf44a55027551774720cf57 Mon Sep 17 00:00:00 2001
+From: Arena IQA Agent <iqa-agent@arena.local>
+Date: Fri, 25 Sep 2026 08:03:36 +0000
+Subject: [PATCH] feat(verification): create VERIFICATION_REGISTRY.json +
+ anti-greenwashing gate (Arena 9 / A-38)
+
+Mission A-38 finding: docs/verification/VERIFICATION_REGISTRY.json did not
+exist anywhere in the repo (DEF-A38-01). De-facto evidence lives scattered in
+markdown (RELEASE_GATE_EVIDENCE.md, HANDOFF, audit reports) citing stale SHAs
+(da13943@2026-09-09, 0a208f8/1a73c52@2026-09-13, undated audit docs) - none
+machine-verifiable, none valid for current HEAD.
+
+Structural fix (no item was greened):
+- docs/verification/VERIFICATION_REGISTRY.json (schema 1.0.0): 9 mandatory
+  fields per item (requirement/head_sha/command/exit_code/artifact/reviewer/
+  timestamp/runtime/limitation) + status enum VERIFIED_E3|DEFECT_OPEN|STALE|
+  BLOCKED|NOT_VERIFIED. CERTIFIED forbidden by policy.
+- Fresh E3 evidence executed at product tree 66928be (this session):
+  VR-002 smoke 547/547 exit0, VR-003 semantic-layer 33/33 exit0,
+  VR-004 api-runner 30/30 exit0 -> VERIFIED_E3 with artifacts under
+  docs/verification/evidence/66928be/ (COMMAND/HEAD/DATE/RUNTIME/EXIT_CODE
+  headers).
+- VR-001 run.js recorded honestly as DEFECT_OPEN exit=1: first run from
+  pristine checkout fails 'build output byte-identical to index.html'
+  (34/35), self-heals on run 2 (35/35). Committed index.html is not
+  byte-identical with build.js output in canonical runtime (DEF-A38-02).
+  NOT greened.
+- Historical evidence registered as STALE (VR-201..205), explicitly NOT
+  VERIFIED for current HEAD; two audit docs record no exact SHA (DEF-A38-03).
+- Out-of-repo/unpushed-branch evidence (arena9 5f0af4e, arena-iqa 871ff05
+  battery 263/263) registered NOT_VERIFIED for main.
+- Unrunnable-here requirements registered BLOCKED with reasons (CI/Actions
+  billing, live PG, Redis failover, DAST/pentest, k6, remote parity).
+
+Regression gate: tests/verification-registry.test.js (140 checks):
+- VERIFIED_E3 requires exit_code=0 + artifact with full header + 40-hex SHA
+  resolvable + product-tree (server/, src/, index.html, build.js, sw.js,
+  manifest.json, authz/) unchanged since evidence SHA (auto-stale otherwise).
+- Artifact<->SHA binding defeats retroactive revalidation by SHA edit.
+- Mutation-tested: 3 tampering scenarios (SHA-swap on STALE, VERIFIED without
+  artifact, VERIFIED with exit=1) all fail the gate (exit 1).
+
+This commit is docs/tests-only: product tree untouched (validator enforces).
+---
+ .gitignore                                    |   2 +
+ docs/verification/VERIFICATION_REGISTRY.json  | 248 ++++++++++++++++++
+ .../evidence/66928be/api-runner.log           |  12 +
+ docs/verification/evidence/66928be/run-js.log |  41 +++
+ .../evidence/66928be/semantic-layer.log       |  14 +
+ docs/verification/evidence/66928be/smoke.log  |  18 ++
+ tests/verification-registry.test.js           | 131 +++++++++
+ 7 files changed, 466 insertions(+)
+ create mode 100644 docs/verification/VERIFICATION_REGISTRY.json
+ create mode 100644 docs/verification/evidence/66928be/api-runner.log
+ create mode 100644 docs/verification/evidence/66928be/run-js.log
+ create mode 100644 docs/verification/evidence/66928be/semantic-layer.log
+ create mode 100644 docs/verification/evidence/66928be/smoke.log
+ create mode 100644 tests/verification-registry.test.js
+
+diff --git a/.gitignore b/.gitignore
+index 4d48626..65c5a35 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -4,6 +4,8 @@ data/*.sqlite
+ data/*.db
+ data/backups/
+ *.log
++# استثنا: artifactهای رجیستری راستی‌آزمایی باید کامیت شوند (A-38)
++!docs/verification/evidence/**
+ .DS_Store
+ Thumbs.db
+ .env
+diff --git a/docs/verification/VERIFICATION_REGISTRY.json b/docs/verification/VERIFICATION_REGISTRY.json
+new file mode 100644
+index 0000000..12a5421
+--- /dev/null
++++ b/docs/verification/VERIFICATION_REGISTRY.json
+@@ -0,0 +1,248 @@
++{
++  "schema_version": "1.0.0",
++  "registry_name": "PAYESH Verification Registry",
++  "created_by_mission": "Arena 9 — A-38",
++  "created_at": "2026-09-25T08:05:00Z",
++  "current_head_product_tree": "66928be6227567f3d92b2c93a2d5f8146a4601b8",
++  "current_head_note": "شواهد VERIFIED_E3 این نسخه روی درخت محصولِ کامیت فوق اجرا شده‌اند. کامیت افزودن همین رجیستری docs/tests-only است و درخت محصول (server/, src/, index.html, build.js, sw.js, manifest.json, authz/) را تغییر نمی‌دهد؛ validator این عدم‌تغییر را به‌صورت ماشینی تحمیل می‌کند.",
++  "status_enum": ["VERIFIED_E3", "DEFECT_OPEN", "STALE", "BLOCKED", "NOT_VERIFIED"],
++  "policy": {
++    "no_retroactive_revalidation": "هیچ evidence تاریخی صرفاً با تغییر فیلد head_sha معتبر نمی‌شود. اعتبار فقط با اجرای مجدد واقعی فرمان روی HEAD جدید و ثبت artifact جدید به‌دست می‌آید.",
++    "verified_requires": [
++      "exit_code === 0 از اجرای واقعی فرمان (نه از pipe/tail)",
++      "artifact موجود در repo با header شامل COMMAND/HEAD/DATE/RUNTIME/EXIT_CODE",
++      "head_sha چهل‌کاراکتری و resolvable در git",
++      "درخت محصول بین head_sha و HEAD فعلی بدون تغییر (در غیر این صورت evidence خودکار STALE است)"
++    ],
++    "forbidden": [
++      "وضعیت CERTIFIED در هر شکلی",
++      "سبز کردن item بدون artifact",
++      "ویرایش artifact پس از ثبت"
++    ]
++  },
++  "product_tree_paths": ["server/", "src/", "index.html", "build.js", "sw.js", "manifest.json", "authz/"],
++  "items": [
++    {
++      "id": "VR-001",
++      "requirement": "گیت ساختاری/آفلاین/یکپارچگی برنامه (tests/run.js) روی HEAD فعلی سبز باشد",
++      "head_sha": "66928be6227567f3d92b2c93a2d5f8146a4601b8",
++      "command": "node tests/run.js",
++      "exit_code": 1,
++      "artifact": "docs/verification/evidence/66928be/run-js.log",
++      "reviewer": "Arena Intelligence Agent (A-38, automated E3) — امضای انسانی: PENDING",
++      "timestamp": "2026-09-25T07:57:13Z",
++      "runtime": "Node v22.14.0 / Linux 6.1.158+ / sandbox بدون PG/Redis",
++      "limitation": "اجرای اول از درخت تمیزِ 66928be با «خروجی build با index.html بیت‌به‌بیت یکسان است» شکست می‌خورد (34/35، exit=1) و پس از self-heal (بازتولید index.html) اجرای دوم 35/35 exit=0 است. هر دو اجرا در artifact ثبت شده‌اند. یعنی index.html کامیت‌شده با خروجی build در این runtime بیت‌به‌بیت یکسان نیست — defect باز DEF-A38-02. طبق قاعده No Fake Green این item سبز اعلام نمی‌شود.",
++      "status": "DEFECT_OPEN",
++      "defect_ref": "DEF-A38-02"
++    },
++    {
++      "id": "VR-002",
++      "requirement": "تست دودی کامل UI/jsdom (tests/smoke.js) روی HEAD فعلی سبز باشد",
++      "head_sha": "66928be6227567f3d92b2c93a2d5f8146a4601b8",
++      "command": "node --expose-gc --max-old-space-size=2048 tests/smoke.js",
++      "exit_code": 0,
++      "artifact": "docs/verification/evidence/66928be/smoke.log",
++      "reviewer": "Arena Intelligence Agent (A-38, automated E3) — امضای انسانی: PENDING",
++      "timestamp": "2026-09-25T07:59:27Z",
++      "runtime": "Node v22.14.0 / jsdom / sandbox بدون PG/Redis",
++      "limitation": "547/547 موفق. هشدار پیشینی «Window.scrollTo not implemented» (jsdom) — بدون اثر بر نتیجه. اجرای مرورگر واقعی/E2E خارج از این evidence است.",
++      "status": "VERIFIED_E3"
++    },
++    {
++      "id": "VR-003",
++      "requirement": "لایه معنایی و آزمون‌های جهش ۲۱ موتور هوشمندی (tests/semantic-layer/runner.js) روی HEAD فعلی سبز باشد",
++      "head_sha": "66928be6227567f3d92b2c93a2d5f8146a4601b8",
++      "command": "node tests/semantic-layer/runner.js",
++      "exit_code": 0,
++      "artifact": "docs/verification/evidence/66928be/semantic-layer.log",
++      "reviewer": "Arena Intelligence Agent (A-38, automated E3) — امضای انسانی: PENDING",
++      "timestamp": "2026-09-25T07:59:28Z",
++      "runtime": "Node v22.14.0 / بدون DB (تست‌های خالص ماژول)",
++      "limitation": "33/33 سوئیت. این سوئیت‌ها نقض‌های no-data fabrication ثبت‌شده در ممیزی IQA (شاخه arena-iqa، کامیت‌های 8ab817a/871ff05، merge نشده) را پوشش نمی‌دهند — سبز بودن این گیت به‌معنای سلامت کامل موتورها نیست.",
++      "status": "VERIFIED_E3"
++    },
++    {
++      "id": "VR-004",
++      "requirement": "سوئیت RESTful API (tests/api/runner.js) روی HEAD فعلی سبز باشد",
++      "head_sha": "66928be6227567f3d92b2c93a2d5f8146a4601b8",
++      "command": "node tests/api/runner.js",
++      "exit_code": 0,
++      "artifact": "docs/verification/evidence/66928be/api-runner.log",
++      "reviewer": "Arena Intelligence Agent (A-38, automated E3) — امضای انسانی: PENDING",
++      "timestamp": "2026-09-25T07:59:53Z",
++      "runtime": "Node v22.14.0 / PAYESH_ALLOW_DEV_MEMORY_AUTHORITY=1 / JSON store، بدون PG/Redis",
++      "limitation": "30/30 سوئیت روی store حافظه‌ای dev/test. مسیرهای PostgreSQL-authority و Redis واقعی در این evidence پوشش ندارند (VR-102/VR-103).",
++      "status": "VERIFIED_E3"
++    },
++    {
++      "id": "VR-101",
++      "requirement": "CI GitHub Actions (Node.js CI + Security Program: SAST/Secret/SCA/SBOM/DAST/WAF) روی HEAD فعلی سبز باشد",
++      "head_sha": "66928be6227567f3d92b2c93a2d5f8146a4601b8",
++      "command": "GitHub Actions workflows (خارج از سندباکس)",
++      "exit_code": null,
++      "artifact": null,
++      "reviewer": "PENDING",
++      "timestamp": "2026-09-25T08:05:00Z",
++      "runtime": "GitHub-hosted runners — از سندباکس در دسترس نیست",
++      "limitation": "BLOCKED: بیلینگ Actions (RISK-O-007) + نبود credential در سندباکس. آخرین evidence ثبت‌شده CI مربوط به da13943 (2026-09-09) است که برای HEAD فعلی اعتبار ندارد (VR-201).",
++      "status": "BLOCKED"
++    },
++    {
++      "id": "VR-102",
++      "requirement": "سوئیت‌های PostgreSQL زنده (pg-prod-client-error، failover، WAL drill، hydrate) روی HEAD فعلی",
++      "head_sha": "66928be6227567f3d92b2c93a2d5f8146a4601b8",
++      "command": "node tests/pg-prod-client-error.js (+ سوئیت‌های live PG)",
++      "exit_code": null,
++      "artifact": null,
++      "reviewer": "PENDING",
++      "timestamp": "2026-09-25T08:05:00Z",
++      "runtime": "نیازمند PostgreSQL زنده",
++      "limitation": "BLOCKED: سندباکس PG ندارد و ریست‌های مکرر نصب را پاک می‌کنند (سه ریست در همین مأموریت ثبت شد). Evidence تاریخی PG 17.11 مربوط به main@1a73c52 (2026-09-13) است (VR-203).",
++      "status": "BLOCKED"
++    },
++    {
++      "id": "VR-103",
++      "requirement": "مانور failover ردیس/سنتینل روی HEAD فعلی",
++      "head_sha": "66928be6227567f3d92b2c93a2d5f8146a4601b8",
++      "command": "tools/failover-redis.sh",
++      "exit_code": null,
++      "artifact": null,
++      "reviewer": "PENDING",
++      "timestamp": "2026-09-25T08:05:00Z",
++      "runtime": "نیازمند Redis/Sentinel زنده",
++      "limitation": "BLOCKED: بدون Redis در سندباکس فعلی.",
++      "status": "BLOCKED"
++    },
++    {
++      "id": "VR-104",
++      "requirement": "DAST زنده / پنتست روی استقرار واقعی HEAD فعلی",
++      "head_sha": "66928be6227567f3d92b2c93a2d5f8146a4601b8",
++      "command": "tools/dast-live.sh <target>",
++      "exit_code": null,
++      "artifact": null,
++      "reviewer": "PENDING",
++      "timestamp": "2026-09-25T08:05:00Z",
++      "runtime": "نیازمند هدف مستقر و مجوز کارفرما",
++      "limitation": "BLOCKED: خارج از مخزن؛ طبق RELEASE_GATE_EVIDENCE §۳ با کارفرما/زیرساخت.",
++      "status": "BLOCKED"
++    },
++    {
++      "id": "VR-105",
++      "requirement": "آزمون بار k6 در مقیاس پایلوت روی HEAD فعلی",
++      "head_sha": "66928be6227567f3d92b2c93a2d5f8146a4601b8",
++      "command": "k6 run tests/performance/... (خارج از سندباکس)",
++      "exit_code": null,
++      "artifact": null,
++      "reviewer": "PENDING",
++      "timestamp": "2026-09-25T08:05:00Z",
++      "runtime": "نیازمند زیرساخت بار",
++      "limitation": "BLOCKED: خارج از مخزن.",
++      "status": "BLOCKED"
++    },
++    {
++      "id": "VR-106",
++      "requirement": "برابری ریموت (push + ls-remote == HEAD) برای شاخه evidence",
++      "head_sha": "66928be6227567f3d92b2c93a2d5f8146a4601b8",
++      "command": "git push && git ls-remote origin <branch>",
++      "exit_code": null,
++      "artifact": null,
++      "reviewer": "PENDING",
++      "timestamp": "2026-09-25T08:05:00Z",
++      "runtime": "نیازمند credential",
++      "limitation": "BLOCKED: سندباکس credential ندارد؛ push فقط با اعلام و توکن کارفرما.",
++      "status": "BLOCKED"
++    },
++    {
++      "id": "VR-201",
++      "requirement": "دروازه انتشار کامل (RELEASE_GATE_CHECKLIST) — evidence تاریخی",
++      "head_sha": "da13943 (فقط ۷ کاراکتر ثبت شده؛ در clone فعلی resolvable نیست)",
++      "command": "node tools/release-gate.js + CI runs 68/180",
++      "exit_code": 0,
++      "artifact": "docs/RELEASE_GATE_EVIDENCE.md",
++      "reviewer": "سشن تاریخی (شاخه arena/01a08648-p2)",
++      "timestamp": "2026-09-09",
++      "runtime": "CI GitHub + سندباکس تاریخی",
++      "limitation": "STALE: مربوط به ۱۶ روز و ده‌ها merge قبل از HEAD فعلی. طبق سیاست، بدون اجرای مجدد روی HEAD فعلی فاقد اعتبار است — NOT VERIFIED برای 66928be.",
++      "status": "STALE"
++    },
++    {
++      "id": "VR-202",
++      "requirement": "پیاده بودن PAYESH_PG_HYDRATE_LIMIT/SKIP روی main — evidence تاریخی",
++      "head_sha": "0a208f8 (در clone فعلی resolvable نیست)",
++      "command": "git grep PG_HYDRATE main -- server/",
++      "exit_code": 0,
++      "artifact": "docs/audit/history/operations/HANDOFF.md",
++      "reviewer": "سشن تاریخی چت ۷ (2026-09-13)",
++      "timestamp": "2026-09-13",
++      "runtime": "سندباکس تاریخی",
++      "limitation": "STALE: برای HEAD فعلی بازتأیید نشده — NOT VERIFIED برای 66928be.",
++      "status": "STALE"
++    },
++    {
++      "id": "VR-203",
++      "requirement": "راستی‌آزمایی مستقل P0-4 با PostgreSQL 17.11 زنده — evidence تاریخی",
++      "head_sha": "1a73c52 (در clone فعلی resolvable نیست)",
++      "command": "بوت PG 17.11 userspace + سوئیت‌های live",
++      "exit_code": 0,
++      "artifact": "docs/audit/history/operations/HANDOFF.md",
++      "reviewer": "سشن تاریخی چت ۸ (2026-09-13)",
++      "timestamp": "2026-09-13",
++      "runtime": "PG 17.11 userspace / پورت 5433",
++      "limitation": "STALE: مسیرهای live PG از آن تاریخ روی HEAD فعلی دوباره اجرا نشده‌اند — NOT VERIFIED برای 66928be (نیز VR-102 BLOCKED).",
++      "status": "STALE"
++    },
++    {
++      "id": "VR-204",
++      "requirement": "Strict Verification نهایی چت ۲ — evidence تاریخی",
++      "head_sha": "UNRECORDED (سند SHA صریح ثبت نکرده است)",
++      "command": "مطابق سند",
++      "exit_code": 0,
++      "artifact": "docs/audit/CHAT2_FINAL_STRICT_VERIFICATION_2026-09-21.md",
++      "reviewer": "سشن تاریخی چت ۲",
++      "timestamp": "2026-09-21",
++      "runtime": "سندباکس تاریخی",
++      "limitation": "STALE + نقص ساختاری: SHA دقیق evidence در سند ثبت نشده (DEF-A38-03). برای HEAD فعلی NOT VERIFIED.",
++      "status": "STALE"
++    },
++    {
++      "id": "VR-205",
++      "requirement": "Exit-Gate فاز ۸.۲ + ماتریس شواهد DR-01 — evidence تاریخی",
++      "head_sha": "UNRECORDED (سند SHA صریح ثبت نکرده است)",
++      "command": "مطابق اسناد",
++      "exit_code": 0,
++      "artifact": "docs/audit/DR-01_PHASE8_2_EVIDENCE_MATRIX_2026-09-22.md",
++      "reviewer": "سشن تاریخی چت ۵ (2026-09-22)",
++      "timestamp": "2026-09-22",
++      "runtime": "سندباکس تاریخی",
++      "limitation": "STALE + نقص ساختاری: SHA دقیق ثبت نشده (DEF-A38-03). برای HEAD فعلی NOT VERIFIED.",
++      "status": "STALE"
++    },
++    {
++      "id": "VR-301",
++      "requirement": "اصلاحات failure-boundary مأموریت Arena 9 (harness fixes)",
++      "head_sha": "5f0af4e (کامیت محلی روی شاخه push نشده)",
++      "command": "سوئیت‌های failure-boundary روی شاخه arena9/failure-boundary-harness-fixes-20260923",
++      "exit_code": 0,
++      "artifact": null,
++      "reviewer": "Arena Intelligence Agent (Arena 9) — Tech Lead: PENDING",
++      "timestamp": "2026-09-23",
++      "runtime": "سندباکس (E3)",
++      "limitation": "NOT_VERIFIED برای main: کامیت 5f0af4e فقط روی شاخه محلیِ push نشده وجود دارد و artifactها خارج از repo هستند (workspace: arena9_evidence/). تا merge + evidence داخل repo، برای HEAD فعلی معتبر نیست.",
++      "status": "NOT_VERIFIED"
++    },
++    {
++      "id": "VR-302",
++      "requirement": "ممیزی IQA ۲۱ موتور (باتری D1–D7 = 263/263) و اصلاحات IQA-01..11",
++      "head_sha": "871ff05a77339cb859ad18463de1207644b02e8a",
++      "command": "node tests/arena-iqa-engine-battery.js",
++      "exit_code": 0,
++      "artifact": null,
++      "reviewer": "Arena Intelligence Agent (IQA) — Tech Lead: PENDING",
++      "timestamp": "2026-09-25",
++      "runtime": "Node v22.14.0 / سندباکس",
++      "limitation": "NOT_VERIFIED برای main: کامیت‌های 8ab817a/871ff05 روی شاخه arena-iqa/engine-audit-20260923 محلی و push نشده‌اند؛ باتری و artifactها روی main موجود نیستند. پس از merge باید evidence با artifact داخل repo روی HEAD جدید بازتولید شود.",
++      "status": "NOT_VERIFIED"
++    }
++  ]
++}
+diff --git a/docs/verification/evidence/66928be/api-runner.log b/docs/verification/evidence/66928be/api-runner.log
+new file mode 100644
+index 0000000..9757dc0
+--- /dev/null
++++ b/docs/verification/evidence/66928be/api-runner.log
+@@ -0,0 +1,12 @@
++== COMMAND: node tests/api/runner.js ==
++== HEAD(product tree): 66928be6227567f3d92b2c93a2d5f8146a4601b8 ==
++== DATE: 2026-09-25T07:59:53Z ==
++== RUNTIME: v22.14.0 / PAYESH_ALLOW_DEV_MEMORY_AUTHORITY=1, JSON store, no PG/Redis ==
++== EXIT_CODE: 0 ==
++
++
++کل آزمون‌های API اجبار ظرفیت ملی: 12 آزمون موفق — بدون خطا ✅
++
++────────────────────────────────────────────────────
++نتیجه کلی RESTful API Tests: 30/30 سوئیت موفق — بدون خطا ✅
++────────────────────────────────────────────────────
+diff --git a/docs/verification/evidence/66928be/run-js.log b/docs/verification/evidence/66928be/run-js.log
+new file mode 100644
+index 0000000..f75136b
+--- /dev/null
++++ b/docs/verification/evidence/66928be/run-js.log
+@@ -0,0 +1,41 @@
++== COMMAND: node tests/run.js ==
++== HEAD(product tree): 66928be6227567f3d92b2c93a2d5f8146a4601b8 ==
++== DATE: 2026-09-25T07:57:13Z ==
++== RUNTIME: v22.14.0 / Linux 6.1.158+ ==
++
++== RUN 1 (first run after clean checkout) ==
++== TREE STATE BEFORE: clean checkout of 66928be ==
++== NOTE: RUN1 fails on «build byte-identical» then self-heals (index.html regenerated); deterministic on baseline ==
++  ❌ خروجی build با index.html بیت‌به‌بیت یکسان است
++❌ خروجی build با index.html تفاوت دارد.
++نتیجه: 34/35 تست موفق  —  1 ناموفق
++EXIT_RUN1=1
++نتیجه: 35/35 تست موفق  —  بدون خطا ✅
++EXIT_RUN2=0
++
++== TREE STATE AFTER (git status --porcelain) ==
++ M USER_GUIDE.html
++ M index.html
++ M infra/postgres/entrypoints/primary-entrypoint.sh
++ M infra/postgres/entrypoints/render-config.sh
++ M infra/postgres/entrypoints/standby-entrypoint.sh
++ M infra/postgres/init/01-replication.sh
++ M infra/postgres/post-checks.sh
++ M infra/redis/redis-checks.sh
++ D monitoring/alert-rules.yml
++ M tools/chaos-test.sh
++ M tools/dast-live.sh
++ M tools/docs-consistency-check.sh
++ M tools/docs-export.sh
++ M tools/docs-health.sh
++ M tools/failover-postgres.sh
++ M tools/failover-redis.sh
++ M tools/migrate-ledger.js
++ M tools/mutate-reports-check.sh
++ M tools/openapi-lint.sh
++ M tools/pitr-restore.sh
++ M tools/pitr-verify.sh
++ M tools/production-verifier.sh
++ M tools/redis-backup.sh
++ M tools/test-discovery-verifier.sh
++ M tools/w18-load-pg.sh
+diff --git a/docs/verification/evidence/66928be/semantic-layer.log b/docs/verification/evidence/66928be/semantic-layer.log
+new file mode 100644
+index 0000000..0d44c28
+--- /dev/null
++++ b/docs/verification/evidence/66928be/semantic-layer.log
+@@ -0,0 +1,14 @@
++== COMMAND: node tests/semantic-layer/runner.js ==
++== HEAD(product tree): 66928be6227567f3d92b2c93a2d5f8146a4601b8 ==
++== DATE: 2026-09-25T07:59:28Z ==
++== RUNTIME: v22.14.0 ==
++== EXIT_CODE: 0 ==
++
++  ✅ B2) Mutation Safety: داده نمرات منجمد دست‌نخورده باقی می‌ماند
++  ✅ C) Regression Protection: توابع پایه‌ای اولیه عیناً مطابق رفتار مصوب عمل می‌کنند
++  ✅ D) Tenant Isolation: داده‌های مستأجر A در محاسبات مستأجر B نشت یا اثر نمی‌گذارند
++  ✅ D2) Tenant Isolation: کوئری‌سازها بدون schoolId ابورت می‌کنند
++
++───────────────────────────────────────────────────────────────────
++نتیجه کلی لایه معنایی: 33/33 سوئیت موفق
++✅ تمامی تست‌های لایه معنایی و آزمون‌های جهش با موفقیت ۱۰۰٪ پاس شدند.
+diff --git a/docs/verification/evidence/66928be/smoke.log b/docs/verification/evidence/66928be/smoke.log
+new file mode 100644
+index 0000000..001d168
+--- /dev/null
++++ b/docs/verification/evidence/66928be/smoke.log
+@@ -0,0 +1,18 @@
++== COMMAND: node --expose-gc --max-old-space-size=2048 tests/smoke.js ==
++== HEAD(product tree): 66928be6227567f3d92b2c93a2d5f8146a4601b8 ==
++== DATE: 2026-09-25T07:59:27Z ==
++== RUNTIME: v22.14.0 / sandbox JSON-store, jsdom ==
++== EXIT_CODE: 0 ==
++
++  ✅ دور ۷۸ بند ۴: برچسب پویای «پروندهٔ N فرزند» + تمایز family/children (بماندهٔ R43)
++  ✅ دور ۷۸ بند ۶: ماژول سبک نوبت دوم/کلاس شبانه — توان has_evening + الگوی زنگ شب + برنامهٔ فشرده
++  ✅ دور ۷۸ بند ۷: ماژول اسکان/خوابگاه — اتاق، انتساب، وعده، مرخصیِ آخر هفته
++  ✅ R95 بند ۲.۵: نسخه‌گذاریِ لایهٔ محلی (insert→۱، update→+۱) + base_version در صف + ماژول 67
++
++────────────────────────────────────────────────────
++تست دودی: 547/547 موفق  —  بدون خطا ✅
++
++⚠️ خطاهای کنسول (1):
++   Not implemented: Window's scrollTo() method
++────────────────────────────────────────────────────
++
+diff --git a/tests/verification-registry.test.js b/tests/verification-registry.test.js
+new file mode 100644
+index 0000000..aa19a92
+--- /dev/null
++++ b/tests/verification-registry.test.js
+@@ -0,0 +1,131 @@
++#!/usr/bin/env node
++/* ═══════════════════════════════════════════════════════════════════
++   tests/verification-registry.test.js — گیت رجیستری راستی‌آزمایی (A-38)
++
++   قواعد تحمیل‌شده (No Fake Green / Evidence Before Status):
++   ۱. هر item باید ۹ فیلد الزامی + status داشته باشد.
++   ۲. VERIFIED_E3 فقط با exit_code=0 + artifact موجود با header کامل +
++      SHA چهل‌کاراکتریِ resolvable + عدم تغییر درخت محصول تا HEAD فعلی.
++   ۳. evidence تاریخی (STALE) هرگز نمی‌تواند VERIFIED باشد؛ بازتأیید فقط
++      با اجرای مجدد واقعی (تغییر SHA به‌تنهایی ممنوع — با هش artifact مهار می‌شود).
++   ۴. DEFECT_OPEN باید exit_code غیرصفر یا defect_ref داشته باشد.
++   ۵. BLOCKED/NOT_VERIFIED باید limitation غیرخالی داشته باشند.
++   ۶. هیچ‌جای رجیستری status حاوی CERTIFIED مجاز نیست.
++   ═══════════════════════════════════════════════════════════════════ */
++'use strict';
++
++const fs = require('fs');
++const path = require('path');
++const { execFileSync } = require('child_process');
++
++const ROOT = path.join(__dirname, '..');
++const REG_PATH = path.join(ROOT, 'docs', 'verification', 'VERIFICATION_REGISTRY.json');
++
++let pass = 0, fail = 0;
++function ok(name, cond, extra) {
++  if (cond) { pass++; console.log('  ✅ ' + name); }
++  else { fail++; console.log('  ❌ ' + name + (extra ? ' — ' + extra : '')); }
++}
++
++function git(args) {
++  return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' }).trim();
++}
++
++console.log('▸ گیت رجیستری راستی‌آزمایی (VERIFICATION_REGISTRY.json)');
++
++/* ۱) وجود و صحت JSON */
++ok('فایل رجیستری وجود دارد', fs.existsSync(REG_PATH), REG_PATH);
++let reg = null;
++try { reg = JSON.parse(fs.readFileSync(REG_PATH, 'utf8')); } catch (e) { /* keep null */ }
++ok('JSON معتبر parse می‌شود', reg !== null);
++if (!reg) { console.log(`\nنتیجه: ${pass} موفق / ${fail} ناموفق`); process.exit(1); }
++
++/* ۲) فراداده و سیاست */
++ok('schema_version موجود است', typeof reg.schema_version === 'string' && reg.schema_version.length > 0);
++ok('سیاست no_retroactive_revalidation ثبت شده', !!(reg.policy && reg.policy.no_retroactive_revalidation));
++ok('current_head_product_tree چهل‌کاراکتری hex است', /^[0-9a-f]{40}$/.test(reg.current_head_product_tree || ''));
++ok('فهرست product_tree_paths غیرخالی است', Array.isArray(reg.product_tree_paths) && reg.product_tree_paths.length > 0);
++
++const STATUSES = new Set(reg.status_enum || []);
++ok('status_enum شامل حالت‌های الزامی است', ['VERIFIED_E3', 'STALE', 'BLOCKED', 'NOT_VERIFIED'].every((s) => STATUSES.has(s)));
++ok('هیچ حالت CERTIFIED در enum نیست', !(reg.status_enum || []).some((s) => /CERTIFIED/i.test(s)));
++
++/* ۳) اعتبارسنجی تک‌تک itemها */
++const REQUIRED = ['id', 'requirement', 'head_sha', 'command', 'exit_code', 'artifact', 'reviewer', 'timestamp', 'runtime', 'limitation', 'status'];
++const items = Array.isArray(reg.items) ? reg.items : [];
++ok('رجیستری حداقل یک item دارد', items.length > 0);
++
++const ids = new Set();
++let productDriftChecked = false;
++
++for (const it of items) {
++  const tag = it.id || '(بدون id)';
++
++  const missing = REQUIRED.filter((f) => !(f in it));
++  ok(`${tag}: هر ۹ فیلد الزامی + status موجودند`, missing.length === 0, 'غایب: ' + missing.join(','));
++
++  ok(`${tag}: id یکتا است`, !ids.has(it.id));
++  ids.add(it.id);
++
++  ok(`${tag}: status در enum است`, STATUSES.has(it.status), String(it.status));
++  ok(`${tag}: status حاوی CERTIFIED نیست`, !/CERTIFIED/i.test(String(it.status)));
++  ok(`${tag}: limitation غیرخالی است`, typeof it.limitation === 'string' && it.limitation.trim().length > 10);
++
++  if (it.status === 'VERIFIED_E3') {
++    /* قواعد سخت‌گیرانه سبز شدن */
++    ok(`${tag}: VERIFIED ⇒ exit_code === 0`, it.exit_code === 0, 'exit=' + it.exit_code);
++    ok(`${tag}: VERIFIED ⇒ SHA چهل‌کاراکتری`, /^[0-9a-f]{40}$/.test(it.head_sha), String(it.head_sha).slice(0, 20));
++    let resolvable = false;
++    try { git(['cat-file', '-e', it.head_sha + '^{commit}']); resolvable = true; } catch (e) { /* no */ }
++    ok(`${tag}: VERIFIED ⇒ SHA در git این clone resolvable است`, resolvable);
++    ok(`${tag}: VERIFIED ⇒ timestamp ISO معتبر`, !isNaN(Date.parse(it.timestamp)), String(it.timestamp));
++
++    const artPath = it.artifact ? path.join(ROOT, it.artifact) : null;
++    ok(`${tag}: VERIFIED ⇒ artifact در repo موجود است`, artPath && fs.existsSync(artPath), String(it.artifact));
++    /* ضد حذف بی‌صدا: artifact باید در git track شده باشد نه فقط روی دیسک
++       (کلاس نقص DEF-A38-04: قاعده *.log در .gitignore شواهد را بی‌صدا حذف می‌کرد) */
++    let tracked = false;
++    try { git(['ls-files', '--error-unmatch', it.artifact]); tracked = true; } catch (e) { /* untracked */ }
++    ok(`${tag}: VERIFIED ⇒ artifact در git track شده است (نه فقط روی دیسک)`, tracked, String(it.artifact));
++    if (artPath && fs.existsSync(artPath)) {
++      const art = fs.readFileSync(artPath, 'utf8');
++      ok(`${tag}: artifact دارای header کامل COMMAND/HEAD/DATE/RUNTIME/EXIT_CODE است`,
++        /COMMAND:/.test(art) && /HEAD/.test(art) && /DATE:/.test(art) && /RUNTIME:/.test(art) && /EXIT_CODE: 0/.test(art),
++        'header ناقص');
++      ok(`${tag}: SHA داخل artifact با head_sha ثبت‌شده هم‌خوان است`, art.includes(it.head_sha.slice(0, 7)), 'ناهم‌خوانی SHA');
++    }
++
++    /* قاعده تازگی: درخت محصول از SHA evidence تا HEAD فعلی نباید تغییر کرده باشد */
++    if (resolvable) {
++      let drift = 'UNKNOWN';
++      try {
++        drift = git(['diff', '--name-only', it.head_sha, 'HEAD', '--'].concat(reg.product_tree_paths));
++      } catch (e) { drift = 'DIFF_FAILED: ' + e.message; }
++      ok(`${tag}: درخت محصول از زمان evidence تغییر نکرده (وگرنه STALE و اجرای مجدد لازم)`, drift === '', String(drift).split('\n').slice(0, 3).join(' | '));
++      productDriftChecked = true;
++    }
++  }
++
++  if (it.status === 'STALE') {
++    ok(`${tag}: STALE هرگز VERIFIED نیست و limitation صراحتاً NOT VERIFIED می‌گوید`, /NOT VERIFIED|بازتأیید|فاقد اعتبار/i.test(it.limitation));
++    ok(`${tag}: STALE به HEAD فعلی منتسب نشده`, it.head_sha !== reg.current_head_product_tree, 'SHA تاریخی نمی‌تواند برابر HEAD فعلی باشد');
++  }
++
++  if (it.status === 'DEFECT_OPEN') {
++    ok(`${tag}: DEFECT_OPEN ⇒ exit غیرصفر یا defect_ref`, it.exit_code !== 0 || !!it.defect_ref, 'exit=' + it.exit_code);
++    const artPath = it.artifact ? path.join(ROOT, it.artifact) : null;
++    ok(`${tag}: DEFECT_OPEN ⇒ artifact شکست موجود است`, artPath && fs.existsSync(artPath), String(it.artifact));
++  }
++
++  if (it.status === 'BLOCKED' || it.status === 'NOT_VERIFIED') {
++    ok(`${tag}: ${it.status} ⇒ دلیل انسداد در limitation ثبت است`, it.limitation.trim().length > 20);
++  }
++}
++
++ok('حداقل یک بررسی تازگی درخت محصول انجام شد', productDriftChecked);
++
++/* ۴) ضد دستکاری: artifactهای VERIFIED از سیاست forbidden پیروی می‌کنند */
++ok('سیاست forbidden شامل منع CERTIFIED است', !!(reg.policy && (reg.policy.forbidden || []).some((f) => /CERTIFIED/.test(f))));
++
++console.log(`\nنتیجه گیت رجیستری: ${pass} موفق / ${fail} ناموفق`);
++process.exit(fail ? 1 : 0);
+-- 
+2.47.3
+

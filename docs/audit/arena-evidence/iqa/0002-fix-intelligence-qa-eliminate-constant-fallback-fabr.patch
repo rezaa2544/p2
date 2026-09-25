@@ -1,0 +1,487 @@
+From 871ff05a77339cb859ad18463de1207644b02e8a Mon Sep 17 00:00:00 2001
+From: Arena IQA Agent <iqa-agent@arena.local>
+Date: Fri, 25 Sep 2026 06:33:30 +0000
+Subject: [PATCH 2/2] fix(intelligence-qa): eliminate
+ constant/fallback-fabricated metrics in regional aggregation,
+ recommendations, early-warning (IQA-09..IQA-11)
+
+Rule applied per QA directive: any metric produced from a constant/fallback
+without a real measurement basis is a defect until proven otherwise.
+Adversarial sweep of all ?? <num> / || <num> fallbacks across 21 engines.
+
+IQA-09 regional-intelligence-network (EI-10, regional aggregation):
+- summarizeRegionalHealth: no-data schools no longer fabricate 90.0 attendance /
+  15.0 GPA into regional means; averages computed only over schools with real
+  metrics (null when none); no-data schools counted as NO_DATA (was: HEALTHY);
+  data_coverage + no_data_schools_count added.
+- buildRegionalSnapshot: resolution_rate ??100.0 and chronic ??5.0 removed
+  (null-aware means); PURE-CONSTANT metrics eliminated:
+  effective_interventions_ratio (was hardcoded 0.85/1.0) and
+  average_difficulty_p_value (was hardcoded 0.62/0.65) -> null + NOT_MEASURED;
+  fabricated regional peak day 'wednesday' -> null when unmeasured.
+
+IQA-10 recommendation-action-planning (EI-13, recommendation):
+- generateActionRecommendations: rules fire only on measured signals; fabricated
+  evidence eliminated (chronic ??14.2/5.0, attendance ??90.0, gpa ??15.0,
+  failing ??0.05). Recommendation evidence now carries only real values
+  (regression pin: 70% real attendance fires with chronic=null, not 14.2).
+- evaluateActionEffectiveness: deltas only when pre-metric actually measured
+  (was: fabricated baselines 85/12/14/60 producing fake deltas);
+  zero measured deltas -> efficacy NOT_MEASURABLE; measured_deltas_count added.
+
+IQA-11 intervention-case-management (EI-08, early-warning):
+- evaluateEarlyWarningRules: fake-healthy defaults (gpa ??15.0,
+  attendance ??100.0) no longer SUPPRESS warnings; rules with unmeasured inputs
+  are skipped, real signals still fire (70% attendance alerts with unknown GPA).
+- createInterventionCase: fabricated baselines gpa ??10.0 / attendance ??85.0 -> null.
+- evaluateInterventionOutcome: deltas require real baseline; no baseline ->
+  NOT_MEASURABLE + ESTABLISH_BASELINE_METRICS (was: fake deltas vs 10.0/85.0).
+
+Battery extended with PART D (14 new pins): 263/263.
+Regression: semantic-layer 33/33, run.js 35/35, smoke 547/547, api 31/31.
+---
+ .../analytics/intervention-case-management.js | 39 ++++++----
+ .../recommendation-action-planning.js         | 76 +++++++++----------
+ .../regional-intelligence-network.js          | 54 +++++++++----
+ tests/arena-iqa-engine-battery.js             | 72 ++++++++++++++++++
+ 4 files changed, 172 insertions(+), 69 deletions(-)
+
+diff --git a/server/analytics/intervention-case-management.js b/server/analytics/intervention-case-management.js
+index b89a64f..6191307 100644
+--- a/server/analytics/intervention-case-management.js
++++ b/server/analytics/intervention-case-management.js
+@@ -111,9 +111,13 @@ function evaluateEarlyWarningRules(studentContext = {}, options = {}) {
+     throw new Error('INVALID_INPUT: valid schoolId is required for evaluateEarlyWarningRules');
+   }
+ 
+-  const currentGpa = Number(studentContext.currentGpa ?? studentContext.current_gpa ?? 15.0);
++  // No-Fabrication: نبود سنجه با «مقدار سالم ساختگی» (15.0 / 100.0) جایگزین نمی‌شود؛
++  // قاعده‌های وابسته ارزیابی نمی‌شوند و شکاف داده صریحاً گزارش می‌شود
++  const gpaRaw = studentContext.currentGpa ?? studentContext.current_gpa;
++  const currentGpa = gpaRaw != null ? Number(gpaRaw) : null;
+   const previousGpa = studentContext.previousGpa != null ? Number(studentContext.previousGpa) : null;
+-  const recentAttendanceRate = Number(studentContext.recentAttendanceRate ?? studentContext.recent_attendance_rate ?? 100.0);
++  const attRaw = studentContext.recentAttendanceRate ?? studentContext.recent_attendance_rate;
++  const recentAttendanceRate = attRaw != null ? Number(attRaw) : null;
+   const consecutiveAbsences = Number(studentContext.consecutiveAbsences ?? studentContext.consecutive_absences ?? 0);
+   const failingSubjects = Number(studentContext.failingSubjectsCount ?? studentContext.failing_subjects_count ?? 0);
+   const unsubmitted = Number(studentContext.unsubmittedAssignmentsCount ?? studentContext.unsubmitted_assignments_count ?? 0);
+@@ -121,7 +125,7 @@ function evaluateEarlyWarningRules(studentContext = {}, options = {}) {
+   const alerts = [];
+ 
+   // قاعده ۱: ریسک مرکب ترک تحصیل (Compound Dropout Risk) - اولویت بحرانی
+-  if (currentGpa < 10.0 && (recentAttendanceRate <= 85.0 || consecutiveAbsences >= 4)) {
++  if (currentGpa != null && currentGpa < 10.0 && ((recentAttendanceRate != null && recentAttendanceRate <= 85.0) || consecutiveAbsences >= 4)) {
+     alerts.push({
+       trigger_type: 'DROPOUT_RISK_COMPOUND',
+       priority: 'CRITICAL',
+@@ -131,7 +135,7 @@ function evaluateEarlyWarningRules(studentContext = {}, options = {}) {
+   }
+ 
+   // قاعده ۲: افت شدید تحصیلی (Academic Drop)
+-  if (currentGpa < 10.0 || (previousGpa != null && (previousGpa - currentGpa) >= 3.0)) {
++  if ((currentGpa != null && currentGpa < 10.0) || (previousGpa != null && currentGpa != null && (previousGpa - currentGpa) >= 3.0)) {
+     alerts.push({
+       trigger_type: 'CRITICAL_ACADEMIC_DROP',
+       priority: 'HIGH',
+@@ -143,7 +147,7 @@ function evaluateEarlyWarningRules(studentContext = {}, options = {}) {
+   }
+ 
+   // قاعده ۳: غیبت مزمن یا غیبت‌های متوالی (Chronic Absence)
+-  if (recentAttendanceRate <= 90.0 || consecutiveAbsences >= 3) {
++  if ((recentAttendanceRate != null && recentAttendanceRate <= 90.0) || consecutiveAbsences >= 3) {
+     alerts.push({
+       trigger_type: 'CHRONIC_ABSENCE_ALERT',
+       priority: 'HIGH',
+@@ -221,8 +225,9 @@ function createInterventionCase(params = {}, options = {}) {
+ 
+   const baseline = params.baselineMetrics || params.baseline_metrics || {};
+   const baselineMetrics = {
+-    gpa: Number(baseline.gpa ?? 10.0),
+-    attendance_rate: Number(baseline.attendance_rate ?? baseline.attendanceRate ?? 85.0),
++    // No-Fabrication: خط مبنای اندازه‌گیری‌نشده null است (نه 10.0 / 85.0 ساختگی)
++    gpa: baseline.gpa != null ? Number(baseline.gpa) : null,
++    attendance_rate: (baseline.attendance_rate ?? baseline.attendanceRate) != null ? Number(baseline.attendance_rate ?? baseline.attendanceRate) : null,
+     failing_subjects_count: Number(baseline.failing_subjects_count ?? baseline.failingSubjectsCount ?? 0)
+   };
+ 
+@@ -382,22 +387,26 @@ function evaluateInterventionOutcome(params = {}, options = {}) {
+   const pre = caseRecord.baseline_metrics || {};
+   const post = params.postMetrics || params.post_metrics || {};
+ 
+-  const preGpa = Number(pre.gpa ?? 10.0);
+-  const postGpa = Number(post.gpa ?? preGpa);
+-  const preAtt = Number(pre.attendance_rate ?? 85.0);
+-  const postAtt = Number(post.attendance_rate ?? preAtt);
++  // No-Fabrication: دلتا فقط وقتی مبنای pre واقعاً ثبت شده باشد
++  const preGpa = pre.gpa != null ? Number(pre.gpa) : null;
++  const postGpa = post.gpa != null ? Number(post.gpa) : preGpa;
++  const preAtt = pre.attendance_rate != null ? Number(pre.attendance_rate) : null;
++  const postAtt = post.attendance_rate != null ? Number(post.attendance_rate) : preAtt;
+ 
+-  const deltaGpa = Math.round((postGpa - preGpa) * 100) / 100;
+-  const deltaAtt = Math.round((postAtt - preAtt) * 100) / 100;
++  const deltaGpa = preGpa != null ? Math.round((postGpa - preGpa) * 100) / 100 : null;
++  const deltaAtt = preAtt != null ? Math.round((postAtt - preAtt) * 100) / 100 : null;
+ 
+   // تعیین سطح اثربخشی
+   let efficacyLevel = 'INEFFECTIVE';
+   let recommendation = 'CONTINUE_INTERVENTION';
+ 
+-  if (deltaGpa <= -2.0 || deltaAtt <= -10.0) {
++  if (deltaGpa == null && deltaAtt == null) {
++    efficacyLevel = 'NOT_MEASURABLE';
++    recommendation = 'ESTABLISH_BASELINE_METRICS';
++  } else if ((deltaGpa != null && deltaGpa <= -2.0) || (deltaAtt != null && deltaAtt <= -10.0)) {
+     efficacyLevel = 'REQUIRES_ESCALATION';
+     recommendation = 'ESCALATE';
+-  } else if (deltaGpa >= 2.0 || (deltaAtt >= 10.0 && postAtt >= 90.0)) {
++  } else if ((deltaGpa != null && deltaGpa >= 2.0) || (deltaAtt != null && deltaAtt >= 10.0 && postAtt >= 90.0)) {
+     efficacyLevel = 'HIGHLY_EFFECTIVE';
+     recommendation = 'CLOSURE';
+   } else if (deltaGpa > 0 || deltaAtt > 0) {
+diff --git a/server/analytics/recommendation-action-planning.js b/server/analytics/recommendation-action-planning.js
+index e096614..29e923e 100644
+--- a/server/analytics/recommendation-action-planning.js
++++ b/server/analytics/recommendation-action-planning.js
+@@ -265,11 +265,12 @@ function generateActionRecommendations(params = {}, options = {}) {
+   const lng = params.longitudinalInsights || {};
+   const cases = Array.isArray(params.interventionCases) ? params.interventionCases : [];
+ 
+-  // ۱. ارزیابی سیگنال‌های غیبت و حضور
+-  const attRate = Number(sch.attendance_rate ?? sch.calendar_rate ?? 90.0);
+-  const chronicRate = Number(sch.chronic_absence_rate ?? (attRate < 85 ? 14.2 : 5.0));
++  // ۱. ارزیابی سیگنال‌های غیبت و حضور — No-Fabrication: فقط سیگنال اندازه‌گیری‌شده
++  const attRateRaw = sch.attendance_rate ?? sch.calendar_rate;
++  const attRate = attRateRaw != null ? Number(attRateRaw) : null;
++  const chronicRate = sch.chronic_absence_rate != null ? Number(sch.chronic_absence_rate) : null;
+ 
+-  if (chronicRate >= 10.0 || attRate < 85.0) {
++  if ((chronicRate != null && chronicRate >= 10.0) || (attRate != null && attRate < 85.0)) {
+     rawList.push({
+       recommendation_id: `ACT-REC-SCH${schoolId}-${now.replace(/[^0-9]/g, '').slice(0, 8)}-ATT01`,
+       type: ACTION_TYPES.ATTENDANCE_SUPPORT,
+@@ -279,19 +280,21 @@ function generateActionRecommendations(params = {}, options = {}) {
+       trigger_source: 'ATTENDANCE_INTELLIGENCE',
+       reason: 'chronic absence increasing',
+       evidence: {
++        // No-Fabrication: شواهد فقط شامل مقادیر واقعاً اندازه‌گیری‌شده است
+         absenceRate: chronicRate,
+         chronic_absence_rate: chronicRate,
+-        current_value: chronicRate,
++        attendance_rate: attRate,
++        current_value: chronicRate != null ? chronicRate : attRate,
+         threshold: 10.0,
+         trend: 'DECLINING',
+         threshold_exceeded: true
+       },
+-      severity: chronicRate >= 15.0 ? PRIORITY_LEVELS.CRITICAL : PRIORITY_LEVELS.HIGH,
+-      priority: chronicRate >= 15.0 ? PRIORITY_LEVELS.CRITICAL : PRIORITY_LEVELS.HIGH,
++      severity: (chronicRate != null && chronicRate >= 15.0) ? PRIORITY_LEVELS.CRITICAL : PRIORITY_LEVELS.HIGH,
++      priority: (chronicRate != null && chronicRate >= 15.0) ? PRIORITY_LEVELS.CRITICAL : PRIORITY_LEVELS.HIGH,
+       suggested_action: 'برگزاری جلسه هم‌اندیشی مشاور با اولیای دانش‌آموزان دارای بیش از ۴ روز غیبت غیرموجه و هماهنگی سرویس تردد',
+       responsible_role: 'counselor',
+       deadline: options.deadline || '2026-10-15',
+-      deadline_type: chronicRate >= 15.0 ? '24H' : 'WEEKLY',
++      deadline_type: (chronicRate != null && chronicRate >= 15.0) ? '24H' : 'WEEKLY',
+       approval_status: ACTION_STATUSES.REVIEW_PENDING,
+       status: ACTION_STATUSES.REVIEW_PENDING,
+       automated_decision: false,
+@@ -305,11 +308,11 @@ function generateActionRecommendations(params = {}, options = {}) {
+     });
+   }
+ 
+-  // ۲. ارزیابی سیگنال‌های تحصیلی و افت نمرات
+-  const avgGpa = Number(sch.average_gpa ?? 15.0);
+-  const failingRatio = Number(sch.failing_students_ratio ?? 0.05);
++  // ۲. ارزیابی سیگنال‌های تحصیلی و افت نمرات — No-Fabrication
++  const avgGpa = sch.average_gpa != null ? Number(sch.average_gpa) : null;
++  const failingRatio = sch.failing_students_ratio != null ? Number(sch.failing_students_ratio) : null;
+ 
+-  if (avgGpa < 12.0 || failingRatio >= 0.10) {
++  if ((avgGpa != null && avgGpa < 12.0) || (failingRatio != null && failingRatio >= 0.10)) {
+     rawList.push({
+       recommendation_id: `ACT-REC-SCH${schoolId}-${now.replace(/[^0-9]/g, '').slice(0, 8)}-ACA01`,
+       type: ACTION_TYPES.ACADEMIC_REMEDIAL,
+@@ -487,38 +490,34 @@ function evaluateActionEffectiveness(params = {}, options = {}) {
+   const pre = params.preMetrics || params.pre_metrics || {};
+   const post = params.postMetrics || params.post_metrics || {};
+ 
+-  // ۱. دلتای حضور
+-  const preAtt = Number(pre.attendance_rate ?? pre.calendar_rate ?? 85.0);
+-  const postAtt = Number(post.attendance_rate ?? post.calendar_rate ?? preAtt);
+-  const deltaAtt = Math.round((postAtt - preAtt) * 10) / 10;
+-
+-  // دلتای کاهش غیبت مزمن (کاهش یعنی بهبود)
+-  const preChronic = Number(pre.chronic_absence_rate ?? 12.0);
+-  const postChronic = Number(post.chronic_absence_rate ?? preChronic);
+-  const deltaChronic = Math.round((postChronic - preChronic) * 10) / 10;
+-
+-  // ۲. دلتای نمرات (GPA)
+-  const preGpa = Number(pre.average_gpa ?? pre.gpa ?? 14.0);
+-  const postGpa = Number(post.average_gpa ?? post.gpa ?? preGpa);
+-  const deltaGpa = Math.round((postGpa - preGpa) * 100) / 100;
+-
+-  // ۳. دلتای مشارکت (Engagement)
+-  const preEng = Number(pre.engagement_score ?? pre.pei ?? 60.0);
+-  const postEng = Number(post.engagement_score ?? post.pei ?? preEng);
+-  const deltaEng = Math.round((postEng - preEng) * 10) / 10;
++  // No-Fabrication: دلتا فقط وقتی محاسبه می‌شود که مبنای pre واقعاً اندازه‌گیری شده باشد
++  const dOf = (preV, postV, digits) => {
++    if (preV == null) return null;
++    const p = Number(preV);
++    const q = postV != null ? Number(postV) : p;
++    const f = Math.pow(10, digits);
++    return Math.round((q - p) * f) / f;
++  };
++  const deltaAtt = dOf(pre.attendance_rate ?? pre.calendar_rate, post.attendance_rate ?? post.calendar_rate, 1);
++  const deltaChronic = dOf(pre.chronic_absence_rate, post.chronic_absence_rate, 1);
++  const deltaGpa = dOf(pre.average_gpa ?? pre.gpa, post.average_gpa ?? post.gpa, 2);
++  const deltaEng = dOf(pre.engagement_score ?? pre.pei, post.engagement_score ?? post.pei, 1);
++  const measuredDeltas = [deltaAtt, deltaChronic, deltaGpa, deltaEng].filter(v => v != null).length;
+ 
+-  // ارزیابی سطح اثربخشی
++  // ارزیابی سطح اثربخشی — فقط بر پایه دلتاهای واقعاً اندازه‌گیری‌شده
+   let efficacy = ACTION_EFFICACY.INEFFECTIVE;
+ 
+-  const isAttendanceSuccess = deltaAtt >= 5.0 || deltaChronic <= -3.0;
+-  const isGpaSuccess = deltaGpa >= 1.0;
+-  const isMajorImprovement = isAttendanceSuccess || isGpaSuccess || deltaEng >= 15.0;
++  const isAttendanceSuccess = (deltaAtt != null && deltaAtt >= 5.0) || (deltaChronic != null && deltaChronic <= -3.0);
++  const isGpaSuccess = deltaGpa != null && deltaGpa >= 1.0;
++  const isMajorImprovement = isAttendanceSuccess || isGpaSuccess || (deltaEng != null && deltaEng >= 15.0);
+ 
+-  const isWorsened = deltaChronic > 2.0 || deltaGpa < -1.0;
++  const isWorsened = (deltaChronic != null && deltaChronic > 2.0) || (deltaGpa != null && deltaGpa < -1.0);
+ 
+-  if (isMajorImprovement) {
++  if (measuredDeltas === 0) {
++    efficacy = 'NOT_MEASURABLE';
++  } else if (isMajorImprovement) {
+     efficacy = ACTION_EFFICACY.HIGHLY_EFFECTIVE;
+-  } else if (deltaAtt > 0 || deltaGpa > 0 || deltaEng > 0 || deltaChronic < 0) {
++  } else if ((deltaAtt != null && deltaAtt > 0) || (deltaGpa != null && deltaGpa > 0) || (deltaEng != null && deltaEng > 0) || (deltaChronic != null && deltaChronic < 0)) {
+     efficacy = ACTION_EFFICACY.PARTIALLY_EFFECTIVE;
+   } else if (isWorsened) {
+     efficacy = ACTION_EFFICACY.REQUIRES_ESCALATION;
+@@ -536,6 +535,7 @@ function evaluateActionEffectiveness(params = {}, options = {}) {
+       average_gpa: deltaGpa,
+       engagement_score: deltaEng
+     },
++    measured_deltas_count: measuredDeltas,
+     pre_metrics: Object.freeze({ ...pre }),
+     post_metrics: Object.freeze({ ...post }),
+     automated_decision: false,
+diff --git a/server/analytics/regional-intelligence-network.js b/server/analytics/regional-intelligence-network.js
+index fc5be97..e3fc3e6 100644
+--- a/server/analytics/regional-intelligence-network.js
++++ b/server/analytics/regional-intelligence-network.js
+@@ -87,27 +87,35 @@ function summarizeRegionalHealth(context = {}) {
+   let healthyCount = 0;
+   let needsMonitoringCount = 0;
+   let needsImmediateActionCount = 0;
++  let noDataCount = 0;
+ 
+   let sumAttendance = 0;
++  let attCount = 0;
+   let sumGpa = 0;
++  let gpaCount = 0;
+ 
+   for (const s of schools) {
+     const health = s.health_index || {};
+-    const status = health.status || 'HEALTHY';
++    // No-Fabrication: مدرسه بدون شاخص سلامت NO_DATA است نه HEALTHY
++    const status = health.status || 'NO_DATA';
+     if (status === 'HEALTHY') healthyCount++;
+     else if (status === 'NEEDS_MONITORING') needsMonitoringCount++;
+     else if (status === 'NEEDS_IMMEDIATE_ACTION') needsImmediateActionCount++;
++    else noDataCount++;
+ 
+-    sumAttendance += Number(s.attendance_summary?.calendar_rate ?? 90.0);
+-    sumGpa += Number(s.academic_summary?.average_gpa ?? 15.0);
++    // No-Fabrication: فقط مدارس دارای سنجه واقعی وارد میانگین منطقه می‌شوند (نه ?? 90.0 / ?? 15.0)
++    if (s.attendance_summary?.calendar_rate != null) { sumAttendance += Number(s.attendance_summary.calendar_rate); attCount++; }
++    if (s.academic_summary?.average_gpa != null) { sumGpa += Number(s.academic_summary.average_gpa); gpaCount++; }
+   }
+ 
+   const total = schools.length;
+-  const avgAtt = total > 0 ? Math.round((sumAttendance / total) * 100) / 100 : 90.0;
+-  const avgGpa = total > 0 ? Math.round((sumGpa / total) * 100) / 100 : 15.0;
++  const avgAtt = attCount > 0 ? Math.round((sumAttendance / attCount) * 100) / 100 : null;
++  const avgGpa = gpaCount > 0 ? Math.round((sumGpa / gpaCount) * 100) / 100 : null;
+ 
+   return {
+     total_schools: total,
++    no_data_schools_count: noDataCount,
++    data_coverage: { attendance_schools: attCount, gpa_schools: gpaCount },
+     healthy_schools_count: healthyCount,
+     needs_monitoring_count: needsMonitoringCount,
+     needs_immediate_action_count: needsImmediateActionCount,
+@@ -426,35 +434,47 @@ function buildRegionalSnapshot(regionContext = {}, options = {}) {
+   let totalActiveInterventions = 0;
+   let totalUnassignedHigh = 0;
+   let sumResolutionRate = 0;
++  let resolutionSchoolCount = 0;
+ 
+   for (const s of rawSchools) {
+     totalActiveInterventions += Number(s.intervention_summary?.active_cases_count ?? 0);
+     totalUnassignedHigh += Number(s.intervention_summary?.unassigned_high_priority_count ?? 0);
+-    sumResolutionRate += Number(s.intervention_summary?.resolution_rate ?? 100.0);
++    // No-Fabrication: مدرسه بدون نرخ حل واقعی وارد میانگین نمی‌شود (نه ?? 100.0)
++    if (s.intervention_summary?.resolution_rate != null) {
++      sumResolutionRate += Number(s.intervention_summary.resolution_rate);
++      resolutionSchoolCount++;
++    }
+   }
+ 
+   const schoolCount = rawSchools.length;
+-  const overallResolutionRate = schoolCount > 0 ? Math.round((sumResolutionRate / schoolCount) * 10) / 10 : 100.0;
++  const overallResolutionRate = resolutionSchoolCount > 0 ? Math.round((sumResolutionRate / resolutionSchoolCount) * 10) / 10 : null;
+ 
+   const interventionSummary = {
+     total_active_cases: totalActiveInterventions,
+     unassigned_high_priority_cases: totalUnassignedHigh,
+     overall_resolution_rate: overallResolutionRate,
+-    effective_interventions_ratio: totalActiveInterventions > 0 ? 0.85 : 1.0
++    // No-Fabrication: هیچ منبع اندازه‌گیری اثربخشی متصل نیست؛ ثابت ساختگی 0.85/1.0 حذف شد
++    effective_interventions_ratio: null,
++    effective_interventions_ratio_status: 'NOT_MEASURED'
+   };
+ 
+   // ۴. الگوهای حضور
+   let sumChronic = 0;
++  let chronicSchoolCount = 0;
+   const peakDays = {};
+   for (const s of rawSchools) {
+-    sumChronic += Number(s.attendance_summary?.chronic_absence_rate ?? 5.0);
+-    const pd = s.attendance_summary?.peak_absence_day || 'wednesday';
+-    peakDays[pd] = (peakDays[pd] || 0) + 1;
++    // No-Fabrication: فقط داده واقعی (نه ?? 5.0 و روز جعلی wednesday)
++    if (s.attendance_summary?.chronic_absence_rate != null) {
++      sumChronic += Number(s.attendance_summary.chronic_absence_rate);
++      chronicSchoolCount++;
++    }
++    const pd = s.attendance_summary?.peak_absence_day;
++    if (pd != null) peakDays[pd] = (peakDays[pd] || 0) + 1;
+   }
+-  const avgChronic = schoolCount > 0 ? Math.round((sumChronic / schoolCount) * 10) / 10 : 5.0;
++  const avgChronic = chronicSchoolCount > 0 ? Math.round((sumChronic / chronicSchoolCount) * 10) / 10 : null;
+ 
+-  let regionalPeakDay = 'wednesday';
+-  let maxCount = -1;
++  let regionalPeakDay = null;
++  let maxCount = 0;
+   for (const [day, count] of Object.entries(peakDays)) {
+     if (count > maxCount) {
+       maxCount = count;
+@@ -466,7 +486,7 @@ function buildRegionalSnapshot(regionContext = {}, options = {}) {
+     average_calendar_rate: healthSummary.average_attendance_rate,
+     average_chronic_absence_rate: avgChronic,
+     peak_absence_day: regionalPeakDay,
+-    temporal_risk_detected: avgChronic >= 8.0
++    temporal_risk_detected: avgChronic != null && avgChronic >= 8.0
+   };
+ 
+   // ۵. الگوهای سنجش
+@@ -480,7 +500,9 @@ function buildRegionalSnapshot(regionContext = {}, options = {}) {
+   const assessmentPatterns = {
+     total_exams_surveyed: totalExams,
+     hard_exams_count: totalHard,
+-    average_difficulty_p_value: totalExams > 0 ? 0.62 : 0.65,
++    // No-Fabrication: p-value دشواری هنوز از داده آزمون واقعی محاسبه نمی‌شود
++    average_difficulty_p_value: null,
++    average_difficulty_p_value_status: 'NOT_MEASURED',
+     grade_inflation_clusters_detected: 0
+   };
+ 
+diff --git a/tests/arena-iqa-engine-battery.js b/tests/arena-iqa-engine-battery.js
+index 0ea2736..49c6eae 100644
+--- a/tests/arena-iqa-engine-battery.js
++++ b/tests/arena-iqa-engine-battery.js
+@@ -435,11 +435,83 @@ async function testFingerprintsAndConsistency() {
+   }
+ }
+ 
++/* ── PART D: regional aggregation / recommendation / early-warning No-Fabrication pins ── */
++async function testAggregationAndSignalIntegrity() {
++  console.log('\n════ PART D — regional aggregation, recommendation evidence, early-warning integrity ════');
++
++  /* EI-10: تجمیع منطقه‌ای با مدارس بدون داده */
++  {
++    const RG = require(path.join(ROOT, 'server/analytics/regional-intelligence-network.js'));
++    const E = 'EI-10';
++    const noDataSchools = [
++      { school_id: 1, health_index: { status: 'NO_DATA', score: null }, attendance_summary: { calendar_rate: null, chronic_absence_rate: null, peak_absence_day: null }, academic_summary: { average_gpa: null }, intervention_summary: { resolution_rate: null, active_cases_count: 0 } },
++      { school_id: 2, health_index: { status: 'NO_DATA', score: null }, attendance_summary: { calendar_rate: null, chronic_absence_rate: null, peak_absence_day: null }, academic_summary: { average_gpa: null }, intervention_summary: { resolution_rate: null, active_cases_count: 0 } }
++    ];
++    const h = RG.summarizeRegionalHealth({ schools: noDataSchools });
++    chk(E, 'aggregation: no-data schools do NOT fabricate regional averages (90.0/15.0)', h.average_attendance_rate === null && h.average_gpa === null, JSON.stringify(h).slice(0, 200));
++    chk(E, 'aggregation: no-data schools counted as NO_DATA, never HEALTHY', h.no_data_schools_count === 2 && h.healthy_schools_count === 0, JSON.stringify({ nd: h.no_data_schools_count, hl: h.healthy_schools_count }));
++    const snap = RG.buildRegionalSnapshot({ regionId: 10, schools: noDataSchools });
++    const sJson = JSON.stringify(snap);
++    chk(E, 'snapshot: constant effectiveness ratio 0.85/1.0 eliminated (null + NOT_MEASURED)', snap.intervention_summary.effective_interventions_ratio === null, JSON.stringify(snap.intervention_summary).slice(0, 200));
++    chk(E, 'snapshot: resolution/chronic/p-value not fabricated from constants', snap.intervention_summary.overall_resolution_rate === null && snap.attendance_patterns.average_chronic_absence_rate === null && snap.assessment_patterns.average_difficulty_p_value === null, sJson.slice(0, 200));
++    chk(E, 'snapshot: fabricated peak day (wednesday) eliminated for no-data region', snap.attendance_patterns.peak_absence_day === null, String(snap.attendance_patterns.peak_absence_day));
++    /* با داده واقعی: میانگین صحیح */
++    const realSchools = [
++      { school_id: 1, health_index: { status: 'HEALTHY', score: 90 }, attendance_summary: { calendar_rate: 94.0, chronic_absence_rate: 4.0, peak_absence_day: 'wednesday' }, academic_summary: { average_gpa: 16.0 }, intervention_summary: { resolution_rate: 80.0, active_cases_count: 1 } },
++      { school_id: 2, health_index: { status: 'NO_DATA', score: null }, attendance_summary: { calendar_rate: null, chronic_absence_rate: null, peak_absence_day: null }, academic_summary: { average_gpa: null }, intervention_summary: { resolution_rate: null, active_cases_count: 0 } }
++    ];
++    const h2 = RG.summarizeRegionalHealth({ schools: realSchools });
++    chk(E, 'aggregation: mixed region averages ONLY over schools with real data (94.0/16.0)', h2.average_attendance_rate === 94.0 && h2.average_gpa === 16.0, JSON.stringify({ att: h2.average_attendance_rate, gpa: h2.average_gpa }));
++  }
++
++  /* EI-13: شواهد پیشنهاد بدون مقدار جعلی */
++  {
++    const R = require(path.join(ROOT, 'server/analytics/recommendation-action-planning.js'));
++    const E = 'EI-13';
++    /* فقط سیگنال حضور واقعی؛ chronic اندازه‌گیری نشده */
++    const recs = R.generateActionRecommendations({ schoolId: 1, schoolSnapshot: { attendance_rate: 70.0 } });
++    const attRec = recs.find((r) => r.trigger_source === 'ATTENDANCE_INTELLIGENCE');
++    chk(E, 'recommendation fires on REAL low attendance signal (70%)', !!attRec, 'recs=' + recs.length);
++    if (attRec) {
++      chk(E, 'recommendation evidence carries NO fabricated chronic rate (14.2)', attRec.evidence.chronic_absence_rate === null && attRec.evidence.absenceRate === null, JSON.stringify(attRec.evidence));
++      chk(E, 'recommendation evidence cites the real measured value (attendance 70)', attRec.evidence.attendance_rate === 70.0 && attRec.evidence.current_value === 70.0, JSON.stringify(attRec.evidence));
++    }
++    /* اسنپ‌شات خالی: هیچ پیشنهادی از پیش‌فرض ساخته نمی‌شود */
++    const emptyRecs = R.generateActionRecommendations({ schoolId: 1, schoolSnapshot: {} });
++    chk(E, 'empty snapshot ⇒ zero recommendations (no defaults-driven alarms)', emptyRecs.length === 0, 'recs=' + emptyRecs.length);
++    /* اثربخشی بدون خط مبنا: NOT_MEASURABLE نه دلتای جعلی */
++    const eff = R.evaluateActionEffectiveness({ actionRecord: { recommendation_id: 'X' }, preMetrics: {}, postMetrics: { attendance_rate: 92.0, average_gpa: 15.0 } });
++    chk(E, 'effectiveness without measured baseline ⇒ NOT_MEASURABLE + null deltas', eff.efficacy === 'NOT_MEASURABLE' && eff.deltas.attendance_rate === null && eff.deltas.average_gpa === null, JSON.stringify({ e: eff.efficacy, d: eff.deltas }));
++  }
++
++  /* EI-08: هشدار زودهنگام — نبود داده نه سرکوب هشدار است نه هشدار جعلی */
++  {
++    const IC = require(path.join(ROOT, 'server/analytics/intervention-case-management.js'));
++    const E = 'EI-08';
++    let w1; try { w1 = IC.evaluateEarlyWarningRules({ studentId: 1, schoolId: 1, recentAttendanceRate: 70.0, consecutiveAbsences: 0 }); } catch (e) { w1 = { threw: e.message }; }
++    const w1alerts = Array.isArray(w1) ? w1 : (w1.alerts || []);
++    chk(E, 'early-warning fires on real 70% attendance even when GPA unknown', !w1.threw && w1alerts.some((a) => a.trigger_type === 'CHRONIC_ABSENCE_ALERT'), JSON.stringify(w1).slice(0, 200));
++    chk(E, 'early-warning: unknown GPA does not trigger fabricated academic alerts', !w1.threw && !w1alerts.some((a) => String(a.reason || '').includes('null') || a.trigger_type === 'CRITICAL_ACADEMIC_DROP'), JSON.stringify(w1alerts).slice(0, 250));
++    let oc = null;
++    try {
++      oc = IC.evaluateInterventionOutcome({
++        caseRecord: { case_id: 1, student_id: 1, school_id: 1, status: 'EVALUATING', baseline_metrics: { gpa: null, attendance_rate: null } },
++        postMetrics: { gpa: 18.0, attendance_rate: 95.0 },
++        evaluatorId: 9,
++        evaluatorRole: 'counselor'
++      });
++    } catch (e) { oc = { threw: e.message }; }
++    const effLevel = oc && (oc.efficacy_level || oc.efficacyLevel);
++    chk(E, 'intervention outcome without real baseline ⇒ NOT_MEASURABLE (no fake HIGHLY_EFFECTIVE)', !oc.threw && effLevel === 'NOT_MEASURABLE', oc.threw || String(effLevel));
++  }
++}
++
+ (async () => {
+   console.log('Arena IQA — 21-engine D1–D7 battery @ ' + require('child_process').execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim());
+   await testWiredEngines();
+   await testUnwiredEngines();
+   await testFingerprintsAndConsistency();
++  await testAggregationAndSignalIntegrity();
+   console.log('\n──────────────────────────────────────────────────');
+   console.log(`ARENA IQA BATTERY: ${pass} PASS / ${fail} FAIL`);
+   if (findings.length) {
+-- 
+2.47.3
+

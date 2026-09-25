@@ -1,0 +1,439 @@
+From 5f0af4e17743326d1d0caca3cbf69fbfd80501cc Mon Sep 17 00:00:00 2001
+From: Arena 9 <arena9@payesh.local>
+Date: Wed, 23 Sep 2026 18:42:57 +0000
+Subject: [PATCH] fix(tests): close Arena 9 failure-boundary harness defects (6
+ root causes)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Independent Architecture/Dependency/Failure-Boundary review on
+main @ 66928be6227567f3d92b2c93a2d5f8146a4601b8 (E3, PG 17.11 +
+Redis 8.0.2 + Node 22, live failure injection).
+
+All six root causes are harness/regression-pin defects; no production
+code path was changed. Production fail-closed behaviour was re-proven
+before and after each fix.
+
+1) chaos-drill-lib loginAs: prod demo_code guard (0b53ec0) correctly
+   stopped echoing codes under NODE_ENV=production, which silently
+   broke setup:login of ALL six chaos drills (6/6 FAIL since
+   2026-09-19). Harness now mints a session JWT with the drill's
+   runtime secret; server-side authority (HS256 verify, revocation,
+   session-version, PG user/school lookups) still fully enforced.
+   After fix: 6/6 drills PASS twice, incl. PG outage fail-closed
+   window 25.6s with 0 false acks and disk-pressure ENOSPC recovery.
+
+2) chaos-drill-disk-pressure: /api/health==200 assertion demanded a
+   fake green while PG was PANIC-dead; locked contract (P0-13/server13)
+   returns 503+diagnostic body when unhealthy. Assertion now requires
+   a diagnosable 200/503 JSON response instead.
+
+3) redis-prodfail A13: pinned pre-a3c213e behaviour (ping ok:true/
+   memory in production w/o Redis). Re-pinned to the CURRENT correct
+   fail-closed contract {ok:false,driver:none,REDIS_UNAVAILABLE}.
+   Also hermetic: roles strip ambient DATABASE_URL/REDIS_URL.
+
+4) redis-fallback + session-revocation + outbox unit suites: ambient
+   DATABASE_URL/REDIS_URL flipped redis.isProduction() and produced
+   5-6 false reds each (incl. C5-04 from ground truth: now 18/18 in
+   all three postures). Harnesses now pin their own posture and
+   isolate shared-Redis stale state (sessver:* no-TTL keys, OTP
+   rate-limit keys) via dedicated logical DB, mirroring
+   phase65-runtime-truth's isolation pattern.
+
+5) redis-sentinel-failover: three harness defects hid a real-failover
+   proof — missing connect() for the lazyConnect production client,
+   shared --dir RDB collision, and Redis 8 repl-diskless-sync-delay=5s
+   killing the master before first sync (empty replica promoted).
+   Now 11/11 incl. genuine sentinel promotion observed by the app
+   client config.
+
+6) observability-config: rule_files regex anchored $ without /m so the
+   canonical-alert-rules gate could never pass on any valid
+   prometheus.yml with content after rule_files (dff14e0 kept the bad
+   anchor). Replaced with a semantic single-entry block check;
+   negative test (extra rules file) verified to fail.
+
+Regression: npm test 35/35 + smoke 547/547, production-truth-gate
+44/44 VERIFIED, production-verifier 37/37 VERIFIED, phase65 37/37,
+all on this HEAD.
+---
+ tests/chaos-drill-disk-pressure.js          | 10 +++-
+ tests/chaos-drill-lib.js                    | 38 ++++++++++++-
+ tests/observability-config.js               | 11 +++-
+ tests/outbox-runtime-reliability.test.js    | 13 +++++
+ tests/redis-fallback.js                     |  9 +++
+ tests/redis-prodfail.js                     | 28 ++++++++--
+ tests/redis-sentinel-failover.js            | 31 ++++++++++-
+ tests/runtime-reliability-five-task.test.js | 11 ++++
+ tests/session-revocation.js                 | 61 ++++++++++++++++++---
+ 9 files changed, 193 insertions(+), 19 deletions(-)
+
+diff --git a/tests/chaos-drill-disk-pressure.js b/tests/chaos-drill-disk-pressure.js
+index ddf36d5..aed20a9 100644
+--- a/tests/chaos-drill-disk-pressure.js
++++ b/tests/chaos-drill-disk-pressure.js
+@@ -103,8 +103,16 @@ const rows = [];
+   L.check(rows, 'graceful: پروسه زیرِ فشارِ دیسک زنده می‌ماند و امتناعِ صریح می‌دهد (نه سقوط)',
+     lv.status === 200 && [200, 503].includes(rd.status),
+     'liveness=' + lv.status + ' readiness=' + rd.status + ' health=' + health.status + ' | پروسه_مرده=' + !T.apiAliveUnderPressure);
++  /* Arena 9 fix: قراردادِ قفل‌شدهٔ /api/health (P0-13 / server13-S1) صریحاً
++     می‌گوید در حالتِ unhealthy کدِ وضعیت 503 با بدنهٔ تشخیصیِ کامل برمی‌گردد.
++     زیرِ فشارِ دیسک PG با PANIC مرده است ⇒ 503 «درست» است؛ الزامِ 200 در
++     این لحظه یعنی مطالبهٔ سبزِ کاذب از سرور. «در دسترس بودنِ ابزارِ پایش»
++     یعنی: پاسخِ HTTP سالم (200/503) + بدنهٔ JSONِ تشخیصی با فیلدِ db —
++     نه timeout، نه سقوط، نه بدنهٔ خالی. */
++  const healthDiagnosable = [200, 503].includes(health.status) &&
++    !!(health.json && health.json.db && typeof health.json.ok === 'boolean');
+   L.check(rows, 'graceful: /api/health زیرِ فشار در دسترسِ اپراتور می‌ماند (ابزارِ پایش از کار نمی‌افتد)',
+-    health.status === 200, 'status=' + health.status);
++    healthDiagnosable, 'status=' + health.status + ' db=' + JSON.stringify(health.json && health.json.db).slice(0, 80));
+ 
+   const storeParse = (() => { try { const j = JSON.parse(fs.readFileSync(infra.storeFile, 'utf8')); return !!j.users; } catch (e) { return false; } })();
+   L.check(rows, 'no corruption: فایلِ استور زیرِ فشارِ دیسک هم JSONِ سالم است', storeParse, 'store_parseable=' + storeParse + ' bytes=' + (fs.existsSync(infra.storeFile) ? fs.statSync(infra.storeFile).size : 0));
+diff --git a/tests/chaos-drill-lib.js b/tests/chaos-drill-lib.js
+index cd7512c..b385728 100644
+--- a/tests/chaos-drill-lib.js
++++ b/tests/chaos-drill-lib.js
+@@ -462,12 +462,44 @@ async function startApi(opts) {
+ }
+ 
+ /* ── لاگین با کوکی (send-code → demo_code → login) ──────────────── */
++/* Regression fix (Arena 9): commit 0b53ec0 correctly stopped echoing
++   demo_code when NODE_ENV=production. These drills intentionally boot the
++   API with the production posture, so demo_code is (rightly) absent and
++   the old send-code→login path returns 400 — which broke every drill's
++   `setup: login` since 2026-09-19. The production guard must NOT be
++   weakened; instead the harness mints a session JWT with the same
++   runtime-generated CHAOS_JWT_SECRET the API instance booted with.
++   Server-side authority is still fully enforced on every request
++   (HS256 verify, revocation denylist, session-version, PG user/school
++   active lookups) — the mint only replaces the SMS-code ceremony that a
++   real operator performs out-of-band. */
++function mintSessionJwt(user) {
++  const b64u = (x) => Buffer.from(x).toString('base64url');
++  const now = Math.floor(Date.now() / 1000);
++  const h = b64u(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
++  const b = b64u(JSON.stringify({
++    iss: 'payesh', aud: 'payesh-web',
++    sub: user.id, role: user.role, school_id: user.school_id || null,
++    iat: now, exp: now + 28800,
++    jti: 'jt_' + crypto.randomBytes(12).toString('hex'), sv: 0
++  }));
++  const sig = b64u(crypto.createHmac('sha256', CHAOS_JWT_SECRET).update(h + '.' + b).digest());
++  return h + '.' + b + '.' + sig;
++}
+ async function loginAs(port, user) {
+   const jar = makeJar();
+   const s = await httpReq(port, 'POST', '/api/auth/send-code', { phone: user.phone }, { jar, timeoutMs: 10000 });
+   const code = (s.json && (s.json.demo_code || (s.json.data && s.json.data.demo_code))) || null;
+-  const l = await httpReq(port, 'POST', '/api/auth/login', { phone: user.phone, code: String(code || ''), national_id: user.national_id }, { jar, timeoutMs: 10000 });
+-  return { jar, send: s, login: l, ok: l.status === 200 };
++  if (code) {
++    /* dev/preview posture — the historical demo_code path still works */
++    const l = await httpReq(port, 'POST', '/api/auth/login', { phone: user.phone, code: String(code), national_id: user.national_id }, { jar, timeoutMs: 10000 });
++    return { jar, send: s, login: l, ok: l.status === 200, minted: false };
++  }
++  /* production posture — mint a session with the runtime drill secret and
++     let the server itself validate it end-to-end via /api/auth/me. */
++  jar.absorb({ 'set-cookie': ['payesh_session=' + mintSessionJwt(user)] });
++  const me = await httpReq(port, 'GET', '/api/auth/me', null, { jar, timeoutMs: 10000 });
++  return { jar, send: s, login: me, ok: me.status === 200, minted: true };
+ }
+ 
+ /* ── خوانش‌های عملیاتی ─────────────────────────────────────────── */
+@@ -539,7 +571,7 @@ function check(rows, name, cond, detail) {
+ 
+ module.exports = {
+   ROOT, PG_BIN, pgBin, sleep, sha256, sha256File, nowIso, freePort, waitPort, until,
+-  httpReq, makeJar, psql, redisCli, Infra, startApi, loginAs, startProxy,
++  httpReq, makeJar, psql, redisCli, Infra, startApi, loginAs, mintSessionJwt, startProxy,
+   readiness, liveness, health, metricsText, metricValue,
+   syncWrite, syncBatch, mkOp, auditCount, report, check, infraAvailable, canMountTmpfs, notRun, serializeForPg,
+   CHAOS_JWT_SECRET, CHAOS_METRICS_TOKEN
+diff --git a/tests/observability-config.js b/tests/observability-config.js
+index 2230c35..7cc3fc7 100644
+--- a/tests/observability-config.js
++++ b/tests/observability-config.js
+@@ -17,7 +17,16 @@ const env = rd(DIR + '/env.observability.example');
+ const metrics = rd('server/metrics.js');
+ 
+ chk('compose contains pinned observability services', ['prometheus:v2.54.1','alertmanager:v0.27.0','grafana:11.2.0','loki:3.1.1','promtail:3.1.1'].every((x) => compose.includes(x)));
+-chk('Prometheus loads only canonical alert-rules.yml', /rule_files:\s*\n\s*- \/etc\/prometheus\/alert-rules\.yml(?:\s*)$/.test(prom));
++/* Arena 9 root-cause fix: the previous regex anchored `$` WITHOUT the /m
++   flag, so it only matched when rule_files was the literal end of the file —
++   any valid prometheus.yml with sections after rule_files failed forever
++   (commit dff14e0 intended to tolerate formatting but kept the broken
++   anchor). Enforce the actual semantic contract instead: the rule_files
++   block exists and contains EXACTLY one entry, the canonical file. */
++const ruleBlock = (prom.match(/^rule_files:\s*\n((?:\s+-[^\n]*\n?)+)/m) || [])[1] || '';
++const ruleEntries = ruleBlock.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('-'));
++chk('Prometheus loads only canonical alert-rules.yml',
++  ruleEntries.length === 1 && ruleEntries[0] === '- /etc/prometheus/alert-rules.yml');
+ chk('retired alerts.yml is not mounted', !/\.\/alerts\.yml:/.test(compose));
+ chk('retired alerts.yml has no active alert', !/^- alert:/m.test(rd(DIR + '/alerts.yml')));
+ chk('Prometheus target is payesh-api /metrics', /job_name: payesh-api/.test(prom) && /metrics_path: \/metrics/.test(prom) && /host\.docker\.internal:3000/.test(prom));
+diff --git a/tests/outbox-runtime-reliability.test.js b/tests/outbox-runtime-reliability.test.js
+index bbe8aee..76bba10 100644
+--- a/tests/outbox-runtime-reliability.test.js
++++ b/tests/outbox-runtime-reliability.test.js
+@@ -1,6 +1,19 @@
+ #!/usr/bin/env node
+ 'use strict';
+ 
++/* Arena 9 (hermeticity): this is an in-process unit contract on the JSON
++   store (db:null, no redis.init()). outbox.nextId() intentionally
++   fail-closes when DATABASE_URL/production is ambient but Redis is not
++   initialised — correct for the server, a false red for this unit
++   harness when run from a live-PG shell. Pin the dev posture explicitly
++   BEFORE the modules load. The fail-closed behaviour itself is covered by
++   the live suites (phase2-redis-fail-closed, chaos-drill-redis-outage). */
++delete process.env.DATABASE_URL;
++delete process.env.READ_DATABASE_URL;
++delete process.env.REDIS_URL;
++process.env.NODE_ENV = process.env.NODE_ENV === 'production' ? 'test' : (process.env.NODE_ENV || 'test');
++if (process.env.PAYESH_ENV === 'production') process.env.PAYESH_ENV = 'test';
++
+ const assert = require('assert');
+ const { createOutbox } = require('../server/outbox');
+ const { createWorker } = require('../server/worker');
+diff --git a/tests/redis-fallback.js b/tests/redis-fallback.js
+index c52a227..2786395 100644
+--- a/tests/redis-fallback.js
++++ b/tests/redis-fallback.js
+@@ -30,6 +30,15 @@ function buildCleanEnv(extraEnv) {
+   if (!('REDIS_URL' in extraEnv)) delete e.REDIS_URL;
+   if (!('REDIS_CLUSTER_NODES' in extraEnv)) delete e.REDIS_CLUSTER_NODES;
+   if (!('REDIS_SENTINELS' in extraEnv)) delete e.REDIS_SENTINELS;
++  /* Arena 9 (hermeticity, Rule 11): redis.isProduction() intentionally
++     treats an ambient DATABASE_URL as production and refuses the dev
++     memory fallback. An operator running this suite with DATABASE_URL
++     exported (the normal live-PG posture) therefore got 5 false reds.
++     The scenarios below define their own posture explicitly — strip the
++     inherited DB URLs unless a scenario opts in. */
++  if (!('DATABASE_URL' in extraEnv)) delete e.DATABASE_URL;
++  if (!('READ_DATABASE_URL' in extraEnv)) delete e.READ_DATABASE_URL;
++  if (!('PAYESH_ENV' in extraEnv)) delete e.PAYESH_ENV;
+   return e;
+ }
+ 
+diff --git a/tests/redis-prodfail.js b/tests/redis-prodfail.js
+index f5b654c..a35ece7 100644
+--- a/tests/redis-prodfail.js
++++ b/tests/redis-prodfail.js
+@@ -18,10 +18,20 @@ if (ROLE === '') {
+   let pass = 0, fail = 0;
+   for (const r of ['a', 'b', 'c']) {
+     try {
++      /* Arena 9 (hermeticity, Rule 11): redis.isProduction() treats an
++         ambient DATABASE_URL/REDIS_URL as production. Running this suite
++         from a live-PG shell (DATABASE_URL exported) flipped role b
++         (development) into fail-closed production and turned every dev
++         assertion red. Each role defines its own posture — strip the
++         inherited URLs. */
++      const env = Object.assign({}, process.env,
++        r === 'b' ? { PRODFAIL_ROLE: 'b', NODE_ENV: 'development' }
++                  : { PRODFAIL_ROLE: r, NODE_ENV: 'production' });
++      delete env.REDIS_URL; delete env.DATABASE_URL;
++      delete env.READ_DATABASE_URL; delete env.REDIS_CLUSTER_NODES;
++      delete env.REDIS_SENTINELS; delete env.PAYESH_ENV;
+       const out = execFileSync(process.execPath, [__filename], {
+-        env: Object.assign({}, process.env,
+-          r === 'b' ? { PRODFAIL_ROLE: 'b', NODE_ENV: 'development' }
+-                    : { PRODFAIL_ROLE: r, NODE_ENV: 'production' }),
++        env,
+         timeout: 60000, stdio: 'pipe',
+       }).toString();
+       const m = out.match(/PRODFAIL (\d+)\/(\d+)/);
+@@ -66,9 +76,17 @@ async function roleA() {
+   await mustThrow('A10 compareAndDelete می‌پراند', () => redis.compareAndDelete('l', 't'));
+   await mustThrow('A11 publish می‌پراند', () => redis.publish('ch', 'm'));
+   await mustThrow('A12 subscribe می‌پراند', () => redis.subscribe('ch', () => {}));
+-  /* مشاهده/بستن باید جواب بدهند (نه پرتاب). */
++  /* مشاهده/بستن باید جواب بدهند (نه پرتاب).
++     Arena 9 regression re-pin: commit a3c213e (`fix(redis): report
++     production outage in ping`) صحیحاً ping را در تولیدِ بدونِ اتصال
++     fail-closed کرد ({ok:false, driver:'none', error:'REDIS_UNAVAILABLE'})
++     تا readiness دیگر سبزِ کاذبِ «memory» گزارش ندهد. این assertion
++     رفتارِ قبل از آن fix را پین کرده بود. قراردادِ درست: پاسخ می‌دهد
++     (بدونِ پرتاب) و صریحاً UNAVAILABLE می‌گوید. */
+   const p = await redis.ping();
+-  chk('A13 ping جواب می‌دهد', p && p.driver === 'memory');
++  chk('A13 ping جواب می‌دهد و صریحاً قطع را گزارش می‌کند (fail-closed)',
++    p && p.ok === false && p.driver === 'none' && p.error === 'REDIS_UNAVAILABLE',
++    JSON.stringify(p));
+   chk('A14 ready نادرست است', redis.ready() === false);
+   await redis.close();
+   chk('A15 close بی‌خطا', true);
+diff --git a/tests/redis-sentinel-failover.js b/tests/redis-sentinel-failover.js
+index 4b75556..0fe5a05 100644
+--- a/tests/redis-sentinel-failover.js
++++ b/tests/redis-sentinel-failover.js
+@@ -179,10 +179,29 @@ async function main() {
+         procs.push(p); return p;
+       };
+       try {
+-        spawnR(['--port', '6400', '--daemonize', 'no', '--save', '', '--dir', dir]);
+-        spawnR(['--port', '6401', '--daemonize', 'no', '--save', '', '--dir', dir, '--replicaof', '127.0.0.1', '6400']);
++        /* Arena 9 — دو نقصِ harness (نه کد تولید) که فیل‌اُوور را همیشه
++           قرمز می‌کردند:
++           ۱) --dir مشترک بین مستر و کپی ⇒ تصادمِ فایل‌های RDB/temp؛ هر
++              نمونه دایرکتوری جدا می‌گیرد.
++           ۲) پیش‌فرضِ repl-diskless-sync-delay=5s در Redis 8 سینکِ کامل
++              را عقب می‌اندازد؛ مستر پیش از اتمامِ سینک کشته می‌شد ⇒
++              کپیِ خالی promote می‌شد و get پس از فیل‌اُوور برای همیشه
++              null می‌ماند. delay=0 + انتظارِ واقعی برای
++              master_link_status:up (نه صرفِ sleep). */
++        const dirM = path.join(dir, 'm'); const dirR = path.join(dir, 'r');
++        fs.mkdirSync(dirM); fs.mkdirSync(dirR);
++        spawnR(['--port', '6400', '--daemonize', 'no', '--save', '', '--dir', dirM, '--repl-diskless-sync-delay', '0']);
++        spawnR(['--port', '6401', '--daemonize', 'no', '--save', '', '--dir', dirR, '--replicaof', '127.0.0.1', '6400']);
+         const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+         await sleep(800);
++        const cliBin = bins.server.replace('redis-server', 'redis-cli');
++        for (let i = 0; i < 20; i++) {
++          try {
++            const rep = cp.execSync(cliBin + ' -p 6401 info replication', { stdio: 'pipe', timeout: 3000 }).toString();
++            if (/master_link_status:up/.test(rep)) break;
++          } catch (e) { /* replica هنوز آماده نیست */ }
++          await sleep(500);
++        }
+         const sentinelConf = (port) => {
+           const f = path.join(dir, 'sentinel-' + port + '.conf');
+           fs.writeFileSync(f, [
+@@ -202,6 +221,14 @@ async function main() {
+         const cc = redis.buildRedisConfig({ REDIS_SENTINELS: '127.0.0.1:26400,127.0.0.1:26401,127.0.0.1:26402', REDIS_SENTINEL_NAME: 'mymaster' });
+         const c = Object.assign({ sentinels: cc.sentinels, name: cc.name }, cc.options || {});
+         const app = new Redis(Object.assign({}, c, { connectTimeout: 2000, maxRetriesPerRequest: 3 }));
++        /* Arena 9: قراردادِ تولیدِ buildRedisConfig صحیحاً
++           lazyConnect=true و enableOfflineQueue=false است (fail-closed؛
++           نوشت قبل از اتصال باید بپراند نه در صف بماند). در مسیرِ
++           تولید، redis.init() خودش await client.connect() می‌کند
++           (server/redis.js:213). این harness آن مرحله را جا انداخته بود
++           و شکستِ fail-closed کلاینتِ وصل‌نشده را شکستِ فیل‌اُوور
++           گزارش می‌کرد. مثل مسیرِ تولید صریحاً connect می‌کنیم. */
++        await app.connect();
+         await app.set('ha:probe', 'alive');
+         chk('نوشت روی مستر از مسیر نگهبان', (await app.get('ha:probe')) === 'alive');
+ 
+diff --git a/tests/runtime-reliability-five-task.test.js b/tests/runtime-reliability-five-task.test.js
+index 4d30661..28b3bc0 100644
+--- a/tests/runtime-reliability-five-task.test.js
++++ b/tests/runtime-reliability-five-task.test.js
+@@ -1,6 +1,17 @@
+ #!/usr/bin/env node
+ 'use strict';
+ 
++/* Arena 9 (hermeticity): in-process unit contract on the JSON store
++   (db:null, no redis.init()). See tests/outbox-runtime-reliability.test.js
++   for the full rationale — pin the dev posture before module load so an
++   ambient DATABASE_URL cannot flip outbox.nextId() into its (correct)
++   production fail-closed path and turn this unit suite red. */
++delete process.env.DATABASE_URL;
++delete process.env.READ_DATABASE_URL;
++delete process.env.REDIS_URL;
++process.env.NODE_ENV = process.env.NODE_ENV === 'production' ? 'test' : (process.env.NODE_ENV || 'test');
++if (process.env.PAYESH_ENV === 'production') process.env.PAYESH_ENV = 'test';
++
+ const assert = require('assert');
+ const { createOutbox } = require('../server/outbox');
+ const { createWorker } = require('../server/worker');
+diff --git a/tests/session-revocation.js b/tests/session-revocation.js
+index ea36e76..b77db46 100644
+--- a/tests/session-revocation.js
++++ b/tests/session-revocation.js
+@@ -109,6 +109,13 @@ async function modGroup() {
+   const legacy = auth.jwtSign({ sub: user.id, role: user.role, iat: Math.floor(Date.now() / 1000),
+     exp: Math.floor(Date.now() / 1000) + 28800, jti: 'jt_legacy' + Date.now() });
+   const user2 = seed.users.find((u) => u.id !== user.id && u.active !== 0);
++  /* Arena 9 (stale-state isolation): sessver:<id> keys have no TTL by design,
++     so on a real shared Redis a previous run's revoke-all for this seed user
++     survives and correctly invalidates the fresh no-sv legacy token — a
++     false red for the COMPATIBILITY contract being tested here. Reset the
++     version key for the test subject only (never a production code path —
++     this is per-user test hygiene, equivalent to a fresh user id). */
++  try { await redis.del('sessver:' + user2.id); } catch (e) {}
+   const legacy2 = auth.jwtSign({ sub: user2.id, role: user2.role, iat: Math.floor(Date.now() / 1000),
+     exp: Math.floor(Date.now() / 1000) + 28800, jti: 'jt_legacy' + Date.now() + 'x' });
+   const sleg = await auth.sessionFrom(cookieReq(NAME, legacy2));
+@@ -152,14 +159,23 @@ async function pickPort(base) {
+ async function bootApp(port, tmp, extraEnv) {
+   const storeP = path.join(tmp, 's-' + port + '.json');
+   fs.copyFileSync(SEED_STORE, storeP);
++  /* Arena 9 (hermeticity): this group contract is a per-boot ISOLATED
++     JSON store (the seed is copied to tmp). An inherited DATABASE_URL
++     silently rewired the boot to a shared long-lived PG database, so a
++     previous run's delete-account persisted and users[1] could no longer
++     log in (H-d false red: del=null). Strip inherited DB URLs; a scenario
++     that wants PG must pass it via extraEnv explicitly. */
++  const env = Object.assign({}, process.env, {
++    PORT: String(port), HOST: '127.0.0.1', PAYESH_STORE: storeP,
++    PAYESH_AUDIT: path.join(tmp, 'a-' + port + '.log'),
++    PAYESH_KEY: path.join(tmp, 'k-' + port + '.key'),
++    PAYESH_DEMO_CODE: '1', PAYESH_SMS_COOLDOWN_S: '0'
++  }, extraEnv || {});
++  if (!(extraEnv && 'DATABASE_URL' in extraEnv)) delete env.DATABASE_URL;
++  if (!(extraEnv && 'READ_DATABASE_URL' in extraEnv)) delete env.READ_DATABASE_URL;
+   const child = cp.spawn(process.execPath, [SERVER], {
+     cwd: ROOT,
+-    env: Object.assign({}, process.env, {
+-      PORT: String(port), HOST: '127.0.0.1', PAYESH_STORE: storeP,
+-      PAYESH_AUDIT: path.join(tmp, 'a-' + port + '.log'),
+-      PAYESH_KEY: path.join(tmp, 'k-' + port + '.key'),
+-      PAYESH_DEMO_CODE: '1', PAYESH_SMS_COOLDOWN_S: '0'
+-    }, extraEnv || {}),
++    env,
+     stdio: ['ignore', 'ignore', 'ignore']
+   });
+   const t0 = Date.now();
+@@ -190,7 +206,23 @@ async function httpGroup() {
+   if (users.length < 2) { chk('H-0 دو کاربر هست', false); return; }
+   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-rev-'));
+   const port = await pickPort(18961);
+-  const child = await bootApp(port, tmp);
++  /* Arena 9 (stale-state isolation): the OTP rate-limit keys
++     (rate:otp:send:phone:*) are cross-instance state on Redis BY DESIGN,
++     so consecutive runs against a shared Redis DB 0 rate-limited the very
++     first send-code (H-a false red: 429). Same isolation pattern as
++     tests/phase65-runtime-truth.js (dedicated logical DB): boot the HTTP
++     group on DB 12 and clear only that DB first. */
++  let httpEnv = {};
++  if (process.env.REDIS_URL) {
++    const isoUrl = String(process.env.REDIS_URL).replace(/\/\d+\s*$/, '') + '/12';
++    try {
++      const RedisLib = require('ioredis');
++      const rc = new RedisLib(isoUrl, { lazyConnect: true, maxRetriesPerRequest: 1 });
++      await rc.connect(); await rc.flushdb(); rc.disconnect();
++    } catch (e) { /* Redis unreachable → boot falls back per its own contract */ }
++    httpEnv = { REDIS_URL: isoUrl };
++  }
++  const child = await bootApp(port, tmp, httpEnv);
+   chk('H-0 بوت', !!child);
+   if (!child) return;
+   try {
+@@ -284,6 +316,21 @@ async function distGroup() {
+ /* ── main ─────────────────────────────────────────────── */
+ (async function main() {
+   try {
++    /* Arena 9 fix (C5-04 in ROADMAP_CURRENT_GROUND_TRUTH): when REDIS_URL
++       (or DATABASE_URL) is exported, redis.isProduction() is true and every
++       state op fail-closes until redis.init() runs. The harness never
++       initialised Redis in-process, so UNIT/MOD produced 5-6 false reds
++       under the live-Redis posture that CI itself uses. Initialise the
++       real client when a URL is configured; without a URL the historical
++       dev/memory path is untouched. Fail-closed behaviour itself is pinned
++       by tests/redis-prodfail.js and tests/redis-fallback.js. */
++    if (process.env.REDIS_URL || process.env.DATABASE_URL) {
++      const ri = await redis.init();
++      if (!ri || !ri.ok) {
++        console.log('session-revocation: NOT-RUN — configured Redis unreachable: ' + JSON.stringify(ri));
++        process.exit(2);
++      }
++    }
+     await unitGroup();
+     await modGroup();
+     if (QUICK) {
+-- 
+2.47.3
+
