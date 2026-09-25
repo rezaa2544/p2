@@ -25,3 +25,27 @@ This is the durable record of **why** material project decisions were made.
 **Impact:**  
 **Evidence / references:**  
 **Follow-up:**  
+
+
+## 2026-09-25 — Current-head synchronization policy
+
+**Decision:** The project intelligence and external memory must be synchronized after every material change/report, but the verification registry must remain evidence-bound and may intentionally lag until a hardening SHA is frozen.
+
+**Why:** Main advanced from the previous audit SHA to `38ecab9` through PR #415/#416. Automatically carrying old verification statuses forward would create false certification.
+
+**Current root cause of drift:** verification evidence was produced against discrete audit SHAs while subsequent merges moved main. The durable fix is not to rewrite history; it is to make every synchronization record explicit about its exact HEAD and require a deliberate registry rebind after hardening.
+
+**Operational rule:** every material merge/report updates: Project Intelligence, Dashboard, Daily Tasks, Decision Log and CHANGELOG as applicable. The registry is updated only when its evidence contract is actually re-executed for the new SHA.
+
+**Next gate:** A-30 through A-39 closure, then registry rebind and three-independent-reviewer validation.
+
+## 2026-09-25 — Evidence-first execution strategy
+
+**Decision:** Do not advance broad certification phases while hardening findings remain unresolved. Fix or reproduce first, preserve negative evidence, then certify only from the same frozen SHA.
+
+**Reason:** The current Arena Sync report demonstrates why this matters: scoped fixes can pass targeted runtime batteries while the global invariant remains NOT VERIFIED because legacy behavior and untested production boundaries still fail the contract.
+
+**Options recorded:**
+1. Evidence-first hardening (default): close A-30..A-39 in dependency order.
+2. Parallel E4 preparation: provision DR infrastructure while code/gate work proceeds, without promoting status.
+3. Investigation-only for blocked items: document root cause and unblocker, with no artificial PASS.
