@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "name": "strict-verification-evidence",
+  "policy": "docs/STRICT_VERIFICATION_GATE.md",
+  "owner": "A-30 Strict Verification Gate hardening",
+  "note": "Mandatory shape of VERIFICATION_REGISTRY.json. The gate pins these lists to its own canonical contract (V-12): editing this file alone cannot weaken the gate.",
+  "reviewers": ["chatgpt", "arena", "atria"],
+  "reviewer_verdicts": ["PASS", "FAIL", "BLOCKED"],
+  "allowed_statuses": ["UNKNOWN", "TESTED", "RUNTIME_VERIFIED", "ADVERSARIAL_VERIFIED", "INDEPENDENTLY_VERIFIED", "CERTIFIED"],
+  "required_registry_keys": ["schema_version", "policy", "status", "head_bound", "required_reviewers", "allowed_statuses", "reviews_recorded", "human_governance", "items"],
+  "required_item_keys": ["id", "status", "requirement", "head_sha", "reviews", "known_limitations", "evidence"],
+  "required_evidence_keys": ["reviewer", "kind", "command", "exit_code", "checks_total", "checks_passed", "artifact", "sha256", "head_sha", "runtime", "ts"],
+  "evidence_kinds": ["positive_test", "negative_test", "adversarial_test", "runtime_evidence", "failure_recovery_evidence", "data_evidence", "review_note"],
+  "evidence_semantics": {
+    "reviewer": "one of reviewers; must equal the slot the evidence is attached to (V-09)",
+    "kind": "evidence class; every item needs >=1 positive/runtime AND >=1 negative/adversarial/failure_recovery (V-11)",
+    "command": "reproducible command; may not be solely a self-certification module (V-08)",
+    "exit_code": "must be 0",
+    "checks_total": "integer >= 1 — 0/0 vacuous claims rejected (V-11)",
+    "checks_passed": "integer, 0 <= checks_passed <= checks_total",
+    "artifact": "repo-relative path; file must exist (V-02)",
+    "sha256": "sha256 hex of the artifact bytes (V-02)",
+    "head_sha": "40-hex commit the evidence was produced on; must equal registry head_bound and gate HEAD (V-02/V-06)",
+    "runtime": "non-empty object describing runtime (node/os/...)",
+    "ts": "ISO-8601 timestamp"
+  },
+  "human_governance": {
+    "required": true,
+    "keys": ["requires_human_approval", "human_approved", "approver", "decided_at", "head_sha"],
+    "semantics": "requires_human_approval and human_approved must be literally true (absent key = fail, V-10); approver must be a human, not one of the three AI reviewers (V-10); head_sha must equal gate HEAD (V-02/V-06)"
+  },
+  "false_green_allowlist_entry": {
+    "required": ["pattern", "owner", "reason", "expires", "replacement_test"],
+    "optional": ["path"],
+    "semantics": "pattern must be a known scanner label; expires is 'never' or a future date; optional path scopes approval to one file so gate-internal literals cannot blanket-approve the repo (V-07)"
+  }
+}

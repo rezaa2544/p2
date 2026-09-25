@@ -24,6 +24,8 @@ jobs:
         run: npm ci
       - name: Strict verification contract
         run: node tools/strict-verification-gate.js
+      - name: A-30 V-01..V-12 negative gate fixtures
+        run: node tests/strict-verification-gate.negative.test.js
       - name: Core tests
         run: npm test
       - name: Production truth gate
