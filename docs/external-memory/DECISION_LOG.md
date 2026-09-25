@@ -67,3 +67,14 @@ Root cause: observed-defect fixes have historically been narrower than the invar
 Decision: establish Invariant Registry, Reappearance Regression Suite, automatic evidence invalidation, complete mutation/auth/failure inventories, and authoritative shared policy contracts.
 
 Closure rule: FIXED is not root-cause closure. Use ROOT-CAUSE-CLOSED only when source fix + alternate-path audit + adversarial regression + current-final-SHA evidence + three independent reviews exist.
+
+
+## 2026-09-25 — Mandatory Supervising Engineer control
+
+**Decision:** Create docs/external-memory/SUPERVISING_ENGINEER.md as the canonical session-start and delivery-control document.
+
+**Why:** Previous agent prompts explicitly required push, yet many agents stopped at analysis/commit/branch/PR without completing the required repository delivery. The failure was procedural/enforcement-related, not merely a GitHub availability issue.
+
+**New rule:** push/PR/merge requirements are part of the task's Definition of Done. A verbal completion report without remote repository evidence is not completion.
+
+**Future prompts:** include Delivery Contract and require exact remote commit/PR/merge identifiers.
