@@ -87,3 +87,24 @@ The registry is **not current**: it remains bound to `e4584806`. The current mai
 ## FINAL SYNCHRONIZATION RECEIPT — 2026-09-25
 **Exact main HEAD after this synchronization series:** `7c1a4ce3c29810910bfee72e17358d81032c33ea`.
 This SHA includes the synchronization updates themselves. The verification registry remains intentionally bound to `e4584806c1af2a1e5db648c8452580a8fa8cbcec` until the hardening SHA is frozen and evidence is regenerated; therefore this receipt is a project-state update, not a certification.
+
+
+## ROOT-CAUSE PRIORITY — 2026-09-25
+
+### New P0 objective
+Eliminate defect recurrence, not merely close defect IDs.
+
+A cross-report review identified repeated mechanisms: incomplete invariant scope, incomplete configuration/path inventory, stale evidence after main moves, twin policy implementations, compatibility branches, and false-green test paths.
+
+Authoritative program: docs/audit/ROOT_CAUSE_REAPPEARANCE_PROGRAM_2026-09-25.md
+
+### New execution rule
+Before declaring any recurring/high-risk item closed:
+Reproduce → identify why previous fix failed to prevent recurrence → fix at source → audit alternate paths → adversarial regression → current-final-HEAD evidence → independent review.
+
+### P0 tasks added
+- [ ] Build Invariant Registry for A-18/A-20/A-22/A-24/A-34/A-35.
+- [ ] Build permanent Reappearance Regression Suite.
+- [ ] Define mutation/auth/failure configuration inventories.
+- [ ] Enforce evidence invalidation after material merge.
+- [ ] Converge OCC/ownership/tenant/revocation/conflict to authoritative policy contracts.
