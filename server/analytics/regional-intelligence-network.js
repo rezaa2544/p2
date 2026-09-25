@@ -247,8 +247,8 @@ function detectRegionalPatterns(snapshot = {}, options = {}) {
   let schoolsWithInterventionBacklog = 0;
 
   for (const s of schools) {
-    const peakDay = s.attendance_summary?.peak_absence_day || 'wednesday';
-    dayAbsenceCounts[peakDay] = (dayAbsenceCounts[peakDay] || 0) + 1;
+    const peakDay = s.attendance_summary?.peak_absence_day;
+    if (peakDay) dayAbsenceCounts[peakDay] = (dayAbsenceCounts[peakDay] || 0) + 1;
 
     totalExams += Number(s.assessment_summary?.total_exams_analyzed ?? 0);
     totalHardExams += Number(s.assessment_summary?.hard_exams_count ?? 0);
