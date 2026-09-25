@@ -857,3 +857,23 @@ Current GitHub `main` resolves to `3b98fc19ec49bbbc7362fea578b196c1d4c0f2e9`. Th
 
 ### Mandatory execution consequence
 No item above is marked green by this reconciliation. New/remaining work must enter the appropriate workstream, receive exact current-HEAD evidence, and pass the three-AI gate. Historical reports remain evidence records only.
+
+
+## 2026-09-25 — Multi-Report / Current-HEAD Reconciliation
+
+**Current main:** `4938631633c9c578db2679905fd46c4daaedd80a`.
+
+یافته‌های جدید که نسبت به reconciliation قبلی به Ground Truth اضافه شدند:
+
+1. **A-30 / Strict Gate:** V-01..V-12 نشان می‌دهند خود Gate و Registry schema هنوز برای certification fail-closed کافی نیستند.
+2. **A-31 / Intelligence:** I-02..I-09 نشان می‌دهند semantic/certification residuals و synthetic/self-attested paths هنوز باید current-head tested شوند.
+3. **A-32 / SMS:** mirror ستون‌های `queue_id/provider_msg` و restart idempotency باید با live PG اثبات شوند.
+4. **A-33 / Delegation:** parity پرچم‌های `asset_staff/lib_staff/is_head` بین authz model/policy و PG persistence باید اثبات شود.
+5. **A-34 / Sync parity:** patch غیرmerged `6018dd76` سه bypass authorization را بسته؛ reconcile با current main الزامی است.
+6. **A-35 / Mission-5:** A-AUTHZ-03/04/05 به‌عنوان بازظهور ادغام‌نشده باید current-head reproduce شوند.
+7. **A-36 / PG infra:** F-PG-05/06/07 به صف closure اضافه شدند.
+8. **A-37 / Test debt:** 513 ZERO-CHECK، 311 ORPHAN، 54 MOCK و ~40 swallowed catch به‌عنوان debt triage ثبت شدند.
+9. **A-38 / Registry:** registry فعلی به `e4584806` bind است؛ current-head evidence باید از نو ساخته شود.
+10. **A-39 / Reliability/DR:** F-1a..F-5 و failure drills باید در A-25/A-27 acceptance criteria صریح بمانند.
+
+تا بسته‌شدن این موارد با evidence current-head و سه بررسی مستقل، وضعیت کلان **NOT VERIFIED** باقی می‌ماند.
