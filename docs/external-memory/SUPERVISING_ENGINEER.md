@@ -547,3 +547,81 @@ The Supervising Engineer must not defer a safely actionable defect merely becaus
 The executor team is now **1 Supervising Engineer + 5 ChatGPT + 10 Arena + 3 Atria**.
 
 Atria-3 is a new execution/review slot. Its exact mission must be assigned from the remaining queue without overlapping Atria-1/Atria-2 or redoing F1/F2/F4 unless fresh residual evidence requires it.
+
+
+## 12.19 — Canonical Integration / Single-HEAD Policy — 2026-09-25
+
+از این تاریخ، ترتیب زیر روش رسمی و اجباری یکپارچه‌سازی پروژه است. هدف، حذف هم‌زمانیِ HEADهای مبهم، جلوگیری از merge اشتباه، و حفظ تمام تغییرات واقعی بدون حذف یا overwrite ناخواسته است.
+
+### ترتیب قطعی یکپارچه‌سازی
+
+**1. Freeze & Read**
+- current main HEAD از GitHub خوانده و به‌عنوان **Canonical HEAD** ثبت می‌شود.
+- هیچ agentی حق ندارد بر اساس HEAD قدیمی تصمیم merge بگیرد.
+- scope، مالکیت، dependency و evidence هر تغییر قبل از integration بررسی می‌شود.
+
+**2. Reconcile Each Candidate Against Current Main**
+- هر PR/branch قدیمی ابتدا با **آخرین Canonical HEAD** مقایسه می‌شود.
+- merge-base، ahead/behind، فایل‌های مشترک و invariantهای مشترک بررسی می‌شوند.
+- اگر branch از main عقب است، «merge مستقیم» به‌عنوان راه‌حل پیش‌فرض پذیرفته نیست.
+- انتقال صرف ref به main، force-push یا حذف تاریخچه برای از بین بردن conflict ممنوع است.
+
+**3. Preserve Intent, Resolve Conflicts**
+- برای هر PR مشخص می‌شود کدام تغییر واقعاً هنوز لازم است.
+- تغییرات duplicate، superseded یا قبلاً حل‌شده حذف می‌شوند؛ تغییرات مفید حفظ می‌شوند.
+- conflict باید با حفظ intent و invariant هر دو سمت حل شود، نه با انتخاب کورکورانه ours/theirs.
+- اگر PR چند موضوع مستقل دارد، ابتدا تفکیک منطقی scope انجام می‌شود.
+
+**4. Integrate One Logical Unit at a Time**
+- فقط یک واحد منطقی در هر مرحله وارد main می‌شود.
+- پس از هر integration، یک **HEAD جدید و یکتا** ایجاد می‌شود.
+- integration بعدی فقط بر اساس همان HEAD جدید انجام می‌شود.
+- هم‌زمان چند merge متکی بر یک HEAD قدیمی ممنوع است.
+
+**5. Verify Immediately After Every Integration**
+- current remote HEAD دوباره خوانده می‌شود.
+- فایل‌ها و diff واقعی روی همان SHA بررسی می‌شوند.
+- تست‌های مرتبط و regressionهای invariant اجرا/بررسی می‌شوند.
+- evidenceهای وابسته به کد تغییرکرده به‌صورت خودکار **REVALIDATION_REQUIRED** تلقی می‌شوند تا دوباره تولید شوند.
+
+**6. Advance the Single Canonical HEAD**
+- پس از تأیید هر واحد، همان SHA به‌عنوان تنها baseline معتبر مرحله بعد ثبت می‌شود.
+- branchها و PRهای قدیمی دیگر source of truth نیستند.
+- هر PR باقی‌مانده باید با Canonical HEAD جدید reconcile شود.
+
+**7. Close or Supersede Old PRs Only After Preservation Check**
+- PR فقط وقتی merge/close می‌شود که مشخص باشد تغییر مفید آن یا وارد main شده یا صریحاً superseded/dispositioned شده است.
+- بستن PR برای «خلوت شدن لیست» بدون تعیین تکلیف تغییرات ممنوع است.
+- PR دارای conflict نباید با force/close به‌عنوان merged تلقی شود.
+
+**8. Final Repository Verification**
+- در پایان batch integration، current main HEAD، changed files، commits، tests و evidence دوباره با اسناد پروژه تطبیق داده می‌شوند.
+- سپس Project Intelligence / Dashboard / Tasks / Decision Log / mission registry در صورت material بودن synchronize می‌شوند.
+
+### قانون طلایی HEAD
+
+> **در هر لحظه فقط یک Canonical Main HEAD داریم. هر branch/PR دیگر فقط یک candidate change نسبت به آن HEAD است.**
+
+زنجیره صحیح:
+
+Candidate PR → Reconcile with Canonical HEAD → Resolve/Preserve → Integrate → Verify → New Canonical HEAD → Next Candidate
+
+و نه:
+
+Old PR A + Old PR B + Old PR C → merge هم‌زمان → چند HEAD مبهم
+
+### ممنوعیت‌های صریح
+- merge یک PR قدیمی بدون مقایسه با current main؛
+- force-push برای حذف conflict؛
+- update-ref یک branch به main به‌جای ادغام تغییرات آن؛
+- اعلام MERGED/CLOSED بدون GitHub confirmation؛
+- استفاده از evidence مربوط به SHA قدیمی برای current HEAD؛
+- اجرای موازی integrationهایی که همگی بر یک base قدیمی تکیه دارند؛
+- حذف تغییرات PR صرفاً برای سبز شدن merge.
+
+### Integration Delivery Contract
+هر integration report باید حداقل این header را داشته باشد:
+
+CANDIDATE / SOURCE SHA / CANONICAL BASE SHA / SCOPE PRESERVED / CONFLICTS / COMMIT / PUSHED / MERGED / TESTS / EVIDENCE / NEW CANONICAL HEAD / REMAINING PRs / NEXT ACTION
+
+هیچ integration تا زمانی که **NEW CANONICAL HEAD** از GitHub خوانده و محتوای موردنظر روی همان SHA تأیید نشده باشد، VERIFIED محسوب نمی‌شود.
