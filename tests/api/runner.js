@@ -15,6 +15,12 @@ const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
+const REAL_STORE = path.join(__dirname, '..', '..', 'server', 'data', 'payesh.json');
+if (!fs.existsSync(REAL_STORE)) {
+  console.log('ℹ️ API test fixture missing; generating deterministic server/data/payesh.json via server/seed.js');
+  execSync(`node ${JSON.stringify(path.join(__dirname, '..', '..', 'server', 'seed.js'))}`, { stdio: 'inherit' });
+}
+
 const API_TESTS = [
   'bootstrap.test.js',
   'students.test.js',
