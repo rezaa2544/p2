@@ -249,7 +249,7 @@ function analyzeRecommendationAccuracy(history = [], options = {}) {
       precision_pct: 0.0,
       false_positive_rate_pct: 0.0,
       action_success_rate_pct: 0.0,
-      escalation_accuracy_pct: 100.0,
+      escalation_accuracy_pct: null,
       calculated_at: options.timestamp || '2026-09-18T12:00:00.000Z'
     });
   }
@@ -303,7 +303,7 @@ function analyzeRecommendationAccuracy(history = [], options = {}) {
   const precision = completedCount > 0 ? Number(((effectiveCount / completedCount) * 100).toFixed(1)) : 0.0;
   const falsePositiveRate = total > 0 ? Number((((rejectedCount + ineffectiveCount) / total) * 100).toFixed(1)) : 0.0;
   const actionSuccessRate = completedCount > 0 ? Number(((effectiveCount / completedCount) * 100).toFixed(1)) : 0.0;
-  const escalationAccuracy = escalationProposed > 0 ? Number(((escalationConfirmed / escalationProposed) * 100).toFixed(1)) : 100.0;
+  const escalationAccuracy = escalationProposed > 0 ? Number(((escalationConfirmed / escalationProposed) * 100).toFixed(1)) : null;
 
   const result = {
     total_recommendations: total,
