@@ -108,3 +108,15 @@ Reproduce → identify why previous fix failed to prevent recurrence → fix at 
 - [ ] Define mutation/auth/failure configuration inventories.
 - [ ] Enforce evidence invalidation after material merge.
 - [ ] Converge OCC/ownership/tenant/revocation/conflict to authoritative policy contracts.
+
+
+## SUPERVISING ENGINEER CONTROL — 2026-09-25
+
+**Canonical control:** docs/external-memory/SUPERVISING_ENGINEER.md
+
+New mandatory rule: agent repository work is not DONE until the required commit is verified on remote; if the instruction requires main, merge is also mandatory. Unpushed/unmerged work must be reported as incomplete.
+
+Every future execution prompt must contain a Delivery Contract:
+STATUS / COMMIT / PUSHED / PR / TARGET / TESTS / EVIDENCE.
+
+This control exists because previous prompts required push but the requirement was not mechanically enforced at handoff.
