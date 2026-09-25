@@ -271,3 +271,166 @@ PHASE / CURRENT HEAD / NEXT ALLOWED ACTION / OWNER / DEPENDENCIES / EVIDENCE TAR
 3. Track unpushed/unmerged work as incomplete.
 4. Invalidate affected evidence after material merges.
 5. Keep the root-cause/reappearance program ahead of broad certification.
+
+
+## 12. Continuous Synchronization / No-Stale-Memory Rule
+
+**حکم:** هیچ material event نباید در یک فایل/سطح ثبت شود و وضعیت مرتبط در جای دیگر به‌روز نشده باقی بماند.
+
+هر تغییر، حتی اگر کوچک باشد، باید فوراً impact خود را روی محل‌های مربوط بررسی کند و در صورت ارتباط همان‌جا به‌روزرسانی شود:
+- Roadmap / Ground Truth
+- Project Intelligence
+- Current Work Execution Plan
+- Project Dashboard
+- Daily Tasks
+- Decision Log
+- CHANGELOG
+- Agent/Chat mission & status registry
+- Verification Registry / evidence bindings
+- audit/carry-over documents
+- issue/task records در صورت وجود
+
+**قانون:** «کوچک بودن تغییر» دلیل برای عقب انداختن synchronization نیست. فقط محل‌های واقعاً مرتبط به‌روزرسانی شوند؛ از updateهای بی‌ربط و نویز جلوگیری شود.
+
+### 12.1 Agent/Chat Mission Registry — حافظه عملیاتی اجباری
+
+مهندس ناظر باید یک تصویر جاری از تمام executorها و reviewerها داشته باشد:
+- شناسه یکتا: ChatGPT 1..5 / Arena 1..11 / Atria
+- mission فعلی
+- workstream / ownership
+- scope و non-scope
+- base SHA
+- target branch
+- dependencies / blockers
+- status
+- آخرین commit / PR
+- آخرین evidence
+- آخرین گزارش دریافت‌شده
+- next action
+- handoff / transferred ownership
+
+**ChatGPT 7 executor نیست.** کار منتقل‌شده از ChatGPT 7 متعلق به Arena 10 است و این attribution باید همیشه ثابت بماند.
+
+این registry باید طوری نگهداری شود که با دیدن یک گزارش agent بتوان مشخص کرد:
+1. این گزارش مربوط به کدام agent است؛
+2. مربوط به کدام mission است؛
+3. چه چیزی قرار بوده تحویل دهد؛
+4. چه چیزی واقعاً تحویل داده؛
+5. چه چیزی هنوز باقی مانده؛
+6. آیا commit/push/PR/merge واقعاً انجام شده یا فقط ادعا شده؛
+7. قدم بعدی چیست.
+
+### 12.2 قانون Report-to-Mission Reconciliation
+
+هر گزارش agent که دریافت می‌شود باید بلافاصله به mission مربوطه map شود.
+
+فرآیند اجباری:
+**Report → Identify Owner → Identify Mission → Compare Scope → Verify Repository → Verify Tests/Evidence → Update Agent Status → Update Project State → Determine Next Action**
+
+اگر گزارش فاقد شناسه کافی باشد، از روی متن، scope، branch، commit، PR و شواهد موجود باید تلاش برای تطبیق انجام شود؛ اما تطبیق حدسی نباید به‌عنوان fact ثبت شود.
+
+### 12.3 Status Transition Rule
+
+بعد از هر گزارش، وضعیت agent باید صریحاً یکی از این حالت‌ها باشد:
+- NOT STARTED
+- ASSIGNED
+- IN PROGRESS
+- WAITING / BLOCKED
+- READY FOR REVIEW
+- REVIEWED
+- COMMIT CREATED
+- PUSHED
+- PR OPEN
+- MERGED
+- VERIFIED
+- DONE
+- REVALIDATION_REQUIRED
+
+**DONE فقط با repository/evidence confirmation معتبر است.**
+گزارش «تمام شد» بدون تحقق target delivery فقط گزارش است، نه DONE.
+
+### 12.4 Mission State باید بعد از هر گزارش به‌روز شود
+
+پس از هر گزارش، حداقل این موارد باید به‌روز شوند:
+- current status
+- last report
+- last verified commit/HEAD
+- tests
+- evidence
+- unresolved findings
+- blockers
+- next action
+- delivery gap
+- dependency changes
+
+اگر report نشان دهد mission تمام نشده، نباید آن را completed ثبت کرد.
+
+### 12.5 حافظه نباید فقط در ChatGPT باقی بماند
+
+حافظه missionهای agentها باید repository-backed باشد.
+Chat history، prompt و حافظه مدل منبع نهایی وضعیت mission نیستند.
+اگر اطلاعات mission مهم است، باید در سند/registry مناسب پروژه ثبت شود تا در نشست بعدی قابل بازیابی باشد.
+
+### 12.6 Update Cascade Rule
+
+بعد از هر material event این زنجیره بررسی شود:
+
+**Event → Affected Mission → Affected Workstream → Affected Roadmap Phase → Affected Evidence → Affected Registry → Affected Dashboard/Tasks/Decision/Changelog**
+
+اگر یک حلقه affected است، همان لحظه update شود.
+اگر affected نیست، update مصنوعی انجام نشود.
+
+### 12.7 No Stale Status
+
+هیچ agent نباید به دلیل قدیمی بودن اطلاعات، دوباره مأموریتی را انجام دهد که:
+- قبلاً merge شده؛
+- به agent دیگری منتقل شده؛
+- blocked شده؛
+- scope آن تغییر کرده؛
+- evidence آن invalid شده؛
+- یا mission آن superseded شده است.
+
+قبل از assignment جدید، mission registry و current HEAD بررسی شود.
+
+### 12.8 Assignment Ledger
+
+هر assignment جدید باید با این اطلاعات ثبت شود:
+**DATE / OWNER / MISSION / OBJECTIVE / SCOPE / NON-SCOPE / BASE SHA / TARGET / DEPENDENCIES / REQUIRED EVIDENCE / DELIVERY CONTRACT**
+
+هر transfer نیز باید ثبت کند:
+**FROM / TO / REASON / REMAINING WORK / LAST KNOWN STATE / SOURCE SHA / NEW TARGET**
+
+این ledger برای جلوگیری از گم‌شدن وظایف و اشتباه در attribution الزامی است.
+
+### 12.9 گزارش ورودی سریع‌خوان
+
+برای اینکه با دیدن گزارش فوراً مشخص شود مربوط به کدام chat/agent است، هر delivery report باید در ابتدای خود یک header استاندارد داشته باشد:
+
+**AGENT / MISSION-ID / STATUS / BASE SHA / COMMIT / PUSHED / PR / TARGET / TESTS / EVIDENCE / BLOCKERS / NEXT ACTION**
+
+اگر agent این header را ارائه نکرد، ناظر باید آن را در reconciliation تولید کند و وضعیت «unconfirmed» را حفظ کند تا با repository شواهد کافی پیدا شود.
+
+### 12.10 قانون ضد فراموشی
+
+مهندس ناظر باید قبل از هر assignment و بعد از هر report بتواند پاسخ دهد:
+- الان هر agent روی چه چیزی است؟
+- چه چیزی به او سپرده شده؟
+- چه چیزی تحویل داده؟
+- چه چیزی push/merge نشده؟
+- چه dependency دارد؟
+- قدم بعدی چیست؟
+- آیا assignment با roadmap فعلی سازگار است؟
+
+اگر پاسخ یکی از این موارد نامشخص است، ابتدا registry را reconcile کن؛ سپس تصمیم اجرایی بگیر.
+
+### 12.11 پایان جلسه / تحویل نشست
+
+قبل از پایان یک نشست کاری:
+- missionهای تغییرکرده synchronize شوند؛
+- statusهای stale اصلاح شوند؛
+- handoffهای جدید ثبت شوند؛
+- blockers و next actions ثبت شوند؛
+- current HEAD ثبت شود؛
+- evidenceهای affected مشخص شوند.
+
+هدف این است که نشست بعدی بتواند بدون اتکا به حافظه conversational، وضعیت واقعی را از repository بازسازی کند.
