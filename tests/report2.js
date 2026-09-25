@@ -155,7 +155,8 @@ setTimeout(async () => {
       });
       remove('classes',${ctx.cls});
     })()`);
-    assert(true, 'پاک شد');
+    assert(!db.users.some(u => u.id === ctx.sA || u.id === ctx.sB), 'کاربران آزمایشی حذف نشدند');
+    assert(!db.classes.some(c => c.id === ctx.cls), 'کلاس آزمایشی حذف نشد');
   });
 
   await seq;
