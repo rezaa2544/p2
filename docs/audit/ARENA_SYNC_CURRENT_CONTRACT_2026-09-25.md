@@ -49,7 +49,11 @@ Dirty-tree development runs are not evidence for the unmodified base SHA.
 Fresh main baseline reproduced stale conflict payload overwrite with a nondecreasing
 counter, concurrent duplicate UID inserts, malformed-base503, and legacy/LWW stale
 overwrite. Existing wave4-sync-all-collections AC11 also fails on the pristine base;
-its historical no-query expectation requires separate reconciliation, not suppression.
+diagnosis identified 14 MAX(chg_id) watermark metadata reads, not delta-row reads.
+The regression now permits only that exact SQL shape and requires full reads of
+every collection. Bgsync fixed-delay sampling was also reproduced as intermittent;
+a bounded wait now observes the same required mirror state without retrying a test
+or suppressing failures. These mocked-suite repairs are not real-IDB/SW evidence.
 
 **Roadmap Reconciliation Required.** Strict Gate, current-SHA independent reviews,
 CI parity, rollout/migration compatibility, and external topology remain separate

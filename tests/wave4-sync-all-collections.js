@@ -218,16 +218,20 @@ const ids = (b, c) => (b.collections[c] || []).map(r => r.id).sort((x, y) => x -
   });
 
   await test('AC11 دلتای کهنه اصلاً به DB دلتا نمی‌زند (فقط خواندنِ کامل)', async () => {
-    const queries = [];
+    const queries = [], fullReads = [];
     const db = {
       isPostgres: () => true,
-      async readCollection(c) { return makeStore()[c] || []; },
+      async readCollection(c) { fullReads.push(c); return makeStore()[c] || []; },
       async query(sql, params) { queries.push(sql); return { rows: [] }; }
     };
     const { cap, pull } = makePull({ db });
     await pull('since=' + encodeURIComponent(ANCIENT));
     assert(cap.body.full_snapshot_required === true, 'forced full');
-    assert(queries.length === 0, 'no delta SQL must run on forced full, ran ' + queries.length);
+    // Wave10 cursor watermarks are metadata reads, NOT delta row queries.
+    // Allow only this exact shape; any other SQL still violates forced-full.
+    const unexpected = queries.filter(sql => !/^SELECT COALESCE\(MAX\(chg_id\), 0\) AS m FROM "[a-z_]+"$/.test(sql));
+    assert(unexpected.length === 0, 'no delta SQL on forced full: ' + unexpected.join('; '));
+    for (const c of ALL) assert(fullReads.includes(c), 'missing authoritative full read: ' + c);
   });
 
   group('کرسرِ امضاشده روی همهٔ مجموعه‌ها');
