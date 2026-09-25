@@ -13,8 +13,8 @@
 | HEAD فعلی | `4938631633c9c578db2679905fd46c4daaedd80a` (main، working tree clean) |
 | آیا فیکس‌های A-20/A-22 روی HEAD هستند؟ | بله — `checkOcc(...,true)` در ۵ مسیر + `isProdShape()` + `commandTimeout: 2000` |
 | Strict Verification Gate روی HEAD | **NOT VERIFIED** (exit 1) — هم قبل و هم بعد از سخت‌سازی |
-| جدیدترین findings | **A-30 … A-34** (یکی از آن‌ها هم‌اکنون修补 شد: A-32) |
-| Critical/High unresolved | ۳ مورد باز: **A-13** (لایهٔ tests/api)، **A-27/E4** (هرگز اجرا نشد)، **A-30** (cascading skip در CI) |
+| جدیدترین findings | **A-40 … A-44** (یکی از آن‌ها هم‌اکنون修补 شد: A-42) |
+| Critical/High unresolved | ۳ مورد باز: **A-13** (لایهٔ tests/api)، **A-27/E4** (هرگز اجرا نشد)، **A-40** (cascading skip در CI) |
 | وضعیت گواهی | **NOT CERTIFIED** — طبق §14: حداقل یک Critical/High باز + عدم توافق سه‌AI + E4 اجرا نشده |
 
 **خلاصهٔ یک خطی:** روی HEAD فعلی، کنترل‌های امنیتیِ داده (A-18/A-19/A-20/A-21/A-22) واقعاً در runtime اثبات می‌شوند، اما **زنجیرهٔ evidenceproduction در CI شکسته است**: هر گیتِ متأخر از اولین شکست به بعد skip می‌شود، Gate تولیدِ evidence واقعی (Production Truth) تا به حال هرگز اجرا نشده، و یک لایهٔ کامل تست (30 سوئیت) بیرون از هر گیت و قرمز است. بنابراین پروژه نمی‌تواند گواهی شود.
@@ -92,7 +92,7 @@ working tree: clean
 
 **محدودیتِ ثبت‌شده:** دانش‌آموزِ ناشناس (id موجود نباشد) رد نمی‌شود — رفتارِ legacy برای رکوردهای یتیم (`docs/WAVE5_AUTHZ.md §۵`). این یک مسئلهٔ کیفیتِ داده است، نه دسترسیِ بین‌مدرسه‌ای.
 
-**مشاهدهٔ جانبی (A-33):** در memory mode و بدون `PAYESH_ALLOW_DEV_MEMORY_AUTHORITY=1`، تمام write های `/api/v1` که tenant-checked هستند `503 AUTHORITY_UNAVAILABLE` برمی‌گردانند. این fail-closedِ عمدی است، ولی برای یک محصولِ offline-first یک محدودیتِ عملیاتیِ قابل توجه است و باید در راهنمای استقرار ذکر شود.
+**مشاهدهٔ جانبی (A-43):** در memory mode و بدون `PAYESH_ALLOW_DEV_MEMORY_AUTHORITY=1`، تمام write های `/api/v1` که tenant-checked هستند `503 AUTHORITY_UNAVAILABLE` برمی‌گردانند. این fail-closedِ عمدی است، ولی برای یک محصولِ offline-first یک محدودیتِ عملیاتیِ قابل توجه است و باید در راهنمای استقرار ذکر شود.
 
 ### A-20 — inventory همهٔ مسیرهای PATCH/UPDATE
 پنج مسیر وجود دارد و همه‌اش اکنون strict هستند (`checkOcc(..., true)`):
@@ -173,7 +173,7 @@ gh run view 36100027719   # main, node.js.yml, آخرین push
 - **RPO/RTO اندازه‌گیری نشده‌اند** → طبق §5: `NOT VERIFIED`.
 - A-05b (backup timer) و A-25 (DR/restore): `NOT VERIFIED`.
 
-**اصلاحِ یک حدسِ اولیهٔ من:** ابتدا گفتم گیتِ truth در `strict-verification.yml` به‌خاطر باگِ env-scoping کاملاً مرده است. این نادرست است — همان گیت در `node.js.yml:200-203` **بدونِ شرط** در برابر یک سرویسِ واقعیِ PostgreSQL وصل شده است. مشکلِ اصلی cascading-skip است (A-30)، نه dead condition. با این حال، dead condition در `strict-verification.yml` هم واقعی است (A-31).
+**اصلاحِ یک حدسِ اولیهٔ من:** ابتدا گفتم گیتِ truth در `strict-verification.yml` به‌خاطر باگِ env-scoping کاملاً مرده است. این نادرست است — همان گیت در `node.js.yml:200-203` **بدونِ شرط** در برابر یک سرویسِ واقعیِ PostgreSQL وصل شده است. مشکلِ اصلی cascading-skip است (A-40)، نه dead condition. با این حال، dead condition در `strict-verification.yml` هم واقعی است (A-41).
 
 ---
 
@@ -237,9 +237,9 @@ SHA mismatch (G9)، missing reviewer (G10)، empty evidence (G10)، فقط یک 
 
 ---
 
-## 8. New Findings (§11) — A-30+
+## 8. New Findings (§11) — A-40+
 
-### A-30 — 🔴 بالا (Critical برای evidence-chain)
+### A-40 — 🔴 بالا (Critical برای evidence-chain)
 **عنوان:** cascading skip در CI — هر گیتِ متأخر از اولین شکست skip می‌شود.
 **فایل:** `.github/workflows/node.js.yml` (تمام step ها) و `.github/workflows/strict-verification.yml`
 **تولید مجدد:** آخرین run روی main (`36100027719`) در `TEST/CI parity contract` شکست خورد و ~۴۰ step بعدی (شامل Production Truth Gate، Phase 7/8.1، Zero-Trust، OCC multi-instance، Redis outage) همگی `skipped` شدند.
@@ -248,7 +248,7 @@ SHA mismatch (G9)، missing reviewer (G10)، empty evidence (G10)، فقط یک 
 **توصیه:** به step های گیتِ حیاتی `if: always()` (یا `if: ${{ !cancelled() }}`) اضافه کنید تا شکستِ یک مرحله، اجرایِ بقیه را مخفی نکند.
 **وضعیت:** **باز.** (بخشی از علت آن — شکستِ P6 — توسط commit `f50591d7`修补 شد، چون خودم دو suite را بدون wiring اضافه کرده بودم. اما نقصِ ساختاریِ `if: always()` باقی است.)
 
-### A-31 — 🟠 متوسط
+### A-41 — 🟠 متوسط
 **عنوان:** step گیتِ production در `strict-verification.yml` غیرقابل دسترس است.
 **فایل:** `.github/workflows/strict-verification.yml:30`
 **کد:** `if: ${{ env.DATABASE_URL != '' }}` در حالی که `DATABASE_URL` در همان step (خط ۳۲) تعریف شده. در GitHub Actions، `if:` فقط job/workflow-level env را می‌بیند، نه step env را. به‌علاوه `gh secret list` **خالی** است — یعنی `DATABASE_URL` اصلاً تنظیم نشده.
@@ -256,7 +256,7 @@ SHA mismatch (G9)، missing reviewer (G10)، empty evidence (G10)، فقط یک 
 **توصیه:** `if: ${{ secrets.DATABASE_URL != '' }}` و تنظیم کردنِ secret.
 **وضعیت:** **باز.** (توجه: همان گیت در `node.js.yml:200-203` درست وصل شده، پس E4 کلاً مرده نیست — فقط در این workflow.)
 
-### A-32 — 🔴 بالا (修补 شد)
+### A-42 — 🔴 بالا (修补 شد)
 **عنوان:** Strict Verification Gate با ۶ روش قابل bypass بود.
 **فایل:** `tools/strict-verification-gate.js`
 **تولید مجدد:** §۷ ( harness در `.zcode/scratch/bypass*.js`).
@@ -265,18 +265,27 @@ SHA mismatch (G9)، missing reviewer (G10)، empty evidence (G10)، فقط یک 
 **توصیه:** اعمال شد (G6b/G14/G15/G16).
 **وضعیت:** **修补 شد در `f50591d7`** — اما خودِ این修补 هنوز توسط سه AI بررسی نشده، پس طبق §12 نباید به‌تنهایی سبز فرض شود.
 
-### A-33 — 🟡 پایین
+### A-43 — 🟡 پایین
 **عنوان:** در memory mode تمام write های tenant-checked بدون `PAYESH_ALLOW_DEV_MEMORY_AUTHORITY=1` عدد 503 می‌دهند.
 **فایل:** `server/infrastructure/phase6-production-hardening.js` (`assertTenantBoundary`)
 **توضیح:** fail-closedِ عمدی و طراحی شده. اما برای محصولِ offline-first، تجربهٔ پیش‌فرض این است که بدون پرچم، نوشتن ممکن نیست. باید در راهنمای استقرار صریح ذکر شود.
 **وضعیت:** **ACCEPTED RISK** (با مستندسازیِ توصیه‌شده).
 
-### A-34 — 🟡 پایین
+### A-44 — 🟡 پایین
 **عنوان:** پارتیشنِ Redis کرانِ یک-command نیست.
 **فایل:** `server/redis.js:97`
 **تولید مجدد:** `reaudit-redis-outage.js` S6 → **10154 ms**.
 **توضیح:** `commandTimeout: 2000` هر command را کران می‌دهد، ولی مسیرِ auth چندین Redis op متوالی دارد → مجموع = N × timeout. مقدارِ کرانِ بالای واقعی باید در SLA ذکر شود.
 **وضعیت:** **ACCEPTED RISK** (با عددِ ثبت‌شده).
+
+### هم‌خوانی با findings دیگران (cross-reviewer)
+یافته‌های این گزارش با مواردِ ثبت‌شدهٔ A-30..A-39 در `docs/audit/ATRIA_PHASE_A_CARRYOVER.md` (merge شده از طرفِ دیگر) هم‌خوان است — نه کپی، بلکه رسیدنِ مستقل به همان نتایج:
+- **A-30 دیگران** (Strict Verification Gate integrity / certification bypasses) ≈ **A-42 اینجا** (گیت با ۶ روش قابل bypass بود).
+- **A-38 دیگران** (Current-head Registry rebind) ≈ بخشی از **§۷ اینجا**: registry به `e4584806` بسته بود در حالی که main روی `49386316` بود، و schema با چیزی که gate می‌خواند نمی‌خواند.
+- **A-37 دیگران** (Test inventory debt beyond A-07..A-17) ≈ **A-13 / §۶ اینجا** (۳۰ سوئیتِ `tests/api` بیرون از همهٔ گیت‌ها).
+- **A-39 دیگران** (Reliability/DR acceptance criteria) ≈ **§۵ اینجا** (E4 هرگز اجرا نشد، RPO/RTO اندازه‌گیری نشد).
+
+توجه: شماره‌گذاریِ findings این گزارش (A-40..A-44) عمداً بعد از A-39 شروع می‌شود تا با registry موجود تداخل نداشته باشد. این هم‌خوانی (مسیرهای مستقل که به نتایجِ مشابه رسیدند) confidence در verdict را بالا می‌برد.
 
 ---
 
@@ -292,9 +301,9 @@ SHA mismatch (G9)، missing reviewer (G10)، empty evidence (G10)، فقط یک 
 
 ## 10. Test Integrity / CI / Supply Chain
 - **A-13:** 30 سوئیتِ `tests/api` بیرون از همهٔ گیت‌ها و قرمز → **Blocker باز**.
-- **A-30:** cascading skip → **Blocker باز**.
-- **A-31:** dead step در strict workflow.
-- **A-32:** خودِ گیت قابل bypass بود →修补 شد.
+- **A-40:** cascading skip → **Blocker باز**.
+- **A-41:** dead step در strict workflow.
+- **A-42:** خودِ گیت قابل bypass بود →修补 شد.
 - **npm test روی HEAD:** 34/35 — یک شکستِ pre-existing (bit-identity `index.html`) که قبل از کارِ من هم وجود داشت.
 - **Parity contract:** پس از修补ِ من 26/26 (قبلاً 25/1 به‌خاطر دو suiteِ متصل‌نشده‌ی خودم).
 - **CodeQL / Fortify (A-10/A-11):** workflow ها موجودند (`codeql.yml`, `fortify.yml`)، اما اجرای آن‌ها روی HEAD را تأیید نکردم → `NOT VERIFIED`.
@@ -333,21 +342,21 @@ SHA mismatch (G9)، missing reviewer (G10)، empty evidence (G10)، فقط یک 
 ## 14. Remaining Blockers (به ترتیبِ اولویت)
 
 1. **[Critical] A-13** — لایهٔ `tests/api` (30 سوئیت) بیرون از هر گیت و قرمز. نیاز: یا wiring به CI (با PG service) یا owner+reason+expiry+replacement صریح برای هر سوئیت.
-2. **[Critical] A-27 / E4** — Production Truth Gate هرگز روی main اجرا نشده. نیاز: `if: always()` (A-30) + تنظیم `DATABASE_URL` secret.
-3. **[High] A-30** — cascading skip. نیاز: `if: always()` روی step های حیاتی.
+2. **[Critical] A-27 / E4** — Production Truth Gate هرگز روی main اجرا نشده. نیاز: `if: always()` (A-40) + تنظیم `DATABASE_URL` secret.
+3. **[High] A-40** — cascading skip. نیاز: `if: always()` روی step های حیاتی.
 4. **[High] عدم توافق سه-AI** — هیچ موردی هر سه reviewer را ندارد.
-5. **[Medium] A-31** — dead step در strict workflow.
+5. **[Medium] A-41** — dead step در strict workflow.
 6. **[Medium] A-24/A-28** — ادعاهای scale/perf بدون اندازه‌گیری.
 
 ---
 
 ## 15. Exact Next Actions
 
-1. در `.github/workflows/node.js.yml` به تمام step های گیت `if: always()` اضافه کن — تا شکستِ یک مرحله، بقیه را مخفی نکند (A-30).
-2. `DATABASE_URL` را به‌عنوان repo secret تنظیم کن و `strict-verification.yml:30` را به `if: ${{ secrets.DATABASE_URL != '' }}` تغییر بده (A-31).
+1. در `.github/workflows/node.js.yml` به تمام step های گیت `if: always()` اضافه کن — تا شکستِ یک مرحله، بقیه را مخفی نکند (A-40).
+2. `DATABASE_URL` را به‌عنوان repo secret تنظیم کن و `strict-verification.yml:30` را به `if: ${{ secrets.DATABASE_URL != '' }}` تغییر بده (A-41).
 3. `tests/api/*.test.js` (30 سوئیت) را به یک step با PG service وصل کن، یا برای هر کدام owner/reason/expiry/replacement ثبت کن (A-13).
 4. بعد از اجرای واقعیِ Production Truth Gate روی HEAD جدید، RPO/RTO را اندازه بگیر و A-05b/A-25/A-27 را دوباره ارزیابی کن.
-5. review های مستقلِ ChatGPT و Arena را روی A-18..A-22 و روی修补ِ A-32 انجام بده (الان فقط Atria بررسی کرده).
+5. review های مستقلِ ChatGPT و Arena را روی A-18..A-22 و روی修补ِ A-42 انجام بده (الان فقط Atria بررسی کرده).
 6. روی HEADِ جدید، gateway و registry را دوباره اجرا کن — فعلاً `NOT VERIFIED` درست است.
 
 ---
@@ -356,7 +365,7 @@ SHA mismatch (G9)، missing reviewer (G10)، empty evidence (G10)، فقط یک 
 
 > هرگونه Critical/High unresolved، یا evidence chain ناقص، یا A-13 unresolved، یا Gate bypassable، یا A-27 E4 فقط planning، یا عدم توافق چند-AI ⇒ `NOT CERTIFIED`.
 
-در این HEAD: **A-13 باز است**، **A-27/E4 اجرا نشده**، **A-30 باز است**، **هیچ موردی ۳-AI agreement ندارد**.
+در این HEAD: **A-13 باز است**، **A-27/E4 اجرا نشده**، **A-40 باز است**، **هیچ موردی ۳-AI agreement ندارد**.
 
 # **VERDICT: NOT CERTIFIED**
 
