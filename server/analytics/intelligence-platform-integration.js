@@ -299,7 +299,7 @@ function checkIntelligenceChainHealth(params = {}) {
   };
 
   // چک‌های انسجام و حاکمیت
-  let evidencePresence = true;
+  const evidencePresence = Boolean(outputs.evidence || outputs.evidence_bundle || outputs.evidence_count > 0);
   let humanApprovalEnforced = true;
   let auditTrailPreserved = true;
   let zeroRankingGuaranteed = true;
