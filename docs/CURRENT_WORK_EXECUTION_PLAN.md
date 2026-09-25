@@ -629,3 +629,4 @@ Canonical status remains **HARDENING / RECONCILIATION — NOT VERIFIED**.
 - NCR-01..NCR-27 are now recorded with severity, disposition and execution order.
 - Stale/duplicate findings are explicitly retained only as REVALIDATION_REQUIRED where current-head evidence shows mitigation.
 - Project state remains **HARDENING / RECONCILIATION — NOT VERIFIED**; broad certification remains blocked.
+\n\n## 2026-09-25 — Defect intake freeze pending Atria-1\n\nThe previously consolidated 37-item working register is retained. A final repository-memory audit also confirms unresolved carry-over obligations A-01..A-29 and hardening items A-30..A-39. These may overlap the 37 and must be deduplicated only after the Atria-1 report is reconciled with current main.\n\nCanonical record: \`docs/audit/CANONICAL_DEFECT_INTAKE_FREEZE_2026-09-25.md\`.\n\n**Next gate:** receive Atria-1 report → reconcile all findings → freeze one root-cause queue → start fixes.\n
