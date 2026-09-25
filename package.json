@@ -9,7 +9,7 @@
     "build:check": "node build.js --check",
     "dev": "node scripts/dev-server.js",
     "start": "node server/index.js",
-    "test": "node tests/run.js && node --expose-gc --max-old-space-size=2048 tests/smoke.js && node tests/api/runner.js",
+    "test": "node tests/run.js && node tests/api/runner.js && node --expose-gc --max-old-space-size=2048 tests/smoke.js",
     "clean": "rm -rf dist",
     "build:android": "node tools/build-android.js",
     "test:smoke": "node tests/smoke.js",
