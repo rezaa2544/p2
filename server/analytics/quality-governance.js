@@ -138,6 +138,11 @@ function enforceQualityGovernanceAccessGuard(requester, targetEntity, options = 
     if (targetSchoolId != null && userSchoolId !== targetSchoolId) {
       throw new Error(`TENANT_ISOLATION_VIOLATION: manager of school ${userSchoolId} cannot access school ${targetSchoolId}`);
     }
+    /* F4: a school manager has no regional tenant grant. A region target must
+       never fall through to the manager's own-school check. */
+    if (targetRegionId != null) {
+      throw new Error(`TENANT_ISOLATION_VIOLATION: manager of school ${userSchoolId} cannot access regional scope ${targetRegionId}`);
+    }
     return true;
   }
 
