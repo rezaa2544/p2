@@ -1,0 +1,158 @@
+{
+  "runner": "arena-hunt2-probe.js",
+  "time": "2026-09-25T08:23:25.403Z",
+  "head": "66928be",
+  "tally": {
+    "EVIDENCE": 9,
+    "PASS": 13,
+    "FAIL": 6,
+    "BLOCKED": 1
+  },
+  "rows": [
+    {
+      "status": "EVIDENCE",
+      "name": "HEAD/tree",
+      "detail": "HEAD=66928be; server/,migrations/,tests/ byte-identical at HEAD; infra/tools mode-only artifacts; isolated PG17.11 + Redis8.0.2 + Node22.21.1"
+    },
+    {
+      "status": "EVIDENCE",
+      "name": "login manager",
+      "detail": "status=200"
+    },
+    {
+      "status": "PASS",
+      "name": "HF1 regional-intelligence: manager + region_id=11 (school-3 district) → expect deny",
+      "detail": "status=403 {\"ok\":false,\"code\":\"forbidden\",\"message\":\"REGIONAL_TENANT_ISOLATION_VIOLATION: role manager is not authorized to access regional network\"}"
+    },
+    {
+      "status": "EVIDENCE",
+      "name": "HF1 contrast: manager + region_id=1",
+      "detail": "status=403 {\"ok\":false,\"code\":\"forbidden\",\"message\":\"REGIONAL_TENANT_ISOLATION_VIOLATION: role manager is not a"
+    },
+    {
+      "status": "PASS",
+      "name": "HF2 control: quality-governance school_id=3 (manager school1) → 403",
+      "detail": "status=403 {\"ok\":false,\"code\":\"PHASE6_TENANT_ISOLATION_BREACH\",\"message\":\"تخطی از حریم تننت: کاربر مجاز به دستر"
+    },
+    {
+      "status": "FAIL",
+      "name": "HF2 quality-governance: manager + region_id=11 → expect deny",
+      "detail": "status=200 {\"ok\":true,\"api_version\":\"1.0.0\",\"scope\":\"district\",\"summary\":{\"region_id\":11,\"district_id\":11,\"district_name\":\"منطقه آموزشی 11\",\"total_schools_evaluated\":1,\"to"
+    },
+    {
+      "status": "FAIL",
+      "name": "HF2 detail",
+      "detail": "manager crossed to district 11 scope with mock-derived quality summary — tenant isolation gap (region branch lacks manager check)"
+    },
+    {
+      "status": "EVIDENCE",
+      "name": "HF2 contrast: manager + region_id=1",
+      "detail": "status=200 {\"ok\":true,\"api_version\":\"1.0.0\",\"scope\":\"district\",\"summary\":{\"region_id\":1,\"district_id\":1,\"distri"
+    },
+    {
+      "status": "PASS",
+      "name": "HF3 control: longitudinal school entity_id=3 → 403",
+      "detail": "status=403"
+    },
+    {
+      "status": "FAIL",
+      "name": "HF3 longitudinal: manager + entity_type=region entity_id=11 → expect deny",
+      "detail": "status=200 {\"ok\":true,\"api_version\":\"1.0.0\",\"entity_type\":\"region\",\"entity_id\":11,\"period_range\":\"1404-1406\",\"trend_map\":{\"region_id\":11,\"period_range\":\"1404-1406\",\"total_"
+    },
+    {
+      "status": "FAIL",
+      "name": "HF3 detail",
+      "detail": "manager region-trend access for district 11 — region branch lacks manager check"
+    },
+    {
+      "status": "BLOCKED",
+      "name": "login edu_office id=1027 (office_id=1)",
+      "detail": "status=undefined"
+    },
+    {
+      "status": "EVIDENCE",
+      "name": "HF4 edu_office regional region_id=1",
+      "detail": "status=401 {\"ok\":false,\"code\":\"unauthorized\",\"message\":\"احراز هویت الزامی است\"}"
+    },
+    {
+      "status": "PASS",
+      "name": "HF5 parent GET /api/v1/students/16 (own child) → 200",
+      "detail": "status=200 {\"ok\":true,\"data\":{\"id\":16,\"full_name\":\"ماهان زارع\",\"username\":\"student1\",\"role\":\"student\""
+    },
+    {
+      "status": "PASS",
+      "name": "HF5 parent GET /api/v1/students/18 (not child) → 404 anti-enum",
+      "detail": "status=404 {\"ok\":false,\"code\":\"not_found\",\"message\":\"دانش‌آموز یافت نشد\"}"
+    },
+    {
+      "status": "PASS",
+      "name": "HF5 parent GET /api/v1/students (list) → only child 16",
+      "detail": "status=200 ids=[16]"
+    },
+    {
+      "status": "EVIDENCE",
+      "name": "HF6 teacher GET /api/v1/students",
+      "detail": "status=200 count=0 sample=[]"
+    },
+    {
+      "status": "PASS",
+      "name": "HF7 public-report ?school_id=3 (unauthed) → 200 aggregate",
+      "detail": "status=200 sid=3"
+    },
+    {
+      "status": "EVIDENCE",
+      "name": "HF7 public-report ?school_id=999 (invalid) → falls back to first school",
+      "detail": "status=200 fallback sid=1"
+    },
+    {
+      "status": "PASS",
+      "name": "HF7 public-report leaks no PII",
+      "detail": "contains_phone_or_nid=false keys=sid,name,level,city,students,teachers,classes,meetings,goals"
+    },
+    {
+      "status": "FAIL",
+      "name": "HF8 /metrics without token → not exposed",
+      "detail": "status=403"
+    },
+    {
+      "status": "PASS",
+      "name": "HF8 /metrics with bearer token → 200",
+      "detail": "status=200 has_payesh_series=true"
+    },
+    {
+      "status": "PASS",
+      "name": "HF9 superadmin POST /api/admin/backup (PG authoritative) → 501",
+      "detail": "status=501 {\"ok\":false,\"code\":\"pg_authoritative\",\"message\":\"در حالتِ پستگرس، پشتیبان‌گیری ب"
+    },
+    {
+      "status": "PASS",
+      "name": "HF9 manager POST /api/admin/backup → 403",
+      "detail": "status=403 {\"ok\":false,\"code\":\"forbidden\"}"
+    },
+    {
+      "status": "PASS",
+      "name": "HF10 manager phase5/pilot-approval → 403",
+      "detail": "status=403 {\"ok\":false,\"code\":\"forbidden\",\"error_code\":\"PHASE5_REGION_ISOLATION_VIOLATION\",\"message\":"
+    },
+    {
+      "status": "PASS",
+      "name": "HF10 manager phase6/canary/weight → 403",
+      "detail": "status=403 {\"ok\":false,\"code\":\"forbidden\",\"message\":\"فقط اپراتور ارشد مجاز به ارتقای وزن ترافیک است\"}"
+    },
+    {
+      "status": "EVIDENCE",
+      "name": "HF10 superadmin phase5/pilot-approval (control)",
+      "detail": "status=200 {\"ok\":true,\"approval_receipt\":{\"approval_id\":\"APPV-1790324605385-73mse\",\"action_type\":\"CAPACITY_QUOTA_ADJUSTMENT\",\"targe"
+    },
+    {
+      "status": "FAIL",
+      "name": "HF12 manager POST /api/v1/classes with body.school_id=3 → not school-3",
+      "detail": "status=201 {\"ok\":true,\"data\":{\"id\":1,\"name\":\"کلاس جعلی\",\"grade\":7,\"school_id\":1,\"capacity\":30,\"homeroom_teacher"
+    },
+    {
+      "status": "EVIDENCE",
+      "name": "HF12 detail",
+      "detail": "created school_id=1 (expected, min(actor.school_id))"
+    }
+  ]
+}

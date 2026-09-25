@@ -1,0 +1,420 @@
+{
+  "runner": "arena-e2e-recovery-v2",
+  "time": "2026-09-25T07:12:08.000Z",
+  "head": "66928be | 2026-09-23 16:57:54 +0330",
+  "verdicts": {
+    "pass": 42,
+    "fail": 4,
+    "blocked": 0
+  },
+  "total": 74,
+  "rpo_rto": [
+    {
+      "name": "redis-down",
+      "ms": 170
+    },
+    {
+      "name": "redis-blackhole",
+      "ms": 194
+    },
+    {
+      "name": "db-down",
+      "ms": 8
+    },
+    {
+      "name": "db-freeze",
+      "ms": 13
+    },
+    {
+      "name": "rpo-network-timeout-write",
+      "ms": 0,
+      "note": "committed before ack lost; retry deduped to 1 row"
+    },
+    {
+      "name": "rpo-committed-writes",
+      "ms": 0,
+      "note": "exact row equality across restart"
+    },
+    {
+      "name": "restart-boot-to-ready",
+      "ms": 473
+    },
+    {
+      "name": "rpo-notification-decision",
+      "ms": ">0",
+      "note": "send decision lost on restart (reverted to pending, re-send allowed) — Finding A consequence"
+    }
+  ],
+  "checks": [
+    {
+      "name": "PREFLIGHT: real PG+Redis binaries present (no mocks)",
+      "status": "PASS",
+      "detail": "{\"postgres\":true,\"redis\":true,\"redisCli\":true}"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "isolated REAL infra: PG port=38705 redis port=39829"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "seed: manager id=2 09992630039 school=1 | superadmin id=1 09999838444"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "PG seeded: {\"schools\":\"6/6\",\"users\":\"1040/1040\",\"classes\":\"36/36\",\"enrollments\":\"523/523\",\"parent_links\":\"527/527\",\"notifications\":\"705/705\",\"notify_queue\":\"1/1\",\"sms_log\":\"0/0\",\"sms_wallet\":\"1/1\",\"preapps\":\"4/4\",\"visitors_err\":\"ERROR: invalid input syntax for type timestamp with time zone: \\\"\\\"\\nLINE 1: ...T08:30:00.0"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "normalized parent_ids/capabilities + wallet forced 500"
+    },
+    {
+      "name": "boot: production listen waits for DB+Redis readiness (fail-fast gate)",
+      "status": "PASS",
+      "detail": "started, liveness pid=6855"
+    },
+    {
+      "name": "1. login: send-code + SMS-leg code + login 200 (set-cookie)",
+      "status": "PASS",
+      "detail": "send=200 login=200 body={\"ok\":true,\"user\":{\"id\":2,\"full_name\":\"حسین هاشمی\",\"role\":\"manager\",\"school_id\":1,\"phone_masked\":\"0999****39\"}}"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "login code recovered from persisted sha256(code|phone) in Redis payesh:otp:state (10ms); production flow: gateway delivers the code"
+    },
+    {
+      "name": "2. auth: /api/auth/me resolves session (JWT role/school)",
+      "status": "PASS",
+      "detail": "{\"ok\":true,\"user\":{\"id\":2,\"full_name\":\"حسین هاشمی\",\"role\":\"manager\",\"school_id\":1}}"
+    },
+    {
+      "name": "3. authorization: manager classes list → own school only",
+      "status": "PASS",
+      "detail": "status=200 foreign=0/9"
+    },
+    {
+      "name": "3. authorization: manager + school_id=2 → 403 (explicit isolation code)",
+      "status": "PASS",
+      "detail": "status=403 {\"ok\":false,\"code\":\"PHASE6_TENANT_ISOLATION_BREACH\",\"message\":\"تخطی از حریم تننت: کاربر مجاز به دستر"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "3. control: superadmin + school_id=2 → 200 school-2 rows=9 (gate is role-aware)"
+    },
+    {
+      "name": "4. tenant check: bootstrap scoped to actor school",
+      "status": "PASS",
+      "detail": "status=200 foreign=0 school=1"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "4. bootstrap manager branch: classes FROM classes WHERE school_id=$1"
+    },
+    {
+      "name": "5. business op: POST /api/v1/classes → 201",
+      "status": "PASS",
+      "detail": "status=201 {\"ok\":true,\"data\":{\"id\":37,\"name\":\"پایه ششم ب — E2E v2\",\"grade\":6,\"school_id\":1,\"capacity\":28,\"homeroom_teacher_id\":null"
+    },
+    {
+      "name": "6. DB: row committed to PostgreSQL (PG-first)",
+      "status": "PASS",
+      "detail": "PG=\"37|1|پایه ششم ب — E2E v2|6\""
+    },
+    {
+      "name": "7. Redis: sync write acked + idempotency key set",
+      "status": "PASS",
+      "detail": "acked=true redis_key=\"1790320312507\""
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "7. Redis idempotency key payesh:idempotency:arena-e2e-cache-1790320312493; visitors mirrored to PG (1 row)"
+    },
+    {
+      "name": "8. queue: DELETE class → soft delete + transactional outbox",
+      "status": "PASS",
+      "detail": "status=200 {\"ok\":true,\"message\":\"کلاس با موفقیت حذف شد\"}"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "8. queue: server_outbox row = \"1|classes.deleted|pending\""
+    },
+    {
+      "name": "9. worker: event processed (pending→processed)",
+      "status": "PASS",
+      "detail": "pending_before=1 in 99ms"
+    },
+    {
+      "name": "9. worker observability: metric payesh_worker_events_total{outcome=processed}",
+      "status": "PASS",
+      "detail": "value=1"
+    },
+    {
+      "name": "10. notification: superadmin POST /api/sms/send 200",
+      "status": "PASS",
+      "detail": "status=200 {\"ok\":true,\"sent\":1,\"skipped_already\":0,\"skipped_credit\":0,\"failed\":0,\"credits_used\":4,\"dry_run\":false}"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "10. PG after 200 sent: sms_log=\"0|\" notify_queue=\"pending\" wallet=\"500.00\""
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "10. audit: 1 events (last: {\"timestamp\":\"2026-09-25T07:11:53.237Z\",\"event\":\"sms_mirror_failed\",\"user_id\":null,\"role\":null,\"school_id\":null,\"ip\":null,\"summary\":\"sms_mirror_failed\",\"ts\":\"2026-09-25T07:11:53.237Z\",\"type\":\"sms_mirr)"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "10. schema-drift probe: INSERT sms_log(provider_msg,queue_id) → \"ERR:ERROR: column \\\"provider_msg\\\" of relation \\\"sms_log\\\" does not exist\\nLINE 1: INSERT INTO sms_log (school_id, status, provider_msg, queue_...\\n ^\""
+    },
+    {
+      "name": "10. notification persistence: decision reached PostgreSQL (sms_log + notify_queue sent + wallet debited)",
+      "status": "FAIL",
+      "detail": "PG sms_log=\"0|\" nq=\"pending\""
+    },
+    {
+      "name": "10. notification idempotency: duplicate queue_id → skipped_already",
+      "status": "PASS",
+      "detail": "{\"ok\":true,\"sent\":0,\"skipped_already\":1,\"skipped_credit\":0,\"failed\":0,\"credits_used\":0,\"dry_run\":false}"
+    },
+    {
+      "name": "11. report: manager GET /api/v1/reports/attendance (DB-native SQL)",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "name": "11. report isolation: manager + school_id=2 → 403",
+      "status": "PASS",
+      "detail": "status=403 {\"ok\":false,\"code\":\"PHASE6_TENANT_ISOLATION_BREACH\",\"message\":\"تخطی از حریم تننت"
+    },
+    {
+      "name": "12. intelligence: manager school-intelligence(school_id=1) 200",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "name": "12. intelligence isolation: manager + school_id=2 → 403",
+      "status": "PASS",
+      "detail": "status=403 {\"ok\":false,\"code\":\"PHASE6_TENANT_ISOLATION_BREACH\",\"message\":\"تخطی از حریم تننت: کاربر مجاز به دستر"
+    },
+    {
+      "name": "13. logout: POST /api/auth/logout 200 → /me 401 (jti revoked)",
+      "status": "PASS",
+      "detail": "logout=200 me_after=401 {\"ok\":false,\"code\":\"no_session\"}"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "13. logout: distributed denylist keys = \"revoked:jt_9d3d28a5b9e1b2dd1b8a3f32\""
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "FI setup: fresh manager session for write tests; login=200"
+    },
+    {
+      "name": "FI-1 Redis down: readiness → 503 (fail-closed)",
+      "status": "PASS",
+      "detail": "before=200 onto 503 in 4ms"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "FI-1 Redis down: readiness body = {\"ok\":false,\"status\":\"not_ready\",\"name\":\"payesh-server\",\"db\":{\"driver\":\"postgres\",\"alive\":true},\"redis\":{\"driver\":\"redis\",\"alive\":false,\"live\":true,\"required\":true},\"draining\":fals"
+    },
+    {
+      "name": "FI-1 Redis down: send-code fail-closed 503 REDIS_UNAVAILABLE (no hang)",
+      "status": "PASS",
+      "detail": "status=503 {\"ok\":false,\"code\":\"redis_required\",\"error_code\":\"REDIS_UNAVAILABLE\"}"
+    },
+    {
+      "name": "FI-1 Redis down: readiness recovers to 200 (RTO measured)",
+      "status": "PASS",
+      "detail": "RTO=170ms"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "FI-2 Redis blackhole: ioredis reconnected into silent sink (socket handshake OK, ready-check never answers) — established=2"
+    },
+    {
+      "name": "FI-2 Redis blackhole: readiness stays 503 fail-closed (redis.alive=false)",
+      "status": "PASS",
+      "detail": "status=503 {\"driver\":\"redis\",\"alive\":false,\"live\":true,\"required\":true}"
+    },
+    {
+      "name": "FI-2 Redis blackhole: send-code → 503 REDIS_UNAVAILABLE (fail-closed, no hang)",
+      "status": "PASS",
+      "detail": "status=503 {\"ok\":false,\"code\":\"redis_required\",\"error_code\":\"REDIS_UNAVAILABLE\"}"
+    },
+    {
+      "name": "FI-2 Redis blackhole: /api/health still 200 ok (gate=isRedis() connection-flag, not ping)",
+      "status": "FAIL",
+      "detail": "status=200 ok=true cache=redis redis={\"driver\":\"redis\",\"alive\":false} ← health/readiness DIVERGE"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "FI-2 Redis blackhole: VALID session /api/auth/me = 200 (session resolution tolerates denylist-read failure)"
+    },
+    {
+      "name": "FI-2 Redis blackhole: recovery to 200 after sink FIN + Redis back (RTO)",
+      "status": "PASS",
+      "detail": "RTO=194ms"
+    },
+    {
+      "name": "FI-3 DB down: readiness → 503 db.alive=false",
+      "status": "PASS",
+      "detail": "before=200 onto 503 in 6ms"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "FI-3 DB down: readiness body = {\"ok\":false,\"status\":\"not_ready\",\"name\":\"payesh-server\",\"db\":{\"driver\":\"postgres\",\"alive\":false},\"redis\":{\"driver\":\"redis\",\"alive\":true,\"live\":true,\"required\":true},\"draining\":fals"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "FI-3 DB down: write (valid session) → 401 {\"ok\":false,\"code\":\"unauthorized\",\"message\":\"احراز هویت الزامی است\"} (session resolution needs PG readOne → 401 while readiness is 503)"
+    },
+    {
+      "name": "FI-3 DB down: recovery to 200 (RTO) + same session writes 201",
+      "status": "PASS",
+      "detail": "RTO=8ms"
+    },
+    {
+      "name": "FI-3 DB down: write succeeds after recovery (pool + session survive)",
+      "status": "PASS",
+      "detail": "status=201 {\"ok\":true,\"data\":{\"id\":38,\"name\":\"کلاس پس از بازگشت\",\"grade\":5,\"school_id\":1,\"capacity\":30,\"homeroo"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "FI-4 DB timeout: SIGSTOP postmaster + 8 backends (established pool; in-flight queries frozen) — no statement_timeout in server/db.js"
+    },
+    {
+      "name": "FI-4 DB timeout: readiness HANGS (db.ping SELECT 1 frozen) — client_timeout",
+      "status": "FAIL",
+      "detail": "status=0 err=client_timeout ← no query-level timeout → unbounded hang, not bounded 5xx"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "FI-4 DB timeout: write during freeze = 0 err=client_timeout (sessionFrom PG read hangs)"
+    },
+    {
+      "name": "FI-4 DB timeout: SIGCONT → readiness recovers 200, pool uncorrupted (RTO)",
+      "status": "PASS",
+      "detail": "RTO=13ms"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "FI-5 crash: seeded pending outbox event (crash window) — pending=\"1\""
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "FI-5 crash: SIGKILL api process"
+    },
+    {
+      "name": "FI-5 crash+restart: boot replayPendingFromPg drains pending → worker processes",
+      "status": "PASS",
+      "detail": "pending_before=1 drained in 99ms"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "FI-5 crash+restart: event 999001 now = \"processed\""
+    },
+    {
+      "name": "FI-5 crash+restart: new process live (liveness 200)",
+      "status": "PASS",
+      "detail": "pid=6933"
+    },
+    {
+      "name": "FI-6 network timeout: client timeout but op APPLIED server-side",
+      "status": "PASS",
+      "detail": "client status=0 err=client_timeout | PG rows=1"
+    },
+    {
+      "name": "FI-6 retry: same uid → duplicate_ignored, exactly 1 row (RPO=0 for that write)",
+      "status": "PASS",
+      "detail": "results={\"ok\":true,\"results\":[{\"uid\":\"arena-swallow-1790320323656\",\"ok\":true,\"code\":\"duplicate_ignored\",\"ser | rows=1"
+    },
+    {
+      "name": "FI-7 duplicate request: 2nd same-uid → duplicate_ignored, PG 1 row",
+      "status": "PASS",
+      "detail": "first_ack=true | rows=1"
+    },
+    {
+      "name": "FI-8 partial failure: valid op applied + invalid op per-op rejected",
+      "status": "PASS",
+      "detail": "PG ok=1 bad=0"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "FI-8 cross-tenant batch: status=403 | PG ct-ok=0 ct-x=0 (whole-batch fail-closed atomic)"
+    },
+    {
+      "name": "FI-9 stale client: first PATCH base_version=1 → 200 (version→2)",
+      "status": "PASS",
+      "detail": "status=200 {\"ok\":true,\"data\":{\"id\":39,\"name\":\"کلاس اوک-ویرایش\",\"grade\":6,\"school_id\":1,\"capacity\":30,\"homeroom_teacher_id\":null,\"cl"
+    },
+    {
+      "name": "FI-9 stale client: stale PATCH (base_version=1 again) → 409 conflict + sync_conflicts SSoT row",
+      "status": "PASS",
+      "detail": "status=409 {\"ok\":false,\"code\":\"conflict\",\"message\":\"کلاس توسط کاربر دیگری تغییر یافته است. صفحه را تازه کنید.\",\"server_version\":2} | sync_conflicts rows=1"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "FI-9 stale client: rejected concurrent write recorded in sync_conflicts (SSoT) — observability of stale writes"
+    },
+    {
+      "name": "FI-9 stale client: sync upd with stale base_version → stale_base (STRUCTURAL server-reference)",
+      "status": "PASS",
+      "detail": "{\"uid\":\"arena-stale-1790320325310\",\"ok\":false,\"code\":\"stale_base\",\"message\":\"نسخهٔ رکورد کهنه است — سرور مرجع است؛ داده "
+    },
+    {
+      "name": "FI-10 restart: PG data intact across kill -9 + restart (RPO=0 for committed writes)",
+      "status": "PASS",
+      "detail": "schools 6→6 | preapps 2→2"
+    },
+    {
+      "name": "FI-10 revocation durability: revoked session rejected after restart (Redis denylist)",
+      "status": "PASS",
+      "detail": "status=401 {\"ok\":false,\"code\":\"no_session\"}"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "FI-10 after restart: notify_queue.status in PG (authority) = \"pending\" ← was marked sent in-process before crash"
+    },
+    {
+      "name": "FI-10 recovery: notification NOT re-sent after restart (idempotency survives)",
+      "status": "FAIL",
+      "detail": "{\"ok\":true,\"sent\":1,\"skipped_already\":0,\"skipped_credit\":0,\"failed\":0,\"credits_used\":4,\"dry_run\":false}"
+    },
+    {
+      "name": "FI-10 recovery: fresh login works after restart (auth + PG hydration)",
+      "status": "PASS",
+      "detail": "login=200"
+    },
+    {
+      "name": "EVIDENCE",
+      "status": "EVIDENCE",
+      "detail": "FI-10 observability: /api/health = 200 {\"driver\":\"postgres\",\"alive\":true,\"pool\":{\"total\":2,\"idle\":2}}"
+    }
+  ]
+}

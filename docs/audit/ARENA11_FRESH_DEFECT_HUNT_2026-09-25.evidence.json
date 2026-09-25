@@ -1,0 +1,123 @@
+{
+  "report": "arena11-fresh-hunt-report.md",
+  "runner": "Arena 11 — Fresh Defect Hunt (independent)",
+  "time": "2026-09-25",
+  "head": "66928be6227567f3d92b2c93a2d5f8146a4601b8",
+  "origin_main_live": "66928be6227567f3d92b2c93a2d5f8146a4601b8",
+  "working_tree": "server/, migrations/, tests/ byte-identical at HEAD; infra/tools/monitoring carry exec-bit/mode snapshot artifacts only (no content change, no repo code modified by reviewer)",
+  "environment": "PostgreSQL 17.11 (isolated initdb/pg_ctl), Redis 8.0.2, Node 22.21.1, PAYESH_ENV=production, DATABASE_URL + REDIS_URL set, PAYESH_SMS_PROVIDER=mock",
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "P0",
+      "title": "First-boot bootstrap (empty PG + JSON store) silently skips 14,370 rows, leaves identity sequences at 1, and the first create() silently OVERWRITES seed row id=1 (superadmin) via ON CONFLICT upsert",
+      "evidence": [
+        "boot log: '[store] bootstrap→PG seed done: 19319 row(s) / 70 table(s) — skipped 14370 non-mappable row(s)' — server seeds 57% and calls the rest 'non-mappable'",
+        "table counts after first boot: users=1040/1040, attendance=10460, BUT classes=0, grades=0",
+        "all identity sequences left at last_value=1, is_called=false (users_id_seq / classes_id_seq / attendance_id_seq)",
+        "reproduced skip root A: INSERT INTO classes ... grade='دهم' → ERROR invalid input syntax for type integer (schema grade INTEGER; seed JSON grade='دهم', a Persian text)",
+        "reproduced skip root B: grades is partitioned (grades_y2026) with composite PK (id, created_at); per-row 'ON CONFLICT (id) DO UPDATE' → ERROR no unique or exclusion constraint matching; grades also FK → classes (which was emptied by root A).",
+        "POST /api/v1/users (manager) → 201 {id:1} but PG users id=1 CHANGED from 'مدیر کل سامانه/superadmin/09999838444' to 'مهاجم/teacher/09990000001' — total count stayed 1040 (overwrite, not insert)",
+        "second create → 201 {id:2} overwrote seed manager id=2 (حسین هاشمی)",
+        "superadmin original credentials no longer authenticate after overwrite; manager id=2 login → 429 (identity gone)",
+        "no error/exception/warning is emitted for the overwrite — API reports 201 success the whole time"
+      ],
+      "root_cause": [
+        "index.js first-boot guard (P0-BUG-04 'keepBootstrap'): when PG is empty and PAYESH_STORE JSON exists, seedPgFromBootstrap() inserts explicit-id rows but never calls setval(pg_get_serial_sequence(...), MAX(id)) — the repo's OWN harness seedPg() and tools/w18-load-pg.sh DO advance sequences, so this path is the only one that doesn't.",
+        "ids.nextId() → pgNext() → nextval(users_id_seq) = 1 (sequence never advanced).",
+        "db.persistOpsBatch ins → 'INSERT ... ON CONFLICT (id) DO UPDATE' — an UPSERT. id=1 already exists → row is OVERWRITTEN instead of inserting or erroring; REST layer returns 201 with the collided id.",
+        "seedPgFromBootstrap does no type coercion (passes raw JSON values) and swallows per-chunk failures into a 'skipped' counter — fail-silent."
+      ],
+      "severity_justification": "P0 — silent corruption of the primary identity (superadmin) plus partial data loss (classes/grades) on the sanctioned empty-PG first boot; the failure is silent (201 + no error), exactly the fail-silent/false-green class."
+    },
+    {
+      "id": "F2",
+      "severity": "P1",
+      "title": "Legacy GET /api/students/:id is dead for parents in PG mode — scope query references a nonexistent users.parent_id column and 404s the parent's own child",
+      "evidence": [
+        "response: legacy endpoint GET /api/students/16 (parent 17's own child) → 404 not_found; same parent on GET /api/v1/students/16 → 200",
+        "api log: '[POLICY] PG parent_links query failed: column \"parent_id\" does not exist', '[IDOR] PG scope resolution failed: column \"parent_id\" does not exist'",
+        "schema confirmation: public.users has NO parent_id column (nor does any migration add it); policy.resolveStudentScopeOpts parent branch executes 'SELECT id FROM users WHERE role=$1 AND parent_id=$2' → throws in production"
+      ],
+      "root_cause": [
+        "policy.resolveStudentScopeOpts() parent branch queries users.parent_id, a column that exists only in the JSON store, not in the PG schema.",
+        "idor.js treats the scope-resolution failure as fail-closed 404 (log-only), masking the drift.",
+        "the /api/v1/* resource block uses a MEDIA_HYDRATION-limited path that skips the PG resolve, which is why v1 works while legacy does not (environment/surface divergence)."
+      ],
+      "severity_justification": "P1 — availability/correctness regression (parents cannot see their children via the legacy surface in any real PG deployment); not a privilege-escalation, but it is a schema-drift that disables a documented contract and logs its own failure."
+    },
+    {
+      "id": "F3",
+      "severity": "P1",
+      "title": "GET /api/v1/pull?collections=parent_links returns the full cross-school family adjacency (527 rows) to ANY authenticated role — tenant isolation + PII leak",
+      "evidence": [
+        "student role: pull parent_links → 200, rows_exposed=527",
+        "teacher role: pull parent_links → 200, rows_exposed=527",
+        "parent role: pull parent_links → 200, rows_exposed=527 (expected parent should see only own links)",
+        "sample row leaked to a student: {\"parent_id\":17,\"student_id\":16,\"relation\":\"پدر\"}",
+        "manager pull schools → [1] (scoped correctly) — proving the scope filter works for school_id-tagged collections but not for parent_links"
+      ],
+      "root_cause": [
+        "pull.js targetCols = requestedCols.filter(c => store[c] != null || ALL_COLLECTIONS.includes(c)) — parent_links is servable because it exists in the store, even though it is not in ALL_COLLECTIONS.",
+        "filterCollectionForSession has no parent_links branch → falls to default 'records.filter(r => r.school_id == null || Number(r.school_id) === schoolId)' — parent_links rows have school_id == null, so ALL 527 rows pass for every role."
+      ],
+      "severity_justification": "P1 — a student or teacher (or any authenticated principal) can enumerate family relationships (parent↔student adjacency) across all schools — sensitive PII and a direct tenant-isolation failure on a data source marked as the sync/PG 'source of truth'."
+    },
+    {
+      "id": "F4",
+      "severity": "P1",
+      "title": "Analytics region-branch guards let a manager read other districts (quality-governance, longitudinal-intelligence) — no manager check in the region_id branch",
+      "evidence": [
+        "manager school-1: GET /api/v1/analytics/quality-governance?school_id=3 → 403 PHASE6_TENANT_ISOLATION_BREACH (school branch blocked — control)",
+        "manager school-1: GET /api/v1/analytics/quality-governance?region_id=11 (school-3's district) → 200 {scope:district, summary:{region_id:11, total_schools_evaluated:1,...}}",
+        "manager school-1: GET /api/v1/analytics/longitudinal-intelligence?entity_id=3&entity_type=school → 403",
+        "manager school-1: GET /api/v1/analytics/longitudinal-intelligence?entity_id=11&entity_type=region → 200 {trend_map:{region_id:11,...}}",
+        "contrast: regional-intelligence correctly denies — 'REGIONAL_TENANT_ISOLATION_VIOLATION: role manager is not authorized to access regional network'"
+      ],
+      "root_cause": [
+        "enforceQualityGovernanceAccessGuard / enforceLongitudinalAccessGuard validate manager ONLY when targetSchoolId != null (school branch); the region_id branch checks only edu_office and superadmin, and returns true for manager when targetSchoolId is null.",
+        "the outer assertTenantBoundary does not catch it: for a manager without an explicit school_id/header, the guardrail is evaluated against the manager's OWN school (effSchool = s.school_id) and no province token is supplied, so it passes; only the route-level guard remains, and its region branch is permissive."
+      ],
+      "severity_justification": "P1 — tenant isolation breach: a school manager can query district/region intelligence for districts outside their school (aggregate/simulated data today, but the boundary contract is broken and would silently leak more when the data is real)."
+    },
+    {
+      "id": "F5",
+      "severity": "P1",
+      "title": "Province guardrail locks out the entire edu_office role from every /api/v1/* endpoint (403 تخطی از حریم استانی) — province resolved only from school_id, never from office_id",
+      "evidence": [
+        "edu_office (id=1027, office_id=1, school_id=null, office.province_id=1 'کردستان') login → 200",
+        "GET /api/v1/bootstrap, /api/v1/students, /api/v1/reports/attendance?school_id=1, /api/v1/analytics/school-intelligence?school_id=1, /api/v1/analytics/regional-intelligence?region_id=1, /api/v1/pull?collections=schools → ALL 403 {code:PHASE6_TENANT_ISOLATION_BREACH, message:'تخطی از حریم استانی: دسترسی به اطلاعات استان دیگر مجاز نیست'}",
+        "the analytics guards explicitly model edu_office access (e.g. enforceQualityGovernanceAccessGuard edu_office region match) — proving the role is meant to use these endpoints"
+      ],
+      "root_cause": [
+        "index.js /api/v1/* pre-guard derives province only from the actor's school (inline block iterates store.schools for actor.school_id); edu_office has school_id=null and carries office_id → province_code stays undefined.",
+        "effProv falls back to '07' and assertTenantBoundary fail-closes ('unknown actor province + explicit target province = breach') → every v1 request from edu_office is rejected."
+      ],
+      "severity_justification": "P1 — fail-closed overreach: not a bypass, but the whole edu_office role is non-functional in production PG mode, contradicting the role model that authorizes it. (Environment-difference class: works only when school_id is present.)"
+    },
+    {
+      "id": "F6",
+      "severity": "P2",
+      "title": "Verified controls that HELD (recorded so they are not re-reported as defects)",
+      "evidence": [
+        "regional-intelligence denies manager ('role manager is not authorized to access regional network') — unlike F4 routes",
+        "reports scope (scopedSchools) rejects school-2 for a school-1 manager with explicit 403; /api/v1/students and /api/students correctly return only own child (parent), 404 anti-enum for foreign student",
+        "/api/admin/backup → 501 pg_authoritative for superadmin and 403 for manager (fail-closed); /api/admin/restore never touches disk for traversal (validate + NAME_RE + list)",
+        "/metrics without token → 403; with token → 200 (bearer gate enforced)",
+        "phase5/pilot-approval and phase6/canary/weight → 403 for manager, 200 for superadmin (superadmin/edu_office-only gates hold)",
+        "sync conflict list scoped to own school (foreign=0); stale REST PATCH → 409 conflict + sync_conflicts row",
+        "public-report leaks no PII (aggregate only); invalid school_id falls back to first active school (documented C.3 behavior)"
+      ]
+    }
+  ],
+  "not_new_or_out_of_scope": [
+    "A (sms_log schema drift), B (cross-restart duplicate SMS), C (delegated-permission flags), D (health/readiness divergence), E (no commandTimeout/statement_timeout) — already reported by prior Arena runs; not duplicated here."
+  ],
+  "unresolved_risks": [
+    "classroom data from the bootstrap path is silently lost (classes/grades) — any operator who boots the shipped JSON store against a fresh PG loses most academic data WITHOUT an error; only a boot log line mentions 14,370 'non-mappable' rows.",
+    "F1's sequence/upsert hazard is latent beyond bootstrap: any future explicit-id seeding that omits setval() will silently upsert-overwrite live rows on the next create.",
+    "The outer /api/v1/* province guardrail is a single point that can silently deny legitimate roles (F5) while being bypassable via the route-level region-branch gaps (F4).",
+    "parent_links is reachable through pull for any role and its scope filter is un-gated; other store-backed collections not in ALL_COLLECTIONS may have the same default-branch exposure (not exhaustively enumerated)."
+  ],
+  "files_changed": "none — no repository code modified. Review-only artifacts added to the workspace: arena-hunt2-probe.js, arena-hunt2b-probe.js, arena-hunt3-idseq.js, arena-hunt4-bootstrap.js, arena-hunt5-overwrite.js, arena-hunt6-cascade.js, arena-hunt7-pull-idor.js, arena-hunt8-grades.js, arena-hunt9-boot2.js, arena-hunt10-eduo.js, arena-hunt11-eduolock.js, arena-hunt12-skip.js, arena-hunt13-gradesroot.js, arena11-fresh-hunt-evidence.json"
+}
