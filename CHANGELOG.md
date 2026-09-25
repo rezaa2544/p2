@@ -31,3 +31,12 @@ See: `docs/external-memory/PROJECT_MEMORY_SYSTEM.md`.
 ## FINAL SYNCHRONIZATION RECEIPT — 2026-09-25
 **Exact main HEAD after this synchronization series:** `7c1a4ce3c29810910bfee72e17358d81032c33ea`.
 This SHA includes the synchronization updates themselves. The verification registry remains intentionally bound to `e4584806c1af2a1e5db648c8452580a8fa8cbcec` until the hardening SHA is frozen and evidence is regenerated; therefore this receipt is a project-state update, not a certification.
+
+
+## 2026-09-25
+
+### Added — Root-cause recurrence elimination
+- Added docs/audit/ROOT_CAUSE_REAPPEARANCE_PROGRAM_2026-09-25.md.
+- Recorded recurrence patterns across A-18/A-20/A-22/A-24/A-31/A-34/A-35/A-37.
+- Added P0 controls: Invariant Registry, Reappearance Regression Suite, evidence invalidation, complete path/config inventories and authoritative policy contracts.
+- Changed future reporting rule: FIXED is scoped unless the reason previous controls failed to prevent recurrence is identified and root-cause closure is proven.
