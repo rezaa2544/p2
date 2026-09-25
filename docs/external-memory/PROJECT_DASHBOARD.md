@@ -153,3 +153,12 @@ Canonical register: `docs/audit/MASTER_DEFECT_PRIORITY_2026-09-25.md`.
 - [ ] Atria-2: A-30/A-37/A-39 preparation + A-01..A-17/A-23 test/CI/operational carry-over + A-38 preparation.
 
 **Project state:** HARDENING / RECONCILIATION — NOT VERIFIED. Broad validation remains blocked.
+
+
+## Direct fixes before Atria — 2026-09-25
+- [x] F1 — source fix applied; **TEST PENDING**.
+- [x] F2 — source fix applied; **TEST PENDING**.
+- [x] F4 — source fix applied; **TEST PENDING**.
+- [ ] F1/F2/F4 — current-head CI/runtime/adversarial verification.
+
+**Team:** 1 Supervising Engineer + 5 ChatGPT + 10 Arena + **3 Atria**.
