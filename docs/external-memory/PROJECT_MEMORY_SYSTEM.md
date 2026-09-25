@@ -57,3 +57,14 @@ At the end of a session:
 ## Anti-drift rule
 
 If an external app disagrees with GitHub/current evidence, do not silently reconcile it. Mark the discrepancy, inspect the current repository state, and update the external memory surface after the repository truth is established.
+
+
+## Supervising Engineer control layer — 2026-09-25
+
+A mandatory control document now exists at docs/external-memory/SUPERVISING_ENGINEER.md.
+
+This layer governs session handoff, material-change synchronization, agent ownership, delivery contracts and the mandatory push/PR/merge rule. It does not replace the seven memory layers; it enforces their synchronization.
+
+**Mandatory push rule:** repository work is incomplete until the required commit is actually on the remote; if the task requires main, it is incomplete until merged. Agent prose is not repository evidence.
+
+**Future prompt rule:** every execution prompt must include a Delivery Contract with target, commit, push, PR/merge requirement, tests and final verification fields.
