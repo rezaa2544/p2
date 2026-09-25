@@ -1,0 +1,24 @@
+{
+  "id": "p1-no-fence",
+  "command": [
+    "bash",
+    "tools/failover-postgres.sh",
+    "--dry-run"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-ukfdjkiu/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-ukfdjkiu/standby-socket",
+    "PGPORT": "55312",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user",
+    "OLD_PGHOST": "/tmp/a8c-pg-ukfdjkiu/socket",
+    "OLD_PGPORT": "55310"
+  },
+  "utc_start": "2026-09-23T11:13:26.677801+00:00",
+  "start_monotonic_ns": 779991374938,
+  "end_monotonic_ns": 780001984798,
+  "exit": 1,
+  "stdout": "== failover-postgres: standby=/tmp/a8c-pg-ukfdjkiu/standby-socket:55312 primary=(/tmp/a8c-pg-ukfdjkiu/socket:55310) dry=1 force=0\n",
+  "stderr": "FAIL: PG_FENCE_CHECK executable required\n",
+  "expected": "nonzero"
+}

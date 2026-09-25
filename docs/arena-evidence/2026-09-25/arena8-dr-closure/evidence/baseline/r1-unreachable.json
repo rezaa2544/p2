@@ -1,0 +1,20 @@
+{
+  "id": "r1-unreachable",
+  "command": [
+    "bash",
+    "tools/redis-backup.sh"
+  ],
+  "environment": {
+    "REDIS_HOST": "127.0.0.1",
+    "REDIS_PORT": "1",
+    "REDIS_DIR": "/tmp/a8dr-redis-1qs9k7qw/source",
+    "BACKUP_DIR": "/tmp/a8dr-redis-1qs9k7qw/unreachable",
+    "BACKUP_LOCK": "/tmp/a8dr-redis-1qs9k7qw/lock",
+    "BACKUP_S3": "s3://arena8-no-network-test/redis"
+  },
+  "utc_start": "2026-09-23T11:05:15.193596+00:00",
+  "elapsed_ms": 13.138565,
+  "exit": 1,
+  "stdout": "",
+  "stderr": "Could not connect to Redis at 127.0.0.1:1: Connection refused\n[redis-backup 20260923T110515Z] FATAL: redis-cli PING \u0634\u06a9\u0633\u062a \u062e\u0648\u0631\u062f (127.0.0.1:1)\n"
+}

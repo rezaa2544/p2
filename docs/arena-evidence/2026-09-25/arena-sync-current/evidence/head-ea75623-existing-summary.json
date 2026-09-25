@@ -1,0 +1,142 @@
+[
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "phase-c-conflict-resolution",
+    "round": 1,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "sync-dup-claim",
+    "round": 1,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "sync-atomic-batch",
+    "round": 1,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "sync-del-mirror",
+    "round": 1,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "sync-cache-errors",
+    "round": 1,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "sync-mirror-visible",
+    "round": 1,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "sync-chunk",
+    "round": 1,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "sync-sending-revive",
+    "round": 1,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "sync-conflict-ui",
+    "round": 1,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "sync-dlq-retry",
+    "round": 1,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "bgsync",
+    "round": 1,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "delta-sync-hardening",
+    "round": 1,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "wave4-sync",
+    "round": 1,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "wave4-sync-all-collections",
+    "round": 1,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "sync-queue-caps",
+    "round": 1,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "offline-sync-drill",
+    "round": 1,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "bgsync",
+    "round": 2,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "bgsync",
+    "round": 3,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "bgsync",
+    "round": 4,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  },
+  {
+    "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+    "test": "bgsync",
+    "round": 5,
+    "exit": 0,
+    "level": "existing suite, not production proof"
+  }
+]

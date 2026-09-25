@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/home/user/p2/tests/infrastructure/disaster-recovery/live-dr-closure.py", line 158, in <module>
+    try:func(n)
+        ~~~~^^^
+  File "/home/user/p2/tests/infrastructure/disaster-recovery/live-dr-closure.py", line 68, in pg_test
+    d,te=restore('time',['--native','--time',targettime],manifest)
+         ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/p2/tests/infrastructure/disaster-recovery/live-dr-closure.py", line 43, in restore
+    if r['exit']!=0:raise RuntimeError('restore failed: '+r['stderr'][-500:])
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: restore failed: 

@@ -1,0 +1,2269 @@
+[
+  {
+    "id": "versions",
+    "command": [
+      "bash",
+      "-c",
+      "psql --version; redis-server --version; pgbackrest version; uname -a"
+    ],
+    "environment": {},
+    "utc_start": "2026-09-23T11:11:19.303190+00:00",
+    "start_monotonic_ns": 652616761915,
+    "end_monotonic_ns": 652642864050,
+    "exit": 0,
+    "stdout": "psql (PostgreSQL) 17.11 (Debian 17.11-0+deb13u1)\nRedis server v=8.0.2 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=b52b02bf0759f5b4\npgBackRest 2.55.1\nLinux e2b.local 6.1.158+ #1 SMP PREEMPT_DYNAMIC Fri Jul 17 14:31:34 UTC 2026 x86_64 GNU/Linux\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "versions-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-init",
+    "command": [
+      "initdb",
+      "-D",
+      "/tmp/a8c-pg-gcn4psyl/source",
+      "-A",
+      "trust",
+      "--no-locale"
+    ],
+    "environment": {},
+    "utc_start": "2026-09-23T11:11:19.330415+00:00",
+    "start_monotonic_ns": 652643986970,
+    "end_monotonic_ns": 653395650652,
+    "exit": 0,
+    "stdout": "The files belonging to this database system will be owned by user \"user\".\nThis user must also own the server process.\n\nThe database cluster will be initialized with locale \"C\".\nThe default database encoding has accordingly been set to \"SQL_ASCII\".\nThe default text search configuration will be set to \"english\".\n\nData page checksums are disabled.\n\ncreating directory /tmp/a8c-pg-gcn4psyl/source ... ok\ncreating subdirectories ... ok\nselecting dynamic shared memory implementation ... posix\nselecting default \"max_connections\" ... 100\nselecting default \"shared_buffers\" ... 128MB\nselecting default time zone ... Etc/UTC\ncreating configuration files ... ok\nrunning bootstrap script ... ok\nperforming post-bootstrap initialization ... ok\nsyncing data to disk ... ok\n\nSuccess. You can now start the database server using:\n\n    pg_ctl -D /tmp/a8c-pg-gcn4psyl/source -l logfile start\n\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-init-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-start",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8c-pg-gcn4psyl/source",
+      "-l",
+      "/tmp/a8c-pg-gcn4psyl/source.log",
+      "-w",
+      "start"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:20.082751+00:00",
+    "start_monotonic_ns": 653396322998,
+    "end_monotonic_ns": 653510699702,
+    "exit": 0,
+    "stdout": "waiting for server to start.... done\nserver started\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-start-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-database",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "CREATE DATABASE payesh"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "postgres",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:20.197442+00:00",
+    "start_monotonic_ns": 653511015712,
+    "end_monotonic_ns": 653559515368,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-database-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-seed",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "CREATE TABLE users(id int PRIMARY KEY,value text); INSERT INTO users SELECT i,'seed-1-'||i FROM generate_series(1,10)i;CREATE TABLE schools(id int PRIMARY KEY,value text); INSERT INTO schools SELECT i,'seed-1-'||i FROM generate_series(1,10)i;CREATE TABLE classes(id int PRIMARY KEY,value text); INSERT INTO classes SELECT i,'seed-1-'||i FROM generate_series(1,10)i;CREATE TABLE grades(id int PRIMARY KEY,value text); INSERT INTO grades SELECT i,'seed-1-'||i FROM generate_series(1,10)i;CREATE TABLE attendance(id int PRIMARY KEY,value text); INSERT INTO attendance SELECT i,'seed-1-'||i FROM generate_series(1,10)i"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:20.246279+00:00",
+    "start_monotonic_ns": 653559840419,
+    "end_monotonic_ns": 653580373316,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-seed-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-stanza",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "stanza-create"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:20.267145+00:00",
+    "start_monotonic_ns": 653580704900,
+    "end_monotonic_ns": 653599866177,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-stanza-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-backup",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "--type=full",
+      "backup"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:20.286687+00:00",
+    "start_monotonic_ns": 653600258823,
+    "end_monotonic_ns": 655361482906,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-backup-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-backup-info",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "--output=json",
+      "info"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:22.048613+00:00",
+    "start_monotonic_ns": 655362185755,
+    "end_monotonic_ns": 655370357804,
+    "exit": 0,
+    "stdout": "[{\"archive\":[{\"database\":{\"id\":1,\"repo-key\":1},\"id\":\"17-1\",\"max\":\"000000010000000000000002\",\"min\":\"000000010000000000000001\"}],\"backup\":[{\"archive\":{\"start\":\"000000010000000000000002\",\"stop\":\"000000010000000000000002\"},\"backrest\":{\"format\":5,\"version\":\"2.55.1\"},\"database\":{\"id\":1,\"repo-key\":1},\"error\":false,\"info\":{\"delta\":30918282,\"repository\":{\"delta\":3997381,\"size\":3997381},\"size\":30918282},\"label\":\"20260923-111120F\",\"lsn\":{\"start\":\"0/2000028\",\"stop\":\"0/2000120\"},\"prior\":null,\"reference\":null,\"timestamp\":{\"start\":1790161880,\"stop\":1790161881},\"type\":\"full\"}],\"cipher\":\"none\",\"db\":[{\"id\":1,\"repo-key\":1,\"system-id\":7688686726681551881,\"version\":\"17\"}],\"name\":\"payesh\",\"repo\":[{\"cipher\":\"none\",\"key\":1,\"status\":{\"code\":0,\"message\":\"ok\"}}],\"status\":{\"code\":0,\"lock\":{\"backup\":{\"held\":false}},\"message\":\"ok\"}}]",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-backup-info-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-commit",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "INSERT INTO users VALUES(11,'committed-before-target')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:22.057018+00:00",
+    "start_monotonic_ns": 655370592360,
+    "end_monotonic_ns": 655382507013,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-commit-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-capture",
+    "command": [
+      "python3",
+      "tools/pitr-manifest.py",
+      "--capture",
+      "/tmp/a8c-pg-gcn4psyl/expected.json"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:22.069152+00:00",
+    "start_monotonic_ns": 655382725224,
+    "end_monotonic_ns": 655609914150,
+    "exit": 0,
+    "stdout": "MANIFEST_CAPTURED (expected dataset, not backup/restorability proof)\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-capture-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-target-time",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "SELECT clock_timestamp()::text"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:22.296595+00:00",
+    "start_monotonic_ns": 655610167522,
+    "end_monotonic_ns": 655617347599,
+    "exit": 0,
+    "stdout": "2026-09-23 11:11:22.303284+00\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-target-time-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-restore-point",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "SELECT pg_create_restore_point('arena_committed')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:22.303981+00:00",
+    "start_monotonic_ns": 655617554159,
+    "end_monotonic_ns": 655623984507,
+    "exit": 0,
+    "stdout": "0/3000440\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-restore-point-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-after-point",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "INSERT INTO users VALUES(12,'after-target'); SELECT pg_switch_wal()"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:22.310755+00:00",
+    "start_monotonic_ns": 655624330402,
+    "end_monotonic_ns": 655642884493,
+    "exit": 0,
+    "stdout": "0/30004E0\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-after-point-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-archive",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "check"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:22.329547+00:00",
+    "start_monotonic_ns": 655643120289,
+    "end_monotonic_ns": 655965798372,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-archive-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-named",
+    "command": [
+      "bash",
+      "tools/pitr-restore.sh",
+      "--name",
+      "arena_committed",
+      "--dest",
+      "/tmp/a8c-pg-gcn4psyl/named",
+      "--port",
+      "55311",
+      "--manifest",
+      "/tmp/a8c-pg-gcn4psyl/expected.json"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:22.652475+00:00",
+    "start_monotonic_ns": 655966048003,
+    "end_monotonic_ns": 657850610401,
+    "exit": 0,
+    "stdout": "PITR_RUN_DIR=/tmp/a8c-pg-gcn4psyl/named/pitr-jgMpn3rA\nwaiting for server to start.... done\nserver started\nPITR_VERIFY: PASS identity + complete expected dataset (not E4)\nPITR_READY dir=/tmp/a8c-pg-gcn4psyl/named/pitr-jgMpn3rA port=55311 socket=/tmp/a8c-pg-gcn4psyl/named/pitr-jgMpn3rA/run\nCleanup: pg_ctl -D '/tmp/a8c-pg-gcn4psyl/named/pitr-jgMpn3rA/data' -m fast -w stop\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-named-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-wrong-source",
+    "command": [
+      "bash",
+      "tools/pitr-verify.sh",
+      "--manifest",
+      "/tmp/a8c-pg-gcn4psyl/expected.json",
+      "--expect-data-dir",
+      "/tmp/a8c-pg-gcn4psyl/named/pitr-jgMpn3rA/data"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:24.537457+00:00",
+    "start_monotonic_ns": 657851029697,
+    "end_monotonic_ns": 657921980866,
+    "exit": 1,
+    "stdout": "",
+    "stderr": "PITR_VERIFY: FAIL: wrong restore data_directory\n",
+    "expected": "nonzero"
+  },
+  {
+    "id": "p1-wrong-source-exit",
+    "assertion": true,
+    "detail": "expected nonzero, actual 1"
+  },
+  {
+    "id": "p1-missing-manifest",
+    "command": [
+      "bash",
+      "tools/pitr-verify.sh"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/named/pitr-jgMpn3rA/run",
+      "PGPORT": "55311",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:24.608840+00:00",
+    "start_monotonic_ns": 657922413983,
+    "end_monotonic_ns": 657926047704,
+    "exit": 1,
+    "stdout": "",
+    "stderr": "FAIL: approved expected manifest and explicit restore data_directory required\n",
+    "expected": "nonzero"
+  },
+  {
+    "id": "p1-missing-manifest-exit",
+    "assertion": true,
+    "detail": "expected nonzero, actual 1"
+  },
+  {
+    "id": "p1-wrong-dir",
+    "command": [
+      "bash",
+      "tools/pitr-verify.sh",
+      "--manifest",
+      "/tmp/a8c-pg-gcn4psyl/expected.json",
+      "--expect-data-dir",
+      "/tmp/a8c-pg-gcn4psyl/source"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/named/pitr-jgMpn3rA/run",
+      "PGPORT": "55311",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:24.612711+00:00",
+    "start_monotonic_ns": 657926285233,
+    "end_monotonic_ns": 658004617871,
+    "exit": 1,
+    "stdout": "",
+    "stderr": "PITR_VERIFY: FAIL: wrong restore data_directory\n",
+    "expected": "nonzero"
+  },
+  {
+    "id": "p1-wrong-dir-exit",
+    "assertion": true,
+    "detail": "expected nonzero, actual 1"
+  },
+  {
+    "id": "p1-crash",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8c-pg-gcn4psyl/named/pitr-jgMpn3rA/data",
+      "-m",
+      "immediate",
+      "-w",
+      "stop"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/named/pitr-jgMpn3rA/run",
+      "PGPORT": "55311",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:24.691490+00:00",
+    "start_monotonic_ns": 658005052656,
+    "end_monotonic_ns": 658108291243,
+    "exit": 0,
+    "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-crash-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-restart",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8c-pg-gcn4psyl/named/pitr-jgMpn3rA/data",
+      "-o",
+      "-c config_file=/tmp/a8c-pg-gcn4psyl/named/pitr-jgMpn3rA/etc/postgresql.conf",
+      "-l",
+      "/tmp/a8c-pg-gcn4psyl/named/pitr-jgMpn3rA/restart.log",
+      "-w",
+      "start"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/named/pitr-jgMpn3rA/run",
+      "PGPORT": "55311",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:24.795243+00:00",
+    "start_monotonic_ns": 658108806137,
+    "end_monotonic_ns": 658223621024,
+    "exit": 0,
+    "stdout": "waiting for server to start.... done\nserver started\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-restart-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-post-crash-integrity",
+    "command": [
+      "bash",
+      "tools/pitr-verify.sh",
+      "--manifest",
+      "/tmp/a8c-pg-gcn4psyl/expected.json",
+      "--expect-data-dir",
+      "/tmp/a8c-pg-gcn4psyl/named/pitr-jgMpn3rA/data"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/named/pitr-jgMpn3rA/run",
+      "PGPORT": "55311",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:24.910297+00:00",
+    "start_monotonic_ns": 658223871113,
+    "end_monotonic_ns": 658301759612,
+    "exit": 0,
+    "stdout": "PITR_VERIFY: PASS identity + complete expected dataset (not E4)\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-post-crash-integrity-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-named-stop",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8c-pg-gcn4psyl/named/pitr-jgMpn3rA/data",
+      "-m",
+      "fast",
+      "-w",
+      "stop"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/named/pitr-jgMpn3rA/run",
+      "PGPORT": "55311",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:24.988430+00:00",
+    "start_monotonic_ns": 658302003798,
+    "end_monotonic_ns": 658405429464,
+    "exit": 0,
+    "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-named-stop-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-time",
+    "command": [
+      "bash",
+      "tools/pitr-restore.sh",
+      "--native",
+      "--time",
+      "2026-09-23 11:11:22.303284+00",
+      "--dest",
+      "/tmp/a8c-pg-gcn4psyl/time",
+      "--port",
+      "55311",
+      "--manifest",
+      "/tmp/a8c-pg-gcn4psyl/expected.json"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:25.093284+00:00",
+    "start_monotonic_ns": 658406843163,
+    "end_monotonic_ns": 660372911144,
+    "exit": 0,
+    "stdout": "PITR_RUN_DIR=/tmp/a8c-pg-gcn4psyl/time/pitr-tdVOkqw5\nwaiting for server to start.... done\nserver started\nPITR_VERIFY: PASS identity + complete expected dataset (not E4)\nPITR_READY dir=/tmp/a8c-pg-gcn4psyl/time/pitr-tdVOkqw5 port=55311 socket=/tmp/a8c-pg-gcn4psyl/time/pitr-tdVOkqw5/run\nCleanup: pg_ctl -D '/tmp/a8c-pg-gcn4psyl/time/pitr-tdVOkqw5/data' -m fast -w stop\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-time-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-time-stop",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8c-pg-gcn4psyl/time/pitr-tdVOkqw5/data",
+      "-m",
+      "fast",
+      "-w",
+      "stop"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/time/pitr-tdVOkqw5/run",
+      "PGPORT": "55311",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:27.060842+00:00",
+    "start_monotonic_ns": 660374415567,
+    "end_monotonic_ns": 660477488752,
+    "exit": 0,
+    "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-time-stop-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-capture-latest",
+    "command": [
+      "python3",
+      "tools/pitr-manifest.py",
+      "--capture",
+      "/tmp/a8c-pg-gcn4psyl/latest.json"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:27.164400+00:00",
+    "start_monotonic_ns": 660477972197,
+    "end_monotonic_ns": 660552072135,
+    "exit": 0,
+    "stdout": "MANIFEST_CAPTURED (expected dataset, not backup/restorability proof)\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-capture-latest-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-latest",
+    "command": [
+      "bash",
+      "tools/pitr-restore.sh",
+      "--latest",
+      "--dest",
+      "/tmp/a8c-pg-gcn4psyl/latest",
+      "--port",
+      "55311",
+      "--manifest",
+      "/tmp/a8c-pg-gcn4psyl/latest.json"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:27.238862+00:00",
+    "start_monotonic_ns": 660552434707,
+    "end_monotonic_ns": 662518038654,
+    "exit": 0,
+    "stdout": "PITR_RUN_DIR=/tmp/a8c-pg-gcn4psyl/latest/pitr-FQMyB0At\nwaiting for server to start.... done\nserver started\nPITR_VERIFY: PASS identity + complete expected dataset (not E4)\nPITR_READY dir=/tmp/a8c-pg-gcn4psyl/latest/pitr-FQMyB0At port=55311 socket=/tmp/a8c-pg-gcn4psyl/latest/pitr-FQMyB0At/run\nCleanup: pg_ctl -D '/tmp/a8c-pg-gcn4psyl/latest/pitr-FQMyB0At/data' -m fast -w stop\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-latest-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-already-primary",
+    "command": [
+      "bash",
+      "tools/failover-postgres.sh",
+      "--dry-run"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/latest/pitr-FQMyB0At/run",
+      "PGPORT": "55311",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:29.204848+00:00",
+    "start_monotonic_ns": 662518421150,
+    "end_monotonic_ns": 662537419217,
+    "exit": 1,
+    "stdout": "== failover-postgres: standby=/tmp/a8c-pg-gcn4psyl/latest/pitr-FQMyB0At/run:55311 primary=(127.0.0.1:5432) dry=1 force=0\n",
+    "stderr": "FAIL: \u0645\u0642\u0635\u062f\u0650 \u0627\u0646\u062a\u062e\u0627\u0628\u06cc \u062f\u0631 recovery \u0646\u06cc\u0633\u062a (\u06cc\u0627 \u0627\u0632 \u0642\u0628\u0644 primary \u0627\u0633\u062a \u06cc\u0627 \u062f\u0633\u062a\u0631\u0633\u200c\u067e\u0630\u06cc\u0631 \u0646\u06cc\u0633\u062a) \u2014 \u0628\u0631\u0627\u06cc\u0650 \u0627\u0645\u0646\u06cc\u062a\u0650 \u062f\u0627\u062f\u0647 \u0627\u062f\u0627\u0645\u0647 \u0646\u0645\u06cc\u200c\u062f\u0647\u0645\n",
+    "expected": "nonzero"
+  },
+  {
+    "id": "p1-already-primary-exit",
+    "assertion": true,
+    "detail": "expected nonzero, actual 1"
+  },
+  {
+    "id": "p1-basebackup",
+    "command": [
+      "pg_basebackup",
+      "-h",
+      "/tmp/a8c-pg-gcn4psyl/socket",
+      "-p",
+      "55310",
+      "-U",
+      "user",
+      "-D",
+      "/tmp/a8c-pg-gcn4psyl/standby",
+      "-R",
+      "-X",
+      "stream",
+      "-c",
+      "fast"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:29.224244+00:00",
+    "start_monotonic_ns": 662537817214,
+    "end_monotonic_ns": 662643267472,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-basebackup-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-standby-start",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8c-pg-gcn4psyl/standby",
+      "-o",
+      "-p 55312 -k /tmp/a8c-pg-gcn4psyl/standby-socket -c archive_mode=off",
+      "-l",
+      "/tmp/a8c-pg-gcn4psyl/standby.log",
+      "-w",
+      "start"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:29.329955+00:00",
+    "start_monotonic_ns": 662643527045,
+    "end_monotonic_ns": 662782958466,
+    "exit": 0,
+    "stdout": "waiting for server to start.... done\nserver started\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-standby-start-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-ack-write-100",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "INSERT INTO grades VALUES(100,'ack-100')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:29.469661+00:00",
+    "start_monotonic_ns": 662783234255,
+    "end_monotonic_ns": 662798817126,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-ack-write-100-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-ack-write-101",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "INSERT INTO grades VALUES(101,'ack-101')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:29.485555+00:00",
+    "start_monotonic_ns": 662799126551,
+    "end_monotonic_ns": 662808620455,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-ack-write-101-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-ack-write-102",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "INSERT INTO grades VALUES(102,'ack-102')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:29.495290+00:00",
+    "start_monotonic_ns": 662808863413,
+    "end_monotonic_ns": 662836574966,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-ack-write-102-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-ack-write-103",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "INSERT INTO grades VALUES(103,'ack-103')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:29.523243+00:00",
+    "start_monotonic_ns": 662836816529,
+    "end_monotonic_ns": 662844643286,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-ack-write-103-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-ack-write-104",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "INSERT INTO grades VALUES(104,'ack-104')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:29.531367+00:00",
+    "start_monotonic_ns": 662844938979,
+    "end_monotonic_ns": 662854023596,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-ack-write-104-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-ack-write-105",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "INSERT INTO grades VALUES(105,'ack-105')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:29.540754+00:00",
+    "start_monotonic_ns": 662854328212,
+    "end_monotonic_ns": 662866825041,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-ack-write-105-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-ack-write-106",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "INSERT INTO grades VALUES(106,'ack-106')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:29.553560+00:00",
+    "start_monotonic_ns": 662867131692,
+    "end_monotonic_ns": 662880411614,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-ack-write-106-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-ack-write-107",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "INSERT INTO grades VALUES(107,'ack-107')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:29.567233+00:00",
+    "start_monotonic_ns": 662880795416,
+    "end_monotonic_ns": 662890759597,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-ack-write-107-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-ack-write-108",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "INSERT INTO grades VALUES(108,'ack-108')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:29.577766+00:00",
+    "start_monotonic_ns": 662891326227,
+    "end_monotonic_ns": 662901120994,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-ack-write-108-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-ack-write-109",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "INSERT INTO grades VALUES(109,'ack-109')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:29.588117+00:00",
+    "start_monotonic_ns": 662901689606,
+    "end_monotonic_ns": 662917622516,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-ack-write-109-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-standby-before",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "SELECT md5(string_agg(grades::text,'|' ORDER BY id)) FROM grades"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/standby-socket",
+      "PGPORT": "55312",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user",
+      "OLD_PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "OLD_PGPORT": "55310"
+    },
+    "utc_start": "2026-09-23T11:11:29.626932+00:00",
+    "start_monotonic_ns": 662940504826,
+    "end_monotonic_ns": 662951449709,
+    "exit": 0,
+    "stdout": "6e6d36f93179f229fe466184d2a19b19\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-standby-before-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-no-fence",
+    "command": [
+      "bash",
+      "tools/failover-postgres.sh",
+      "--dry-run"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/standby-socket",
+      "PGPORT": "55312",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user",
+      "OLD_PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "OLD_PGPORT": "55310",
+      "PG_FENCE_CHECK": "/tmp/a8c-pg-gcn4psyl/fence"
+    },
+    "utc_start": "2026-09-23T11:11:29.638120+00:00",
+    "start_monotonic_ns": 662951693850,
+    "end_monotonic_ns": 662964069297,
+    "exit": 1,
+    "stdout": "== failover-postgres: standby=/tmp/a8c-pg-gcn4psyl/standby-socket:55312 primary=(/tmp/a8c-pg-gcn4psyl/socket:55310) dry=1 force=0\n",
+    "stderr": "FAIL: PG_FENCE_CHECK executable required\n",
+    "expected": "nonzero"
+  },
+  {
+    "id": "p1-no-fence-exit",
+    "assertion": true,
+    "detail": "expected nonzero, actual 1"
+  },
+  {
+    "id": "p1-primary-crash",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8c-pg-gcn4psyl/source",
+      "-m",
+      "immediate",
+      "-w",
+      "stop"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:29.650889+00:00",
+    "start_monotonic_ns": 662964466320,
+    "end_monotonic_ns": 663066918391,
+    "exit": 0,
+    "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-primary-crash-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-promote",
+    "command": [
+      "bash",
+      "tools/failover-postgres.sh"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/standby-socket",
+      "PGPORT": "55312",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user",
+      "OLD_PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "OLD_PGPORT": "55310",
+      "PG_FENCE_CHECK": "/tmp/a8c-pg-gcn4psyl/fence"
+    },
+    "utc_start": "2026-09-23T11:11:29.753895+00:00",
+    "start_monotonic_ns": 663067468328,
+    "end_monotonic_ns": 673238957352,
+    "exit": 0,
+    "stdout": "== failover-postgres: standby=/tmp/a8c-pg-gcn4psyl/standby-socket:55312 primary=(/tmp/a8c-pg-gcn4psyl/socket:55310) dry=0 force=0\n\u062f\u0631 \u062d\u0627\u0644\u0650 promote ...\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nPROMOTE_OK: /tmp/a8c-pg-gcn4psyl/standby-socket:55312 \u062d\u0627\u0644\u0627 primary \u0627\u0633\u062a (unreplayed=0B)\n\u0686\u06a9\u200c\u0644\u06cc\u0633\u062a\u0650 \u067e\u0633 \u0627\u0632 \u0627\u0642\u062f\u0627\u0645 (DR_RUNBOOK \u00a7\u06f1.\u06f3):\n  \u06f1) DATABASE_URL \u0628\u0631\u0646\u0627\u0645\u0647 \u0631\u0627 \u0628\u0647 endpoint \u062a\u0627\u0632\u0647 \u0647\u0645\u200c\u0631\u0627\u0633\u062a\u0627 \u06a9\u0646/\u0628\u0627\u0632\u0628\u06cc\u0646\u06cc \u06a9\u0646\n  \u06f2) primary\u0650 \u06a9\u0647\u0646\u0647 \u0631\u0627 fence \u06a9\u0646 \u062a\u0627 \u0647\u0631\u06af\u0632 \u062f\u0648 primary \u0646\u0645\u0627\u0646\u062f\n  \u06f3) standby\u0650 \u062c\u062f\u06cc\u062f \u0631\u0627 \u0627\u0632 \u0631\u0648\u06cc\u0650 primary\u0650 \u062a\u0627\u0632\u0647 rebuild \u06a9\u0646 (STANDBY_BOOTSTRAP=repo)\n  \u06f4) pg_stat_archiver \u0631\u0627 \u0631\u0648\u06cc\u0650 new primary \u0633\u0628\u0632 \u06a9\u0646 (WAL archiving \u062d\u06cc\u0627\u062a\u06cc \u0627\u0633\u062a)\n  \u06f5) \u0631\u0648\u06cc\u062f\u0627\u062f \u0631\u0627 \u062f\u0631 \u0645\u0645\u06cc\u0632\u06cc\u0650 \u062f\u0627\u062e\u0644\u06cc \u062b\u0628\u062a \u06a9\u0646: incident=failover-postgres actor=user\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-promote-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-standby-after",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "SELECT md5(string_agg(grades::text,'|' ORDER BY id)) FROM grades"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/standby-socket",
+      "PGPORT": "55312",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user",
+      "OLD_PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "OLD_PGPORT": "55310",
+      "PG_FENCE_CHECK": "/tmp/a8c-pg-gcn4psyl/fence"
+    },
+    "utc_start": "2026-09-23T11:11:39.925868+00:00",
+    "start_monotonic_ns": 673239440641,
+    "end_monotonic_ns": 673250651112,
+    "exit": 0,
+    "stdout": "6e6d36f93179f229fe466184d2a19b19\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-standby-after-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-promote-hash",
+    "assertion": true,
+    "detail": ""
+  },
+  {
+    "id": "p1-surviving-acks",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "SELECT id FROM grades WHERE id>=100 ORDER BY id"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/standby-socket",
+      "PGPORT": "55312",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user",
+      "OLD_PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "OLD_PGPORT": "55310",
+      "PG_FENCE_CHECK": "/tmp/a8c-pg-gcn4psyl/fence"
+    },
+    "utc_start": "2026-09-23T11:11:39.937398+00:00",
+    "start_monotonic_ns": 673250971226,
+    "end_monotonic_ns": 673261263247,
+    "exit": 0,
+    "stdout": "100\n101\n102\n103\n104\n105\n106\n107\n108\n109\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-surviving-acks-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-recovery-write",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "INSERT INTO users VALUES(999,'recovered')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/standby-socket",
+      "PGPORT": "55312",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user",
+      "OLD_PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "OLD_PGPORT": "55310",
+      "PG_FENCE_CHECK": "/tmp/a8c-pg-gcn4psyl/fence"
+    },
+    "utc_start": "2026-09-23T11:11:39.947964+00:00",
+    "start_monotonic_ns": 673261537028,
+    "end_monotonic_ns": 673269906751,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-recovery-write-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-recovery-read",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "SELECT value FROM users WHERE id=999"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/standby-socket",
+      "PGPORT": "55312",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user",
+      "OLD_PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "OLD_PGPORT": "55310",
+      "PG_FENCE_CHECK": "/tmp/a8c-pg-gcn4psyl/fence"
+    },
+    "utc_start": "2026-09-23T11:11:39.956606+00:00",
+    "start_monotonic_ns": 673270179585,
+    "end_monotonic_ns": 673278514312,
+    "exit": 0,
+    "stdout": "recovered\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-recovery-read-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-recovery-read",
+    "assertion": true,
+    "detail": ""
+  },
+  {
+    "id": "p1-verify-corrupt",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "verify"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:39.973219+00:00",
+    "start_monotonic_ns": 673286791770,
+    "end_monotonic_ns": 673749746923,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p1-verify-corrupt-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p1-verify-semantic-invalid",
+    "assertion": false,
+    "detail": ""
+  },
+  {
+    "id": "p1-restore-corrupt",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "--pg1-path=/tmp/a8c-pg-gcn4psyl/corrupt-target",
+      "--type=immediate",
+      "restore"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-gcn4psyl/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-gcn4psyl/socket",
+      "PGPORT": "55310",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:40.436524+00:00",
+    "start_monotonic_ns": 673750096657,
+    "end_monotonic_ns": 688903748167,
+    "exit": 29,
+    "stdout": "2026-09-23 11:11:55.488 P00  ERROR: [029]: raised from local-1 protocol: zlib threw error: [-3] data error\n                                        [FormatError] on 2 retries from 4-15004ms: zlib threw error: [-3] data error\n",
+    "stderr": "",
+    "expected": "nonzero"
+  },
+  {
+    "id": "p1-restore-corrupt-exit",
+    "assertion": true,
+    "detail": "expected nonzero, actual 29"
+  },
+  {
+    "id": "r1-seed",
+    "command": [
+      "redis-cli",
+      "-p",
+      "56210",
+      "SET",
+      "arena:identity",
+      "run-1"
+    ],
+    "environment": {},
+    "utc_start": "2026-09-23T11:11:55.991445+00:00",
+    "start_monotonic_ns": 689305018068,
+    "end_monotonic_ns": 689310528133,
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "r1-seed-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "r1-backup",
+    "command": [
+      "bash",
+      "tools/redis-backup.sh"
+    ],
+    "environment": {
+      "REDIS_DIR": "/tmp/a8c-redis-19nedrlx/source",
+      "REDIS_PORT": "56210",
+      "BACKUP_DIR": "/tmp/a8c-redis-19nedrlx/backup",
+      "BACKUP_LOCK": "/tmp/a8c-redis-19nedrlx/lock"
+    },
+    "utc_start": "2026-09-23T11:11:55.997212+00:00",
+    "start_monotonic_ns": 689310785974,
+    "end_monotonic_ns": 691505254491,
+    "exit": 1,
+    "stdout": "",
+    "stderr": "AOF_SNAPSHOT_FAILED: invalid AOF manifest\n",
+    "expected": 0
+  },
+  {
+    "id": "r1-backup-exit",
+    "assertion": false,
+    "detail": "expected 0, actual 1"
+  },
+  {
+    "id": "p2-init",
+    "command": [
+      "initdb",
+      "-D",
+      "/tmp/a8c-pg-qmtv4g8d/source",
+      "-A",
+      "trust",
+      "--no-locale"
+    ],
+    "environment": {},
+    "utc_start": "2026-09-23T11:11:58.313145+00:00",
+    "start_monotonic_ns": 691626719696,
+    "end_monotonic_ns": 692195336748,
+    "exit": 0,
+    "stdout": "The files belonging to this database system will be owned by user \"user\".\nThis user must also own the server process.\n\nThe database cluster will be initialized with locale \"C\".\nThe default database encoding has accordingly been set to \"SQL_ASCII\".\nThe default text search configuration will be set to \"english\".\n\nData page checksums are disabled.\n\ncreating directory /tmp/a8c-pg-qmtv4g8d/source ... ok\ncreating subdirectories ... ok\nselecting dynamic shared memory implementation ... posix\nselecting default \"max_connections\" ... 100\nselecting default \"shared_buffers\" ... 128MB\nselecting default time zone ... Etc/UTC\ncreating configuration files ... ok\nrunning bootstrap script ... ok\nperforming post-bootstrap initialization ... ok\nsyncing data to disk ... ok\n\nSuccess. You can now start the database server using:\n\n    pg_ctl -D /tmp/a8c-pg-qmtv4g8d/source -l logfile start\n\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-init-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-start",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8c-pg-qmtv4g8d/source",
+      "-l",
+      "/tmp/a8c-pg-qmtv4g8d/source.log",
+      "-w",
+      "start"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/socket",
+      "PGPORT": "55320",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:58.882084+00:00",
+    "start_monotonic_ns": 692195657105,
+    "end_monotonic_ns": 692307499331,
+    "exit": 0,
+    "stdout": "waiting for server to start.... done\nserver started\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-start-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-database",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "CREATE DATABASE payesh"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/socket",
+      "PGPORT": "55320",
+      "PGDATABASE": "postgres",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:58.994184+00:00",
+    "start_monotonic_ns": 692307756923,
+    "end_monotonic_ns": 692337191663,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-database-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-seed",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "CREATE TABLE users(id int PRIMARY KEY,value text); INSERT INTO users SELECT i,'seed-2-'||i FROM generate_series(1,10)i;CREATE TABLE schools(id int PRIMARY KEY,value text); INSERT INTO schools SELECT i,'seed-2-'||i FROM generate_series(1,10)i;CREATE TABLE classes(id int PRIMARY KEY,value text); INSERT INTO classes SELECT i,'seed-2-'||i FROM generate_series(1,10)i;CREATE TABLE grades(id int PRIMARY KEY,value text); INSERT INTO grades SELECT i,'seed-2-'||i FROM generate_series(1,10)i;CREATE TABLE attendance(id int PRIMARY KEY,value text); INSERT INTO attendance SELECT i,'seed-2-'||i FROM generate_series(1,10)i"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/socket",
+      "PGPORT": "55320",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:59.023890+00:00",
+    "start_monotonic_ns": 692337462917,
+    "end_monotonic_ns": 692351809909,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-seed-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-stanza",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "stanza-create"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/socket",
+      "PGPORT": "55320",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:59.038547+00:00",
+    "start_monotonic_ns": 692352120449,
+    "end_monotonic_ns": 692367422676,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-stanza-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-backup",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "--type=full",
+      "backup"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/socket",
+      "PGPORT": "55320",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:11:59.054092+00:00",
+    "start_monotonic_ns": 692367664729,
+    "end_monotonic_ns": 694655960436,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-backup-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-backup-info",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "--output=json",
+      "info"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/socket",
+      "PGPORT": "55320",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:12:01.342917+00:00",
+    "start_monotonic_ns": 694656488574,
+    "end_monotonic_ns": 694668754895,
+    "exit": 0,
+    "stdout": "[{\"archive\":[{\"database\":{\"id\":1,\"repo-key\":1},\"id\":\"17-1\",\"max\":\"000000010000000000000002\",\"min\":\"000000010000000000000001\"}],\"backup\":[{\"archive\":{\"start\":\"000000010000000000000002\",\"stop\":\"000000010000000000000002\"},\"backrest\":{\"format\":5,\"version\":\"2.55.1\"},\"database\":{\"id\":1,\"repo-key\":1},\"error\":false,\"info\":{\"delta\":30918282,\"repository\":{\"delta\":3997385,\"size\":3997385},\"size\":30918282},\"label\":\"20260923-111159F\",\"lsn\":{\"start\":\"0/2000028\",\"stop\":\"0/2000120\"},\"prior\":null,\"reference\":null,\"timestamp\":{\"start\":1790161919,\"stop\":1790161921},\"type\":\"full\"}],\"cipher\":\"none\",\"db\":[{\"id\":1,\"repo-key\":1,\"system-id\":7688686893969774058,\"version\":\"17\"}],\"name\":\"payesh\",\"repo\":[{\"cipher\":\"none\",\"key\":1,\"status\":{\"code\":0,\"message\":\"ok\"}}],\"status\":{\"code\":0,\"lock\":{\"backup\":{\"held\":false}},\"message\":\"ok\"}}]",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-backup-info-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-commit",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "INSERT INTO users VALUES(11,'committed-before-target')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/socket",
+      "PGPORT": "55320",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:12:01.355529+00:00",
+    "start_monotonic_ns": 694669101776,
+    "end_monotonic_ns": 694689148872,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-commit-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-capture",
+    "command": [
+      "python3",
+      "tools/pitr-manifest.py",
+      "--capture",
+      "/tmp/a8c-pg-qmtv4g8d/expected.json"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/socket",
+      "PGPORT": "55320",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:12:01.375815+00:00",
+    "start_monotonic_ns": 694689389038,
+    "end_monotonic_ns": 694741106030,
+    "exit": 0,
+    "stdout": "MANIFEST_CAPTURED (expected dataset, not backup/restorability proof)\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-capture-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-target-time",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "SELECT clock_timestamp()::text"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/socket",
+      "PGPORT": "55320",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:12:01.427793+00:00",
+    "start_monotonic_ns": 694741366817,
+    "end_monotonic_ns": 694749049833,
+    "exit": 0,
+    "stdout": "2026-09-23 11:12:01.434866+00\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-target-time-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-restore-point",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "SELECT pg_create_restore_point('arena_committed')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/socket",
+      "PGPORT": "55320",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:12:01.435720+00:00",
+    "start_monotonic_ns": 694749293856,
+    "end_monotonic_ns": 694756898447,
+    "exit": 0,
+    "stdout": "0/3000440\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-restore-point-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-after-point",
+    "command": [
+      "psql",
+      "-X",
+      "-qAt",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-c",
+      "INSERT INTO users VALUES(12,'after-target'); SELECT pg_switch_wal()"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/socket",
+      "PGPORT": "55320",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:12:01.443607+00:00",
+    "start_monotonic_ns": 694757179675,
+    "end_monotonic_ns": 694776980256,
+    "exit": 0,
+    "stdout": "0/30004E0\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-after-point-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-archive",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "check"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/socket",
+      "PGPORT": "55320",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:12:01.463631+00:00",
+    "start_monotonic_ns": 694777204483,
+    "end_monotonic_ns": 695100656809,
+    "exit": 0,
+    "stdout": "",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-archive-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-named",
+    "command": [
+      "bash",
+      "tools/pitr-restore.sh",
+      "--name",
+      "arena_committed",
+      "--dest",
+      "/tmp/a8c-pg-qmtv4g8d/named",
+      "--port",
+      "55321",
+      "--manifest",
+      "/tmp/a8c-pg-qmtv4g8d/expected.json"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/socket",
+      "PGPORT": "55320",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:12:01.787472+00:00",
+    "start_monotonic_ns": 695101044313,
+    "end_monotonic_ns": 697097329928,
+    "exit": 0,
+    "stdout": "PITR_RUN_DIR=/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH\nwaiting for server to start.... done\nserver started\nPITR_VERIFY: PASS identity + complete expected dataset (not E4)\nPITR_READY dir=/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH port=55321 socket=/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/run\nCleanup: pg_ctl -D '/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/data' -m fast -w stop\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-named-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-wrong-source",
+    "command": [
+      "bash",
+      "tools/pitr-verify.sh",
+      "--manifest",
+      "/tmp/a8c-pg-qmtv4g8d/expected.json",
+      "--expect-data-dir",
+      "/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/data"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/socket",
+      "PGPORT": "55320",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:12:03.784151+00:00",
+    "start_monotonic_ns": 697097724284,
+    "end_monotonic_ns": 697168735553,
+    "exit": 1,
+    "stdout": "",
+    "stderr": "PITR_VERIFY: FAIL: wrong restore data_directory\n",
+    "expected": "nonzero"
+  },
+  {
+    "id": "p2-wrong-source-exit",
+    "assertion": true,
+    "detail": "expected nonzero, actual 1"
+  },
+  {
+    "id": "p2-missing-manifest",
+    "command": [
+      "bash",
+      "tools/pitr-verify.sh"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/run",
+      "PGPORT": "55321",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:12:03.855398+00:00",
+    "start_monotonic_ns": 697168971929,
+    "end_monotonic_ns": 697171152200,
+    "exit": 1,
+    "stdout": "",
+    "stderr": "FAIL: approved expected manifest and explicit restore data_directory required\n",
+    "expected": "nonzero"
+  },
+  {
+    "id": "p2-missing-manifest-exit",
+    "assertion": true,
+    "detail": "expected nonzero, actual 1"
+  },
+  {
+    "id": "p2-wrong-dir",
+    "command": [
+      "bash",
+      "tools/pitr-verify.sh",
+      "--manifest",
+      "/tmp/a8c-pg-qmtv4g8d/expected.json",
+      "--expect-data-dir",
+      "/tmp/a8c-pg-qmtv4g8d/source"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/run",
+      "PGPORT": "55321",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:12:03.857720+00:00",
+    "start_monotonic_ns": 697171295712,
+    "end_monotonic_ns": 697223828040,
+    "exit": 1,
+    "stdout": "",
+    "stderr": "PITR_VERIFY: FAIL: wrong restore data_directory\n",
+    "expected": "nonzero"
+  },
+  {
+    "id": "p2-wrong-dir-exit",
+    "assertion": true,
+    "detail": "expected nonzero, actual 1"
+  },
+  {
+    "id": "p2-crash",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/data",
+      "-m",
+      "immediate",
+      "-w",
+      "stop"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/run",
+      "PGPORT": "55321",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:12:03.910532+00:00",
+    "start_monotonic_ns": 697224106143,
+    "end_monotonic_ns": 697326059886,
+    "exit": 0,
+    "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-crash-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-restart",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/data",
+      "-o",
+      "-c config_file=/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/etc/postgresql.conf",
+      "-l",
+      "/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/restart.log",
+      "-w",
+      "start"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/run",
+      "PGPORT": "55321",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:12:04.012725+00:00",
+    "start_monotonic_ns": 697326298637,
+    "end_monotonic_ns": 697437061114,
+    "exit": 0,
+    "stdout": "waiting for server to start.... done\nserver started\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-restart-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-post-crash-integrity",
+    "command": [
+      "bash",
+      "tools/pitr-verify.sh",
+      "--manifest",
+      "/tmp/a8c-pg-qmtv4g8d/expected.json",
+      "--expect-data-dir",
+      "/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/data"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/run",
+      "PGPORT": "55321",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:12:04.123795+00:00",
+    "start_monotonic_ns": 697437367220,
+    "end_monotonic_ns": 697502197515,
+    "exit": 0,
+    "stdout": "PITR_VERIFY: PASS identity + complete expected dataset (not E4)\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-post-crash-integrity-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-named-stop",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/data",
+      "-m",
+      "fast",
+      "-w",
+      "stop"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/run",
+      "PGPORT": "55321",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:12:04.188926+00:00",
+    "start_monotonic_ns": 697502499064,
+    "end_monotonic_ns": 697604678799,
+    "exit": 0,
+    "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-named-stop-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "p2-time",
+    "command": [
+      "bash",
+      "tools/pitr-restore.sh",
+      "--native",
+      "--time",
+      "2026-09-23 11:12:01.434866+00",
+      "--dest",
+      "/tmp/a8c-pg-qmtv4g8d/time",
+      "--port",
+      "55321",
+      "--manifest",
+      "/tmp/a8c-pg-qmtv4g8d/expected.json"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8c-pg-qmtv4g8d/pbr.conf",
+      "PGHOST": "/tmp/a8c-pg-qmtv4g8d/socket",
+      "PGPORT": "55320",
+      "PGDATABASE": "payesh",
+      "PGUSER": "user"
+    },
+    "utc_start": "2026-09-23T11:12:04.291410+00:00",
+    "start_monotonic_ns": 697604984837,
+    "end_monotonic_ns": 697626520523,
+    "exit": 75,
+    "stdout": "PITR_RUN_DIR=/tmp/a8c-pg-qmtv4g8d/time/pitr-KVRui8T3\n2026-09-23 11:12:04.311 P00  ERROR: [075]: unable to find backup set with stop time less than '2026-09-23 11:12:01.434866+00'\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "p2-time-exit",
+    "assertion": false,
+    "detail": "expected 0, actual 75"
+  },
+  {
+    "id": "r2-seed",
+    "command": [
+      "redis-cli",
+      "-p",
+      "56220",
+      "SET",
+      "arena:identity",
+      "run-2"
+    ],
+    "environment": {},
+    "utc_start": "2026-09-23T11:12:04.506483+00:00",
+    "start_monotonic_ns": 697820055918,
+    "end_monotonic_ns": 697825948198,
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "expected": 0
+  },
+  {
+    "id": "r2-seed-exit",
+    "assertion": true,
+    "detail": "expected 0, actual 0"
+  },
+  {
+    "id": "r2-backup",
+    "command": [
+      "bash",
+      "tools/redis-backup.sh"
+    ],
+    "environment": {
+      "REDIS_DIR": "/tmp/a8c-redis-r1rdi854/source",
+      "REDIS_PORT": "56220",
+      "BACKUP_DIR": "/tmp/a8c-redis-r1rdi854/backup",
+      "BACKUP_LOCK": "/tmp/a8c-redis-r1rdi854/lock"
+    },
+    "utc_start": "2026-09-23T11:12:04.512889+00:00",
+    "start_monotonic_ns": 697826462367,
+    "end_monotonic_ns": 699989056835,
+    "exit": 1,
+    "stdout": "",
+    "stderr": "AOF_SNAPSHOT_FAILED: invalid AOF manifest\n",
+    "expected": 0
+  },
+  {
+    "id": "r2-backup-exit",
+    "assertion": false,
+    "detail": "expected 0, actual 1"
+  }
+]

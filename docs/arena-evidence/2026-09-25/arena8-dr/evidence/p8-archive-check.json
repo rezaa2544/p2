@@ -1,0 +1,20 @@
+{
+  "id": "p8-archive-check",
+  "command": [
+    "pgbackrest",
+    "--stanza=payesh",
+    "check"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-afjnpgpv/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-afjnpgpv/socket",
+    "PGPORT": "55446",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:15:42.873026+00:00",
+  "elapsed_ms": 321.287566,
+  "exit": 0,
+  "stdout": "2026-09-22 21:15:42.878 P00   INFO: check command begin 2.55.1: --config=/tmp/a8dr-pg-afjnpgpv/pbr.conf --exec-id=7303-c48e6b06 --log-level-console=info --log-path=/tmp/a8dr-pg-afjnpgpv --pg1-path=/tmp/a8dr-pg-afjnpgpv/source --pg1-port=55446 --pg1-socket-path=/tmp/a8dr-pg-afjnpgpv/socket --pg1-user=user --repo1-path=/tmp/a8dr-pg-afjnpgpv/repo --stanza=payesh\n2026-09-22 21:15:42.884 P00   INFO: check repo1 configuration (primary)\n2026-09-22 21:15:42.890 P00   INFO: check repo1 archive for WAL (primary)\n2026-09-22 21:15:43.193 P00   INFO: WAL segment 000000010000000000000004 successfully archived to '/tmp/a8dr-pg-afjnpgpv/repo/archive/payesh/17-1/0000000100000000/000000010000000000000004-98d9784ca123cf57ffe45795a262d2c661f66639.gz' on repo1\n2026-09-22 21:15:43.193 P00   INFO: check command end: completed successfully (316ms)\n",
+  "stderr": ""
+}

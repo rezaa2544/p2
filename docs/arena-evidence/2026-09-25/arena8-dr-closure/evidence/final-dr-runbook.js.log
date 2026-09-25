@@ -1,0 +1,49 @@
+
+▸ DR-SEC — سناریوهایِ الزامی
+  ✅ سناریوی «PG primary» در runbook هست
+  ✅ سناریوی «PG primary» بلوکِ اقدام با دستورِ tools دارد
+  ✅ سناریوی «PG primary» بندِ تأیید دارد
+  ✅ سناریوی «PG primary» بازگشت/fence را پوشش می‌دهد
+  ✅ سناریوی «PG primary» RTO یا RPO در متن دارد
+  ✅ سناریوی «Redis master» در runbook هست
+  ✅ سناریوی «Redis master» بلوکِ اقدام با دستورِ tools دارد
+  ✅ سناریوی «Redis master» بندِ تأیید دارد
+  ✅ سناریوی «Redis master» بازگشت/fence را پوشش می‌دهد
+  ✅ سناریوی «Redis master» RTO یا RPO در متن دارد
+  ✅ سناریوی «Data-center» در runbook هست
+  ✅ سناریوی «Data-center» بلوکِ اقدام با دستورِ tools دارد
+  ✅ سناریوی «Data-center» بندِ تأیید دارد
+  ✅ سناریوی «Data-center» بازگشت/fence را پوشش می‌دهد
+  ✅ سناریوی «Data-center» RTO یا RPO در متن دارد
+  ✅ سناریوی «corruption/PITR» در runbook هست
+  ✅ سناریوی «corruption/PITR» بلوکِ اقدام با دستورِ tools دارد
+  ✅ سناریوی «corruption/PITR» بندِ تأیید دارد
+  ✅ سناریوی «corruption/PITR» بازگشت/fence را پوشش می‌دهد
+  ✅ سناریوی «corruption/PITR» RTO یا RPO در متن دارد
+
+▸ DR-TABLE — سقف‌هایِ RPO/RTO
+  ✅ جدولِ RPO/RTO با چهار ردیفِ سناریو
+  ✅ runbook سقفِ RTO مصوبِ سندِ بالادستی («۱۵ دقیقه») را نقل می‌کند
+  ✅ runbook سقفِ RPO ≤ ۵ دقیقه را نقل می‌کند
+  ✅ هیچ سناریویی سقفِ مصوب را نمی‌شکند (RTO≤۱۵د/RPO≤۵د)
+  ✅ failover خودکارِ ردیس ≤ ۳۰ ثانیه در جدول
+
+▸ DR-CMD — ارجاع‌هایِ فایلِ زنده
+  ✅ ارجاعِ فایل در runbook پیدا شد
+  ✅ همۀ ارجاع‌ها به فایلِ موجود می‌رسند
+  ✅ runbook pitr-restore.sh را صدا می‌زند
+  ✅ runbook pitr-verify.sh را صدا می‌زند
+  ✅ runbook failover-postgres.sh را صدا می‌زند
+  ✅ runbook failover-redis.sh را صدا می‌زند
+  ✅ runbook post-checks.sh را به‌عنوان گیتِ پسازاقدام دارد
+  ✅ runbook redis-checks.sh را به‌عنوان گیتِ پسازاقدام دارد
+
+▸ DR-DRILL — ثبتِ مانور و گیت‌هایِ مشترک
+  ✅ بخشِ drill-log با ستون‌هایِ تاریخ/RTO/RPO/نتیجه
+  ✅ گیت‌هایِ مشترک: smoke + check-authz + secret-scan در «پس از بحران»
+  ✅ تفکیکِ مسئولیتِ on-call در سند هست
+  ✅ سناریوی DC منطقهٔ دوم به CRR/site-replicationِ bucket اشاره دارد
+  ✅ قاعدهٔ «primaryِ کهنه برگردانده نمی‌شود» (ضد split-brain) در سند هست
+
+────────────────────────────────────────────────────
+نتیجه DR Runbook: 38/38 موفق  —  بدون خطا ✅

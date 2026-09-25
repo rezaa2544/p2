@@ -1,0 +1,10 @@
+{
+  "sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+  "dirty_tree": false,
+  "pass": 357,
+  "fail": 30,
+  "harness_errors": 0,
+  "rows": 387,
+  "browser_requested": true,
+  "scope": "E3 local PG + HTTP processes; browser module harness with fixture session when requested; not full app, device or production multi-host verification"
+}

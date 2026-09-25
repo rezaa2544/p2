@@ -1,0 +1,18 @@
+{
+  "id": "r1-rdb-read",
+  "command": [
+    "redis-cli",
+    "-p",
+    "56211",
+    "GET",
+    "arena:identity"
+  ],
+  "environment": {},
+  "utc_start": "2026-09-23T11:22:21.253453+00:00",
+  "start_monotonic_ns": 1314567026019,
+  "end_monotonic_ns": 1314571362844,
+  "exit": 0,
+  "stdout": "run-1\n",
+  "stderr": "",
+  "expected": 0
+}

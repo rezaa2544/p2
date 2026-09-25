@@ -1,0 +1,22 @@
+{
+  "id": "r1-missing-s3",
+  "command": [
+    "bash",
+    "tools/redis-backup.sh"
+  ],
+  "environment": {
+    "REDIS_DIR": "/var/tmp/a8c-redis-r7bhb2a8/source",
+    "REDIS_PORT": "26210",
+    "BACKUP_DIR": "/var/tmp/a8c-redis-r7bhb2a8/backup",
+    "BACKUP_LOCK": "/var/tmp/a8c-redis-r7bhb2a8/lock",
+    "BACKUP_S3": "s3://test-only/b",
+    "BACKUP_S3_OWNER": "123456789012"
+  },
+  "utc_start": "2026-09-23T11:27:24.851263+00:00",
+  "start_monotonic_ns": 1618164837090,
+  "end_monotonic_ns": 1618170303488,
+  "exit": 1,
+  "stdout": "",
+  "stderr": "[redis-backup 20260923T112724Z] FATAL: BACKUP_S3 requested but aws is missing\n",
+  "expected": "nonzero"
+}

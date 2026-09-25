@@ -1,0 +1,1982 @@
+[
+  {
+    "id": "s1-initial-sync",
+    "assertion": true
+  },
+  {
+    "id": "s1-healthy-guard",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--dry-run"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:26712,127.0.0.1:26713,127.0.0.1:26714",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 1,
+    "stdout": "== failover-redis: via 127.0.0.1:26712 name=arena\nmaster \u0641\u0639\u0644\u06cc: 127.0.0.1,26710\n",
+    "stderr": "FAIL: master\u0650 127.0.0.1:26710 \u0632\u0646\u062f\u0647 \u0627\u0633\u062a \u2014 failover\u0650 \u062f\u0633\u062a\u06cc \u0631\u0648\u06cc\u0650 master\u0650 \u0633\u0627\u0644\u0645 \u0631\u06cc\u0633\u06a9\u0650 \u062f\u0648-\u0631\u0626\u06cc\u0633\u061b --force (\u0641\u0642\u0637 \u062f\u0631 maintenance window)\n",
+    "start_ns": 1558315695126,
+    "end_ns": 1558341454531,
+    "utc_end": "2026-09-23T11:26:25.027885+00:00",
+    "expected": 1
+  },
+  {
+    "id": "s1-missing-sentinel",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--dry-run"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:1",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 1,
+    "stdout": "",
+    "stderr": "FAIL: \u0647\u06cc\u0686 sentinel \u067e\u0627\u0633\u062e\u06af\u0648 \u0646\u06cc\u0633\u062a (127.0.0.1:1) \u2014 \u062e\u0648\u062f sentinel\u200c\u0647\u0627 \u0631\u0627 \u0646\u062c\u0627\u062a \u0628\u062f\u0647\n",
+    "start_ns": 1558341510486,
+    "end_ns": 1558351512195,
+    "utc_end": "2026-09-23T11:26:25.037941+00:00",
+    "expected": 1
+  },
+  {
+    "id": "s1-sentinel-discovery",
+    "assertion": true
+  },
+  {
+    "id": "s1-forced-wrapper",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--force"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:26712,127.0.0.1:26713,127.0.0.1:26714",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 0,
+    "stdout": "== failover-redis: via 127.0.0.1:26712 name=arena\nmaster \u0641\u0639\u0644\u06cc: 127.0.0.1,26710\nfailover \u062a\u062d\u0631\u06cc\u06a9 \u0634\u062f\u061b \u062f\u0631 \u0627\u0646\u062a\u0638\u0627\u0631\u0650 \u0622\u062f\u0631\u0633\u0650 \u062a\u0627\u0632\u0647 ...\nNEW_MASTER=127.0.0.1,26711\n\u062a\u0623\u06cc\u06cc\u062f: 127.0.0.1,26711 \u0646\u0642\u0634\u0650 master \u06af\u0631\u0641\u062a\n\u0686\u06a9\u200c\u0644\u06cc\u0633\u062a\u0650 \u067e\u0633 \u0627\u0632 \u0627\u0642\u062f\u0627\u0645 (DR_RUNBOOK \u00a7\u06f2.\u06f3):\n  \u06f1) \u0633\u0631\u0631\u06cc\u0632\u0650 client (server/redis.js) \u062e\u0648\u062f\u06a9\u0627\u0631 \u0628\u0647 \u0622\u062f\u0631\u0633\u0650 \u0646\u0648 \u0645\u06cc\u200c\u0631\u0648\u062f\u061b \u062e\u0637\u0627\u06cc\u0650 re-connect \u062f\u0631 \u0644\u0627\u06af \u0631\u0627 \u0628\u0628\u06cc\u0646\n  \u06f2) replica\u0650 \u06a9\u0647\u0646\u0647/\u062c\u062f\u06cc\u062f \u0631\u0627 \u0628\u0647 master\u0650 \u0646\u0648 \u0628\u0686\u0633\u0628\u0627\u0646 (SENTINEL removes + replicaof)\n  \u06f3) \u0627\u06af\u0631 master\u0650 \u06a9\u0647\u0646\u0647 \u0632\u0646\u062f\u0647 \u0634\u062f: \u062e\u0648\u062f\u0634 \u0631\u0627 \u0628\u0647\u200c\u0639\u0646\u0648\u0627\u0646 replica \u0628\u06cc\u0627\u0648\u0631 \u2014 \u0647\u0631\u06af\u0632 \u0646\u0647 \u062f\u0648 master\n",
+    "stderr": "",
+    "start_ns": 1558636367954,
+    "end_ns": 1559733785536,
+    "utc_end": "2026-09-23T11:26:26.420213+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s1-new-master",
+    "assertion": true
+  },
+  {
+    "id": "s1-old-rejoins",
+    "assertion": true
+  },
+  {
+    "id": "s1-set-0",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26711",
+      "SET",
+      "ack:0",
+      "value-0"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1574402404535,
+    "end_ns": 1574407866486,
+    "utc_end": "2026-09-23T11:26:41.094294+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s1-ack-0",
+    "assertion": true
+  },
+  {
+    "id": "s1-set-1",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26711",
+      "SET",
+      "ack:1",
+      "value-1"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1574407918326,
+    "end_ns": 1574414208646,
+    "utc_end": "2026-09-23T11:26:41.100636+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s1-ack-1",
+    "assertion": true
+  },
+  {
+    "id": "s1-set-2",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26711",
+      "SET",
+      "ack:2",
+      "value-2"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1574414261833,
+    "end_ns": 1574420448619,
+    "utc_end": "2026-09-23T11:26:41.106875+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s1-ack-2",
+    "assertion": true
+  },
+  {
+    "id": "s1-set-3",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26711",
+      "SET",
+      "ack:3",
+      "value-3"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1574420504403,
+    "end_ns": 1574427534001,
+    "utc_end": "2026-09-23T11:26:41.113963+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s1-ack-3",
+    "assertion": true
+  },
+  {
+    "id": "s1-set-4",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26711",
+      "SET",
+      "ack:4",
+      "value-4"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1574427613940,
+    "end_ns": 1574432962201,
+    "utc_end": "2026-09-23T11:26:41.119390+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s1-ack-4",
+    "assertion": true
+  },
+  {
+    "id": "s1-set-5",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26711",
+      "SET",
+      "ack:5",
+      "value-5"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1574433026767,
+    "end_ns": 1574437887629,
+    "utc_end": "2026-09-23T11:26:41.124314+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s1-ack-5",
+    "assertion": true
+  },
+  {
+    "id": "s1-set-6",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26711",
+      "SET",
+      "ack:6",
+      "value-6"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1574437936966,
+    "end_ns": 1574442831524,
+    "utc_end": "2026-09-23T11:26:41.129258+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s1-ack-6",
+    "assertion": true
+  },
+  {
+    "id": "s1-set-7",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26711",
+      "SET",
+      "ack:7",
+      "value-7"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1574442881902,
+    "end_ns": 1574447571821,
+    "utc_end": "2026-09-23T11:26:41.133999+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s1-ack-7",
+    "assertion": true
+  },
+  {
+    "id": "s1-set-8",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26711",
+      "SET",
+      "ack:8",
+      "value-8"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1574447618166,
+    "end_ns": 1574452274674,
+    "utc_end": "2026-09-23T11:26:41.138701+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s1-ack-8",
+    "assertion": true
+  },
+  {
+    "id": "s1-set-9",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26711",
+      "SET",
+      "ack:9",
+      "value-9"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1574452323110,
+    "end_ns": 1574457000385,
+    "utc_end": "2026-09-23T11:26:41.143427+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s1-ack-9",
+    "assertion": true
+  },
+  {
+    "id": "s1-replica-caught-up",
+    "assertion": true
+  },
+  {
+    "id": "s1-automatic-failover",
+    "assertion": true
+  },
+  {
+    "id": "s1-recovered-data",
+    "command": [
+      "redis-cli",
+      "--raw",
+      "-p",
+      "26710",
+      "MGET",
+      "ack:0",
+      "ack:1",
+      "ack:2",
+      "ack:3",
+      "ack:4",
+      "ack:5",
+      "ack:6",
+      "ack:7",
+      "ack:8",
+      "ack:9"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "value-0\nvalue-1\nvalue-2\nvalue-3\nvalue-4\nvalue-5\nvalue-6\nvalue-7\nvalue-8\nvalue-9\n",
+    "stderr": "",
+    "start_ns": 1577219021975,
+    "end_ns": 1577246142936,
+    "utc_end": "2026-09-23T11:26:43.932571+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s1-all-acks-survive",
+    "assertion": true
+  },
+  {
+    "id": "s1-write-after",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26710",
+      "SET",
+      "post",
+      "recovered"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1577246210942,
+    "end_ns": 1577277239992,
+    "utc_end": "2026-09-23T11:26:43.963667+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s1-new-write",
+    "assertion": true
+  },
+  {
+    "id": "s1-read-after",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26710",
+      "GET",
+      "post"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "recovered\n",
+    "stderr": "",
+    "start_ns": 1577277292628,
+    "end_ns": 1577293793296,
+    "utc_end": "2026-09-23T11:26:43.980221+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s1-new-read",
+    "assertion": true
+  },
+  {
+    "id": "s1-crashed-node-rejoin",
+    "assertion": true
+  },
+  {
+    "id": "s1-rejoin-data",
+    "assertion": true
+  },
+  {
+    "id": "s2-initial-sync",
+    "assertion": true
+  },
+  {
+    "id": "s2-healthy-guard",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--dry-run"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:26722,127.0.0.1:26723,127.0.0.1:26724",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 1,
+    "stdout": "== failover-redis: via 127.0.0.1:26722 name=arena\nmaster \u0641\u0639\u0644\u06cc: 127.0.0.1,26720\n",
+    "stderr": "FAIL: master\u0650 127.0.0.1:26720 \u0632\u0646\u062f\u0647 \u0627\u0633\u062a \u2014 failover\u0650 \u062f\u0633\u062a\u06cc \u0631\u0648\u06cc\u0650 master\u0650 \u0633\u0627\u0644\u0645 \u0631\u06cc\u0633\u06a9\u0650 \u062f\u0648-\u0631\u0626\u06cc\u0633\u061b --force (\u0641\u0642\u0637 \u062f\u0631 maintenance window)\n",
+    "start_ns": 1599074944555,
+    "end_ns": 1599103763572,
+    "utc_end": "2026-09-23T11:27:05.790215+00:00",
+    "expected": 1
+  },
+  {
+    "id": "s2-missing-sentinel",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--dry-run"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:1",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 1,
+    "stdout": "",
+    "stderr": "FAIL: \u0647\u06cc\u0686 sentinel \u067e\u0627\u0633\u062e\u06af\u0648 \u0646\u06cc\u0633\u062a (127.0.0.1:1) \u2014 \u062e\u0648\u062f sentinel\u200c\u0647\u0627 \u0631\u0627 \u0646\u062c\u0627\u062a \u0628\u062f\u0647\n",
+    "start_ns": 1599103846577,
+    "end_ns": 1599115510482,
+    "utc_end": "2026-09-23T11:27:05.801937+00:00",
+    "expected": 1
+  },
+  {
+    "id": "s2-sentinel-discovery",
+    "assertion": true
+  },
+  {
+    "id": "s2-forced-wrapper",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--force"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:26722,127.0.0.1:26723,127.0.0.1:26724",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 0,
+    "stdout": "== failover-redis: via 127.0.0.1:26722 name=arena\nmaster \u0641\u0639\u0644\u06cc: 127.0.0.1,26720\nfailover \u062a\u062d\u0631\u06cc\u06a9 \u0634\u062f\u061b \u062f\u0631 \u0627\u0646\u062a\u0638\u0627\u0631\u0650 \u0622\u062f\u0631\u0633\u0650 \u062a\u0627\u0632\u0647 ...\nNEW_MASTER=127.0.0.1,26721\n\u062a\u0623\u06cc\u06cc\u062f: 127.0.0.1,26721 \u0646\u0642\u0634\u0650 master \u06af\u0631\u0641\u062a\n\u0686\u06a9\u200c\u0644\u06cc\u0633\u062a\u0650 \u067e\u0633 \u0627\u0632 \u0627\u0642\u062f\u0627\u0645 (DR_RUNBOOK \u00a7\u06f2.\u06f3):\n  \u06f1) \u0633\u0631\u0631\u06cc\u0632\u0650 client (server/redis.js) \u062e\u0648\u062f\u06a9\u0627\u0631 \u0628\u0647 \u0622\u062f\u0631\u0633\u0650 \u0646\u0648 \u0645\u06cc\u200c\u0631\u0648\u062f\u061b \u062e\u0637\u0627\u06cc\u0650 re-connect \u062f\u0631 \u0644\u0627\u06af \u0631\u0627 \u0628\u0628\u06cc\u0646\n  \u06f2) replica\u0650 \u06a9\u0647\u0646\u0647/\u062c\u062f\u06cc\u062f \u0631\u0627 \u0628\u0647 master\u0650 \u0646\u0648 \u0628\u0686\u0633\u0628\u0627\u0646 (SENTINEL removes + replicaof)\n  \u06f3) \u0627\u06af\u0631 master\u0650 \u06a9\u0647\u0646\u0647 \u0632\u0646\u062f\u0647 \u0634\u062f: \u062e\u0648\u062f\u0634 \u0631\u0627 \u0628\u0647\u200c\u0639\u0646\u0648\u0627\u0646 replica \u0628\u06cc\u0627\u0648\u0631 \u2014 \u0647\u0631\u06af\u0632 \u0646\u0647 \u062f\u0648 master\n",
+    "stderr": "",
+    "start_ns": 1604143299227,
+    "end_ns": 1605195182323,
+    "utc_end": "2026-09-23T11:27:11.881608+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s2-new-master",
+    "assertion": true
+  },
+  {
+    "id": "s2-old-rejoins",
+    "assertion": true
+  },
+  {
+    "id": "s2-set-0",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26721",
+      "SET",
+      "ack:0",
+      "value-0"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1620162727332,
+    "end_ns": 1620169401491,
+    "utc_end": "2026-09-23T11:27:26.855830+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s2-ack-0",
+    "assertion": true
+  },
+  {
+    "id": "s2-set-1",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26721",
+      "SET",
+      "ack:1",
+      "value-1"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1620169475804,
+    "end_ns": 1620175692698,
+    "utc_end": "2026-09-23T11:27:26.862120+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s2-ack-1",
+    "assertion": true
+  },
+  {
+    "id": "s2-set-2",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26721",
+      "SET",
+      "ack:2",
+      "value-2"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1620175746507,
+    "end_ns": 1620180433362,
+    "utc_end": "2026-09-23T11:27:26.866859+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s2-ack-2",
+    "assertion": true
+  },
+  {
+    "id": "s2-set-3",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26721",
+      "SET",
+      "ack:3",
+      "value-3"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1620180477818,
+    "end_ns": 1620184956380,
+    "utc_end": "2026-09-23T11:27:26.871381+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s2-ack-3",
+    "assertion": true
+  },
+  {
+    "id": "s2-set-4",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26721",
+      "SET",
+      "ack:4",
+      "value-4"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1620184991944,
+    "end_ns": 1620190256508,
+    "utc_end": "2026-09-23T11:27:26.876681+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s2-ack-4",
+    "assertion": true
+  },
+  {
+    "id": "s2-set-5",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26721",
+      "SET",
+      "ack:5",
+      "value-5"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1620190297025,
+    "end_ns": 1620194564483,
+    "utc_end": "2026-09-23T11:27:26.880988+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s2-ack-5",
+    "assertion": true
+  },
+  {
+    "id": "s2-set-6",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26721",
+      "SET",
+      "ack:6",
+      "value-6"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1620194594020,
+    "end_ns": 1620198796949,
+    "utc_end": "2026-09-23T11:27:26.885221+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s2-ack-6",
+    "assertion": true
+  },
+  {
+    "id": "s2-set-7",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26721",
+      "SET",
+      "ack:7",
+      "value-7"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1620198836672,
+    "end_ns": 1620203999629,
+    "utc_end": "2026-09-23T11:27:26.890465+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s2-ack-7",
+    "assertion": true
+  },
+  {
+    "id": "s2-set-8",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26721",
+      "SET",
+      "ack:8",
+      "value-8"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1620204072894,
+    "end_ns": 1620209567826,
+    "utc_end": "2026-09-23T11:27:26.895993+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s2-ack-8",
+    "assertion": true
+  },
+  {
+    "id": "s2-set-9",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26721",
+      "SET",
+      "ack:9",
+      "value-9"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1620209612185,
+    "end_ns": 1620214030208,
+    "utc_end": "2026-09-23T11:27:26.900455+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s2-ack-9",
+    "assertion": true
+  },
+  {
+    "id": "s2-replica-caught-up",
+    "assertion": true
+  },
+  {
+    "id": "s2-automatic-failover",
+    "assertion": true
+  },
+  {
+    "id": "s2-recovered-data",
+    "command": [
+      "redis-cli",
+      "--raw",
+      "-p",
+      "26720",
+      "MGET",
+      "ack:0",
+      "ack:1",
+      "ack:2",
+      "ack:3",
+      "ack:4",
+      "ack:5",
+      "ack:6",
+      "ack:7",
+      "ack:8",
+      "ack:9"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "value-0\nvalue-1\nvalue-2\nvalue-3\nvalue-4\nvalue-5\nvalue-6\nvalue-7\nvalue-8\nvalue-9\n",
+    "stderr": "",
+    "start_ns": 1623002513946,
+    "end_ns": 1623006698278,
+    "utc_end": "2026-09-23T11:27:29.693125+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s2-all-acks-survive",
+    "assertion": true
+  },
+  {
+    "id": "s2-write-after",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26720",
+      "SET",
+      "post",
+      "recovered"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1623006744811,
+    "end_ns": 1623011092747,
+    "utc_end": "2026-09-23T11:27:29.697517+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s2-new-write",
+    "assertion": true
+  },
+  {
+    "id": "s2-read-after",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26720",
+      "GET",
+      "post"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "recovered\n",
+    "stderr": "",
+    "start_ns": 1623011126946,
+    "end_ns": 1623015227039,
+    "utc_end": "2026-09-23T11:27:29.701651+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s2-new-read",
+    "assertion": true
+  },
+  {
+    "id": "s2-crashed-node-rejoin",
+    "assertion": true
+  },
+  {
+    "id": "s2-rejoin-data",
+    "assertion": true
+  },
+  {
+    "id": "s3-initial-sync",
+    "assertion": true
+  },
+  {
+    "id": "s3-healthy-guard",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--dry-run"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:26732,127.0.0.1:26733,127.0.0.1:26734",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 1,
+    "stdout": "== failover-redis: via 127.0.0.1:26732 name=arena\nmaster \u0641\u0639\u0644\u06cc: 127.0.0.1,26730\n",
+    "stderr": "FAIL: master\u0650 127.0.0.1:26730 \u0632\u0646\u062f\u0647 \u0627\u0633\u062a \u2014 failover\u0650 \u062f\u0633\u062a\u06cc \u0631\u0648\u06cc\u0650 master\u0650 \u0633\u0627\u0644\u0645 \u0631\u06cc\u0633\u06a9\u0650 \u062f\u0648-\u0631\u0626\u06cc\u0633\u061b --force (\u0641\u0642\u0637 \u062f\u0631 maintenance window)\n",
+    "start_ns": 1643749030930,
+    "end_ns": 1643777854337,
+    "utc_end": "2026-09-23T11:27:50.464282+00:00",
+    "expected": 1
+  },
+  {
+    "id": "s3-missing-sentinel",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--dry-run"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:1",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 1,
+    "stdout": "",
+    "stderr": "FAIL: \u0647\u06cc\u0686 sentinel \u067e\u0627\u0633\u062e\u06af\u0648 \u0646\u06cc\u0633\u062a (127.0.0.1:1) \u2014 \u062e\u0648\u062f sentinel\u200c\u0647\u0627 \u0631\u0627 \u0646\u062c\u0627\u062a \u0628\u062f\u0647\n",
+    "start_ns": 1643777906098,
+    "end_ns": 1643787003189,
+    "utc_end": "2026-09-23T11:27:50.473430+00:00",
+    "expected": 1
+  },
+  {
+    "id": "s3-sentinel-discovery",
+    "assertion": true
+  },
+  {
+    "id": "s3-forced-wrapper",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--force"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:26732,127.0.0.1:26733,127.0.0.1:26734",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 0,
+    "stdout": "== failover-redis: via 127.0.0.1:26732 name=arena\nmaster \u0641\u0639\u0644\u06cc: 127.0.0.1,26730\nfailover \u062a\u062d\u0631\u06cc\u06a9 \u0634\u062f\u061b \u062f\u0631 \u0627\u0646\u062a\u0638\u0627\u0631\u0650 \u0622\u062f\u0631\u0633\u0650 \u062a\u0627\u0632\u0647 ...\nNEW_MASTER=127.0.0.1,26731\n\u062a\u0623\u06cc\u06cc\u062f: 127.0.0.1,26731 \u0646\u0642\u0634\u0650 master \u06af\u0631\u0641\u062a\n\u0686\u06a9\u200c\u0644\u06cc\u0633\u062a\u0650 \u067e\u0633 \u0627\u0632 \u0627\u0642\u062f\u0627\u0645 (DR_RUNBOOK \u00a7\u06f2.\u06f3):\n  \u06f1) \u0633\u0631\u0631\u06cc\u0632\u0650 client (server/redis.js) \u062e\u0648\u062f\u06a9\u0627\u0631 \u0628\u0647 \u0622\u062f\u0631\u0633\u0650 \u0646\u0648 \u0645\u06cc\u200c\u0631\u0648\u062f\u061b \u062e\u0637\u0627\u06cc\u0650 re-connect \u062f\u0631 \u0644\u0627\u06af \u0631\u0627 \u0628\u0628\u06cc\u0646\n  \u06f2) replica\u0650 \u06a9\u0647\u0646\u0647/\u062c\u062f\u06cc\u062f \u0631\u0627 \u0628\u0647 master\u0650 \u0646\u0648 \u0628\u0686\u0633\u0628\u0627\u0646 (SENTINEL removes + replicaof)\n  \u06f3) \u0627\u06af\u0631 master\u0650 \u06a9\u0647\u0646\u0647 \u0632\u0646\u062f\u0647 \u0634\u062f: \u062e\u0648\u062f\u0634 \u0631\u0627 \u0628\u0647\u200c\u0639\u0646\u0648\u0627\u0646 replica \u0628\u06cc\u0627\u0648\u0631 \u2014 \u0647\u0631\u06af\u0632 \u0646\u0647 \u062f\u0648 master\n",
+    "stderr": "",
+    "start_ns": 1644026354626,
+    "end_ns": 1646083636201,
+    "utc_end": "2026-09-23T11:27:52.770063+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s3-new-master",
+    "assertion": true
+  },
+  {
+    "id": "s3-old-rejoins",
+    "assertion": true
+  },
+  {
+    "id": "s3-set-0",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26731",
+      "SET",
+      "ack:0",
+      "value-0"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1659941709025,
+    "end_ns": 1659946725329,
+    "utc_end": "2026-09-23T11:28:06.633153+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s3-ack-0",
+    "assertion": true
+  },
+  {
+    "id": "s3-set-1",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26731",
+      "SET",
+      "ack:1",
+      "value-1"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1659946781241,
+    "end_ns": 1659951596226,
+    "utc_end": "2026-09-23T11:28:06.638022+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s3-ack-1",
+    "assertion": true
+  },
+  {
+    "id": "s3-set-2",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26731",
+      "SET",
+      "ack:2",
+      "value-2"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1659951646353,
+    "end_ns": 1659956389920,
+    "utc_end": "2026-09-23T11:28:06.642815+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s3-ack-2",
+    "assertion": true
+  },
+  {
+    "id": "s3-set-3",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26731",
+      "SET",
+      "ack:3",
+      "value-3"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1659956431804,
+    "end_ns": 1659960960012,
+    "utc_end": "2026-09-23T11:28:06.647386+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s3-ack-3",
+    "assertion": true
+  },
+  {
+    "id": "s3-set-4",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26731",
+      "SET",
+      "ack:4",
+      "value-4"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1659961002730,
+    "end_ns": 1659966161618,
+    "utc_end": "2026-09-23T11:28:06.652588+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s3-ack-4",
+    "assertion": true
+  },
+  {
+    "id": "s3-set-5",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26731",
+      "SET",
+      "ack:5",
+      "value-5"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1659966205288,
+    "end_ns": 1659970675746,
+    "utc_end": "2026-09-23T11:28:06.657101+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s3-ack-5",
+    "assertion": true
+  },
+  {
+    "id": "s3-set-6",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26731",
+      "SET",
+      "ack:6",
+      "value-6"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1659970716153,
+    "end_ns": 1659974953783,
+    "utc_end": "2026-09-23T11:28:06.661379+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s3-ack-6",
+    "assertion": true
+  },
+  {
+    "id": "s3-set-7",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26731",
+      "SET",
+      "ack:7",
+      "value-7"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1659974988668,
+    "end_ns": 1659979186982,
+    "utc_end": "2026-09-23T11:28:06.665611+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s3-ack-7",
+    "assertion": true
+  },
+  {
+    "id": "s3-set-8",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26731",
+      "SET",
+      "ack:8",
+      "value-8"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1659979216750,
+    "end_ns": 1659983809554,
+    "utc_end": "2026-09-23T11:28:06.670236+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s3-ack-8",
+    "assertion": true
+  },
+  {
+    "id": "s3-set-9",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26731",
+      "SET",
+      "ack:9",
+      "value-9"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1659983864151,
+    "end_ns": 1659990189939,
+    "utc_end": "2026-09-23T11:28:06.676617+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s3-ack-9",
+    "assertion": true
+  },
+  {
+    "id": "s3-replica-caught-up",
+    "assertion": true
+  },
+  {
+    "id": "s3-automatic-failover",
+    "assertion": true
+  },
+  {
+    "id": "s3-recovered-data",
+    "command": [
+      "redis-cli",
+      "--raw",
+      "-p",
+      "26730",
+      "MGET",
+      "ack:0",
+      "ack:1",
+      "ack:2",
+      "ack:3",
+      "ack:4",
+      "ack:5",
+      "ack:6",
+      "ack:7",
+      "ack:8",
+      "ack:9"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "value-0\nvalue-1\nvalue-2\nvalue-3\nvalue-4\nvalue-5\nvalue-6\nvalue-7\nvalue-8\nvalue-9\n",
+    "stderr": "",
+    "start_ns": 1662451358704,
+    "end_ns": 1662455424622,
+    "utc_end": "2026-09-23T11:28:09.141851+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s3-all-acks-survive",
+    "assertion": true
+  },
+  {
+    "id": "s3-write-after",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26730",
+      "SET",
+      "post",
+      "recovered"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1662455469673,
+    "end_ns": 1662460088327,
+    "utc_end": "2026-09-23T11:28:09.146515+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s3-new-write",
+    "assertion": true
+  },
+  {
+    "id": "s3-read-after",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26730",
+      "GET",
+      "post"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "recovered\n",
+    "stderr": "",
+    "start_ns": 1662460132462,
+    "end_ns": 1662464214963,
+    "utc_end": "2026-09-23T11:28:09.150639+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s3-new-read",
+    "assertion": true
+  },
+  {
+    "id": "s3-crashed-node-rejoin",
+    "assertion": true
+  },
+  {
+    "id": "s3-rejoin-data",
+    "assertion": true
+  },
+  {
+    "id": "s4-initial-sync",
+    "assertion": true
+  },
+  {
+    "id": "s4-healthy-guard",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--dry-run"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:26742,127.0.0.1:26743,127.0.0.1:26744",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 1,
+    "stdout": "== failover-redis: via 127.0.0.1:26742 name=arena\nmaster \u0641\u0639\u0644\u06cc: 127.0.0.1,26740\n",
+    "stderr": "FAIL: master\u0650 127.0.0.1:26740 \u0632\u0646\u062f\u0647 \u0627\u0633\u062a \u2014 failover\u0650 \u062f\u0633\u062a\u06cc \u0631\u0648\u06cc\u0650 master\u0650 \u0633\u0627\u0644\u0645 \u0631\u06cc\u0633\u06a9\u0650 \u062f\u0648-\u0631\u0626\u06cc\u0633\u061b --force (\u0641\u0642\u0637 \u062f\u0631 maintenance window)\n",
+    "start_ns": 1683331933881,
+    "end_ns": 1683362315955,
+    "utc_end": "2026-09-23T11:28:30.048743+00:00",
+    "expected": 1
+  },
+  {
+    "id": "s4-missing-sentinel",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--dry-run"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:1",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 1,
+    "stdout": "",
+    "stderr": "FAIL: \u0647\u06cc\u0686 sentinel \u067e\u0627\u0633\u062e\u06af\u0648 \u0646\u06cc\u0633\u062a (127.0.0.1:1) \u2014 \u062e\u0648\u062f sentinel\u200c\u0647\u0627 \u0631\u0627 \u0646\u062c\u0627\u062a \u0628\u062f\u0647\n",
+    "start_ns": 1683362366075,
+    "end_ns": 1683370285810,
+    "utc_end": "2026-09-23T11:28:30.056712+00:00",
+    "expected": 1
+  },
+  {
+    "id": "s4-sentinel-discovery",
+    "assertion": true
+  },
+  {
+    "id": "s4-forced-wrapper",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--force"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:26742,127.0.0.1:26743,127.0.0.1:26744",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 0,
+    "stdout": "== failover-redis: via 127.0.0.1:26742 name=arena\nmaster \u0641\u0639\u0644\u06cc: 127.0.0.1,26740\nfailover \u062a\u062d\u0631\u06cc\u06a9 \u0634\u062f\u061b \u062f\u0631 \u0627\u0646\u062a\u0638\u0627\u0631\u0650 \u0622\u062f\u0631\u0633\u0650 \u062a\u0627\u0632\u0647 ...\nNEW_MASTER=127.0.0.1,26741\n\u062a\u0623\u06cc\u06cc\u062f: 127.0.0.1,26741 \u0646\u0642\u0634\u0650 master \u06af\u0631\u0641\u062a\n\u0686\u06a9\u200c\u0644\u06cc\u0633\u062a\u0650 \u067e\u0633 \u0627\u0632 \u0627\u0642\u062f\u0627\u0645 (DR_RUNBOOK \u00a7\u06f2.\u06f3):\n  \u06f1) \u0633\u0631\u0631\u06cc\u0632\u0650 client (server/redis.js) \u062e\u0648\u062f\u06a9\u0627\u0631 \u0628\u0647 \u0622\u062f\u0631\u0633\u0650 \u0646\u0648 \u0645\u06cc\u200c\u0631\u0648\u062f\u061b \u062e\u0637\u0627\u06cc\u0650 re-connect \u062f\u0631 \u0644\u0627\u06af \u0631\u0627 \u0628\u0628\u06cc\u0646\n  \u06f2) replica\u0650 \u06a9\u0647\u0646\u0647/\u062c\u062f\u06cc\u062f \u0631\u0627 \u0628\u0647 master\u0650 \u0646\u0648 \u0628\u0686\u0633\u0628\u0627\u0646 (SENTINEL removes + replicaof)\n  \u06f3) \u0627\u06af\u0631 master\u0650 \u06a9\u0647\u0646\u0647 \u0632\u0646\u062f\u0647 \u0634\u062f: \u062e\u0648\u062f\u0634 \u0631\u0627 \u0628\u0647\u200c\u0639\u0646\u0648\u0627\u0646 replica \u0628\u06cc\u0627\u0648\u0631 \u2014 \u0647\u0631\u06af\u0632 \u0646\u0647 \u062f\u0648 master\n",
+    "stderr": "",
+    "start_ns": 1683609786289,
+    "end_ns": 1684654419102,
+    "utc_end": "2026-09-23T11:28:31.340851+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s4-new-master",
+    "assertion": true
+  },
+  {
+    "id": "s4-old-rejoins",
+    "assertion": true
+  },
+  {
+    "id": "s4-set-0",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26741",
+      "SET",
+      "ack:0",
+      "value-0"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1699416336019,
+    "end_ns": 1699421745722,
+    "utc_end": "2026-09-23T11:28:46.108173+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s4-ack-0",
+    "assertion": true
+  },
+  {
+    "id": "s4-set-1",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26741",
+      "SET",
+      "ack:1",
+      "value-1"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1699421826290,
+    "end_ns": 1699426222525,
+    "utc_end": "2026-09-23T11:28:46.112647+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s4-ack-1",
+    "assertion": true
+  },
+  {
+    "id": "s4-set-2",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26741",
+      "SET",
+      "ack:2",
+      "value-2"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1699426254145,
+    "end_ns": 1699431831426,
+    "utc_end": "2026-09-23T11:28:46.118255+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s4-ack-2",
+    "assertion": true
+  },
+  {
+    "id": "s4-set-3",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26741",
+      "SET",
+      "ack:3",
+      "value-3"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1699431872381,
+    "end_ns": 1699437027343,
+    "utc_end": "2026-09-23T11:28:46.123451+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s4-ack-3",
+    "assertion": true
+  },
+  {
+    "id": "s4-set-4",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26741",
+      "SET",
+      "ack:4",
+      "value-4"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1699437067940,
+    "end_ns": 1699441490840,
+    "utc_end": "2026-09-23T11:28:46.127915+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s4-ack-4",
+    "assertion": true
+  },
+  {
+    "id": "s4-set-5",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26741",
+      "SET",
+      "ack:5",
+      "value-5"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1699441528103,
+    "end_ns": 1699445791158,
+    "utc_end": "2026-09-23T11:28:46.132215+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s4-ack-5",
+    "assertion": true
+  },
+  {
+    "id": "s4-set-6",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26741",
+      "SET",
+      "ack:6",
+      "value-6"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1699445819180,
+    "end_ns": 1699449883459,
+    "utc_end": "2026-09-23T11:28:46.136307+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s4-ack-6",
+    "assertion": true
+  },
+  {
+    "id": "s4-set-7",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26741",
+      "SET",
+      "ack:7",
+      "value-7"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1699449910097,
+    "end_ns": 1699454022304,
+    "utc_end": "2026-09-23T11:28:46.140446+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s4-ack-7",
+    "assertion": true
+  },
+  {
+    "id": "s4-set-8",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26741",
+      "SET",
+      "ack:8",
+      "value-8"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1699454047326,
+    "end_ns": 1699459291033,
+    "utc_end": "2026-09-23T11:28:46.145715+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s4-ack-8",
+    "assertion": true
+  },
+  {
+    "id": "s4-set-9",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26741",
+      "SET",
+      "ack:9",
+      "value-9"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1699459321230,
+    "end_ns": 1699464860048,
+    "utc_end": "2026-09-23T11:28:46.151284+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s4-ack-9",
+    "assertion": true
+  },
+  {
+    "id": "s4-replica-caught-up",
+    "assertion": true
+  },
+  {
+    "id": "s4-automatic-failover",
+    "assertion": true
+  },
+  {
+    "id": "s4-recovered-data",
+    "command": [
+      "redis-cli",
+      "--raw",
+      "-p",
+      "26740",
+      "MGET",
+      "ack:0",
+      "ack:1",
+      "ack:2",
+      "ack:3",
+      "ack:4",
+      "ack:5",
+      "ack:6",
+      "ack:7",
+      "ack:8",
+      "ack:9"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "value-0\nvalue-1\nvalue-2\nvalue-3\nvalue-4\nvalue-5\nvalue-6\nvalue-7\nvalue-8\nvalue-9\n",
+    "stderr": "",
+    "start_ns": 1702284755554,
+    "end_ns": 1702294166418,
+    "utc_end": "2026-09-23T11:28:48.980594+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s4-all-acks-survive",
+    "assertion": true
+  },
+  {
+    "id": "s4-write-after",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26740",
+      "SET",
+      "post",
+      "recovered"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1702294283343,
+    "end_ns": 1702301392333,
+    "utc_end": "2026-09-23T11:28:48.987820+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s4-new-write",
+    "assertion": true
+  },
+  {
+    "id": "s4-read-after",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26740",
+      "GET",
+      "post"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "recovered\n",
+    "stderr": "",
+    "start_ns": 1702301463312,
+    "end_ns": 1702324071807,
+    "utc_end": "2026-09-23T11:28:49.010500+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s4-new-read",
+    "assertion": true
+  },
+  {
+    "id": "s4-crashed-node-rejoin",
+    "assertion": true
+  },
+  {
+    "id": "s4-rejoin-data",
+    "assertion": true
+  },
+  {
+    "id": "s5-initial-sync",
+    "assertion": true
+  },
+  {
+    "id": "s5-healthy-guard",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--dry-run"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:26752,127.0.0.1:26753,127.0.0.1:26754",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 1,
+    "stdout": "== failover-redis: via 127.0.0.1:26752 name=arena\nmaster \u0641\u0639\u0644\u06cc: 127.0.0.1,26750\n",
+    "stderr": "FAIL: master\u0650 127.0.0.1:26750 \u0632\u0646\u062f\u0647 \u0627\u0633\u062a \u2014 failover\u0650 \u062f\u0633\u062a\u06cc \u0631\u0648\u06cc\u0650 master\u0650 \u0633\u0627\u0644\u0645 \u0631\u06cc\u0633\u06a9\u0650 \u062f\u0648-\u0631\u0626\u06cc\u0633\u061b --force (\u0641\u0642\u0637 \u062f\u0631 maintenance window)\n",
+    "start_ns": 1724046933981,
+    "end_ns": 1724066469970,
+    "utc_end": "2026-09-23T11:29:10.752897+00:00",
+    "expected": 1
+  },
+  {
+    "id": "s5-missing-sentinel",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--dry-run"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:1",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 1,
+    "stdout": "",
+    "stderr": "FAIL: \u0647\u06cc\u0686 sentinel \u067e\u0627\u0633\u062e\u06af\u0648 \u0646\u06cc\u0633\u062a (127.0.0.1:1) \u2014 \u062e\u0648\u062f sentinel\u200c\u0647\u0627 \u0631\u0627 \u0646\u062c\u0627\u062a \u0628\u062f\u0647\n",
+    "start_ns": 1724066516163,
+    "end_ns": 1724074138989,
+    "utc_end": "2026-09-23T11:29:10.760566+00:00",
+    "expected": 1
+  },
+  {
+    "id": "s5-sentinel-discovery",
+    "assertion": true
+  },
+  {
+    "id": "s5-forced-wrapper",
+    "command": [
+      "bash",
+      "tools/failover-redis.sh",
+      "--force"
+    ],
+    "environment": {
+      "SENTINELS": "127.0.0.1:26752,127.0.0.1:26753,127.0.0.1:26754",
+      "MASTER_NAME": "arena"
+    },
+    "exit": 0,
+    "stdout": "== failover-redis: via 127.0.0.1:26752 name=arena\nmaster \u0641\u0639\u0644\u06cc: 127.0.0.1,26750\nfailover \u062a\u062d\u0631\u06cc\u06a9 \u0634\u062f\u061b \u062f\u0631 \u0627\u0646\u062a\u0638\u0627\u0631\u0650 \u0622\u062f\u0631\u0633\u0650 \u062a\u0627\u0632\u0647 ...\nNEW_MASTER=127.0.0.1,26751\n\u062a\u0623\u06cc\u06cc\u062f: 127.0.0.1,26751 \u0646\u0642\u0634\u0650 master \u06af\u0631\u0641\u062a\n\u0686\u06a9\u200c\u0644\u06cc\u0633\u062a\u0650 \u067e\u0633 \u0627\u0632 \u0627\u0642\u062f\u0627\u0645 (DR_RUNBOOK \u00a7\u06f2.\u06f3):\n  \u06f1) \u0633\u0631\u0631\u06cc\u0632\u0650 client (server/redis.js) \u062e\u0648\u062f\u06a9\u0627\u0631 \u0628\u0647 \u0622\u062f\u0631\u0633\u0650 \u0646\u0648 \u0645\u06cc\u200c\u0631\u0648\u062f\u061b \u062e\u0637\u0627\u06cc\u0650 re-connect \u062f\u0631 \u0644\u0627\u06af \u0631\u0627 \u0628\u0628\u06cc\u0646\n  \u06f2) replica\u0650 \u06a9\u0647\u0646\u0647/\u062c\u062f\u06cc\u062f \u0631\u0627 \u0628\u0647 master\u0650 \u0646\u0648 \u0628\u0686\u0633\u0628\u0627\u0646 (SENTINEL removes + replicaof)\n  \u06f3) \u0627\u06af\u0631 master\u0650 \u06a9\u0647\u0646\u0647 \u0632\u0646\u062f\u0647 \u0634\u062f: \u062e\u0648\u062f\u0634 \u0631\u0627 \u0628\u0647\u200c\u0639\u0646\u0648\u0627\u0646 replica \u0628\u06cc\u0627\u0648\u0631 \u2014 \u0647\u0631\u06af\u0632 \u0646\u0647 \u062f\u0648 master\n",
+    "stderr": "",
+    "start_ns": 1724311808857,
+    "end_ns": 1725360659182,
+    "utc_end": "2026-09-23T11:29:12.047132+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s5-new-master",
+    "assertion": true
+  },
+  {
+    "id": "s5-old-rejoins",
+    "assertion": true
+  },
+  {
+    "id": "s5-set-0",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26751",
+      "SET",
+      "ack:0",
+      "value-0"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1741202223847,
+    "end_ns": 1741223965353,
+    "utc_end": "2026-09-23T11:29:27.910392+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s5-ack-0",
+    "assertion": true
+  },
+  {
+    "id": "s5-set-1",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26751",
+      "SET",
+      "ack:1",
+      "value-1"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1741224235347,
+    "end_ns": 1741232188934,
+    "utc_end": "2026-09-23T11:29:27.918682+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s5-ack-1",
+    "assertion": true
+  },
+  {
+    "id": "s5-set-2",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26751",
+      "SET",
+      "ack:2",
+      "value-2"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1741232318457,
+    "end_ns": 1741240570453,
+    "utc_end": "2026-09-23T11:29:27.926996+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s5-ack-2",
+    "assertion": true
+  },
+  {
+    "id": "s5-set-3",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26751",
+      "SET",
+      "ack:3",
+      "value-3"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1741240625913,
+    "end_ns": 1741248150402,
+    "utc_end": "2026-09-23T11:29:27.934576+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s5-ack-3",
+    "assertion": true
+  },
+  {
+    "id": "s5-set-4",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26751",
+      "SET",
+      "ack:4",
+      "value-4"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1741248190798,
+    "end_ns": 1741253825821,
+    "utc_end": "2026-09-23T11:29:27.940251+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s5-ack-4",
+    "assertion": true
+  },
+  {
+    "id": "s5-set-5",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26751",
+      "SET",
+      "ack:5",
+      "value-5"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1741253861427,
+    "end_ns": 1741258120871,
+    "utc_end": "2026-09-23T11:29:27.944545+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s5-ack-5",
+    "assertion": true
+  },
+  {
+    "id": "s5-set-6",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26751",
+      "SET",
+      "ack:6",
+      "value-6"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1741258153727,
+    "end_ns": 1741262304769,
+    "utc_end": "2026-09-23T11:29:27.948729+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s5-ack-6",
+    "assertion": true
+  },
+  {
+    "id": "s5-set-7",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26751",
+      "SET",
+      "ack:7",
+      "value-7"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1741262331219,
+    "end_ns": 1741266373649,
+    "utc_end": "2026-09-23T11:29:27.952797+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s5-ack-7",
+    "assertion": true
+  },
+  {
+    "id": "s5-set-8",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26751",
+      "SET",
+      "ack:8",
+      "value-8"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1741266401389,
+    "end_ns": 1741270431893,
+    "utc_end": "2026-09-23T11:29:27.956855+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s5-ack-8",
+    "assertion": true
+  },
+  {
+    "id": "s5-set-9",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26751",
+      "SET",
+      "ack:9",
+      "value-9"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1741270458508,
+    "end_ns": 1741274367687,
+    "utc_end": "2026-09-23T11:29:27.960791+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s5-ack-9",
+    "assertion": true
+  },
+  {
+    "id": "s5-replica-caught-up",
+    "assertion": true
+  },
+  {
+    "id": "s5-automatic-failover",
+    "assertion": true
+  },
+  {
+    "id": "s5-recovered-data",
+    "command": [
+      "redis-cli",
+      "--raw",
+      "-p",
+      "26750",
+      "MGET",
+      "ack:0",
+      "ack:1",
+      "ack:2",
+      "ack:3",
+      "ack:4",
+      "ack:5",
+      "ack:6",
+      "ack:7",
+      "ack:8",
+      "ack:9"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "value-0\nvalue-1\nvalue-2\nvalue-3\nvalue-4\nvalue-5\nvalue-6\nvalue-7\nvalue-8\nvalue-9\n",
+    "stderr": "",
+    "start_ns": 1743842054698,
+    "end_ns": 1743847824926,
+    "utc_end": "2026-09-23T11:29:30.534252+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s5-all-acks-survive",
+    "assertion": true
+  },
+  {
+    "id": "s5-write-after",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26750",
+      "SET",
+      "post",
+      "recovered"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "OK\n",
+    "stderr": "",
+    "start_ns": 1743847875173,
+    "end_ns": 1743853725222,
+    "utc_end": "2026-09-23T11:29:30.540151+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s5-new-write",
+    "assertion": true
+  },
+  {
+    "id": "s5-read-after",
+    "command": [
+      "redis-cli",
+      "-p",
+      "26750",
+      "GET",
+      "post"
+    ],
+    "environment": {},
+    "exit": 0,
+    "stdout": "recovered\n",
+    "stderr": "",
+    "start_ns": 1743853765166,
+    "end_ns": 1743857953509,
+    "utc_end": "2026-09-23T11:29:30.544378+00:00",
+    "expected": 0
+  },
+  {
+    "id": "s5-new-read",
+    "assertion": true
+  },
+  {
+    "id": "s5-crashed-node-rejoin",
+    "assertion": true
+  },
+  {
+    "id": "s5-rejoin-data",
+    "assertion": true
+  }
+]

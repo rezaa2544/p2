@@ -1,0 +1,28 @@
+{
+  "id": "p3-standby-before",
+  "command": [
+    "psql",
+    "-X",
+    "-qAt",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    "SELECT md5(string_agg(grades::text,'|' ORDER BY id)) FROM grades"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/var/tmp/a8c-pg-jtza4blr/pbr.conf",
+    "PGHOST": "/var/tmp/a8c-pg-jtza4blr/standby-socket",
+    "PGPORT": "25332",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user",
+    "OLD_PGHOST": "/var/tmp/a8c-pg-jtza4blr/socket",
+    "OLD_PGPORT": "25330"
+  },
+  "utc_start": "2026-09-23T11:28:46.627352+00:00",
+  "start_monotonic_ns": 1699940924595,
+  "end_monotonic_ns": 1699947812826,
+  "exit": 0,
+  "stdout": "b0d1618c2449d9f870024695824bff83\n",
+  "stderr": "",
+  "expected": 0
+}

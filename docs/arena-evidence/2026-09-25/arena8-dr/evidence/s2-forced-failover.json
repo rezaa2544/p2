@@ -1,0 +1,17 @@
+{
+  "id": "s2-forced-failover",
+  "command": [
+    "bash",
+    "tools/failover-redis.sh",
+    "--force"
+  ],
+  "environment": {
+    "SENTINELS": "127.0.0.1:56622,127.0.0.1:56623,127.0.0.1:56624",
+    "MASTER_NAME": "arena"
+  },
+  "exit": 1,
+  "stdout": "== failover-redis: via 127.0.0.1:56622 name=arena\nmaster \u0641\u0639\u0644\u06cc: 127.0.0.1,56620\nOK\nfailover \u062a\u062d\u0631\u06cc\u06a9 \u0634\u062f\u061b \u062f\u0631 \u0627\u0646\u062a\u0638\u0627\u0631\u0650 \u0622\u062f\u0631\u0633\u0650 \u062a\u0627\u0632\u0647 ...\nNEW_MASTER=127.0.0.1,56621\n",
+  "stderr": "AUTH failed: ERR AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?\nAUTH failed: ERR AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?\nAUTH failed: ERR AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?\nAUTH failed: ERR AUTH <password> called without any password configured for the default user. Are you sure your configuration is correct?\nCould not connect to Redis at 127.0.0.1,56621:127: Name or service not known\nFAIL: 127.0.0.1,56621 \u062e\u0648\u062f \u0631\u0627 master \u0645\u0639\u0631\u0641\u06cc \u0646\u0645\u06cc\u200c\u06a9\u0646\u062f\n",
+  "elapsed_ms": 1031.100982,
+  "utc_end": "2026-09-22T21:13:26.128634+00:00"
+}

@@ -1,0 +1,8 @@
+-------------------PROCESS START-------------------
+2026-09-22 21:15:44.703 P00   INFO: verify command begin 2.55.1: --config=/tmp/a8dr-pg-afjnpgpv/pbr.conf --exec-id=7558-e3aa622c --log-level-console=info --log-path=/tmp/a8dr-pg-afjnpgpv --repo1-path=/tmp/a8dr-pg-afjnpgpv/repo --stanza=payesh
+2026-09-22 21:15:44.828 P01   INFO: invalid checksum '20260922-211540F/pg_data/base/16384/2838.gz'
+2026-09-22 21:15:44.966 P00   INFO: stanza: payesh
+                                    status: error
+                                      backup: 20260922-211540F, status: invalid, total files checked: 1284, total valid files: 1283
+                                        checksum invalid: 1
+2026-09-22 21:15:44.966 P00   INFO: verify command end: completed successfully (264ms)

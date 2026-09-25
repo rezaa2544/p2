@@ -1,0 +1,23 @@
+{
+  "id": "p4-verify-corrupt",
+  "command": [
+    "pgbackrest",
+    "--stanza=payesh",
+    "--log-level-console=info",
+    "verify"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-he4qqyhq/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-he4qqyhq/socket",
+    "PGPORT": "55340",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:24:03.696193+00:00",
+  "start_monotonic_ns": 1417009765499,
+  "end_monotonic_ns": 1417560919292,
+  "exit": 0,
+  "stdout": "2026-09-23 11:24:03.705 P00   INFO: verify command begin 2.55.1: --config=/tmp/a8c-pg-he4qqyhq/pbr.conf --exec-id=17528-765915bd --log-level-console=info --log-path=/tmp/a8c-pg-he4qqyhq --repo1-path=/tmp/a8c-pg-he4qqyhq/repo --stanza=payesh\n2026-09-23 11:24:04.062 P01   INFO: invalid checksum '20260923-112344F/pg_data/base/16384/2838.gz'\n2026-09-23 11:24:04.245 P00   INFO: stanza: payesh\n                                    status: error\n                                      backup: 20260923-112344F, status: invalid, total files checked: 1284, total valid files: 1283\n                                        checksum invalid: 1\n2026-09-23 11:24:04.245 P00   INFO: verify command end: completed successfully (542ms)\n",
+  "stderr": "",
+  "expected": 0
+}

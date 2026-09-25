@@ -1,0 +1,44 @@
+7369:C 23 Sep 2026 11:16:48.410 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+7369:C 23 Sep 2026 11:16:48.410 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+7369:C 23 Sep 2026 11:16:48.410 * Redis version=8.0.2, bits=64, commit=00000000, modified=0, pid=7369, just started
+7369:C 23 Sep 2026 11:16:48.410 * Configuration loaded
+7369:M 23 Sep 2026 11:16:48.411 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+7369:M 23 Sep 2026 11:16:48.411 * monotonic clock: POSIX clock_gettime
+7369:M 23 Sep 2026 11:16:48.411 * Running mode=standalone, port=56710.
+7369:M 23 Sep 2026 11:16:48.412 * Server initialized
+7369:M 23 Sep 2026 11:16:48.412 * Creating AOF base file appendonly.aof.1.base.rdb on server start
+7369:M 23 Sep 2026 11:16:48.412 * Creating AOF incr file appendonly.aof.1.incr.aof on server start
+7369:M 23 Sep 2026 11:16:48.412 * Ready to accept connections tcp
+7369:M 23 Sep 2026 11:16:49.414 * Replica 127.0.0.1:56711 asks for synchronization
+7369:M 23 Sep 2026 11:16:49.414 * Full resync requested by replica 127.0.0.1:56711 
+7369:M 23 Sep 2026 11:16:49.414 * Replication backlog created, my new replication IDs are '7e8f6de2ea0201a013394f5bac5046a6019a7b0e' and '0000000000000000000000000000000000000000'
+7369:M 23 Sep 2026 11:16:49.414 * Replica 127.0.0.1:56711 is capable of rdb channel synchronization, and partial sync isn't possible. Full sync will continue with dedicated rdb channel.
+7369:M 23 Sep 2026 11:16:49.415 * Replica 127.0.0.1:56711 asks for synchronization
+7369:M 23 Sep 2026 11:16:49.415 * Full resync requested by replica 127.0.0.1:56711 (rdb-channel)
+7369:M 23 Sep 2026 11:16:49.415 * Delay next BGSAVE for diskless SYNC
+7369:M 23 Sep 2026 11:16:54.452 * Starting BGSAVE for SYNC with target: replicas sockets (rdb-channel)
+7369:M 23 Sep 2026 11:16:54.452 * Starting to deliver RDB and replication stream to replica: 127.0.0.1:56711
+7369:M 23 Sep 2026 11:16:54.453 * Background RDB transfer started by pid 7476 to replica socket
+7476:C 23 Sep 2026 11:16:54.455 * Fork CoW for RDB: current 0 MB, peak 0 MB, average 0 MB
+7369:M 23 Sep 2026 11:16:54.456 * Synchronization with replica 127.0.0.1:56711 succeeded
+7369:M 23 Sep 2026 11:16:54.457 * Connection with replica (rdbchannel) 127.0.0.1:56711 lost.
+7369:M 23 Sep 2026 11:16:54.554 * Background RDB transfer terminated with success
+7369:M 23 Sep 2026 11:18:14.817 * Connection with replica 127.0.0.1:56711 lost.
+7369:M 23 Sep 2026 11:18:14.869 * Replica 127.0.0.1:56711 asks for synchronization
+7369:M 23 Sep 2026 11:18:14.869 * Full resync requested by replica 127.0.0.1:56711 
+7369:M 23 Sep 2026 11:18:14.869 * Replica 127.0.0.1:56711 is capable of rdb channel synchronization, and partial sync isn't possible. Full sync will continue with dedicated rdb channel.
+7369:M 23 Sep 2026 11:18:14.869 * Replica 127.0.0.1:56711 asks for synchronization
+7369:M 23 Sep 2026 11:18:14.869 * Full resync requested by replica 127.0.0.1:56711 (rdb-channel)
+7369:M 23 Sep 2026 11:18:14.869 * Delay next BGSAVE for diskless SYNC
+7369:M 23 Sep 2026 11:18:19.156 * Starting BGSAVE for SYNC with target: replicas sockets (rdb-channel)
+7369:M 23 Sep 2026 11:18:19.156 * Starting to deliver RDB and replication stream to replica: 127.0.0.1:56711
+7369:M 23 Sep 2026 11:18:19.157 * Background RDB transfer started by pid 8459 to replica socket
+8459:C 23 Sep 2026 11:18:19.159 * Fork CoW for RDB: current 0 MB, peak 0 MB, average 0 MB
+7369:M 23 Sep 2026 11:18:19.161 * Synchronization with replica 127.0.0.1:56711 succeeded
+7369:M 23 Sep 2026 11:18:19.161 * Connection with replica (rdbchannel) 127.0.0.1:56711 lost.
+7369:signal-handler (1790162299) Received SIGTERM scheduling shutdown...
+7369:M 23 Sep 2026 11:18:19.258 * User requested shutdown...
+7369:M 23 Sep 2026 11:18:19.258 * 1 of 1 replicas are in sync when shutting down.
+7369:M 23 Sep 2026 11:18:19.259 # There is a child saving an .rdb. Killing it!
+7369:M 23 Sep 2026 11:18:19.259 * Calling fsync() on the AOF file.
+7369:M 23 Sep 2026 11:18:19.259 # Redis is now ready to exit, bye bye...

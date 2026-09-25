@@ -1,0 +1,24 @@
+{
+  "id": "p3-start",
+  "command": [
+    "pg_ctl",
+    "-D",
+    "/tmp/a8dr-pg-o2kkfi3m/source",
+    "-l",
+    "/tmp/a8dr-pg-o2kkfi3m/source.log",
+    "-w",
+    "start"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-o2kkfi3m/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-o2kkfi3m/socket",
+    "PGPORT": "55436",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:12:42.156442+00:00",
+  "elapsed_ms": 108.060333,
+  "exit": 0,
+  "stdout": "waiting for server to start.... done\nserver started\n",
+  "stderr": ""
+}

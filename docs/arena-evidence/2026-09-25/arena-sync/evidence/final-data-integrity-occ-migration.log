@@ -1,0 +1,41 @@
+
+=== TASK 1: OCC persistence / atomic compare-and-write ===
+  ✅ TASK 1 / update uses one atomic WHERE id+version statement
+  ✅ TASK 1 / base_version reaches persistence unchanged
+  ✅ TASK 1 / delete also carries base_version to the atomic DB predicate
+  ✅ TASK 1 / zero-row update becomes occ_conflict/409 with operation provenance
+  ✅ TASK 1 / zero-row delete becomes occ_conflict/409 with operation provenance
+
+=== TASK 2: OCC boundary / malformed / strict policy ===
+  ✅ TASK 2 / string base_version is rejected
+  ✅ TASK 2 / base_version=0 is rejected
+  ✅ TASK 2 / strict OCC rejects missing base_version for update and delete
+  ✅ TASK 2 / NaN/malformed base_version fails closed before SQL
+
+=== TASK 3: concurrency / replay / failure ===
+  ✅ TASK 3 / 10 concurrent same-version writers have exactly one winner
+  ✅ TASK 3 / delete race has the same compare-and-write guard
+  ✅ TASK 3 / stale conflict followed by fresh-version retry succeeds
+  ✅ TASK 3 / PG failure propagates and cannot become a false success
+  ✅ TASK 3 / replayed stale writes remain conflicts rather than reapplying
+
+=== TASK 4: /api/sync TOCTOU final-gate contract ===
+  ✅ TASK 4 / pre-check remains visible as advisory conflict detection
+  ✅ TASK 4 / final persistence OCC conflict is explicitly classified
+  ✅ TASK 4 / TOCTOU race cannot return false 200; it returns 409
+  ✅ TASK 4 / final OCC race persists sync_conflicts through PG mirror
+  ✅ TASK 4 / conflict persistence failure remains fail-closed at 503
+
+=== TASK 5: migration 012 + chain / rollback integrity ===
+  ✅ TASK 5 / migration versions are unique
+  ✅ TASK 5 / 020 operator identity is preserved and outbox lease is uniquely 021
+  ✅ TASK 5 / 012 exposes explicit completed-swap sentinel
+  ✅ TASK 5 / runner contains explicit 012 recovery path
+  ✅ TASK 5 / 012 internal transaction control and checksum are retained
+  ✅ TASK 5 / 012 rollback rejects stale recovery tables before creating new recovery artifacts
+  ✅ TASK 5 / rollback recovery uses the migration watermark rather than row-count deltas
+  ✅ TASK 5 / rollback watermark cleanup occurs before the final commit with no post-commit cleanup
+
+DATA-INTEGRITY FIVE-TASK SUITE: 27/25 passes
+
+STDERR

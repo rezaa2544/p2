@@ -1,0 +1,32 @@
+2026-09-23 11:29:28.751 UTC [31526] LOG:  starting PostgreSQL 17.11 (Debian 17.11-0+deb13u1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-09-23 11:29:28.752 UTC [31526] LOG:  listening on Unix socket "/var/tmp/a8c-pg-vxvzh5f_/standby-socket/.s.PGSQL.25342"
+2026-09-23 11:29:28.754 UTC [31531] LOG:  database system was interrupted; last known up at 2026-09-23 11:29:28 UTC
+2026-09-23 11:29:28.761 UTC [31531] LOG:  starting backup recovery with redo LSN 0/5000028, checkpoint LSN 0/5000080, on timeline ID 1
+2026-09-23 11:29:28.761 UTC [31531] LOG:  entering standby mode
+2026-09-23 11:29:28.762 UTC [31531] LOG:  redo starts at 0/5000028
+2026-09-23 11:29:28.762 UTC [31531] LOG:  completed backup recovery with redo LSN 0/5000028 and end LSN 0/5000120
+2026-09-23 11:29:28.762 UTC [31531] LOG:  consistent recovery state reached at 0/5000120
+2026-09-23 11:29:28.762 UTC [31526] LOG:  database system is ready to accept read-only connections
+2026-09-23 11:29:28.766 UTC [31532] LOG:  started streaming WAL from primary at 0/6000000 on timeline 1
+2026-09-23 11:29:28.936 UTC [31532] FATAL:  could not receive data from WAL stream: server closed the connection unexpectedly
+		This probably means the server terminated abnormally
+		before or while processing the request.
+2026-09-23 11:29:28.937 UTC [31531] LOG:  invalid record length at 0/60009F8: expected at least 24, got 0
+2026-09-23 11:29:28.939 UTC [31569] FATAL:  could not connect to the primary server: connection to server on socket "/var/tmp/a8c-pg-vxvzh5f_/socket/.s.PGSQL.25340" failed: server closed the connection unexpectedly
+		This probably means the server terminated abnormally
+		before or while processing the request.
+2026-09-23 11:29:28.939 UTC [31531] LOG:  waiting for WAL to become available at 0/6000A10
+2026-09-23 11:29:33.942 UTC [31833] FATAL:  could not connect to the primary server: connection to server on socket "/var/tmp/a8c-pg-vxvzh5f_/socket/.s.PGSQL.25340" failed: No such file or directory
+		Is the server running locally and accepting connections on that socket?
+2026-09-23 11:29:33.942 UTC [31531] LOG:  waiting for WAL to become available at 0/6000A10
+2026-09-23 11:29:38.944 UTC [32072] FATAL:  could not connect to the primary server: connection to server on socket "/var/tmp/a8c-pg-vxvzh5f_/socket/.s.PGSQL.25340" failed: No such file or directory
+		Is the server running locally and accepting connections on that socket?
+2026-09-23 11:29:38.944 UTC [31531] LOG:  waiting for WAL to become available at 0/6000A10
+2026-09-23 11:29:39.084 UTC [31531] LOG:  received promote request
+2026-09-23 11:29:39.084 UTC [31531] LOG:  redo done at 0/60009D0 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 10.32 s
+2026-09-23 11:29:39.084 UTC [31531] LOG:  last completed transaction was at log time 2026-09-23 11:29:28.894131+00
+2026-09-23 11:29:39.085 UTC [31531] LOG:  selected new timeline ID: 2
+2026-09-23 11:29:39.110 UTC [31531] LOG:  archive recovery complete
+2026-09-23 11:29:39.113 UTC [31529] LOG:  checkpoint starting: force
+2026-09-23 11:29:39.114 UTC [31526] LOG:  database system is ready to accept connections
+2026-09-23 11:29:39.320 UTC [31529] LOG:  checkpoint complete: wrote 5 buffers (0.0%); 0 WAL file(s) added, 0 removed, 1 recycled; write=0.202 s, sync=0.002 s, total=0.208 s; sync files=4, longest=0.001 s, average=0.001 s; distance=16386 kB, estimate=16386 kB; lsn=0/6000EC0, redo lsn=0/6000A30

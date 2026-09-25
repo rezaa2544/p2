@@ -1,0 +1,9 @@
+[
+  "p1-verify-semantic-invalid",
+  "r1-backup-exit",
+  "redis1-exception",
+  "p2-time-exit",
+  "postgres2-exception",
+  "r2-backup-exit",
+  "redis2-exception"
+]

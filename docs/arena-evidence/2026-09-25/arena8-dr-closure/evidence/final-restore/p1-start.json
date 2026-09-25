@@ -1,0 +1,26 @@
+{
+  "id": "p1-start",
+  "command": [
+    "pg_ctl",
+    "-D",
+    "/var/tmp/a8c-pg-6sqt9gko/source",
+    "-l",
+    "/var/tmp/a8c-pg-6sqt9gko/source.log",
+    "-w",
+    "start"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/var/tmp/a8c-pg-6sqt9gko/pbr.conf",
+    "PGHOST": "/var/tmp/a8c-pg-6sqt9gko/socket",
+    "PGPORT": "25310",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:26:20.559135+00:00",
+  "start_monotonic_ns": 1553872708043,
+  "end_monotonic_ns": 1553983860513,
+  "exit": 0,
+  "stdout": "waiting for server to start.... done\nserver started\n",
+  "stderr": "",
+  "expected": 0
+}

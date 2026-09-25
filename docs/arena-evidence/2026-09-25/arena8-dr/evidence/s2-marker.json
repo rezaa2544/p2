@@ -1,0 +1,16 @@
+{
+  "id": "s2-marker",
+  "command": [
+    "redis-cli",
+    "-p",
+    "56621",
+    "GET",
+    "arena:marker"
+  ],
+  "environment": {},
+  "exit": 0,
+  "stdout": "run-2\n",
+  "stderr": "",
+  "elapsed_ms": 3.53514,
+  "utc_end": "2026-09-22T21:13:26.140152+00:00"
+}

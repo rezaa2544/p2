@@ -1,0 +1,15 @@
+{
+  "files": [
+    "last-backup.txt",
+    "dump-20260923T110519Z.rdb",
+    "appendonlydir-20260923T110519Z/appendonly.aof.2.incr.aof"
+  ],
+  "rdb_sha256": "c746308fe51da2b6fd25ce4152f9f80f48a3238d7caf64a3631a79aa5b7a7f9b",
+  "source_files": [
+    "dump.rdb",
+    "server.log",
+    "appendonlydir/appendonly.aof.manifest",
+    "appendonlydir/appendonly.aof.2.base.rdb",
+    "appendonlydir/appendonly.aof.2.incr.aof"
+  ]
+}

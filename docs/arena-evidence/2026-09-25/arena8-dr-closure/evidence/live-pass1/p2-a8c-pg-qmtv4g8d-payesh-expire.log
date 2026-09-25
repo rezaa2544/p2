@@ -1,0 +1,3 @@
+-------------------PROCESS START-------------------
+2026-09-23 11:12:01.340 P00   INFO: expire command begin 2.55.1: --config=/tmp/a8c-pg-qmtv4g8d/pbr.conf --exec-id=5632-de2c831c --lock-path=/tmp/a8c-pg-qmtv4g8d/lock --log-path=/tmp/a8c-pg-qmtv4g8d --repo1-path=/tmp/a8c-pg-qmtv4g8d/repo --repo1-retention-full=2 --stanza=payesh
+2026-09-23 11:12:01.340 P00   INFO: expire command end: completed successfully (0ms)

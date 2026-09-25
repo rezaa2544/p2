@@ -1,0 +1,20 @@
+{
+  "id": "p1-stanza",
+  "command": [
+    "pgbackrest",
+    "--stanza=payesh",
+    "stanza-create"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-n8wmb8r7/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-n8wmb8r7/socket",
+    "PGPORT": "55432",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:11:53.591929+00:00",
+  "elapsed_ms": 11.100955,
+  "exit": 0,
+  "stdout": "2026-09-22 21:11:53.596 P00   INFO: stanza-create command begin 2.55.1: --config=/tmp/a8dr-pg-n8wmb8r7/pbr.conf --exec-id=4638-fb67c18b --lock-path=/tmp/a8dr-pg-n8wmb8r7/lock --log-level-console=info --log-path=/tmp/a8dr-pg-n8wmb8r7 --pg1-path=/tmp/a8dr-pg-n8wmb8r7/source --pg1-port=55432 --pg1-socket-path=/tmp/a8dr-pg-n8wmb8r7/socket --pg1-user=user --repo1-path=/tmp/a8dr-pg-n8wmb8r7/repo --stanza=payesh\n2026-09-22 21:11:53.602 P00   INFO: stanza-create for stanza 'payesh' on repo1\n2026-09-22 21:11:53.602 P00   INFO: stanza-create command end: completed successfully (7ms)\n",
+  "stderr": ""
+}

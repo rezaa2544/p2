@@ -1,0 +1,16 @@
+33745:C 23 Sep 2026 11:30:20.735 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+33745:C 23 Sep 2026 11:30:20.735 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+33745:C 23 Sep 2026 11:30:20.735 * Redis version=8.0.2, bits=64, commit=00000000, modified=0, pid=33745, just started
+33745:C 23 Sep 2026 11:30:20.735 * Configuration loaded
+33745:M 23 Sep 2026 11:30:20.736 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+33745:M 23 Sep 2026 11:30:20.736 * monotonic clock: POSIX clock_gettime
+33745:M 23 Sep 2026 11:30:20.736 * Running mode=standalone, port=26242.
+33745:M 23 Sep 2026 11:30:20.737 * Server initialized
+33745:M 23 Sep 2026 11:30:20.737 * DB loaded from base file appendonly.aof.2.base.aof: 0.000 seconds
+33745:M 23 Sep 2026 11:30:20.737 * DB loaded from append only file: 0.000 seconds
+33745:M 23 Sep 2026 11:30:20.738 * Opening AOF incr file appendonly.aof.2.incr.aof on server start
+33745:M 23 Sep 2026 11:30:20.738 * Ready to accept connections tcp
+33745:signal-handler (1790163020) Received SIGTERM scheduling shutdown...
+33745:M 23 Sep 2026 11:30:21.040 * User requested shutdown...
+33745:M 23 Sep 2026 11:30:21.040 * Calling fsync() on the AOF file.
+33745:M 23 Sep 2026 11:30:21.042 # Redis is now ready to exit, bye bye...

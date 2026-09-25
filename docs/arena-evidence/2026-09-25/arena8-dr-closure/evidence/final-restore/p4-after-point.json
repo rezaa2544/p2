@@ -1,0 +1,26 @@
+{
+  "id": "p4-after-point",
+  "command": [
+    "psql",
+    "-X",
+    "-qAt",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-c",
+    "INSERT INTO users VALUES(12,'after-target'); SELECT pg_switch_wal()"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/var/tmp/a8c-pg-vxvzh5f_/pbr.conf",
+    "PGHOST": "/var/tmp/a8c-pg-vxvzh5f_/socket",
+    "PGPORT": "25340",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:29:20.884226+00:00",
+  "start_monotonic_ns": 1734197799173,
+  "end_monotonic_ns": 1734255786698,
+  "exit": 0,
+  "stdout": "0/30004E0\n",
+  "stderr": "",
+  "expected": 0
+}

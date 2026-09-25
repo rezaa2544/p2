@@ -1,0 +1,25 @@
+{
+  "id": "p4-wrong-dir",
+  "command": [
+    "bash",
+    "tools/pitr-verify.sh",
+    "--manifest",
+    "/var/tmp/a8c-pg-vxvzh5f_/expected.json",
+    "--expect-data-dir",
+    "/var/tmp/a8c-pg-vxvzh5f_/source"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/var/tmp/a8c-pg-vxvzh5f_/pbr.conf",
+    "PGHOST": "/var/tmp/a8c-pg-vxvzh5f_/named/pitr-wnzrdS61/run",
+    "PGPORT": "25341",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:29:23.856080+00:00",
+  "start_monotonic_ns": 1737169656233,
+  "end_monotonic_ns": 1737219998250,
+  "exit": 1,
+  "stdout": "",
+  "stderr": "PITR_VERIFY: FAIL: wrong restore data_directory\n",
+  "expected": "nonzero"
+}

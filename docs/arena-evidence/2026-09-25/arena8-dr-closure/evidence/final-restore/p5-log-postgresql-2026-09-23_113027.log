@@ -1,0 +1,43 @@
+2026-09-23 11:30:27.265 GMT [34090] LOG:  starting PostgreSQL 17.11 (Debian 17.11-0+deb13u1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-09-23 11:30:27.266 GMT [34090] LOG:  listening on IPv6 address "::1", port 25351
+2026-09-23 11:30:27.266 GMT [34090] LOG:  listening on IPv4 address "127.0.0.1", port 25351
+2026-09-23 11:30:27.266 GMT [34090] LOG:  listening on Unix socket "/var/tmp/a8c-pg-hq37s0gq/named/pitr-An0ZE0E1/run/.s.PGSQL.25351"
+2026-09-23 11:30:27.269 GMT [34094] LOG:  database system was interrupted; last known up at 2026-09-23 11:30:21 GMT
+2026-09-23 11:30:27.283 GMT [34094] LOG:  starting backup recovery with redo LSN 0/2000028, checkpoint LSN 0/2000080, on timeline ID 1
+2026-09-23 11:30:27.331 GMT [34094] LOG:  restored log file "000000010000000000000002" from archive
+2026-09-23 11:30:27.340 GMT [34094] LOG:  starting point-in-time recovery to "arena_committed"
+2026-09-23 11:30:27.341 GMT [34094] LOG:  redo starts at 0/2000028
+2026-09-23 11:30:27.389 GMT [34094] LOG:  restored log file "000000010000000000000003" from archive
+2026-09-23 11:30:27.444 GMT [34094] LOG:  restored log file "000000010000000000000004" from archive
+2026-09-23 11:30:27.460 GMT [34094] LOG:  completed backup recovery with redo LSN 0/2000028 and end LSN 0/2000120
+2026-09-23 11:30:27.460 GMT [34094] LOG:  consistent recovery state reached at 0/2000120
+2026-09-23 11:30:27.460 GMT [34090] LOG:  database system is ready to accept read-only connections
+2026-09-23 11:30:27.460 GMT [34094] LOG:  recovery stopping at restore point "arena_committed", time 2026-09-23 11:30:25.751347+00
+2026-09-23 11:30:27.460 GMT [34094] LOG:  redo done at 0/30003D8 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.11 s
+2026-09-23 11:30:27.460 GMT [34094] LOG:  last completed transaction was at log time 2026-09-23 11:30:25.659046+00
+2026-09-23 11:30:27.508 GMT [34094] LOG:  restored log file "000000010000000000000003" from archive
+2026-09-23 11:30:27.528 GMT [34094] LOG:  selected new timeline ID: 2
+2026-09-23 11:30:27.554 GMT [34094] LOG:  archive recovery complete
+2026-09-23 11:30:27.554 GMT [34092] LOG:  checkpoint starting: end-of-recovery immediate wait
+2026-09-23 11:30:27.558 GMT [34092] LOG:  checkpoint complete: wrote 5 buffers (0.0%); 0 WAL file(s) added, 0 removed, 1 recycled; write=0.002 s, sync=0.001 s, total=0.005 s; sync files=4, longest=0.001 s, average=0.001 s; distance=16385 kB, estimate=16385 kB; lsn=0/3000440, redo lsn=0/3000440
+2026-09-23 11:30:27.561 GMT [34090] LOG:  database system is ready to accept connections
+2026-09-23 11:30:27.743 GMT [34090] LOG:  received immediate shutdown request
+2026-09-23 11:30:27.748 GMT [34090] LOG:  database system is shut down
+2026-09-23 11:30:27.871 GMT [34136] LOG:  starting PostgreSQL 17.11 (Debian 17.11-0+deb13u1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-09-23 11:30:27.871 GMT [34136] LOG:  listening on IPv6 address "::1", port 25351
+2026-09-23 11:30:27.871 GMT [34136] LOG:  listening on IPv4 address "127.0.0.1", port 25351
+2026-09-23 11:30:27.872 GMT [34136] LOG:  listening on Unix socket "/var/tmp/a8c-pg-hq37s0gq/named/pitr-An0ZE0E1/run/.s.PGSQL.25351"
+2026-09-23 11:30:27.876 GMT [34140] LOG:  database system was interrupted; last known up at 2026-09-23 11:30:27 GMT
+2026-09-23 11:30:27.885 GMT [34140] LOG:  database system was not properly shut down; automatic recovery in progress
+2026-09-23 11:30:27.885 GMT [34140] LOG:  invalid record length at 0/30004B8: expected at least 24, got 0
+2026-09-23 11:30:27.885 GMT [34140] LOG:  redo is not required
+2026-09-23 11:30:27.887 GMT [34138] LOG:  checkpoint starting: end-of-recovery immediate wait
+2026-09-23 11:30:27.889 GMT [34138] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.001 s, total=0.003 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB; lsn=0/30004B8, redo lsn=0/30004B8
+2026-09-23 11:30:27.891 GMT [34136] LOG:  database system is ready to accept connections
+2026-09-23 11:30:28.030 GMT [34136] LOG:  received fast shutdown request
+2026-09-23 11:30:28.030 GMT [34136] LOG:  aborting any active transactions
+2026-09-23 11:30:28.033 GMT [34136] LOG:  background worker "logical replication launcher" (PID 34150) exited with exit code 1
+2026-09-23 11:30:28.033 GMT [34138] LOG:  shutting down
+2026-09-23 11:30:28.033 GMT [34138] LOG:  checkpoint starting: shutdown immediate
+2026-09-23 11:30:28.037 GMT [34138] LOG:  checkpoint complete: wrote 14 buffers (0.1%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.001 s, total=0.004 s; sync files=9, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB; lsn=0/3000530, redo lsn=0/3000530
+2026-09-23 11:30:28.040 GMT [34136] LOG:  database system is shut down

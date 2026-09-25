@@ -1,0 +1,450 @@
+[
+  {
+    "case": "data-integrity-occ-migration",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/data-integrity-occ-migration.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:41:25.622354+00:00",
+    "start_ns": 1284366888593,
+    "end_ns": 1284436084072,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-data-integrity-occ-migration.log",
+    "gate_status": null
+  },
+  {
+    "case": "sync-dup-claim",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/sync-dup-claim.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:41:25.691724+00:00",
+    "start_ns": 1284436258714,
+    "end_ns": 1284531406252,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-sync-dup-claim.log",
+    "gate_status": null
+  },
+  {
+    "case": "sync-atomic-batch",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/sync-atomic-batch.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:41:25.787061+00:00",
+    "start_ns": 1284531596925,
+    "end_ns": 1284642530641,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-sync-atomic-batch.log",
+    "gate_status": null
+  },
+  {
+    "case": "sync-del-mirror",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/sync-del-mirror.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:41:25.898196+00:00",
+    "start_ns": 1284642731671,
+    "end_ns": 1292945194693,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-sync-del-mirror.log",
+    "gate_status": null
+  },
+  {
+    "case": "sync-cache-errors",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/sync-cache-errors.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:41:34.201335+00:00",
+    "start_ns": 1292945869401,
+    "end_ns": 1293035004844,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-sync-cache-errors.log",
+    "gate_status": null
+  },
+  {
+    "case": "sync-mirror-visible",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/sync-mirror-visible.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:41:34.290725+00:00",
+    "start_ns": 1293035260685,
+    "end_ns": 1293128171722,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-sync-mirror-visible.log",
+    "gate_status": null
+  },
+  {
+    "case": "sync-chunk",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/sync-chunk.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:41:34.383834+00:00",
+    "start_ns": 1293128369357,
+    "end_ns": 1298752569767,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-sync-chunk.log",
+    "gate_status": null
+  },
+  {
+    "case": "sync-sending-revive",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/sync-sending-revive.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:41:40.008300+00:00",
+    "start_ns": 1298752835398,
+    "end_ns": 1302597308197,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-sync-sending-revive.log",
+    "gate_status": null
+  },
+  {
+    "case": "sync-dlq-retry",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/sync-dlq-retry.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:41:43.852983+00:00",
+    "start_ns": 1302597518116,
+    "end_ns": 1306564526902,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-sync-dlq-retry.log",
+    "gate_status": null
+  },
+  {
+    "case": "sync-queue-caps",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/sync-queue-caps.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:41:47.820212+00:00",
+    "start_ns": 1306564746661,
+    "end_ns": 1309835997311,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-sync-queue-caps.log",
+    "gate_status": null
+  },
+  {
+    "case": "sync-lastsync",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/sync-lastsync.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:41:51.092363+00:00",
+    "start_ns": 1309836898509,
+    "end_ns": 1312978603491,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-sync-lastsync.log",
+    "gate_status": null
+  },
+  {
+    "case": "delta-sync-hardening",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/delta-sync-hardening.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:41:54.234299+00:00",
+    "start_ns": 1312978834206,
+    "end_ns": 1319044453548,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-delta-sync-hardening.log",
+    "gate_status": null
+  },
+  {
+    "case": "offline-sync-drill",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/offline-sync-drill.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:42:00.300147+00:00",
+    "start_ns": 1319044682916,
+    "end_ns": 1328458445071,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-offline-sync-drill.log",
+    "gate_status": null
+  },
+  {
+    "case": "sync-conflict-ui",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/sync-conflict-ui.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:42:09.714149+00:00",
+    "start_ns": 1328458685117,
+    "end_ns": 1333176347824,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-sync-conflict-ui.log",
+    "gate_status": null
+  },
+  {
+    "case": "occ",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/occ.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:42:14.432061+00:00",
+    "start_ns": 1333176596196,
+    "end_ns": 1333916599928,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-occ.log",
+    "gate_status": null
+  },
+  {
+    "case": "server15",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/server15.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:42:15.172577+00:00",
+    "start_ns": 1333917080909,
+    "end_ns": 1357168088075,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-server15.log",
+    "gate_status": null
+  },
+  {
+    "case": "server18",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/server18.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:42:38.423937+00:00",
+    "start_ns": 1357168472134,
+    "end_ns": 1369142355168,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-server18.log",
+    "gate_status": null
+  },
+  {
+    "case": "conflicts-list-cap",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/conflicts-list-cap.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:42:50.398061+00:00",
+    "start_ns": 1369142596892,
+    "end_ns": 1369239712357,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-conflicts-list-cap.log",
+    "gate_status": null
+  },
+  {
+    "case": "sync-occ-adversarial-live-independent-1",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/sync-occ-adversarial-live.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:42:50.495456+00:00",
+    "start_ns": 1369239992140,
+    "end_ns": 1369905138135,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-sync-occ-adversarial-live-independent-1.log",
+    "gate_status": null
+  },
+  {
+    "case": "sync-replay-adversarial-live-independent-1",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/sync-replay-adversarial-live.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:42:51.160925+00:00",
+    "start_ns": 1369905459924,
+    "end_ns": 1370307448603,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-sync-replay-adversarial-live-independent-1.log",
+    "gate_status": null
+  },
+  {
+    "case": "sync-client-adversarial-independent-1",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/sync-client-adversarial.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:42:51.563155+00:00",
+    "start_ns": 1370307690376,
+    "end_ns": 1370349242915,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-sync-client-adversarial-independent-1.log",
+    "gate_status": null
+  },
+  {
+    "case": "strict-gate-empty-registry-independent-1",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/strict-gate-empty-registry.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:42:51.604964+00:00",
+    "start_ns": 1370349499590,
+    "end_ns": 1370463836959,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-strict-gate-empty-registry-independent-1.log",
+    "gate_status": null
+  },
+  {
+    "case": "sync-occ-adversarial-live-independent-2",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/sync-occ-adversarial-live.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:42:51.719595+00:00",
+    "start_ns": 1370464130177,
+    "end_ns": 1371104341067,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-sync-occ-adversarial-live-independent-2.log",
+    "gate_status": null
+  },
+  {
+    "case": "sync-replay-adversarial-live-independent-2",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/sync-replay-adversarial-live.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:42:52.360072+00:00",
+    "start_ns": 1371104607134,
+    "end_ns": 1371505567431,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-sync-replay-adversarial-live-independent-2.log",
+    "gate_status": null
+  },
+  {
+    "case": "sync-client-adversarial-independent-2",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/sync-client-adversarial.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:42:52.761293+00:00",
+    "start_ns": 1371505828307,
+    "end_ns": 1371550580512,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-sync-client-adversarial-independent-2.log",
+    "gate_status": null
+  },
+  {
+    "case": "strict-gate-empty-registry-independent-2",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tests/strict-gate-empty-registry.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:42:52.806311+00:00",
+    "start_ns": 1371550846362,
+    "end_ns": 1371660181010,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-strict-gate-empty-registry-independent-2.log",
+    "gate_status": null
+  },
+  {
+    "case": "strict-gate",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tools/strict-verification-gate.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:42:52.915941+00:00",
+    "start_ns": 1371660475859,
+    "end_ns": 1371998129357,
+    "expected_exit": 1,
+    "actual_exit": 1,
+    "log": "final-strict-gate.log",
+    "gate_status": "NOT VERIFIED"
+  },
+  {
+    "case": "check-authz",
+    "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+    "command": [
+      "node",
+      "tools/check-authz.js"
+    ],
+    "cwd": "/home/user/p2",
+    "utc": "2026-09-24T18:42:53.253895+00:00",
+    "start_ns": 1371998431249,
+    "end_ns": 1372165876572,
+    "expected_exit": 0,
+    "actual_exit": 0,
+    "log": "final-check-authz.log",
+    "gate_status": null
+  }
+]

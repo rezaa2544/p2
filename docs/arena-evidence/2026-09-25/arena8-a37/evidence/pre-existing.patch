@@ -1,0 +1,78 @@
+diff --git a/infra/postgres/entrypoints/primary-entrypoint.sh b/infra/postgres/entrypoints/primary-entrypoint.sh
+old mode 100755
+new mode 100644
+diff --git a/infra/postgres/entrypoints/render-config.sh b/infra/postgres/entrypoints/render-config.sh
+old mode 100755
+new mode 100644
+diff --git a/infra/postgres/entrypoints/standby-entrypoint.sh b/infra/postgres/entrypoints/standby-entrypoint.sh
+old mode 100755
+new mode 100644
+diff --git a/infra/postgres/init/01-replication.sh b/infra/postgres/init/01-replication.sh
+old mode 100755
+new mode 100644
+diff --git a/infra/postgres/post-checks.sh b/infra/postgres/post-checks.sh
+old mode 100755
+new mode 100644
+diff --git a/infra/redis/redis-checks.sh b/infra/redis/redis-checks.sh
+old mode 100755
+new mode 100644
+diff --git a/monitoring/alert-rules.yml b/monitoring/alert-rules.yml
+deleted file mode 120000
+index b3bf847..0000000
+--- a/monitoring/alert-rules.yml
++++ /dev/null
+@@ -1,6 +0,0 @@
+-# DEPRECATED — canonical Prometheus alert catalogue lives at
+-# infra/observability/alert-rules.yml
+-#
+-# Prometheus loads only the canonical file above. This compatibility marker
+-# intentionally contains no active rules, preventing a second catalogue from
+-# drifting independently.
+diff --git a/tools/chaos-test.sh b/tools/chaos-test.sh
+old mode 100755
+new mode 100644
+diff --git a/tools/dast-live.sh b/tools/dast-live.sh
+old mode 100755
+new mode 100644
+diff --git a/tools/docs-consistency-check.sh b/tools/docs-consistency-check.sh
+old mode 100755
+new mode 100644
+diff --git a/tools/docs-export.sh b/tools/docs-export.sh
+old mode 100755
+new mode 100644
+diff --git a/tools/docs-health.sh b/tools/docs-health.sh
+old mode 100755
+new mode 100644
+diff --git a/tools/failover-postgres.sh b/tools/failover-postgres.sh
+old mode 100755
+new mode 100644
+diff --git a/tools/failover-redis.sh b/tools/failover-redis.sh
+old mode 100755
+new mode 100644
+diff --git a/tools/migrate-ledger.js b/tools/migrate-ledger.js
+old mode 100755
+new mode 100644
+diff --git a/tools/mutate-reports-check.sh b/tools/mutate-reports-check.sh
+old mode 100755
+new mode 100644
+diff --git a/tools/openapi-lint.sh b/tools/openapi-lint.sh
+old mode 100755
+new mode 100644
+diff --git a/tools/pitr-restore.sh b/tools/pitr-restore.sh
+old mode 100755
+new mode 100644
+diff --git a/tools/pitr-verify.sh b/tools/pitr-verify.sh
+old mode 100755
+new mode 100644
+diff --git a/tools/production-verifier.sh b/tools/production-verifier.sh
+old mode 100755
+new mode 100644
+diff --git a/tools/redis-backup.sh b/tools/redis-backup.sh
+old mode 100755
+new mode 100644
+diff --git a/tools/test-discovery-verifier.sh b/tools/test-discovery-verifier.sh
+old mode 100755
+new mode 100644
+diff --git a/tools/w18-load-pg.sh b/tools/w18-load-pg.sh
+old mode 100755
+new mode 100644

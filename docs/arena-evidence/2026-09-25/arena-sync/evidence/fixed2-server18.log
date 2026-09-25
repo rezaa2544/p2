@@ -1,0 +1,24 @@
+
+▸ server18 — strict request validation
+— U واحد —
+  ✅ U1 الگویِ schema (max + required)
+  ✅ U2 طولِ بیش‌ازحد رد می‌شود
+  ✅ U3 کلیدِ ناشناخته = unknown_field
+  ✅ U4 فیلدِ الزامیِ غایب = missing
+server18 crashed: Error: ENOENT: no such file or directory, copyfile '/home/user/p2/server/data/payesh.json' -> '/var/tmp/payesh-s18-9mnqqK/payesh.json'
+    at Object.copyFileSync (node:fs:3090:11)
+    at main (/home/user/p2/tests/server18.js:79:6)
+    at Object.<anonymous> (/home/user/p2/tests/server18.js:268:1)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'copyfile',
+  path: '/home/user/p2/server/data/payesh.json',
+  dest: '/var/tmp/payesh-s18-9mnqqK/payesh.json'
+}

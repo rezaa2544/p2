@@ -1,0 +1,311 @@
+==== PAYESH STRICT VERIFICATION GATE ====
+  OK G1 current HEAD known — abb20b7b0a49642488573c2e1f7bf289549cea40
+  OK G2 mandatory policy exists
+  OK G3 registry exists
+  OK G4 registry valid JSON
+  OK G5 three independent reviewers declared
+  OK G6 explicit false-green allowlist exists
+  OK G6a canonical alert rules exists — infra/observability/alert-rules.yml
+  FAIL G7 assert(true has no unapproved hits — tests/client-features.js:145, tests/multigrade2.js:181, tests/report2.js:158, tests/simulation.js:531, tools/strict-verification-gate.js:25
+  FAIL G7 process.exit(0) has no unapproved hits — _shots.js:111, build.js:142, server/index.js:1792, server/index.js:1826, server/seed.js:84, server/seed.js:116, tests/a11y-interactive.js:257, tests/a11y-keyboard.js:342, tests/a11y-runtime.js:190, tests/arena5-demo-guard.js:73, tests/assocmin2.js:163, tests/bgsync.js:129, tests/cache-l2-epoch.js:107, tests/canary-atomic-postgres-live-runtime.js:129, tests/chaos-drill-lib.js:536
+  FAIL G7 || true has no unapproved hits — .codacy.yml:40, .github/workflows/fortify.yml:61, .github/workflows/node.js.yml:85, .github/workflows/node.js.yml:181, .github/workflows/observability-regression.yml:100, .github/workflows/observability-regression.yml:101, .github/workflows/observability-regression.yml:102, .github/workflows/runtime-reliability.yml:49, .github/workflows/runtime-reliability.yml:66, .github/workflows/security.yml:148, .github/workflows/security.yml:199, infra/postgres/docker-compose.ha.yml:67, server/analytics/intelligence-platform-integration.js:292, server/analytics/intelligence-platform-integration.js:293, server/analytics/intelligence-platform-integration.js:294
+  FAIL G7 0/0 checks has no unapproved hits — tools/strict-verification-gate.js:25
+  OK G8 unique item A-01
+  FAIL G9 A-01 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-01 chatgpt PASS + evidence — missing
+  FAIL G10 A-01 arena PASS + evidence — missing
+  FAIL G10 A-01 atria PASS + evidence — missing
+  OK G13 A-01 not falsely certified
+  OK G8 unique item A-02
+  FAIL G9 A-02 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-02 chatgpt PASS + evidence — missing
+  FAIL G10 A-02 arena PASS + evidence — missing
+  FAIL G10 A-02 atria PASS + evidence — missing
+  OK G13 A-02 not falsely certified
+  OK G8 unique item A-03
+  FAIL G9 A-03 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-03 chatgpt PASS + evidence — missing
+  FAIL G10 A-03 arena PASS + evidence — missing
+  FAIL G10 A-03 atria PASS + evidence — missing
+  OK G13 A-03 not falsely certified
+  OK G8 unique item A-04
+  FAIL G9 A-04 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-04 chatgpt PASS + evidence — missing
+  FAIL G10 A-04 arena PASS + evidence — missing
+  FAIL G10 A-04 atria PASS + evidence — missing
+  OK G13 A-04 not falsely certified
+  OK G8 unique item A-05
+  FAIL G9 A-05 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-05 chatgpt PASS + evidence — missing
+  FAIL G10 A-05 arena PASS + evidence — missing
+  FAIL G10 A-05 atria PASS + evidence — missing
+  OK G13 A-05 not falsely certified
+  OK G8 unique item A-06
+  FAIL G9 A-06 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-06 chatgpt PASS + evidence — missing
+  FAIL G10 A-06 arena PASS + evidence — missing
+  FAIL G10 A-06 atria PASS + evidence — missing
+  OK G13 A-06 not falsely certified
+  OK G8 unique item A-07
+  FAIL G9 A-07 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-07 chatgpt PASS + evidence — missing
+  FAIL G10 A-07 arena PASS + evidence — missing
+  FAIL G10 A-07 atria PASS + evidence — missing
+  OK G13 A-07 not falsely certified
+  OK G8 unique item A-08
+  FAIL G9 A-08 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-08 chatgpt PASS + evidence — missing
+  FAIL G10 A-08 arena PASS + evidence — missing
+  FAIL G10 A-08 atria PASS + evidence — missing
+  OK G13 A-08 not falsely certified
+  OK G8 unique item A-09
+  FAIL G9 A-09 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-09 chatgpt PASS + evidence — missing
+  FAIL G10 A-09 arena PASS + evidence — missing
+  FAIL G10 A-09 atria PASS + evidence — missing
+  OK G13 A-09 not falsely certified
+  OK G8 unique item A-10
+  FAIL G9 A-10 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-10 chatgpt PASS + evidence — missing
+  FAIL G10 A-10 arena PASS + evidence — missing
+  FAIL G10 A-10 atria PASS + evidence — missing
+  OK G13 A-10 not falsely certified
+  OK G8 unique item A-11
+  FAIL G9 A-11 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-11 chatgpt PASS + evidence — missing
+  FAIL G10 A-11 arena PASS + evidence — missing
+  FAIL G10 A-11 atria PASS + evidence — missing
+  OK G13 A-11 not falsely certified
+  OK G8 unique item A-12
+  FAIL G9 A-12 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-12 chatgpt PASS + evidence — missing
+  FAIL G10 A-12 arena PASS + evidence — missing
+  FAIL G10 A-12 atria PASS + evidence — missing
+  OK G13 A-12 not falsely certified
+  OK G8 unique item A-13
+  FAIL G9 A-13 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-13 chatgpt PASS + evidence — missing
+  FAIL G10 A-13 arena PASS + evidence — missing
+  FAIL G10 A-13 atria PASS + evidence — missing
+  OK G13 A-13 not falsely certified
+  OK G8 unique item A-14
+  FAIL G9 A-14 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-14 chatgpt PASS + evidence — missing
+  FAIL G10 A-14 arena PASS + evidence — missing
+  FAIL G10 A-14 atria PASS + evidence — missing
+  OK G13 A-14 not falsely certified
+  OK G8 unique item A-15
+  FAIL G9 A-15 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-15 chatgpt PASS + evidence — missing
+  FAIL G10 A-15 arena PASS + evidence — missing
+  FAIL G10 A-15 atria PASS + evidence — missing
+  OK G13 A-15 not falsely certified
+  OK G8 unique item A-16
+  FAIL G9 A-16 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-16 chatgpt PASS + evidence — missing
+  FAIL G10 A-16 arena PASS + evidence — missing
+  FAIL G10 A-16 atria PASS + evidence — missing
+  OK G13 A-16 not falsely certified
+  OK G8 unique item A-17
+  FAIL G9 A-17 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-17 chatgpt PASS + evidence — missing
+  FAIL G10 A-17 arena PASS + evidence — missing
+  FAIL G10 A-17 atria PASS + evidence — missing
+  OK G13 A-17 not falsely certified
+  OK G8 unique item A-18
+  FAIL G9 A-18 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-18 chatgpt PASS + evidence — missing
+  FAIL G10 A-18 arena PASS + evidence — missing
+  FAIL G10 A-18 atria PASS + evidence — missing
+  OK G13 A-18 not falsely certified
+  OK G8 unique item A-19
+  FAIL G9 A-19 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-19 chatgpt PASS + evidence — missing
+  FAIL G10 A-19 arena PASS + evidence — missing
+  FAIL G10 A-19 atria PASS + evidence — missing
+  OK G13 A-19 not falsely certified
+  OK G8 unique item A-20
+  FAIL G9 A-20 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-20 chatgpt PASS + evidence — missing
+  FAIL G10 A-20 arena PASS + evidence — missing
+  FAIL G10 A-20 atria PASS + evidence — missing
+  OK G13 A-20 not falsely certified
+  OK G8 unique item A-21
+  FAIL G9 A-21 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-21 chatgpt PASS + evidence — missing
+  FAIL G10 A-21 arena PASS + evidence — missing
+  FAIL G10 A-21 atria PASS + evidence — missing
+  OK G13 A-21 not falsely certified
+  OK G8 unique item A-22
+  FAIL G9 A-22 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-22 chatgpt PASS + evidence — missing
+  FAIL G10 A-22 arena PASS + evidence — missing
+  FAIL G10 A-22 atria PASS + evidence — missing
+  OK G13 A-22 not falsely certified
+  OK G8 unique item A-23
+  FAIL G9 A-23 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-23 chatgpt PASS + evidence — missing
+  FAIL G10 A-23 arena PASS + evidence — missing
+  FAIL G10 A-23 atria PASS + evidence — missing
+  OK G13 A-23 not falsely certified
+  OK G8 unique item A-24
+  FAIL G9 A-24 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-24 chatgpt PASS + evidence — missing
+  FAIL G10 A-24 arena PASS + evidence — missing
+  FAIL G10 A-24 atria PASS + evidence — missing
+  OK G13 A-24 not falsely certified
+  OK G8 unique item A-25
+  FAIL G9 A-25 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-25 chatgpt PASS + evidence — missing
+  FAIL G10 A-25 arena PASS + evidence — missing
+  FAIL G10 A-25 atria PASS + evidence — missing
+  OK G13 A-25 not falsely certified
+  OK G8 unique item A-26
+  FAIL G9 A-26 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-26 chatgpt PASS + evidence — missing
+  FAIL G10 A-26 arena PASS + evidence — missing
+  FAIL G10 A-26 atria PASS + evidence — missing
+  OK G13 A-26 not falsely certified
+  OK G8 unique item A-27
+  FAIL G9 A-27 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-27 chatgpt PASS + evidence — missing
+  FAIL G10 A-27 arena PASS + evidence — missing
+  FAIL G10 A-27 atria PASS + evidence — missing
+  OK G13 A-27 not falsely certified
+  OK G8 unique item A-28
+  FAIL G9 A-28 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-28 chatgpt PASS + evidence — missing
+  FAIL G10 A-28 arena PASS + evidence — missing
+  FAIL G10 A-28 atria PASS + evidence — missing
+  OK G13 A-28 not falsely certified
+  OK G8 unique item A-29
+  FAIL G9 A-29 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+  FAIL G10 A-29 chatgpt PASS + evidence — missing
+  FAIL G10 A-29 arena PASS + evidence — missing
+  FAIL G10 A-29 atria PASS + evidence — missing
+  OK G13 A-29 not falsely certified
+RESULT 65 pass / 120 fail
+HEAD abb20b7b0a49642488573c2e1f7bf289549cea40
+CERTIFIED 0
+VERDICT NOT VERIFIED
+BLOCKERS
+ - G7 assert(true has no unapproved hits — tests/client-features.js:145, tests/multigrade2.js:181, tests/report2.js:158, tests/simulation.js:531, tools/strict-verification-gate.js:25
+ - G7 process.exit(0) has no unapproved hits — _shots.js:111, build.js:142, server/index.js:1792, server/index.js:1826, server/seed.js:84, server/seed.js:116, tests/a11y-interactive.js:257, tests/a11y-keyboard.js:342, tests/a11y-runtime.js:190, tests/arena5-demo-guard.js:73, tests/assocmin2.js:163, tests/bgsync.js:129, tests/cache-l2-epoch.js:107, tests/canary-atomic-postgres-live-runtime.js:129, tests/chaos-drill-lib.js:536
+ - G7 || true has no unapproved hits — .codacy.yml:40, .github/workflows/fortify.yml:61, .github/workflows/node.js.yml:85, .github/workflows/node.js.yml:181, .github/workflows/observability-regression.yml:100, .github/workflows/observability-regression.yml:101, .github/workflows/observability-regression.yml:102, .github/workflows/runtime-reliability.yml:49, .github/workflows/runtime-reliability.yml:66, .github/workflows/security.yml:148, .github/workflows/security.yml:199, infra/postgres/docker-compose.ha.yml:67, server/analytics/intelligence-platform-integration.js:292, server/analytics/intelligence-platform-integration.js:293, server/analytics/intelligence-platform-integration.js:294
+ - G7 0/0 checks has no unapproved hits — tools/strict-verification-gate.js:25
+ - G9 A-01 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-01 chatgpt PASS + evidence — missing
+ - G10 A-01 arena PASS + evidence — missing
+ - G10 A-01 atria PASS + evidence — missing
+ - G9 A-02 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-02 chatgpt PASS + evidence — missing
+ - G10 A-02 arena PASS + evidence — missing
+ - G10 A-02 atria PASS + evidence — missing
+ - G9 A-03 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-03 chatgpt PASS + evidence — missing
+ - G10 A-03 arena PASS + evidence — missing
+ - G10 A-03 atria PASS + evidence — missing
+ - G9 A-04 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-04 chatgpt PASS + evidence — missing
+ - G10 A-04 arena PASS + evidence — missing
+ - G10 A-04 atria PASS + evidence — missing
+ - G9 A-05 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-05 chatgpt PASS + evidence — missing
+ - G10 A-05 arena PASS + evidence — missing
+ - G10 A-05 atria PASS + evidence — missing
+ - G9 A-06 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-06 chatgpt PASS + evidence — missing
+ - G10 A-06 arena PASS + evidence — missing
+ - G10 A-06 atria PASS + evidence — missing
+ - G9 A-07 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-07 chatgpt PASS + evidence — missing
+ - G10 A-07 arena PASS + evidence — missing
+ - G10 A-07 atria PASS + evidence — missing
+ - G9 A-08 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-08 chatgpt PASS + evidence — missing
+ - G10 A-08 arena PASS + evidence — missing
+ - G10 A-08 atria PASS + evidence — missing
+ - G9 A-09 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-09 chatgpt PASS + evidence — missing
+ - G10 A-09 arena PASS + evidence — missing
+ - G10 A-09 atria PASS + evidence — missing
+ - G9 A-10 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-10 chatgpt PASS + evidence — missing
+ - G10 A-10 arena PASS + evidence — missing
+ - G10 A-10 atria PASS + evidence — missing
+ - G9 A-11 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-11 chatgpt PASS + evidence — missing
+ - G10 A-11 arena PASS + evidence — missing
+ - G10 A-11 atria PASS + evidence — missing
+ - G9 A-12 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-12 chatgpt PASS + evidence — missing
+ - G10 A-12 arena PASS + evidence — missing
+ - G10 A-12 atria PASS + evidence — missing
+ - G9 A-13 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-13 chatgpt PASS + evidence — missing
+ - G10 A-13 arena PASS + evidence — missing
+ - G10 A-13 atria PASS + evidence — missing
+ - G9 A-14 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-14 chatgpt PASS + evidence — missing
+ - G10 A-14 arena PASS + evidence — missing
+ - G10 A-14 atria PASS + evidence — missing
+ - G9 A-15 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-15 chatgpt PASS + evidence — missing
+ - G10 A-15 arena PASS + evidence — missing
+ - G10 A-15 atria PASS + evidence — missing
+ - G9 A-16 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-16 chatgpt PASS + evidence — missing
+ - G10 A-16 arena PASS + evidence — missing
+ - G10 A-16 atria PASS + evidence — missing
+ - G9 A-17 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-17 chatgpt PASS + evidence — missing
+ - G10 A-17 arena PASS + evidence — missing
+ - G10 A-17 atria PASS + evidence — missing
+ - G9 A-18 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-18 chatgpt PASS + evidence — missing
+ - G10 A-18 arena PASS + evidence — missing
+ - G10 A-18 atria PASS + evidence — missing
+ - G9 A-19 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-19 chatgpt PASS + evidence — missing
+ - G10 A-19 arena PASS + evidence — missing
+ - G10 A-19 atria PASS + evidence — missing
+ - G9 A-20 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-20 chatgpt PASS + evidence — missing
+ - G10 A-20 arena PASS + evidence — missing
+ - G10 A-20 atria PASS + evidence — missing
+ - G9 A-21 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-21 chatgpt PASS + evidence — missing
+ - G10 A-21 arena PASS + evidence — missing
+ - G10 A-21 atria PASS + evidence — missing
+ - G9 A-22 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-22 chatgpt PASS + evidence — missing
+ - G10 A-22 arena PASS + evidence — missing
+ - G10 A-22 atria PASS + evidence — missing
+ - G9 A-23 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-23 chatgpt PASS + evidence — missing
+ - G10 A-23 arena PASS + evidence — missing
+ - G10 A-23 atria PASS + evidence — missing
+ - G9 A-24 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-24 chatgpt PASS + evidence — missing
+ - G10 A-24 arena PASS + evidence — missing
+ - G10 A-24 atria PASS + evidence — missing
+ - G9 A-25 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-25 chatgpt PASS + evidence — missing
+ - G10 A-25 arena PASS + evidence — missing
+ - G10 A-25 atria PASS + evidence — missing
+ - G9 A-26 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-26 chatgpt PASS + evidence — missing
+ - G10 A-26 arena PASS + evidence — missing
+ - G10 A-26 atria PASS + evidence — missing
+ - G9 A-27 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-27 chatgpt PASS + evidence — missing
+ - G10 A-27 arena PASS + evidence — missing
+ - G10 A-27 atria PASS + evidence — missing
+ - G9 A-28 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-28 chatgpt PASS + evidence — missing
+ - G10 A-28 arena PASS + evidence — missing
+ - G10 A-28 atria PASS + evidence — missing
+ - G9 A-29 binds current HEAD — item=undefined head=abb20b7b0a49642488573c2e1f7bf289549cea40
+ - G10 A-29 chatgpt PASS + evidence — missing
+ - G10 A-29 arena PASS + evidence — missing
+ - G10 A-29 atria PASS + evidence — missing

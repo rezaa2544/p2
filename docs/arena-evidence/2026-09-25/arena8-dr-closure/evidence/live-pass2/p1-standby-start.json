@@ -1,0 +1,28 @@
+{
+  "id": "p1-standby-start",
+  "command": [
+    "pg_ctl",
+    "-D",
+    "/tmp/a8c-pg-ukfdjkiu/standby",
+    "-o",
+    "-p 55312 -k /tmp/a8c-pg-ukfdjkiu/standby-socket -c archive_mode=off",
+    "-l",
+    "/tmp/a8c-pg-ukfdjkiu/standby.log",
+    "-w",
+    "start"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-ukfdjkiu/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-ukfdjkiu/socket",
+    "PGPORT": "55310",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:13:26.437694+00:00",
+  "start_monotonic_ns": 779751266283,
+  "end_monotonic_ns": 779867277783,
+  "exit": 0,
+  "stdout": "waiting for server to start.... done\nserver started\n",
+  "stderr": "",
+  "expected": 0
+}

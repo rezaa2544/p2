@@ -1,0 +1,18 @@
+{
+  "id": "r4-aof-source-shutdown",
+  "command": [
+    "redis-cli",
+    "-p",
+    "56242",
+    "SHUTDOWN",
+    "NOSAVE"
+  ],
+  "environment": {},
+  "utc_start": "2026-09-23T11:24:22.053900+00:00",
+  "start_monotonic_ns": 1435367474642,
+  "end_monotonic_ns": 1435373531462,
+  "exit": 0,
+  "stdout": "",
+  "stderr": "",
+  "expected": 0
+}

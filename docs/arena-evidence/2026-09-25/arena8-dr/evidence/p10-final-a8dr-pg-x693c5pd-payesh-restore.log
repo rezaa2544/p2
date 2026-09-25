@@ -1,0 +1,9 @@
+-------------------PROCESS START-------------------
+2026-09-22 21:16:45.237 P00   INFO: restore command begin 2.55.1: --config=/tmp/a8dr-pg-x693c5pd/pbr.conf --delta --exec-id=8313-cf1c6684 --lock-path=/tmp/a8dr-pg-x693c5pd/lock --log-level-console=info --log-path=/tmp/a8dr-pg-x693c5pd --pg1-path=/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/data --repo1-path=/tmp/a8dr-pg-x693c5pd/repo --spool-path=/tmp/a8dr-pg-x693c5pd/spool --stanza=payesh --target=arena_target --type=name
+2026-09-22 21:16:45.237 P00   WARN: --delta or --force specified but unable to find 'PG_VERSION' or 'backup.manifest' in '/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/data' to confirm that this is a valid $PGDATA directory. --delta and --force have been disabled and if any files exist in the destination directories the restore will be aborted.
+2026-09-22 21:16:45.243 P00   INFO: repo1: restore backup set 20260922-211643F, recovery will start at 2026-09-22 21:16:43
+2026-09-22 21:16:45.243 P00   INFO: remap data directory to '/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/data'
+2026-09-22 21:16:45.550 P00   INFO: write updated /tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/data/postgresql.auto.conf
+2026-09-22 21:16:45.551 P00   INFO: restore global/pg_control (performed last to ensure aborted restores cannot be started)
+2026-09-22 21:16:45.551 P00   INFO: restore size = 29.5MB, file total = 1284
+2026-09-22 21:16:45.551 P00   INFO: restore command end: completed successfully (315ms)

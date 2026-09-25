@@ -1,0 +1,20 @@
+{
+  "id": "r2-backup",
+  "command": [
+    "bash",
+    "tools/redis-backup.sh"
+  ],
+  "environment": {
+    "REDIS_DIR": "/tmp/a8c-redis-8hiefbwk/source",
+    "REDIS_PORT": "56220",
+    "BACKUP_DIR": "/tmp/a8c-redis-8hiefbwk/backup",
+    "BACKUP_LOCK": "/tmp/a8c-redis-8hiefbwk/lock"
+  },
+  "utc_start": "2026-09-23T11:22:58.155885+00:00",
+  "start_monotonic_ns": 1351469459340,
+  "end_monotonic_ns": 1353665679412,
+  "exit": 0,
+  "stdout": "Start checking Multi Part AOF\nStart to check BASE AOF (RESP format).\nAOF analyzed: filename=appendonly.aof.2.base.aof, size=68, ok_up_to=68, ok_up_to_line=13, diff=0\nBASE AOF appendonly.aof.2.base.aof is valid\nStart to check INCR files.\nINCR AOF appendonly.aof.2.incr.aof is empty\nAll AOF files and manifest are valid\n[redis-backup 20260923T112258Z] BACKUP_COMPLETE: semantic checks passed; restore drill still required\n",
+  "stderr": "",
+  "expected": 0
+}

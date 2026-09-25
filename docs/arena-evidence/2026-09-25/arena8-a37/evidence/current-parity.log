@@ -1,0 +1,36 @@
+
+🔗 TEST/CI parity contract
+
+  ✅ P1 npm test is defined
+  ✅ P2 npm test runs tests/run.js
+  ✅ P2 npm test runs tests/smoke.js
+  ✅ P3 npm test has no undeclared entrypoint
+  ✅ P4 workflow test references exist
+  ✅ P5 at least one workflow executes tests
+
+  📊 measured: 553 top-level tests | 68 wired | 486 unwired
+
+  ❌ P6 unwired tests <= registered budget (485)
+     unwired=486
+  ✅ P7 critical orphan exists: tests/seed-integrity.js
+  ✅ P8 critical orphan wired: tests/seed-integrity.js
+  ✅ P7 critical orphan exists: tests/security2.js
+  ✅ P8 critical orphan wired: tests/security2.js
+  ✅ P7 critical orphan exists: tests/sync-atomic-batch.js
+  ✅ P8 critical orphan wired: tests/sync-atomic-batch.js
+  ✅ P7 critical orphan exists: tests/sync-dup-claim.js
+  ✅ P8 critical orphan wired: tests/sync-dup-claim.js
+  ✅ P7 critical orphan exists: tests/sync-dlq-retry.js
+  ✅ P8 critical orphan wired: tests/sync-dlq-retry.js
+  ✅ P7 critical orphan exists: tests/db-replica-recovery.js
+  ✅ P8 critical orphan wired: tests/db-replica-recovery.js
+  ✅ P9 false-green gate exists: tests/stale-path-contract.js
+  ✅ P10 false-green gate wired: tests/stale-path-contract.js
+  ✅ P9 false-green gate exists: tests/capacity-saturation-probe.js
+  ✅ P10 false-green gate wired: tests/capacity-saturation-probe.js
+  ✅ P11 parity document exists
+  ✅ P12 parity document states npm-test boundary
+  ✅ P13 parity document records budget
+
+TEST/CI parity: 25 pass / 1 fail
+  • P6 unwired tests <= registered budget (485) — unwired=486

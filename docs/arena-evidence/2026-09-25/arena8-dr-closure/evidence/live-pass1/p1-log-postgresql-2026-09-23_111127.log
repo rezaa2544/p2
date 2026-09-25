@@ -1,0 +1,22 @@
+2026-09-23 11:11:27.784 GMT [5378] LOG:  starting PostgreSQL 17.11 (Debian 17.11-0+deb13u1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-09-23 11:11:27.784 GMT [5378] LOG:  listening on IPv6 address "::1", port 55311
+2026-09-23 11:11:27.785 GMT [5378] LOG:  listening on IPv4 address "127.0.0.1", port 55311
+2026-09-23 11:11:27.785 GMT [5378] LOG:  listening on Unix socket "/tmp/a8c-pg-gcn4psyl/latest/pitr-FQMyB0At/run/.s.PGSQL.55311"
+2026-09-23 11:11:27.786 GMT [5382] LOG:  database system was interrupted; last known up at 2026-09-23 11:11:20 GMT
+2026-09-23 11:11:27.809 GMT [5382] LOG:  starting backup recovery with redo LSN 0/2000028, checkpoint LSN 0/2000080, on timeline ID 1
+2026-09-23 11:11:27.877 GMT [5382] LOG:  restored log file "000000010000000000000002" from archive
+2026-09-23 11:11:27.878 GMT [5382] LOG:  starting archive recovery
+2026-09-23 11:11:27.879 GMT [5382] LOG:  redo starts at 0/2000028
+2026-09-23 11:11:27.940 GMT [5382] LOG:  restored log file "000000010000000000000003" from archive
+2026-09-23 11:11:27.991 GMT [5382] LOG:  restored log file "000000010000000000000004" from archive
+2026-09-23 11:11:28.000 GMT [5382] LOG:  completed backup recovery with redo LSN 0/2000028 and end LSN 0/2000120
+2026-09-23 11:11:28.000 GMT [5382] LOG:  consistent recovery state reached at 0/2000120
+2026-09-23 11:11:28.000 GMT [5378] LOG:  database system is ready to accept read-only connections
+2026-09-23 11:11:28.015 GMT [5382] LOG:  redo done at 0/40000B8 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.13 s
+2026-09-23 11:11:28.015 GMT [5382] LOG:  last completed transaction was at log time 2026-09-23 11:11:22.324367+00
+2026-09-23 11:11:28.073 GMT [5382] LOG:  restored log file "000000010000000000000004" from archive
+2026-09-23 11:11:28.086 GMT [5382] LOG:  selected new timeline ID: 2
+2026-09-23 11:11:28.099 GMT [5382] LOG:  archive recovery complete
+2026-09-23 11:11:28.099 GMT [5380] LOG:  checkpoint starting: end-of-recovery immediate wait
+2026-09-23 11:11:28.100 GMT [5380] LOG:  checkpoint complete: wrote 5 buffers (0.0%); 0 WAL file(s) added, 0 removed, 3 recycled; write=0.001 s, sync=0.001 s, total=0.002 s; sync files=4, longest=0.001 s, average=0.001 s; distance=49152 kB, estimate=49152 kB; lsn=0/5000028, redo lsn=0/5000028
+2026-09-23 11:11:28.102 GMT [5378] LOG:  database system is ready to accept connections

@@ -1,0 +1,13 @@
+-------------------PROCESS START-------------------
+2026-09-23 11:12:01.821 P00   INFO: restore command begin 2.55.1: --config=/tmp/a8c-pg-qmtv4g8d/pbr.conf --exec-id=5666-0abc6ea8 --lock-path=/tmp/a8c-pg-qmtv4g8d/lock --log-path=/tmp/a8c-pg-qmtv4g8d --pg1-path=/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/data --repo1-path=/tmp/a8c-pg-qmtv4g8d/repo --spool-path=/tmp/a8c-pg-qmtv4g8d/spool --stanza=payesh --target=arena_committed --target-action=promote --type=name
+2026-09-23 11:12:01.838 P00   INFO: repo1: restore backup set 20260923-111159F, recovery will start at 2026-09-23 11:11:59
+2026-09-23 11:12:01.838 P00   INFO: remap data directory to '/tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/data'
+2026-09-23 11:12:02.341 P00   INFO: write updated /tmp/a8c-pg-qmtv4g8d/named/pitr-LIQeLVjH/data/postgresql.auto.conf
+2026-09-23 11:12:02.341 P00   INFO: restore global/pg_control (performed last to ensure aborted restores cannot be started)
+2026-09-23 11:12:02.341 P00   INFO: restore size = 29.5MB, file total = 1284
+2026-09-23 11:12:02.342 P00   INFO: restore command end: completed successfully (525ms)
+
+-------------------PROCESS START-------------------
+2026-09-23 11:12:04.307 P00   INFO: restore command begin 2.55.1: --config=/tmp/a8c-pg-qmtv4g8d/pbr.conf --exec-id=5759-b92fd4d2 --lock-path=/tmp/a8c-pg-qmtv4g8d/lock --log-path=/tmp/a8c-pg-qmtv4g8d --pg1-path=/tmp/a8c-pg-qmtv4g8d/time/pitr-KVRui8T3/data --repo1-path=/tmp/a8c-pg-qmtv4g8d/repo --spool-path=/tmp/a8c-pg-qmtv4g8d/spool --stanza=payesh --target="2026-09-23 11:12:01.434866+00" --target-action=promote --type=time
+2026-09-23 11:12:04.311 P00  ERROR: [075]: unable to find backup set with stop time less than '2026-09-23 11:12:01.434866+00'
+2026-09-23 11:12:04.311 P00   INFO: restore command end: aborted with exception [075]

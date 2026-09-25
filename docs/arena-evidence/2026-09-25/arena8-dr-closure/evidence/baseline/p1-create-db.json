@@ -1,0 +1,24 @@
+{
+  "id": "p1-create-db",
+  "command": [
+    "psql",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-d",
+    "postgres",
+    "-tAXc",
+    "CREATE DATABASE payesh"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-v6hwr7zv/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-v6hwr7zv/socket",
+    "PGPORT": "55432",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-23T11:05:16.052325+00:00",
+  "elapsed_ms": 35.911459,
+  "exit": 0,
+  "stdout": "CREATE DATABASE\n",
+  "stderr": ""
+}

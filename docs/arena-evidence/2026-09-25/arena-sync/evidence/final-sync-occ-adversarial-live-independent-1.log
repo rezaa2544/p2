@@ -1,0 +1,138 @@
+{"check":"r1 classes missing base","result":"PASS"}
+{"check":"r1 classes stale base","result":"PASS"}
+{"check":"r1 grades missing base","result":"PASS"}
+{"check":"r1 grades stale base","result":"PASS"}
+{"check":"r1 attendance missing base","result":"PASS"}
+{"check":"r1 attendance stale base","result":"PASS"}
+{"check":"r1 users missing base","result":"PASS"}
+{"check":"r1 users stale base","result":"PASS"}
+{"check":"r1 students missing base","result":"PASS"}
+{"check":"r1 students stale base","result":"PASS"}
+{"check":"r1 stale resolution","result":"PASS"}
+{"check":"r1 newer data survives","result":"PASS"}
+{"check":"r1 server-wins reports live state","result":"PASS"}
+{"check":"r1 two-client resolution/PATCH race","result":"PASS"}
+{"check":"r1 exactly one committed mutation","result":"PASS"}
+{"check":"r1 duplicate resolution race","result":"PASS"}
+{"check":"r1 stale cache cannot reopen DB conflict","result":"PASS"}
+{"check":"r1 current target tenant enforced","result":"PASS"}
+{"check":"r1 payload attack 4","result":"PASS"}
+{"check":"r1 payload attack 5","result":"PASS"}
+{"check":"r1 payload attack 6","result":"PASS"}
+{"check":"r1 no resurrection","result":"PASS"}
+{"check":"r1 null tenant denied","result":"PASS"}
+{"check":"r1 persistence failure","result":"PASS"}
+{"check":"r1 failure does not mutate caches","result":"PASS"}
+{"check":"r1 atomic target rollback","result":"PASS"}
+{"check":"r1 retry after recovery","result":"PASS"}
+{"check":"r2 classes missing base","result":"PASS"}
+{"check":"r2 classes stale base","result":"PASS"}
+{"check":"r2 grades missing base","result":"PASS"}
+{"check":"r2 grades stale base","result":"PASS"}
+{"check":"r2 attendance missing base","result":"PASS"}
+{"check":"r2 attendance stale base","result":"PASS"}
+{"check":"r2 users missing base","result":"PASS"}
+{"check":"r2 users stale base","result":"PASS"}
+{"check":"r2 students missing base","result":"PASS"}
+{"check":"r2 students stale base","result":"PASS"}
+{"check":"r2 stale resolution","result":"PASS"}
+{"check":"r2 newer data survives","result":"PASS"}
+{"check":"r2 server-wins reports live state","result":"PASS"}
+{"check":"r2 two-client resolution/PATCH race","result":"PASS"}
+{"check":"r2 exactly one committed mutation","result":"PASS"}
+{"check":"r2 duplicate resolution race","result":"PASS"}
+{"check":"r2 stale cache cannot reopen DB conflict","result":"PASS"}
+{"check":"r2 current target tenant enforced","result":"PASS"}
+{"check":"r2 payload attack 4","result":"PASS"}
+{"check":"r2 payload attack 5","result":"PASS"}
+{"check":"r2 payload attack 6","result":"PASS"}
+{"check":"r2 no resurrection","result":"PASS"}
+{"check":"r2 null tenant denied","result":"PASS"}
+{"check":"r2 persistence failure","result":"PASS"}
+{"check":"r2 failure does not mutate caches","result":"PASS"}
+{"check":"r2 atomic target rollback","result":"PASS"}
+{"check":"r2 retry after recovery","result":"PASS"}
+{"check":"r3 classes missing base","result":"PASS"}
+{"check":"r3 classes stale base","result":"PASS"}
+{"check":"r3 grades missing base","result":"PASS"}
+{"check":"r3 grades stale base","result":"PASS"}
+{"check":"r3 attendance missing base","result":"PASS"}
+{"check":"r3 attendance stale base","result":"PASS"}
+{"check":"r3 users missing base","result":"PASS"}
+{"check":"r3 users stale base","result":"PASS"}
+{"check":"r3 students missing base","result":"PASS"}
+{"check":"r3 students stale base","result":"PASS"}
+{"check":"r3 stale resolution","result":"PASS"}
+{"check":"r3 newer data survives","result":"PASS"}
+{"check":"r3 server-wins reports live state","result":"PASS"}
+{"check":"r3 two-client resolution/PATCH race","result":"PASS"}
+{"check":"r3 exactly one committed mutation","result":"PASS"}
+{"check":"r3 duplicate resolution race","result":"PASS"}
+{"check":"r3 stale cache cannot reopen DB conflict","result":"PASS"}
+{"check":"r3 current target tenant enforced","result":"PASS"}
+{"check":"r3 payload attack 4","result":"PASS"}
+{"check":"r3 payload attack 5","result":"PASS"}
+{"check":"r3 payload attack 6","result":"PASS"}
+{"check":"r3 no resurrection","result":"PASS"}
+{"check":"r3 null tenant denied","result":"PASS"}
+{"check":"r3 persistence failure","result":"PASS"}
+{"check":"r3 failure does not mutate caches","result":"PASS"}
+{"check":"r3 atomic target rollback","result":"PASS"}
+{"check":"r3 retry after recovery","result":"PASS"}
+{"check":"r4 classes missing base","result":"PASS"}
+{"check":"r4 classes stale base","result":"PASS"}
+{"check":"r4 grades missing base","result":"PASS"}
+{"check":"r4 grades stale base","result":"PASS"}
+{"check":"r4 attendance missing base","result":"PASS"}
+{"check":"r4 attendance stale base","result":"PASS"}
+{"check":"r4 users missing base","result":"PASS"}
+{"check":"r4 users stale base","result":"PASS"}
+{"check":"r4 students missing base","result":"PASS"}
+{"check":"r4 students stale base","result":"PASS"}
+{"check":"r4 stale resolution","result":"PASS"}
+{"check":"r4 newer data survives","result":"PASS"}
+{"check":"r4 server-wins reports live state","result":"PASS"}
+{"check":"r4 two-client resolution/PATCH race","result":"PASS"}
+{"check":"r4 exactly one committed mutation","result":"PASS"}
+{"check":"r4 duplicate resolution race","result":"PASS"}
+{"check":"r4 stale cache cannot reopen DB conflict","result":"PASS"}
+{"check":"r4 current target tenant enforced","result":"PASS"}
+{"check":"r4 payload attack 4","result":"PASS"}
+{"check":"r4 payload attack 5","result":"PASS"}
+{"check":"r4 payload attack 6","result":"PASS"}
+{"check":"r4 no resurrection","result":"PASS"}
+{"check":"r4 null tenant denied","result":"PASS"}
+{"check":"r4 persistence failure","result":"PASS"}
+{"check":"r4 failure does not mutate caches","result":"PASS"}
+{"check":"r4 atomic target rollback","result":"PASS"}
+{"check":"r4 retry after recovery","result":"PASS"}
+{"check":"r5 classes missing base","result":"PASS"}
+{"check":"r5 classes stale base","result":"PASS"}
+{"check":"r5 grades missing base","result":"PASS"}
+{"check":"r5 grades stale base","result":"PASS"}
+{"check":"r5 attendance missing base","result":"PASS"}
+{"check":"r5 attendance stale base","result":"PASS"}
+{"check":"r5 users missing base","result":"PASS"}
+{"check":"r5 users stale base","result":"PASS"}
+{"check":"r5 students missing base","result":"PASS"}
+{"check":"r5 students stale base","result":"PASS"}
+{"check":"r5 stale resolution","result":"PASS"}
+{"check":"r5 newer data survives","result":"PASS"}
+{"check":"r5 server-wins reports live state","result":"PASS"}
+{"check":"r5 two-client resolution/PATCH race","result":"PASS"}
+{"check":"r5 exactly one committed mutation","result":"PASS"}
+{"check":"r5 duplicate resolution race","result":"PASS"}
+{"check":"r5 stale cache cannot reopen DB conflict","result":"PASS"}
+{"check":"r5 current target tenant enforced","result":"PASS"}
+{"check":"r5 payload attack 4","result":"PASS"}
+{"check":"r5 payload attack 5","result":"PASS"}
+{"check":"r5 payload attack 6","result":"PASS"}
+{"check":"r5 no resurrection","result":"PASS"}
+{"check":"r5 null tenant denied","result":"PASS"}
+{"check":"r5 persistence failure","result":"PASS"}
+{"check":"r5 failure does not mutate caches","result":"PASS"}
+{"check":"r5 atomic target rollback","result":"PASS"}
+{"check":"r5 retry after recovery","result":"PASS"}
+{"result":"PASS","checks":135,"rounds":5,"level":"E3 real PG/HTTP; fixture sessions, minimal schema; NOT certification"}
+
+STDERR

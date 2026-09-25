@@ -1,0 +1,24 @@
+{
+  "id": "p10-actual",
+  "command": [
+    "psql",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-d",
+    "payesh",
+    "-tAXc",
+    "SELECT count(*),md5(string_agg(users::text,'|' ORDER BY id)) FROM users"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/run",
+    "PGPORT": "55451",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:16:45.837716+00:00",
+  "elapsed_ms": 8.196786,
+  "exit": 0,
+  "stdout": "11|21001b53d8c6916d95755045375e12c7\n",
+  "stderr": ""
+}

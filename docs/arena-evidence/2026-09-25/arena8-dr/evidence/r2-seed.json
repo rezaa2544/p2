@@ -1,0 +1,17 @@
+{
+  "id": "r2-seed",
+  "command": [
+    "redis-cli",
+    "-p",
+    "56390",
+    "SET",
+    "arena:identity",
+    "dataset-2"
+  ],
+  "environment": {},
+  "utc_start": "2026-09-22T21:11:56.733145+00:00",
+  "elapsed_ms": 3.720167,
+  "exit": 0,
+  "stdout": "OK\n",
+  "stderr": ""
+}

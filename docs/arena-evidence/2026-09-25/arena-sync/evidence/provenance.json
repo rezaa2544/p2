@@ -1,0 +1,16 @@
+{
+  "sha": "4b577701b42fd33b61babdacab346b449e11c580",
+  "base": "4bff3bcb757162f040e82ffa26f3d40e46eb7a36",
+  "branch": "arena-sync/offline-occ-20260924",
+  "tree": "clean",
+  "node": "22.23.3",
+  "postgres": "17.11",
+  "commands": 28,
+  "strict_gate": "NOT VERIFIED / exit1",
+  "independent_reviews": "ChatGPT/Atria not supplied",
+  "remote_ci": "NOT VERIFIED",
+  "push_exit": 128,
+  "pr": null,
+  "merged": false,
+  "workspace_limit_MB": 100
+}

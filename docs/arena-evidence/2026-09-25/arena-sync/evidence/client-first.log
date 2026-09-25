@@ -1,0 +1,76 @@
+{"check":"r1 old delta cannot rewind","result":"PASS"}
+{"check":"r1 real nested offline queue survives full pull/deletion","result":"PASS"}
+{"check":"r1 full snapshot cannot rewind matching newer row","result":"PASS"}
+{"check":"r1 out-of-order full response rejected","result":"PASS"}
+{"check":"r1 structural offline write captures base","result":"PASS"}
+{"check":"r1 offline delete captures base before removal","result":"PASS"}
+{"check":"r1 malformed version true","result":"PASS"}
+{"check":"r1 malformed version false","result":"PASS"}
+{"check":"r1 malformed version 9","result":"PASS"}
+{"check":"r1 malformed version 0","result":"PASS"}
+{"check":"r1 malformed version -1","result":"PASS"}
+{"check":"r1 malformed version 1.5","result":"PASS"}
+{"check":"r1 malformed version Infinity","result":"PASS"}
+{"check":"r1 malformed version NaN","result":"PASS"}
+{"check":"r1 malformed version 9007199254740992","result":"PASS"}
+{"check":"r2 old delta cannot rewind","result":"PASS"}
+{"check":"r2 real nested offline queue survives full pull/deletion","result":"PASS"}
+{"check":"r2 full snapshot cannot rewind matching newer row","result":"PASS"}
+{"check":"r2 out-of-order full response rejected","result":"PASS"}
+{"check":"r2 structural offline write captures base","result":"PASS"}
+{"check":"r2 offline delete captures base before removal","result":"PASS"}
+{"check":"r2 malformed version true","result":"PASS"}
+{"check":"r2 malformed version false","result":"PASS"}
+{"check":"r2 malformed version 9","result":"PASS"}
+{"check":"r2 malformed version 0","result":"PASS"}
+{"check":"r2 malformed version -1","result":"PASS"}
+{"check":"r2 malformed version 1.5","result":"PASS"}
+{"check":"r2 malformed version Infinity","result":"PASS"}
+{"check":"r2 malformed version NaN","result":"PASS"}
+{"check":"r2 malformed version 9007199254740992","result":"PASS"}
+{"check":"r3 old delta cannot rewind","result":"PASS"}
+{"check":"r3 real nested offline queue survives full pull/deletion","result":"PASS"}
+{"check":"r3 full snapshot cannot rewind matching newer row","result":"PASS"}
+{"check":"r3 out-of-order full response rejected","result":"PASS"}
+{"check":"r3 structural offline write captures base","result":"PASS"}
+{"check":"r3 offline delete captures base before removal","result":"PASS"}
+{"check":"r3 malformed version true","result":"PASS"}
+{"check":"r3 malformed version false","result":"PASS"}
+{"check":"r3 malformed version 9","result":"PASS"}
+{"check":"r3 malformed version 0","result":"PASS"}
+{"check":"r3 malformed version -1","result":"PASS"}
+{"check":"r3 malformed version 1.5","result":"PASS"}
+{"check":"r3 malformed version Infinity","result":"PASS"}
+{"check":"r3 malformed version NaN","result":"PASS"}
+{"check":"r3 malformed version 9007199254740992","result":"PASS"}
+{"check":"r4 old delta cannot rewind","result":"PASS"}
+{"check":"r4 real nested offline queue survives full pull/deletion","result":"PASS"}
+{"check":"r4 full snapshot cannot rewind matching newer row","result":"PASS"}
+{"check":"r4 out-of-order full response rejected","result":"PASS"}
+{"check":"r4 structural offline write captures base","result":"PASS"}
+{"check":"r4 offline delete captures base before removal","result":"PASS"}
+{"check":"r4 malformed version true","result":"PASS"}
+{"check":"r4 malformed version false","result":"PASS"}
+{"check":"r4 malformed version 9","result":"PASS"}
+{"check":"r4 malformed version 0","result":"PASS"}
+{"check":"r4 malformed version -1","result":"PASS"}
+{"check":"r4 malformed version 1.5","result":"PASS"}
+{"check":"r4 malformed version Infinity","result":"PASS"}
+{"check":"r4 malformed version NaN","result":"PASS"}
+{"check":"r4 malformed version 9007199254740992","result":"PASS"}
+{"check":"r5 old delta cannot rewind","result":"PASS"}
+{"check":"r5 real nested offline queue survives full pull/deletion","result":"PASS"}
+{"check":"r5 full snapshot cannot rewind matching newer row","result":"PASS"}
+{"check":"r5 out-of-order full response rejected","result":"PASS"}
+{"check":"r5 structural offline write captures base","result":"PASS"}
+{"check":"r5 offline delete captures base before removal","result":"PASS"}
+{"check":"r5 malformed version true","result":"PASS"}
+{"check":"r5 malformed version false","result":"PASS"}
+{"check":"r5 malformed version 9","result":"PASS"}
+{"check":"r5 malformed version 0","result":"PASS"}
+{"check":"r5 malformed version -1","result":"PASS"}
+{"check":"r5 malformed version 1.5","result":"PASS"}
+{"check":"r5 malformed version Infinity","result":"PASS"}
+{"check":"r5 malformed version NaN","result":"PASS"}
+{"check":"r5 malformed version 9007199254740992","result":"PASS"}
+{"result":"PASS","checks":75,"rounds":5,"level":"UNIT actual client source in VM; not browser persistence/network proof"}

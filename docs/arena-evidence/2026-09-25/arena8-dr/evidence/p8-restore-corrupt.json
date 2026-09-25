@@ -1,0 +1,22 @@
+{
+  "id": "p8-restore-corrupt",
+  "command": [
+    "pgbackrest",
+    "--stanza=payesh",
+    "--pg1-path=/tmp/a8dr-pg-afjnpgpv/bad-target",
+    "--type=immediate",
+    "restore"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-afjnpgpv/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-afjnpgpv/socket",
+    "PGPORT": "55446",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:15:44.967328+00:00",
+  "elapsed_ms": 15142.710444,
+  "exit": 29,
+  "stdout": "2026-09-22 21:15:44.971 P00   INFO: restore command begin 2.55.1: --config=/tmp/a8dr-pg-afjnpgpv/pbr.conf --exec-id=7560-a49f3145 --lock-path=/tmp/a8dr-pg-afjnpgpv/lock --log-level-console=info --log-path=/tmp/a8dr-pg-afjnpgpv --pg1-path=/tmp/a8dr-pg-afjnpgpv/bad-target --repo1-path=/tmp/a8dr-pg-afjnpgpv/repo --spool-path=/tmp/a8dr-pg-afjnpgpv/spool --stanza=payesh --type=immediate\n2026-09-22 21:15:44.976 P00   INFO: repo1: restore backup set 20260922-211540F, recovery will start at 2026-09-22 21:15:40\n2026-09-22 21:15:44.976 P00   INFO: remap data directory to '/tmp/a8dr-pg-afjnpgpv/bad-target'\n2026-09-22 21:16:00.008 P00  ERROR: [029]: raised from local-1 protocol: zlib threw error: [-3] data error\n                                        [FormatError] on 2 retries from 3-15003ms: zlib threw error: [-3] data error\n2026-09-22 21:16:00.008 P00   INFO: restore command end: aborted with exception [029]\n",
+  "stderr": ""
+}

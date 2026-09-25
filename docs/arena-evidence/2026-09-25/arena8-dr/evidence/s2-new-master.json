@@ -1,0 +1,17 @@
+{
+  "id": "s2-new-master",
+  "command": [
+    "redis-cli",
+    "-p",
+    "56622",
+    "SENTINEL",
+    "get-master-addr-by-name",
+    "arena"
+  ],
+  "environment": {},
+  "exit": 0,
+  "stdout": "127.0.0.1\n56621\n",
+  "stderr": "",
+  "elapsed_ms": 3.589459,
+  "utc_end": "2026-09-22T21:13:26.132447+00:00"
+}

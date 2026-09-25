@@ -1,0 +1,116 @@
+
+▸ CFG-FILE — وجودِ فایل‌ها
+  ✅ وجود infra/postgres/docker-compose.ha.yml
+  ✅ وجود infra/postgres/Dockerfile
+  ✅ وجود infra/postgres/recovery.conf.template
+  ✅ وجود infra/postgres/pgbackrest.conf.template
+  ✅ وجود infra/postgres/pgbouncer/pgbouncer.ini
+  ✅ وجود infra/postgres/env.ha.example
+  ✅ وجود infra/postgres/entrypoints/render-config.sh
+  ✅ وجود infra/postgres/entrypoints/primary-entrypoint.sh
+  ✅ وجود infra/postgres/entrypoints/standby-entrypoint.sh
+  ✅ وجود infra/postgres/init/01-replication.sh
+  ✅ وجود infra/postgres/post-checks.sh
+  ✅ وجود infra/redis/docker-compose.sentinel.yml
+  ✅ وجود infra/redis/sentinel.conf.template
+  ✅ وجود infra/redis/redis-checks.sh
+  ✅ وجود tools/pitr-restore.sh
+  ✅ وجود tools/pitr-verify.sh
+  ✅ وجود tools/failover-postgres.sh
+  ✅ وجود tools/failover-redis.sh
+  ✅ وجود docs/HA_POSTGRES.md
+  ✅ وجود docs/HA_REDIS.md
+  ✅ وجود docs/DR_RUNBOOK.md
+
+▸ CFG-YAML — ساختار
+  ✅ pg-compose: بدونِ tab
+  ✅ pg-compose: بدونِ CRLF
+  ✅ pg-compose: پلاهدارهایِ ${ متوازن
+  ✅ pg-compose: ایمیج‌ها پین‌شده (نه latest)
+  ✅ pg-compose: سرویس «pg-primary»
+  ✅ pg-compose: سرویس «pg-standby»
+  ✅ pg-compose: سرویس «pgbouncer»
+  ✅ pg-compose: سرویس «pg-backup»
+  ✅ pg-compose: سرویس «minio»
+  ✅ pg-compose: restart برایِ همهٔ سرویس‌هایِ stateful
+  ✅ pg-compose: bind روی 127.0.0.1 (نه 0.0.0.0 در host)
+  ✅ redis-compose: بدونِ tab
+  ✅ redis-compose: بدونِ CRLF
+  ✅ redis-compose: پلاهدارهایِ ${ متوازن
+  ✅ redis-compose: ایمیج‌ها پین‌شده (نه latest)
+  ✅ redis-compose: سرویس «redis-master»
+  ✅ redis-compose: سرویس «redis-replica-1»
+  ✅ redis-compose: سرویس «redis-replica-2»
+  ✅ redis-compose: سرویس «sentinel-1»
+  ✅ redis-compose: سرویس «sentinel-2»
+  ✅ redis-compose: سرویس «sentinel-3»
+  ✅ redis-compose: restart برایِ همهٔ سرویس‌هایِ stateful
+  ✅ redis-compose: bind روی 127.0.0.1 (نه 0.0.0.0 در host)
+  ✅ redis: همهٔ placeholderهایِ sentinel با sed پوشیده می‌شوند
+  ✅ pg: همهٔ placeholderهایِ pgbackrest در render-config پوشیده می‌شوند
+
+▸ CFG-SH — اسکریپت‌ها
+  ✅ infra/postgres/entrypoints/render-config.sh: نحو (bash -n)
+  ✅ infra/postgres/entrypoints/render-config.sh: shebang و pipefail
+  ✅ infra/postgres/entrypoints/render-config.sh: بیتِ اجرایی
+  ✅ infra/postgres/entrypoints/primary-entrypoint.sh: نحو (bash -n)
+  ✅ infra/postgres/entrypoints/primary-entrypoint.sh: shebang و pipefail
+  ✅ infra/postgres/entrypoints/primary-entrypoint.sh: بیتِ اجرایی
+  ✅ infra/postgres/entrypoints/standby-entrypoint.sh: نحو (bash -n)
+  ✅ infra/postgres/entrypoints/standby-entrypoint.sh: shebang و pipefail
+  ✅ infra/postgres/entrypoints/standby-entrypoint.sh: بیتِ اجرایی
+  ✅ infra/postgres/init/01-replication.sh: نحو (bash -n)
+  ✅ infra/postgres/init/01-replication.sh: shebang و pipefail
+  ✅ infra/postgres/init/01-replication.sh: بیتِ اجرایی
+  ✅ infra/postgres/post-checks.sh: نحو (bash -n)
+  ✅ infra/postgres/post-checks.sh: shebang و pipefail
+  ✅ infra/postgres/post-checks.sh: بیتِ اجرایی
+  ✅ infra/redis/redis-checks.sh: نحو (bash -n)
+  ✅ infra/redis/redis-checks.sh: shebang و pipefail
+  ✅ infra/redis/redis-checks.sh: بیتِ اجرایی
+  ✅ tools/pitr-restore.sh: نحو (bash -n)
+  ✅ tools/pitr-restore.sh: shebang و pipefail
+  ✅ tools/pitr-restore.sh: بیتِ اجرایی
+  ✅ tools/pitr-verify.sh: نحو (bash -n)
+  ✅ tools/pitr-verify.sh: shebang و pipefail
+  ✅ tools/pitr-verify.sh: بیتِ اجرایی
+  ✅ tools/failover-postgres.sh: نحو (bash -n)
+  ✅ tools/failover-postgres.sh: shebang و pipefail
+  ✅ tools/failover-postgres.sh: بیتِ اجرایی
+  ✅ tools/failover-redis.sh: نحو (bash -n)
+  ✅ tools/failover-redis.sh: shebang و pipefail
+  ✅ tools/failover-redis.sh: بیتِ اجرایی
+
+▸ CFG-TPL — الگوها
+  ✅ recovery.template: primary_conninfo + restore_command + hot_standby
+  ✅ recovery.template: راهنمایِ PG12+ (standby.signal/recovery.signal) دارد
+  ✅ sentinel: sentinel monitor __MASTER_NAME__
+  ✅ sentinel: down-after و failover-timeout و parallel-syncs
+  ✅ sentinel: resolve-hostnames برایِ محیطِ container
+  ✅ sentinel: احرازِ placeholder-محور (requirepass/auth-pass/masterauth)
+  ✅ sentinel: فرمان‌هایِ تخریبیِ sentinel بسته
+
+▸ CFG-ENV — قراردادِ env-file
+  ✅ همهٔ ${VAR:?} اجباری در env.ha.example دیده می‌شوند
+  ✅ env-example: هیچ کلیدِ رازی مقدارِ پر ندارد
+
+▸ CFG-SEC — الگوهایِ راز
+  ✅ هیچ رازِ هاردکد در فایل‌هایِ infra
+
+▸ CFG-DOC — اسناد ≡ کدِ سرور
+  ✅ HA_POSTGRES از DATABASE_URL/READ_DATABASE_URL (و این‌ها در db.js زنده‌اند)
+  ✅ HA_REDIS از REDIS_SENTINELS/REDIS_SENTINEL_NAME (مطابق redis.js) و mymaster
+  ✅ DR_RUNBOOK هر دو فایلِ infra را صدا می‌زند
+
+▸ CFG-PGB — pgbouncer.ini
+  ✅ auth_query با ستونِ صحیحِ pg_shadow (usename — نه username)
+  ✅ هر دو دیتابیسِ primary/readonly تعریف شده
+  ✅ pool_mode=transaction + max_client_conn قفل
+
+▸ CFG-DEEP — اعتبارسنجیِ عمیقِ انتخابی
+  ✅ yaml.safe_load: infra/postgres/docker-compose.ha.yml
+  ✅ yaml.safe_load: infra/redis/docker-compose.sentinel.yml
+     ⏭️  docker نیست (sandbox) — config-check در محیطِ میزبان
+
+────────────────────────────────────────────────────
+نتیجه HA Config: 94/94 موفق  —  بدون خطا ✅

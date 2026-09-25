@@ -1,0 +1,16 @@
+server/analytics/intelligence-release-certification.js:781:    status: 'DISPATCHED_TO_OPERATIONS'
+server/csrf.js:7:   request. A forged cross-origin POST/PUT/PATCH/DELETE is rejected before
+server/csrf.js:16:const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+server/index.js:804:  const isWrite = req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH' || req.method === 'DELETE';
+server/index.js:1562:        if(req.method === 'PATCH'){
+server/index.js:1587:        if(req.method === 'PATCH'){
+server/index.js:1608:        if(req.method === 'PATCH'){
+server/index.js:1629:        if(req.method === 'PATCH'){
+server/index.js:1654:        if(req.method === 'PATCH'){
+server/infrastructure/resource-governance.js:214:    execution_mode: 'SUPERVISED_HUMAN_DISPATCH',
+server/occ.js:64:   EVERY 409 on a versioned PATCH lands in sync_conflicts. Best-effort: a
+server/routes/attendance.js:7:   - PATCH /api/v1/attendance/:id (update attendance status / late mins)
+server/routes/classes.js:8:   - PATCH /api/v1/classes/:id (update class details)
+server/routes/grades.js:7:   - PATCH /api/v1/grades/:id (optimistic concurrency version update)
+server/routes/students.js:8:   - PATCH /api/v1/students/:id (update student info / IEP)
+server/routes/users.js:8:   - PATCH /api/v1/users/:id (update user info)

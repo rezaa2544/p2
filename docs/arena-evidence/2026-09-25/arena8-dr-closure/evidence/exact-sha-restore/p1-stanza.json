@@ -1,0 +1,22 @@
+{
+  "id": "p1-stanza",
+  "command": [
+    "pgbackrest",
+    "--stanza=payesh",
+    "stanza-create"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-dg9xxeg9/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-dg9xxeg9/socket",
+    "PGPORT": "55310",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:21:42.368306+00:00",
+  "start_monotonic_ns": 1275681879429,
+  "end_monotonic_ns": 1275703031863,
+  "exit": 0,
+  "stdout": "",
+  "stderr": "",
+  "expected": 0
+}

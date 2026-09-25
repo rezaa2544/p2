@@ -1,0 +1,25 @@
+{
+  "id": "p2-post-crash-integrity",
+  "command": [
+    "bash",
+    "tools/pitr-verify.sh",
+    "--manifest",
+    "/var/tmp/a8c-pg-7lgozoki/expected.json",
+    "--expect-data-dir",
+    "/var/tmp/a8c-pg-7lgozoki/named/pitr-PJhXFiSM/data"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/var/tmp/a8c-pg-7lgozoki/pbr.conf",
+    "PGHOST": "/var/tmp/a8c-pg-7lgozoki/named/pitr-PJhXFiSM/run",
+    "PGPORT": "25321",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:27:33.378644+00:00",
+  "start_monotonic_ns": 1626692218193,
+  "end_monotonic_ns": 1626783198154,
+  "exit": 0,
+  "stdout": "PITR_VERIFY: PASS identity + complete expected dataset (not E4)\n",
+  "stderr": "",
+  "expected": 0
+}

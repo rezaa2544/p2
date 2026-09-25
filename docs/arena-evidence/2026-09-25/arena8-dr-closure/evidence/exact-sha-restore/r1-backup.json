@@ -1,0 +1,20 @@
+{
+  "id": "r1-backup",
+  "command": [
+    "bash",
+    "tools/redis-backup.sh"
+  ],
+  "environment": {
+    "REDIS_DIR": "/tmp/a8c-redis-4s2hfy9z/source",
+    "REDIS_PORT": "56210",
+    "BACKUP_DIR": "/tmp/a8c-redis-4s2hfy9z/backup",
+    "BACKUP_LOCK": "/tmp/a8c-redis-4s2hfy9z/lock"
+  },
+  "utc_start": "2026-09-23T11:22:19.022743+00:00",
+  "start_monotonic_ns": 1312336315486,
+  "end_monotonic_ns": 1314525594799,
+  "exit": 0,
+  "stdout": "Start checking Multi Part AOF\nStart to check BASE AOF (RDB format).\n[offset 0] Checking RDB file /tmp/a8c-redis-4s2hfy9z/backup/.stage-gf6rxZOJ/appendonlydir-20260923T112219Z/appendonly.aof.2.base.rdb\n[offset 26] AUX FIELD redis-ver = '8.0.2'\n[offset 40] AUX FIELD redis-bits = '64'\n[offset 52] AUX FIELD ctime = '1790162539'\n[offset 67] AUX FIELD used-mem = '836080'\n[offset 79] AUX FIELD aof-base = '1'\n[offset 81] Selecting DB ID 0\n[offset 115] Checksum OK\n[offset 115] \\o/ RDB looks OK! \\o/\n[info] 1 keys read\n[info] 0 expires\n[info] 0 already expired\n[info] 0 subexpires\nRDB preamble is OK, proceeding with AOF tail...\nAOF analyzed: filename=appendonly.aof.2.base.rdb, size=115, ok_up_to=115, ok_up_to_line=1, diff=0\nBASE AOF appendonly.aof.2.base.rdb is valid\nStart to check INCR files.\nINCR AOF appendonly.aof.2.incr.aof is empty\nAll AOF files and manifest are valid\n[redis-backup 20260923T112219Z] BACKUP_COMPLETE: semantic checks passed; restore drill still required\n",
+  "stderr": "",
+  "expected": 0
+}

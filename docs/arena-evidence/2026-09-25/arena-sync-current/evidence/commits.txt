@@ -1,0 +1,3 @@
+ea75623 test(sync): assert observable queue completion and distinguish watermark reads
+5747436 build(client): publish strict OCC queue metadata in distributed HTML
+abb20b7 fix(sync): arbitrate conflicts atomically and enforce strict OCC with durable UID claims

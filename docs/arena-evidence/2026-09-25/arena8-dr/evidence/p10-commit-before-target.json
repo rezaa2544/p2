@@ -1,0 +1,24 @@
+{
+  "id": "p10-commit-before-target",
+  "command": [
+    "psql",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-d",
+    "payesh",
+    "-tAXc",
+    "INSERT INTO users VALUES(11,'keep')"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+    "PGPORT": "55450",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:16:44.829804+00:00",
+  "elapsed_ms": 11.191369,
+  "exit": 0,
+  "stdout": "INSERT 0 1\n",
+  "stderr": ""
+}

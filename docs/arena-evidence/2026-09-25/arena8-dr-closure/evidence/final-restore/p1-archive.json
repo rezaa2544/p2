@@ -1,0 +1,22 @@
+{
+  "id": "p1-archive",
+  "command": [
+    "pgbackrest",
+    "--stanza=payesh",
+    "check"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/var/tmp/a8c-pg-6sqt9gko/pbr.conf",
+    "PGHOST": "/var/tmp/a8c-pg-6sqt9gko/socket",
+    "PGPORT": "25310",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:26:24.948360+00:00",
+  "start_monotonic_ns": 1558261933111,
+  "end_monotonic_ns": 1558605806220,
+  "exit": 0,
+  "stdout": "",
+  "stderr": "",
+  "expected": 0
+}

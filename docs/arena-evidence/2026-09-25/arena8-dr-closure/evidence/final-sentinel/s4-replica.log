@@ -1,0 +1,118 @@
+27455:C 23 Sep 2026 11:28:24.888 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+27455:C 23 Sep 2026 11:28:24.888 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+27455:C 23 Sep 2026 11:28:24.888 * Redis version=8.0.2, bits=64, commit=00000000, modified=0, pid=27455, just started
+27455:C 23 Sep 2026 11:28:24.888 * Configuration loaded
+27455:S 23 Sep 2026 11:28:24.888 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+27455:S 23 Sep 2026 11:28:24.888 * monotonic clock: POSIX clock_gettime
+27455:S 23 Sep 2026 11:28:24.889 * Running mode=standalone, port=26741.
+27455:S 23 Sep 2026 11:28:24.889 * Server initialized
+27455:S 23 Sep 2026 11:28:24.891 * Creating AOF base file appendonly.aof.1.base.rdb on server start
+27455:S 23 Sep 2026 11:28:24.893 * Creating AOF incr file appendonly.aof.1.incr.aof on server start
+27455:S 23 Sep 2026 11:28:24.893 * Ready to accept connections tcp
+27455:S 23 Sep 2026 11:28:24.894 * Connecting to MASTER 127.0.0.1:26740
+27455:S 23 Sep 2026 11:28:24.894 * MASTER <-> REPLICA sync started
+27455:S 23 Sep 2026 11:28:24.894 * Non blocking connect for SYNC fired the event.
+27455:S 23 Sep 2026 11:28:24.894 * Master replied to PING, replication can continue...
+27455:S 23 Sep 2026 11:28:24.894 * Partial resynchronization not possible (no cached master)
+27455:S 23 Sep 2026 11:28:24.894 * PSYNC is not possible, initialize RDB channel.
+27455:S 23 Sep 2026 11:28:29.919 * Starting to receive RDB and replication stream in parallel.
+27455:S 23 Sep 2026 11:28:29.920 * MASTER <-> REPLICA sync: receiving streamed RDB from master with EOF to disk
+27455:S 23 Sep 2026 11:28:29.921 * MASTER <-> REPLICA sync: Loading DB in memory
+27455:S 23 Sep 2026 11:28:29.922 * MASTER <-> REPLICA sync: Flushing old data
+27455:S 23 Sep 2026 11:28:29.922 * Loading RDB produced by version 8.0.2
+27455:S 23 Sep 2026 11:28:29.922 * RDB age 0 seconds
+27455:S 23 Sep 2026 11:28:29.922 * RDB memory usage when created 0.86 Mb
+27455:S 23 Sep 2026 11:28:29.922 * Done loading RDB, keys loaded: 0, keys expired: 0.
+27455:S 23 Sep 2026 11:28:29.922 * MASTER <-> REPLICA sync: Finished with success
+27455:S 23 Sep 2026 11:28:29.922 * MASTER <-> REPLICA sync: Starting AOF after a successful sync
+27455:S 23 Sep 2026 11:28:29.922 * Creating AOF incr file temp-appendonly.aof.incr on background rewrite
+27455:S 23 Sep 2026 11:28:29.923 * Background append only file rewriting started by pid 27777
+27455:S 23 Sep 2026 11:28:29.923 * MASTER <-> REPLICA sync: Starting to stream replication buffer into the db (0 bytes).
+27455:S 23 Sep 2026 11:28:29.923 * MASTER <-> REPLICA sync: Successfully streamed replication buffer into the db (0 bytes in total)
+27777:C 23 Sep 2026 11:28:29.923 * Successfully created the temporary AOF base file temp-rewriteaof-bg-27777.aof
+27777:C 23 Sep 2026 11:28:29.924 * Fork CoW for AOF rewrite: current 0 MB, peak 0 MB, average 0 MB
+27455:S 23 Sep 2026 11:28:29.932 * Background AOF rewrite terminated with success
+27455:S 23 Sep 2026 11:28:29.932 * Successfully renamed the temporary AOF base file temp-rewriteaof-bg-27777.aof into appendonly.aof.2.base.rdb
+27455:S 23 Sep 2026 11:28:29.932 * Successfully renamed the temporary AOF incr file temp-appendonly.aof.incr into appendonly.aof.2.incr.aof
+27455:S 23 Sep 2026 11:28:29.933 * Removing the history file appendonly.aof.1.incr.aof in the background
+27455:S 23 Sep 2026 11:28:29.933 * Removing the history file appendonly.aof.1.base.rdb in the background
+27455:S 23 Sep 2026 11:28:29.934 * Background AOF rewrite finished successfully
+27455:M 23 Sep 2026 11:28:30.515 * Connection with master lost.
+27455:M 23 Sep 2026 11:28:30.515 * Caching the disconnected master state.
+27455:M 23 Sep 2026 11:28:30.515 * Discarding previously cached master state.
+27455:M 23 Sep 2026 11:28:30.515 * Setting secondary replication ID to fd677a795ef231de412bf6d330560fe1be2d1d35, valid up to offset: 810. New replication ID is 80e78efcd0d19e301d973fc64a7eab2a5bec5598
+27455:M 23 Sep 2026 11:28:30.515 * MASTER MODE enabled (user request from 'id=7 addr=127.0.0.1:34110 laddr=127.0.0.1:26741 fd=17 name=sentinel-6c747d4c-cmd age=6 idle=0 flags=x db=0 sub=0 psub=0 ssub=0 multi=4 watch=0 qbuf=188 qbuf-free=20286 argv-mem=4 multi-mem=169 rbs=8192 rbp=6236 obl=45 oll=0 omem=0 tot-mem=29861 events=r cmd=exec user=default redir=-1 resp=2 lib-name= lib-ver= io-thread=0')
+27455:M 23 Sep 2026 11:28:30.516 * CONFIG REWRITE executed with success.
+27455:M 23 Sep 2026 11:28:41.365 * Replica 127.0.0.1:26740 asks for synchronization
+27455:M 23 Sep 2026 11:28:41.365 * Partial resynchronization not accepted: Requested offset for second ID was 2798, but I can reply up to 810
+27455:M 23 Sep 2026 11:28:41.365 * Replica 127.0.0.1:26740 is capable of rdb channel synchronization, and partial sync isn't possible. Full sync will continue with dedicated rdb channel.
+27455:M 23 Sep 2026 11:28:41.366 * Replica 127.0.0.1:26740 asks for synchronization
+27455:M 23 Sep 2026 11:28:41.366 * Full resync requested by replica 127.0.0.1:26740 (rdb-channel)
+27455:M 23 Sep 2026 11:28:41.366 * Delay next BGSAVE for diskless SYNC
+27455:M 23 Sep 2026 11:28:46.046 * Starting BGSAVE for SYNC with target: replicas sockets (rdb-channel)
+27455:M 23 Sep 2026 11:28:46.046 * Starting to deliver RDB and replication stream to replica: 127.0.0.1:26740
+27455:M 23 Sep 2026 11:28:46.046 * Background RDB transfer started by pid 28901 to replica socket
+28901:C 23 Sep 2026 11:28:46.047 * Fork CoW for RDB: current 0 MB, peak 0 MB, average 0 MB
+27455:M 23 Sep 2026 11:28:46.050 * Synchronization with replica 127.0.0.1:26740 succeeded
+27455:M 23 Sep 2026 11:28:46.051 * Connection with replica (rdbchannel) 127.0.0.1:26740 lost.
+27455:M 23 Sep 2026 11:28:46.147 * Background RDB transfer terminated with success
+29106:C 23 Sep 2026 11:28:49.028 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+29106:C 23 Sep 2026 11:28:49.028 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+29106:C 23 Sep 2026 11:28:49.028 * Redis version=8.0.2, bits=64, commit=00000000, modified=0, pid=29106, just started
+29106:C 23 Sep 2026 11:28:49.029 * Configuration loaded
+29106:M 23 Sep 2026 11:28:49.029 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+29106:M 23 Sep 2026 11:28:49.029 * monotonic clock: POSIX clock_gettime
+29106:M 23 Sep 2026 11:28:49.030 * Running mode=standalone, port=26741.
+29106:M 23 Sep 2026 11:28:49.030 * Server initialized
+29106:M 23 Sep 2026 11:28:49.030 * Reading RDB base file on AOF loading...
+29106:M 23 Sep 2026 11:28:49.030 * Loading RDB produced by version 8.0.2
+29106:M 23 Sep 2026 11:28:49.030 * RDB age 20 seconds
+29106:M 23 Sep 2026 11:28:49.030 * RDB memory usage when created 0.83 Mb
+29106:M 23 Sep 2026 11:28:49.030 * RDB is base AOF
+29106:M 23 Sep 2026 11:28:49.030 * Done loading RDB, keys loaded: 0, keys expired: 0.
+29106:M 23 Sep 2026 11:28:49.030 * DB loaded from base file appendonly.aof.2.base.rdb: 0.000 seconds
+29106:M 23 Sep 2026 11:28:49.030 * DB loaded from incr file appendonly.aof.2.incr.aof: 0.000 seconds
+29106:M 23 Sep 2026 11:28:49.030 * DB loaded from append only file: 0.000 seconds
+29106:M 23 Sep 2026 11:28:49.030 * Opening AOF incr file appendonly.aof.2.incr.aof on server start
+29106:M 23 Sep 2026 11:28:49.030 * Ready to accept connections tcp
+29106:S 23 Sep 2026 11:29:00.011 * Before turning into a replica, using my own master parameters to synthesize a cached master: I may be able to synchronize with the new master with just a partial transfer.
+29106:S 23 Sep 2026 11:29:00.011 * Connecting to MASTER 127.0.0.1:26740
+29106:S 23 Sep 2026 11:29:00.011 * MASTER <-> REPLICA sync started
+29106:S 23 Sep 2026 11:29:00.011 * REPLICAOF 127.0.0.1:26740 enabled (user request from 'id=14 addr=127.0.0.1:57054 laddr=127.0.0.1:26741 fd=12 name=sentinel-6c747d4c-cmd age=11 idle=0 flags=x db=0 sub=0 psub=0 ssub=0 multi=4 watch=0 qbuf=197 qbuf-free=20277 argv-mem=4 multi-mem=178 rbs=1024 rbp=1024 obl=45 oll=0 omem=0 tot-mem=22702 events=r cmd=exec user=default redir=-1 resp=2 lib-name= lib-ver= io-thread=0')
+29106:S 23 Sep 2026 11:29:00.012 * CONFIG REWRITE executed with success.
+29106:S 23 Sep 2026 11:29:00.012 * Non blocking connect for SYNC fired the event.
+29106:S 23 Sep 2026 11:29:00.013 * Master replied to PING, replication can continue...
+29106:S 23 Sep 2026 11:29:00.013 * Trying a partial resynchronization (request 772c39e5ad26b80a41ab0f3d54725c04133972fd:1203).
+29106:S 23 Sep 2026 11:29:00.013 * PSYNC is not possible, initialize RDB channel.
+29106:S 23 Sep 2026 11:29:05.195 * Starting to receive RDB and replication stream in parallel.
+29106:S 23 Sep 2026 11:29:05.196 * MASTER <-> REPLICA sync: receiving streamed RDB from master with EOF to disk
+29106:S 23 Sep 2026 11:29:05.198 * Discarding previously cached master state.
+29106:S 23 Sep 2026 11:29:05.198 * MASTER <-> REPLICA sync: Loading DB in memory
+29106:S 23 Sep 2026 11:29:05.199 * MASTER <-> REPLICA sync: Flushing old data
+29106:S 23 Sep 2026 11:29:05.199 * Loading RDB produced by version 8.0.2
+29106:S 23 Sep 2026 11:29:05.199 * RDB age 0 seconds
+29106:S 23 Sep 2026 11:29:05.199 * RDB memory usage when created 1.08 Mb
+29106:S 23 Sep 2026 11:29:05.199 * Done loading RDB, keys loaded: 11, keys expired: 0.
+29106:S 23 Sep 2026 11:29:05.199 * MASTER <-> REPLICA sync: Finished with success
+29106:S 23 Sep 2026 11:29:05.199 * MASTER <-> REPLICA sync: Starting AOF after a successful sync
+29106:S 23 Sep 2026 11:29:05.199 * Creating AOF incr file temp-appendonly.aof.incr on background rewrite
+29106:S 23 Sep 2026 11:29:05.200 * Background append only file rewriting started by pid 29936
+29106:S 23 Sep 2026 11:29:05.200 * MASTER <-> REPLICA sync: Starting to stream replication buffer into the db (0 bytes).
+29106:S 23 Sep 2026 11:29:05.200 * MASTER <-> REPLICA sync: Successfully streamed replication buffer into the db (0 bytes in total)
+29936:C 23 Sep 2026 11:29:05.201 * Successfully created the temporary AOF base file temp-rewriteaof-bg-29936.aof
+29936:C 23 Sep 2026 11:29:05.201 * Fork CoW for AOF rewrite: current 0 MB, peak 0 MB, average 0 MB
+29106:S 23 Sep 2026 11:29:05.267 * Background AOF rewrite terminated with success
+29106:S 23 Sep 2026 11:29:05.267 * Successfully renamed the temporary AOF base file temp-rewriteaof-bg-29936.aof into appendonly.aof.3.base.rdb
+29106:S 23 Sep 2026 11:29:05.267 * Successfully renamed the temporary AOF incr file temp-appendonly.aof.incr into appendonly.aof.3.incr.aof
+29106:S 23 Sep 2026 11:29:05.269 * Removing the history file appendonly.aof.2.incr.aof in the background
+29106:S 23 Sep 2026 11:29:05.269 * Removing the history file appendonly.aof.2.base.rdb in the background
+29106:S 23 Sep 2026 11:29:05.270 * Background AOF rewrite finished successfully
+29106:S 23 Sep 2026 11:29:05.299 * Connection with master lost.
+29106:S 23 Sep 2026 11:29:05.299 * Caching the disconnected master state.
+29106:S 23 Sep 2026 11:29:05.299 * Reconnecting to MASTER 127.0.0.1:26740
+29106:S 23 Sep 2026 11:29:05.299 * MASTER <-> REPLICA sync started
+29106:S 23 Sep 2026 11:29:05.299 # Error condition on socket for SYNC: Connection refused
+29106:signal-handler (1790162945) Received SIGTERM scheduling shutdown...
+29106:S 23 Sep 2026 11:29:05.371 * User requested shutdown...
+29106:S 23 Sep 2026 11:29:05.371 * Calling fsync() on the AOF file.
+29106:S 23 Sep 2026 11:29:05.372 # Redis is now ready to exit, bye bye...

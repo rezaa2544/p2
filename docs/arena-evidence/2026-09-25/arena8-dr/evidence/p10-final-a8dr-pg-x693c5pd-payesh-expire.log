@@ -1,0 +1,3 @@
+-------------------PROCESS START-------------------
+2026-09-22 21:16:44.822 P00   INFO: expire command begin 2.55.1: --config=/tmp/a8dr-pg-x693c5pd/pbr.conf --exec-id=8274-f4e10726 --lock-path=/tmp/a8dr-pg-x693c5pd/lock --log-level-console=info --log-path=/tmp/a8dr-pg-x693c5pd --repo1-path=/tmp/a8dr-pg-x693c5pd/repo --repo1-retention-full=2 --stanza=payesh
+2026-09-22 21:16:44.822 P00   INFO: expire command end: completed successfully (0ms)

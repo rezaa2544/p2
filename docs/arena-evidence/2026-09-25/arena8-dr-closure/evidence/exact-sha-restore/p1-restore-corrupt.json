@@ -1,0 +1,24 @@
+{
+  "id": "p1-restore-corrupt",
+  "command": [
+    "pgbackrest",
+    "--stanza=payesh",
+    "--pg1-path=/tmp/a8c-pg-dg9xxeg9/corrupt-target",
+    "--type=immediate",
+    "restore"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-dg9xxeg9/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-dg9xxeg9/socket",
+    "PGPORT": "55310",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:22:03.528123+00:00",
+  "start_monotonic_ns": 1296841697623,
+  "end_monotonic_ns": 1312014879833,
+  "exit": 29,
+  "stdout": "2026-09-23 11:22:18.594 P00  ERROR: [029]: raised from local-1 protocol: zlib threw error: [-3] data error\n                                        [FormatError] on 2 retries from 10-15011ms: zlib threw error: [-3] data error\n",
+  "stderr": "",
+  "expected": "nonzero"
+}

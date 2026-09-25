@@ -1,0 +1,20 @@
+{
+  "id": "r1-wrong-source",
+  "command": [
+    "bash",
+    "tools/redis-backup.sh"
+  ],
+  "environment": {
+    "REDIS_DIR": "/tmp/a8c-redis-_bzv27tp/wrong",
+    "REDIS_PORT": "56210",
+    "BACKUP_DIR": "/tmp/a8c-redis-_bzv27tp/bad-backup",
+    "BACKUP_LOCK": "/tmp/a8c-redis-_bzv27tp/lock"
+  },
+  "utc_start": "2026-09-23T11:13:55.370713+00:00",
+  "start_monotonic_ns": 808684287449,
+  "end_monotonic_ns": 808719266735,
+  "exit": 1,
+  "stdout": "",
+  "stderr": "[redis-backup 20260923T111355Z] FATAL: REDIS_DIR does not match endpoint configuration\n",
+  "expected": "nonzero"
+}

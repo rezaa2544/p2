@@ -1,0 +1,16 @@
+{
+  "id": "r1-restored-marker",
+  "command": [
+    "redis-cli",
+    "-p",
+    "56381",
+    "GET",
+    "arena:identity"
+  ],
+  "environment": {},
+  "utc_start": "2026-09-22T21:11:50.744014+00:00",
+  "elapsed_ms": 3.712384,
+  "exit": 0,
+  "stdout": "dataset-1\n",
+  "stderr": ""
+}

@@ -1,0 +1,27 @@
+5431:C 22 Sep 2026 21:13:19.969 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+5431:C 22 Sep 2026 21:13:19.969 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+5431:C 22 Sep 2026 21:13:19.969 * Redis version=8.0.2, bits=64, commit=00000000, modified=0, pid=5431, just started
+5431:C 22 Sep 2026 21:13:19.969 * Configuration loaded
+5431:M 22 Sep 2026 21:13:19.970 * Increased maximum number of open files to 10032 (it was originally set to 1024).
+5431:M 22 Sep 2026 21:13:19.970 * monotonic clock: POSIX clock_gettime
+5431:M 22 Sep 2026 21:13:19.970 * Running mode=standalone, port=56620.
+5431:M 22 Sep 2026 21:13:19.970 * Server initialized
+5431:M 22 Sep 2026 21:13:19.970 * Ready to accept connections tcp
+5431:M 22 Sep 2026 21:13:19.972 * Replica 127.0.0.1:56621 asks for synchronization
+5431:M 22 Sep 2026 21:13:19.972 * Full resync requested by replica 127.0.0.1:56621 
+5431:M 22 Sep 2026 21:13:19.972 * Replication backlog created, my new replication IDs are '1c230bbed0df7525a743bfa3487cbcf4f6b640ba' and '0000000000000000000000000000000000000000'
+5431:M 22 Sep 2026 21:13:19.972 * Replica 127.0.0.1:56621 is capable of rdb channel synchronization, and partial sync isn't possible. Full sync will continue with dedicated rdb channel.
+5431:M 22 Sep 2026 21:13:19.972 * Replica 127.0.0.1:56621 asks for synchronization
+5431:M 22 Sep 2026 21:13:19.972 * Full resync requested by replica 127.0.0.1:56621 (rdb-channel)
+5431:M 22 Sep 2026 21:13:19.972 * Delay next BGSAVE for diskless SYNC
+5431:M 22 Sep 2026 21:13:24.997 * Starting BGSAVE for SYNC with target: replicas sockets (rdb-channel)
+5431:M 22 Sep 2026 21:13:24.997 * Starting to deliver RDB and replication stream to replica: 127.0.0.1:56621
+5431:M 22 Sep 2026 21:13:24.998 * Background RDB transfer started by pid 5524 to replica socket
+5524:C 22 Sep 2026 21:13:24.998 * Fork CoW for RDB: current 0 MB, peak 0 MB, average 0 MB
+5431:M 22 Sep 2026 21:13:24.999 * Connection with replica (rdbchannel) 127.0.0.1:56621 lost.
+5431:M 22 Sep 2026 21:13:24.999 * Synchronization with replica 127.0.0.1:56621 succeeded
+5431:M 22 Sep 2026 21:13:25.098 * Background RDB transfer terminated with success
+5431:M 22 Sep 2026 21:13:25.259 * Connection with replica 127.0.0.1:56621 lost.
+5431:signal-handler (1790111606) Received SIGTERM scheduling shutdown...
+5431:M 22 Sep 2026 21:13:26.204 * User requested shutdown...
+5431:M 22 Sep 2026 21:13:26.204 # Redis is now ready to exit, bye bye...

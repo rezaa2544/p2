@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "/home/user/arena8-dr-closure/baseline.py", line 118, in <module>
+    try:fn(n)
+        ~~^^^
+  File "/home/user/arena8-dr-closure/baseline.py", line 89, in pg_suite
+    run(f'p{n}-target-start',['pg_ctl','-D',target,'-o',f'-c config_file={rd}/etc/postgresql.conf -c recovery_target_action=promote','-l',rd/'target.log','-w','start'],env,True);started.append(target)
+    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/arena8-dr-closure/baseline.py", line 13, in run
+    if check and rc: raise RuntimeError(tag+': '+stderr[-1500:])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: p2-target-start: pg_ctl: could not start server
+Examine the log output.
+

@@ -1,0 +1,4 @@
+[CONFLICTS] PG apply incoming failed: injected outage
+[CONFLICTS] Failed to update sync_conflicts status in PG: injected outage
+[CONFLICTS] PG apply incoming failed: injected outage
+[CONFLICTS] Failed to update sync_conflicts status in PG: injected outage

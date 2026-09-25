@@ -1,0 +1,24 @@
+{
+  "id": "p10-stop-standby",
+  "command": [
+    "pg_ctl",
+    "-D",
+    "/tmp/a8dr-pg-x693c5pd/standby",
+    "-m",
+    "immediate",
+    "-w",
+    "stop"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+    "PGPORT": "55450",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:16:46.493612+00:00",
+  "elapsed_ms": 101.918011,
+  "exit": 0,
+  "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+  "stderr": ""
+}

@@ -1,0 +1,16 @@
+{
+  "requested": [
+    513,
+    311,
+    54,
+    "~40"
+  ],
+  "status": "NOT VERIFIED as historical claims; not accepted as current counts",
+  "missing": [
+    "original metric definitions",
+    "historical SHA",
+    "original command/script and scope"
+  ],
+  "current_sha": "ea75623dd1a5cb06d72549703204601a5413425f",
+  "do_not_infer": "Standalone numbers and source line references are not count provenance."
+}

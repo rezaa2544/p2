@@ -1,0 +1,17 @@
+MOCK PASS 0 good exit 0
+MOCK PASS 0 owner-denied exit 1
+MOCK PASS 0 partial exit 1
+MOCK PASS 0 no-version exit 1
+MOCK PASS 0 wrong-version exit 1
+MOCK PASS 0 corrupt exit 1
+MOCK PASS 0 timeout exit 1
+MOCK PASS 0 concurrent unique object identities
+MOCK PASS 1 good exit 0
+MOCK PASS 1 owner-denied exit 1
+MOCK PASS 1 partial exit 1
+MOCK PASS 1 no-version exit 1
+MOCK PASS 1 wrong-version exit 1
+MOCK PASS 1 corrupt exit 1
+MOCK PASS 1 timeout exit 1
+MOCK PASS 1 concurrent unique object identities
+S3_TOOL_CONTRACT_PASS — MOCK ONLY; E4/S3 NOT VERIFIED

@@ -1,0 +1,24 @@
+{
+  "id": "p9-target-identity",
+  "command": [
+    "psql",
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-d",
+    "payesh",
+    "-tAXc",
+    "SELECT current_database(),current_setting('data_directory'),system_identifier FROM pg_control_system()"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/run",
+    "PGPORT": "55449",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:16:41.809032+00:00",
+  "elapsed_ms": 5.36184,
+  "exit": 0,
+  "stdout": "payesh|/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/data|7688471631945244461\n",
+  "stderr": ""
+}

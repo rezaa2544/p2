@@ -1,0 +1,17 @@
+{
+  "id": "s1-seed",
+  "command": [
+    "redis-cli",
+    "-p",
+    "56610",
+    "SET",
+    "arena:marker",
+    "run-1"
+  ],
+  "environment": {},
+  "exit": 0,
+  "stdout": "OK\n",
+  "stderr": "",
+  "elapsed_ms": 4.157671,
+  "utc_end": "2026-09-22T21:13:17.813950+00:00"
+}

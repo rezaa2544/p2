@@ -1,0 +1,24 @@
+==== PAYESH STRICT VERIFICATION GATE ====
+  OK G1 current HEAD known — 4bff3bcb757162f040e82ffa26f3d40e46eb7a36
+  OK G2 mandatory policy exists
+  OK G3 registry exists
+  OK G4 registry valid JSON
+  FAIL G4b registry has actionable items
+  FAIL G4c registry is not blocked
+  OK G5 three independent reviewers declared
+  OK G6 explicit false-green allowlist exists
+  FAIL G7 assert(true has no unapproved hits — tests/client-features.js:139, tests/multigrade2.js:181, tests/report2.js:158, tests/simulation.js:531, tests/vclass3.js:216, tools/strict-verification-gate.js:25
+  FAIL G7 process.exit(0) has no unapproved hits — _shots.js:111, build.js:142, server/index.js:1772, server/index.js:1806, server/seed.js:84, server/seed.js:116, tests/a11y-interactive.js:257, tests/a11y-keyboard.js:342, tests/a11y-runtime.js:190, tests/arena5-demo-guard.js:73, tests/assocmin2.js:163, tests/bgsync.js:129, tests/cache-l2-epoch.js:107, tests/canary-atomic-postgres-live-runtime.js:129, tests/chaos-drill-lib.js:532
+  FAIL G7 || true has no unapproved hits — .codacy.yml:40, .github/workflows/fortify.yml:61, .github/workflows/node.js.yml:85, .github/workflows/node.js.yml:181, .github/workflows/observability-regression.yml:100, .github/workflows/observability-regression.yml:101, .github/workflows/observability-regression.yml:102, .github/workflows/runtime-reliability.yml:49, .github/workflows/runtime-reliability.yml:66, .github/workflows/security.yml:148, .github/workflows/security.yml:199, infra/postgres/docker-compose.ha.yml:67, server/analytics/intelligence-platform-integration.js:292, server/analytics/intelligence-platform-integration.js:293, server/analytics/intelligence-platform-integration.js:294
+  FAIL G7 0/0 checks has no unapproved hits — tools/strict-verification-gate.js:25
+RESULT 6 pass / 6 fail
+HEAD 4bff3bcb757162f040e82ffa26f3d40e46eb7a36
+CERTIFIED 0
+VERDICT NOT VERIFIED
+BLOCKERS
+ - G4b registry has actionable items
+ - G4c registry is not blocked
+ - G7 assert(true has no unapproved hits — tests/client-features.js:139, tests/multigrade2.js:181, tests/report2.js:158, tests/simulation.js:531, tests/vclass3.js:216, tools/strict-verification-gate.js:25
+ - G7 process.exit(0) has no unapproved hits — _shots.js:111, build.js:142, server/index.js:1772, server/index.js:1806, server/seed.js:84, server/seed.js:116, tests/a11y-interactive.js:257, tests/a11y-keyboard.js:342, tests/a11y-runtime.js:190, tests/arena5-demo-guard.js:73, tests/assocmin2.js:163, tests/bgsync.js:129, tests/cache-l2-epoch.js:107, tests/canary-atomic-postgres-live-runtime.js:129, tests/chaos-drill-lib.js:532
+ - G7 || true has no unapproved hits — .codacy.yml:40, .github/workflows/fortify.yml:61, .github/workflows/node.js.yml:85, .github/workflows/node.js.yml:181, .github/workflows/observability-regression.yml:100, .github/workflows/observability-regression.yml:101, .github/workflows/observability-regression.yml:102, .github/workflows/runtime-reliability.yml:49, .github/workflows/runtime-reliability.yml:66, .github/workflows/security.yml:148, .github/workflows/security.yml:199, infra/postgres/docker-compose.ha.yml:67, server/analytics/intelligence-platform-integration.js:292, server/analytics/intelligence-platform-integration.js:293, server/analytics/intelligence-platform-integration.js:294
+ - G7 0/0 checks has no unapproved hits — tools/strict-verification-gate.js:25

@@ -1,0 +1,20 @@
+{
+  "id": "p6-promote-primary-guard",
+  "command": [
+    "bash",
+    "tools/failover-postgres.sh",
+    "--dry-run"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-3jzz4yhf/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-3jzz4yhf/restore/pitr-20260922-211341-5926/run",
+    "PGPORT": "55443",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-22T21:13:41.887990+00:00",
+  "elapsed_ms": 6.863058,
+  "exit": 1,
+  "stdout": "== failover-postgres: standby=/tmp/a8dr-pg-3jzz4yhf/restore/pitr-20260922-211341-5926/run:55443 primary=(127.0.0.1:5432) dry=1 force=0\n",
+  "stderr": "FAIL: \u0645\u0642\u0635\u062f\u0650 \u0627\u0646\u062a\u062e\u0627\u0628\u06cc \u062f\u0631 recovery \u0646\u06cc\u0633\u062a (\u06cc\u0627 \u0627\u0632 \u0642\u0628\u0644 primary \u0627\u0633\u062a \u06cc\u0627 \u062f\u0633\u062a\u0631\u0633\u200c\u067e\u0630\u06cc\u0631 \u0646\u06cc\u0633\u062a) \u2014 \u0628\u0631\u0627\u06cc\u0650 \u0627\u0645\u0646\u06cc\u062a\u0650 \u062f\u0627\u062f\u0647 \u0627\u062f\u0627\u0645\u0647 \u0646\u0645\u06cc\u200c\u062f\u0647\u0645\n"
+}

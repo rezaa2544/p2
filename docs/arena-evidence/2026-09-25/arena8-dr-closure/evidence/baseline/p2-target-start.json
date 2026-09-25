@@ -1,0 +1,26 @@
+{
+  "id": "p2-target-start",
+  "command": [
+    "pg_ctl",
+    "-D",
+    "/tmp/a8dr-pg-jscfvgry/restore/pitr-20260923-110526-4994/data",
+    "-o",
+    "-c config_file=/tmp/a8dr-pg-jscfvgry/restore/pitr-20260923-110526-4994/etc/postgresql.conf -c recovery_target_action=promote",
+    "-l",
+    "/tmp/a8dr-pg-jscfvgry/restore/pitr-20260923-110526-4994/target.log",
+    "-w",
+    "start"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-jscfvgry/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-jscfvgry/socket",
+    "PGPORT": "55434",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-23T11:05:26.854386+00:00",
+  "elapsed_ms": 110.350034,
+  "exit": 1,
+  "stdout": "waiting for server to start.... stopped waiting\n",
+  "stderr": "pg_ctl: could not start server\nExamine the log output.\n"
+}

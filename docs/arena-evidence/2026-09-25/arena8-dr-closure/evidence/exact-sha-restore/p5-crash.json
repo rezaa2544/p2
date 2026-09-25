@@ -1,0 +1,26 @@
+{
+  "id": "p5-crash",
+  "command": [
+    "pg_ctl",
+    "-D",
+    "/tmp/a8c-pg-jwlde0jy/named/pitr-lcHTBU9D/data",
+    "-m",
+    "immediate",
+    "-w",
+    "stop"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-jwlde0jy/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-jwlde0jy/named/pitr-lcHTBU9D/run",
+    "PGPORT": "55351",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:24:28.360672+00:00",
+  "start_monotonic_ns": 1441674246461,
+  "end_monotonic_ns": 1441776554993,
+  "exit": 0,
+  "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+  "stderr": "",
+  "expected": 0
+}

@@ -1,0 +1,20 @@
+{
+  "id": "r2-unreachable",
+  "command": [
+    "bash",
+    "tools/redis-backup.sh"
+  ],
+  "environment": {
+    "REDIS_DIR": "/tmp/a8c-redis-mlo3lf3z/source",
+    "REDIS_PORT": "1",
+    "BACKUP_DIR": "/tmp/a8c-redis-mlo3lf3z/backup",
+    "BACKUP_LOCK": "/tmp/a8c-redis-mlo3lf3z/lock"
+  },
+  "utc_start": "2026-09-23T11:14:56.384677+00:00",
+  "start_monotonic_ns": 869698250515,
+  "end_monotonic_ns": 869714396387,
+  "exit": 1,
+  "stdout": "",
+  "stderr": "Could not connect to Redis at 127.0.0.1:1: Connection refused\n[redis-backup 20260923T111456Z] FATAL: PING failed semantically\n",
+  "expected": "nonzero"
+}

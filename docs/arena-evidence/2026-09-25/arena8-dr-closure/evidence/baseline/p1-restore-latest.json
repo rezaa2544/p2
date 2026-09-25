@@ -1,0 +1,23 @@
+{
+  "id": "p1-restore-latest",
+  "command": [
+    "bash",
+    "tools/pitr-restore.sh",
+    "--latest",
+    "--no-start",
+    "--dest",
+    "/tmp/a8dr-pg-v6hwr7zv/latest"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8dr-pg-v6hwr7zv/pbr.conf",
+    "PGHOST": "/tmp/a8dr-pg-v6hwr7zv/socket",
+    "PGPORT": "55432",
+    "PGUSER": "user",
+    "PGDATABASE": "payesh"
+  },
+  "utc_start": "2026-09-23T11:05:18.344570+00:00",
+  "elapsed_ms": 15.952793,
+  "exit": 32,
+  "stdout": "== PITR run: /tmp/a8dr-pg-v6hwr7zv/latest/pitr-20260923-110518-4788 (stanza=payesh port=54329 --type=latest)\nP00  ERROR: [032]: 'latest' is not allowed for 'type' option\n            HINT: allowed values are 'lsn', 'name', 'time', 'xid', 'preserve', 'none', 'immediate', 'default', 'standby'\n",
+  "stderr": ""
+}

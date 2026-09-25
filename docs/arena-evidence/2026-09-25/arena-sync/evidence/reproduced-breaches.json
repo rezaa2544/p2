@@ -1,0 +1,139 @@
+{
+  "baseline": "4bff3bcb757162f040e82ffa26f3d40e46eb7a36",
+  "pristine_tree_clean": true,
+  "checks": [
+    {
+      "id": "A18",
+      "observed": true,
+      "expected": "reject stale conflict; preserve version9/score20",
+      "actual": "200; version3/score11",
+      "level": "UNIT production module"
+    },
+    {
+      "id": "A20",
+      "observed": true,
+      "expected": "uniform production missing-base rejection",
+      "actual": "grades rejected; non-grade default helper accepted",
+      "level": "UNIT helper/call-site inventory"
+    },
+    {
+      "id": "SYNC-CAS",
+      "observed": true,
+      "expected": "preserve newer-from-client-B",
+      "actual": {
+        "response": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "results": [
+              {
+                "uid": "stale-race",
+                "ok": true,
+                "serverTime": "2026-09-24T18:40:21.732Z"
+              }
+            ]
+          }
+        },
+        "after": [
+          {
+            "id": 1,
+            "school_id": 1,
+            "name": "older-from-client-A",
+            "version": 10,
+            "updated_at": "2026-09-24T18:40:21.733Z"
+          }
+        ],
+        "expected": "newer-from-client-B preserved"
+      },
+      "level": "E3 real PostgreSQL"
+    },
+    {
+      "id": "SYNC-DUP",
+      "observed": true,
+      "expected": "one mutation",
+      "actual": {
+        "replies": [
+          {
+            "status": 200,
+            "body": {
+              "ok": true,
+              "results": [
+                {
+                  "uid": "same-uid",
+                  "ok": true,
+                  "serverTime": "2026-09-24T18:40:21.864Z"
+                }
+              ]
+            }
+          },
+          {
+            "status": 200,
+            "body": {
+              "ok": true,
+              "results": [
+                {
+                  "uid": "same-uid",
+                  "ok": true,
+                  "serverTime": "2026-09-24T18:40:21.867Z"
+                }
+              ]
+            }
+          }
+        ],
+        "rows": [
+          {
+            "id": 1,
+            "school_id": 1,
+            "title": "single intention",
+            "updated_at": "2026-09-24T18:40:21.865Z"
+          },
+          {
+            "id": 2,
+            "school_id": 1,
+            "title": "single intention",
+            "updated_at": "2026-09-24T18:40:21.867Z"
+          }
+        ],
+        "uidRows": [
+          {
+            "uid": "same-uid",
+            "processed_at": "2026-09-24T18:40:21.868Z"
+          }
+        ],
+        "expected": "one mutation and durable UID"
+      },
+      "level": "E3 real PostgreSQL"
+    },
+    {
+      "id": "SYNC-INSERT",
+      "observed": true,
+      "expected": "reject existing identity; no version rewind",
+      "actual": {
+        "response": {
+          "status": 200,
+          "body": {
+            "ok": true,
+            "results": [
+              {
+                "uid": "stale-race",
+                "ok": true,
+                "serverTime": "2026-09-24T18:40:22.004Z"
+              }
+            ]
+          }
+        },
+        "after": [
+          {
+            "id": 1,
+            "school_id": 1,
+            "name": "older-from-client-A",
+            "version": 1,
+            "updated_at": "2026-09-24T18:40:21.995Z"
+          }
+        ],
+        "expected": "newer-from-client-B preserved"
+      },
+      "level": "E3 real PostgreSQL"
+    }
+  ]
+}

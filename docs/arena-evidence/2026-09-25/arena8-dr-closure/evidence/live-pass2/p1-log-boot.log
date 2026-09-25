@@ -1,0 +1,2 @@
+2026-09-23 11:13:24.860 GMT [6322] LOG:  redirecting log output to logging collector process
+2026-09-23 11:13:24.860 GMT [6322] HINT:  Future log output will appear in directory "/tmp/a8c-pg-ukfdjkiu/latest/pitr-I0d18l4y/log".

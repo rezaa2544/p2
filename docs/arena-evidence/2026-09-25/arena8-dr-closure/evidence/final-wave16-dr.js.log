@@ -1,0 +1,80 @@
+
+▸ Wave 16 — Disaster Recovery (integrity, encryption, off-site, drill)
+  ✅ D1a default RPO/RTO are 300s / 900s (RELIABILITY_DR_PLAN)
+  ✅ D1b the source of the objectives is reported
+  ✅ D1c env overrides the objectives
+  ✅ D1d invalid env values fall back to the defaults
+  ✅ D2a a manifest entry is derived from the file on disk
+  ✅ D2b a lost manifest is rebuilt from disk with the same checksum
+  ✅ D2c MANIFEST.json is never mistaken for a backup
+  ✅ D2d the manifest itself matches no backup/enc pattern
+  ✅ D2e entries for pruned files are dropped
+  ✅ D3a a clean backup verifies
+  ✅ D3b verification reports size, sha and record counts
+  ✅ D3c internal (__*) keys are stripped from the snapshot
+  ✅ D3d verification time is measured
+  ✅ D3e a single flipped byte is detected
+  ✅ D3e2 ensureManifest never re-blesses a modified file
+  ✅ D3f a structurally invalid snapshot is refused even when the checksum matches
+  ✅ D3g corrupt JSON is refused
+  ✅ D3h a missing file is refused
+  ✅ D3i orphan classes are reported as a structural problem
+  ✅ D4a production without a key refuses to produce an archive (fail-closed)
+  ✅ D4b the refusal is audited
+  ✅ D4c no key material appears in the audit payload
+  ✅ D4d encryption succeeds with a key
+  ✅ D4e the archive carries the format magic
+  ✅ D4f the archive is NOT the plaintext
+  ✅ D4g a phone number is not readable in the archive
+  ✅ D4h the archive is owner-only (0600)
+  ✅ D4i the round trip reproduces the original bytes exactly
+  ✅ D4j a wrong key cannot decrypt
+  ✅ D4k a modified archive is rejected by the auth tag
+  ✅ D4l a rejected decrypt writes nothing
+  ✅ D4m a truncated archive is refused, not thrown
+  ✅ D4n a short key is rejected (min 16 chars)
+  ✅ D5a unconfigured off-site is reported, not faked
+  ✅ D5b a target inside the data dir is refused (that is not off-site)
+  ✅ D5c the encrypted archive is copied off-site and checksum-verified
+  ✅ D5d the off-site copy is byte-identical
+  ✅ D5e copying plaintext off-site without encrypting first is refused
+  ✅ D5f off-site status reports count and encryption availability
+  ✅ D6a the JSON store honestly reports no PITR
+  ✅ D6b a live PostgreSQL reports PITR available
+  ✅ D6c the posture names the WAL archiving requirement
+  ✅ D7a with no backup the RPO is breached
+  ✅ D7b a fresh backup gives an achieved RPO of ~0s
+  ✅ D7c a stale backup breaches the RPO objective
+  ✅ D7d newestVerified only returns an archive that really verifies
+  ✅ D8a every drill phase passes
+  ✅ D8b the drill runs the full recovery path
+  ✅ D8c the tamper phase fails FOR THE RIGHT REASON (not name validation)
+  ✅ D8d the drill restores the real record counts
+  ✅ D8e restore time is measured against the RTO objective
+  ✅ D8f the drill leaves the live store untouched
+  ✅ D8g the scratch dir is cleaned up
+  ✅ D8h the drill is audited
+  ✅ D8i internal (__*) state never enters the archive
+  ✅ D8j --keep preserves the scratch dir for inspection
+  ✅ D9a without a key the encryption phase is explicitly skipped
+  ✅ D9b the report warns that encryption was not exercised
+  ✅ D9c the tamper phase is not claimed as passed
+  ✅ D10a verifyBackup refuses a traversal name
+  ✅ D10b verifyBackup refuses an absolute path
+  ✅ D10c decryptBackup refuses a non-archive name
+  ✅ D10d encryptBackup refuses a non-backup name
+  ✅ D11a audit events are emitted for encrypt + off-site
+  ✅ D11b the backup key never reaches the audit log
+  ✅ D11c no PII from the snapshot reaches the audit log
+  ✅ D12a an unachievable RTO fails the drill even with all phases green
+  ✅ D12b the same snapshot passes against the real 900s objective
+  ✅ D12c the objective reports both the seconds and ms form
+  ✅ Ta docs/WAVE16_DISASTER_RECOVERY.md exists
+  ✅ Tb docs/RUNBOOK_DISASTER_RECOVERY.md exists
+  ✅ Tc scripts/dr-restore-drill.js exists and parses
+  ✅ Td the drill script runs and reports PASS on the seeded store
+  ✅ Te .env.example documents the Wave 16 variables
+  ✅ Tf the wave doc states RPO/RTO and lists the roadmap deliverables
+
+  جمع: 75 موفق، 0 ناموفق از 75
+

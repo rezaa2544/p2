@@ -1,0 +1,19 @@
+{"check":"r1 race final PG CAS rejects older write","result":"PASS"}
+{"check":"r1 race preserves newer data","result":"PASS"}
+{"check":"r1 insert cannot upsert newer identity","result":"PASS"}
+{"check":"r1 out-of-order older event","result":"PASS"}
+{"check":"r1 raced stale delete refused","result":"PASS"}
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+true !== false
+
+    at /home/user/p2/tests/sync-replay-adversarial-live.js:25:80
+    at check (/home/user/p2/tests/sync-replay-adversarial-live.js:7:42)
+    at /home/user/p2/tests/sync-replay-adversarial-live.js:25:2 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: true,
+  expected: false,
+  operator: 'strictEqual',
+  diff: 'simple'
+}

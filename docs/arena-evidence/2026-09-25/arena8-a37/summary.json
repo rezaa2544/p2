@@ -1,0 +1,59 @@
+{
+  "head": "ea75623dd1a5cb06d72549703204601a5413425f",
+  "text_files": 2339,
+  "js_files": 1228,
+  "parse_errors": {},
+  "test_js_cjs": 967,
+  "top_level_test_js": 553,
+  "raw_occurrences": {
+    "hidden skip": 2315,
+    "MOCK": 2567,
+    "|| true": 100,
+    "process.exit(0)": 149,
+    "swallowed catch": 1205,
+    "0/0": 38,
+    "assert(true)": 11
+  },
+  "raw_files": {
+    "hidden skip": 385,
+    "MOCK": 532,
+    "|| true": 43,
+    "process.exit(0)": 127,
+    "swallowed catch": 335,
+    "0/0": 30,
+    "assert(true)": 10
+  },
+  "ast_markers": {
+    "swallowed catch": 1819,
+    "process.exit(0)": 99,
+    "|| true": 4,
+    "MOCK": 144,
+    "hidden skip": 90,
+    "assert(true)": 2
+  },
+  "tests_without_raw_assert": 470,
+  "tests_without_named_check_calls": 154,
+  "tests_no_recognized_oracle_candidates": 4,
+  "direct_ci_test_files": 67,
+  "ci_graph_test_files": 285,
+  "ci_graph_unreached_candidates": 682,
+  "manual_runner_graph_test_files": 586,
+  "legacy_parity_unwired_top_level": 486,
+  "inventory_rows": 7934,
+  "classifications": {
+    "legitimate": 3464,
+    "certification blocker": 2530,
+    "generated": 338,
+    "helper": 265,
+    "fixture": 1325,
+    "real defect": 12
+  },
+  "review_status": {
+    "static": 3432,
+    "needs-review": 2002,
+    "static-candidate": 2449,
+    "manual-source-review": 39,
+    "runtime-reproduced": 11,
+    "source-confirmed": 1
+  }
+}

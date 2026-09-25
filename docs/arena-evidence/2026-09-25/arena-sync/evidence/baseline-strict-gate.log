@@ -1,0 +1,28 @@
+==== PAYESH STRICT VERIFICATION GATE ====
+  OK G1 current HEAD known — 4bff3bcb757162f040e82ffa26f3d40e46eb7a36
+  OK G2 mandatory policy exists
+  OK G3 registry exists
+  OK G4 registry valid JSON
+  OK G5 three independent reviewers declared
+  OK G6 explicit false-green allowlist exists
+node:fs:448
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+                   ^
+
+Error: ENOENT: no such file or directory, open '/home/user/p2/monitoring/alert-rules.yml'
+    at Object.readFileSync (node:fs:448:20)
+    at read (/home/user/p2/tools/strict-verification-gate.js:9:28)
+    at Object.<anonymous> (/home/user/p2/tools/strict-verification-gate.js:24:103)
+    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+    at node:internal/main/run_main_module:28:49 {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/user/p2/monitoring/alert-rules.yml'
+}
+
+Node.js v20.20.2

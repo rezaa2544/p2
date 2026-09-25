@@ -1,0 +1,32 @@
+
+▸ شکاف ۱ — Background Sync (صفِ آینه در IDB + آشتیِ نتیجهٔ SW)
+  ✅ S1 sw.js شنوندهٔ sync با برچسبِ payesh-sync-queue دارد
+  ✅ S2 sw.js صف را از IndexedDB (payesh_offline_v2/sync_queue) می‌خواند
+  ✅ S3 sw.js با credentials include به /api/sync می‌فرستد (کوکیِ HttpOnly، بدونِ توکن)
+  ✅ S4 sw.js کدهایِ ردِّ پایدار را dead می‌داند (نه retryِ ابدی)
+  ✅ S5 sw.js شکستِ شبکه را reject می‌کند تا مرورگر دوباره sync بزند
+  ✅ S6 sw.js نتیجه را به تب‌هایِ باز پیام می‌دهد (payesh-bgsync-done)
+✅ تم‌های پویا فعال شدند. برای تغییر تم از دستور زیر استفاده کنید:
+switchPayeshTheme("theme-3")
+[demo] staff_posts: ۲۴ هنجار نمونه ساخته شد
+داده نمونه: {
+  'مدارس': 6,
+  'کاربران': 1040,
+  'کلاس‌ها': 36,
+  'حضوروغیاب': 10460,
+  'نمرات': 12555,
+  'انضباطی': 759,
+  'اعلان‌ها': 705,
+  'اقساط': 1561,
+  'تراکنش‌ها': 980
+}
+  ✅ B1 قلمِ pending در آینهٔ IDB نشست
+  ✅ B2 آینه uid و op و status را نگه می‌دارد
+  ✅ B3 قلمِ syncedِ پس‌زمینه از صفِ محلی حذف شد
+  ✅ B4 آینهٔ IDB هم پاک شد (SW قلمِ مرده نمی‌فرستد)
+  ✅ B5 lastSync جلو رفت
+  ✅ B6 قلمِ ردشدهٔ پس‌زمینه rejected شد و از صف حذف نشد (کاربر می‌بیند)
+  ✅ B7 initSync آینه (bgMirrorQueue) و شنوندهٔ SW (bgListen) را صدا می‌زند
+  ✅ B8 enqueueOp ثبتِ Background Sync را می‌خواهد (bgRegisterSync)
+
+  جمع: 14 موفق، 0 ناموفق از 14

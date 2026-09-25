@@ -1,0 +1,33 @@
+{
+  "id": "p1-basebackup",
+  "command": [
+    "pg_basebackup",
+    "-h",
+    "/tmp/a8c-pg-dg9xxeg9/socket",
+    "-p",
+    "55310",
+    "-U",
+    "user",
+    "-D",
+    "/tmp/a8c-pg-dg9xxeg9/standby",
+    "-R",
+    "-X",
+    "stream",
+    "-c",
+    "fast"
+  ],
+  "environment": {
+    "PGBACKREST_CONFIG": "/tmp/a8c-pg-dg9xxeg9/pbr.conf",
+    "PGHOST": "/tmp/a8c-pg-dg9xxeg9/socket",
+    "PGPORT": "55310",
+    "PGDATABASE": "payesh",
+    "PGUSER": "user"
+  },
+  "utc_start": "2026-09-23T11:21:52.559372+00:00",
+  "start_monotonic_ns": 1285872945535,
+  "end_monotonic_ns": 1286009440764,
+  "exit": 0,
+  "stdout": "",
+  "stderr": "",
+  "expected": 0
+}

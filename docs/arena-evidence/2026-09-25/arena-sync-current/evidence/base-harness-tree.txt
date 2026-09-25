@@ -1,0 +1,3 @@
+?? tests/current-head-sync-browser.cjs
+?? tests/current-head-sync-pg.cjs
+?? tests/current-head-sync-worker.cjs

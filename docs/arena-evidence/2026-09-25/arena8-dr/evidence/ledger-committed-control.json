@@ -1,0 +1,1552 @@
+[
+  {
+    "id": "versions",
+    "command": [
+      "bash",
+      "-c",
+      "psql --version; redis-server --version; pgbackrest version; uname -a; date -u +%FT%TZ"
+    ],
+    "environment": {},
+    "utc_start": "2026-09-22T21:16:38.741332+00:00",
+    "elapsed_ms": 17.188336,
+    "exit": 0,
+    "stdout": "psql (PostgreSQL) 17.11 (Debian 17.11-0+deb13u1)\nRedis server v=8.0.2 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=b52b02bf0759f5b4\npgBackRest 2.55.1\nLinux e2b.local 6.1.158+ #1 SMP PREEMPT_DYNAMIC Fri Jul 17 14:31:34 UTC 2026 x86_64 GNU/Linux\n2026-09-22T21:16:38Z\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-init",
+    "command": [
+      "initdb",
+      "-D",
+      "/tmp/a8dr-pg-2txtqj7h/source",
+      "-A",
+      "trust",
+      "--no-locale"
+    ],
+    "environment": {},
+    "utc_start": "2026-09-22T21:16:38.759107+00:00",
+    "elapsed_ms": 358.597444,
+    "exit": 0,
+    "stdout": "The files belonging to this database system will be owned by user \"user\".\nThis user must also own the server process.\n\nThe database cluster will be initialized with locale \"C\".\nThe default database encoding has accordingly been set to \"SQL_ASCII\".\nThe default text search configuration will be set to \"english\".\n\nData page checksums are disabled.\n\ncreating directory /tmp/a8dr-pg-2txtqj7h/source ... ok\ncreating subdirectories ... ok\nselecting dynamic shared memory implementation ... posix\nselecting default \"max_connections\" ... 100\nselecting default \"shared_buffers\" ... 128MB\nselecting default time zone ... Etc/UTC\ncreating configuration files ... ok\nrunning bootstrap script ... ok\nperforming post-bootstrap initialization ... ok\nsyncing data to disk ... ok\n\nSuccess. You can now start the database server using:\n\n    pg_ctl -D /tmp/a8dr-pg-2txtqj7h/source -l logfile start\n\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-start",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8dr-pg-2txtqj7h/source",
+      "-l",
+      "/tmp/a8dr-pg-2txtqj7h/source.log",
+      "-w",
+      "start"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:39.117961+00:00",
+    "elapsed_ms": 110.692141,
+    "exit": 0,
+    "stdout": "waiting for server to start.... done\nserver started\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-create-db",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "postgres",
+      "-tAXc",
+      "CREATE DATABASE payesh"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:39.228989+00:00",
+    "elapsed_ms": 25.405984,
+    "exit": 0,
+    "stdout": "CREATE DATABASE\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-seed",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "CREATE TABLE users(id int primary key, value text); INSERT INTO users SELECT i,'run9-'||i FROM generate_series(1,10)i;CREATE TABLE schools(id int primary key, value text); INSERT INTO schools SELECT i,'run9-'||i FROM generate_series(1,10)i;CREATE TABLE classes(id int primary key, value text); INSERT INTO classes SELECT i,'run9-'||i FROM generate_series(1,10)i;CREATE TABLE grades(id int primary key, value text); INSERT INTO grades SELECT i,'run9-'||i FROM generate_series(1,10)i;CREATE TABLE attendance(id int primary key, value text); INSERT INTO attendance SELECT i,'run9-'||i FROM generate_series(1,10)i"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:39.254611+00:00",
+    "elapsed_ms": 10.407272,
+    "exit": 0,
+    "stdout": "CREATE TABLE\nINSERT 0 10\nCREATE TABLE\nINSERT 0 10\nCREATE TABLE\nINSERT 0 10\nCREATE TABLE\nINSERT 0 10\nCREATE TABLE\nINSERT 0 10\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-stanza",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "stanza-create"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:39.265184+00:00",
+    "elapsed_ms": 11.415067,
+    "exit": 0,
+    "stdout": "2026-09-22 21:16:39.269 P00   INFO: stanza-create command begin 2.55.1: --config=/tmp/a8dr-pg-2txtqj7h/pbr.conf --exec-id=8001-5a860d31 --lock-path=/tmp/a8dr-pg-2txtqj7h/lock --log-level-console=info --log-path=/tmp/a8dr-pg-2txtqj7h --pg1-path=/tmp/a8dr-pg-2txtqj7h/source --pg1-port=55448 --pg1-socket-path=/tmp/a8dr-pg-2txtqj7h/socket --pg1-user=user --repo1-path=/tmp/a8dr-pg-2txtqj7h/repo --stanza=payesh\n2026-09-22 21:16:39.275 P00   INFO: stanza-create for stanza 'payesh' on repo1\n2026-09-22 21:16:39.275 P00   INFO: stanza-create command end: completed successfully (7ms)\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-backup",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "--type=full",
+      "backup"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:39.276772+00:00",
+    "elapsed_ms": 1542.327382,
+    "exit": 0,
+    "stdout": "2026-09-22 21:16:39.281 P00   INFO: backup command begin 2.55.1: --config=/tmp/a8dr-pg-2txtqj7h/pbr.conf --exec-id=8003-6f1d05d6 --lock-path=/tmp/a8dr-pg-2txtqj7h/lock --log-level-console=info --log-path=/tmp/a8dr-pg-2txtqj7h --pg1-path=/tmp/a8dr-pg-2txtqj7h/source --pg1-port=55448 --pg1-socket-path=/tmp/a8dr-pg-2txtqj7h/socket --pg1-user=user --repo1-path=/tmp/a8dr-pg-2txtqj7h/repo --repo1-retention-full=2 --stanza=payesh --start-fast --type=full\n2026-09-22 21:16:39.287 P00   INFO: execute non-exclusive backup start: backup begins after the requested immediate checkpoint completes\n2026-09-22 21:16:39.301 P00   INFO: backup start archive = 000000010000000000000002, lsn = 0/2000028\n2026-09-22 21:16:39.301 P00   INFO: check archive for prior segment 000000010000000000000001\n2026-09-22 21:16:40.691 P00   INFO: execute non-exclusive backup stop and wait for all WAL segments to archive\n2026-09-22 21:16:40.697 P00   INFO: backup stop archive = 000000010000000000000002, lsn = 0/2000120\n2026-09-22 21:16:40.698 P00   INFO: check archive for segment(s) 000000010000000000000002:000000010000000000000002\n2026-09-22 21:16:40.804 P00   INFO: new backup label = 20260922-211639F\n2026-09-22 21:16:40.818 P00   INFO: full backup size = 29.5MB, file total = 1284\n2026-09-22 21:16:40.818 P00   INFO: backup command end: completed successfully (1539ms)\n2026-09-22 21:16:40.818 P00   INFO: expire command begin 2.55.1: --config=/tmp/a8dr-pg-2txtqj7h/pbr.conf --exec-id=8003-6f1d05d6 --lock-path=/tmp/a8dr-pg-2txtqj7h/lock --log-level-console=info --log-path=/tmp/a8dr-pg-2txtqj7h --repo1-path=/tmp/a8dr-pg-2txtqj7h/repo --repo1-retention-full=2 --stanza=payesh\n2026-09-22 21:16:40.818 P00   INFO: expire command end: completed successfully (0ms)\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-info",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "--output=json",
+      "info"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:40.819345+00:00",
+    "elapsed_ms": 5.966845,
+    "exit": 0,
+    "stdout": "[{\"archive\":[{\"database\":{\"id\":1,\"repo-key\":1},\"id\":\"17-1\",\"max\":\"000000010000000000000002\",\"min\":\"000000010000000000000001\"}],\"backup\":[{\"archive\":{\"start\":\"000000010000000000000002\",\"stop\":\"000000010000000000000002\"},\"backrest\":{\"format\":5,\"version\":\"2.55.1\"},\"database\":{\"id\":1,\"repo-key\":1},\"error\":false,\"info\":{\"delta\":30918284,\"repository\":{\"delta\":3997376,\"size\":3997376},\"size\":30918284},\"label\":\"20260922-211639F\",\"lsn\":{\"start\":\"0/2000028\",\"stop\":\"0/2000120\"},\"prior\":null,\"reference\":null,\"timestamp\":{\"start\":1790111799,\"stop\":1790111800},\"type\":\"full\"}],\"cipher\":\"none\",\"db\":[{\"id\":1,\"repo-key\":1,\"system-id\":7688471631945244461,\"version\":\"17\"}],\"name\":\"payesh\",\"repo\":[{\"cipher\":\"none\",\"key\":1,\"status\":{\"code\":0,\"message\":\"ok\"}}],\"status\":{\"code\":0,\"lock\":{\"backup\":{\"held\":false}},\"message\":\"ok\"}}]",
+    "stderr": ""
+  },
+  {
+    "id": "p9-commit-before-target",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "INSERT INTO users VALUES(11,'keep')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:40.825505+00:00",
+    "elapsed_ms": 10.338004,
+    "exit": 0,
+    "stdout": "INSERT 0 1\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-before-target",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "SELECT pg_create_restore_point('arena_target')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:40.835992+00:00",
+    "elapsed_ms": 5.669035,
+    "exit": 0,
+    "stdout": "0/3000430\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-expected",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "SELECT count(*),md5(string_agg(users::text,'|' ORDER BY id)) FROM users"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:40.841819+00:00",
+    "elapsed_ms": 6.396306,
+    "exit": 0,
+    "stdout": "11|f0a622285210b039a5e6ebd6741c1c4d\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-after-target",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "INSERT INTO users VALUES(12,'must-not-restore'); SELECT pg_switch_wal();"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:40.848399+00:00",
+    "elapsed_ms": 17.363417,
+    "exit": 0,
+    "stdout": "INSERT 0 1\n0/30004D8\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-archive-check",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "check"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:40.865918+00:00",
+    "elapsed_ms": 318.863652,
+    "exit": 0,
+    "stdout": "2026-09-22 21:16:40.870 P00   INFO: check command begin 2.55.1: --config=/tmp/a8dr-pg-2txtqj7h/pbr.conf --exec-id=8037-0bfd6b08 --log-level-console=info --log-path=/tmp/a8dr-pg-2txtqj7h --pg1-path=/tmp/a8dr-pg-2txtqj7h/source --pg1-port=55448 --pg1-socket-path=/tmp/a8dr-pg-2txtqj7h/socket --pg1-user=user --repo1-path=/tmp/a8dr-pg-2txtqj7h/repo --stanza=payesh\n2026-09-22 21:16:40.874 P00   INFO: check repo1 configuration (primary)\n2026-09-22 21:16:40.881 P00   INFO: check repo1 archive for WAL (primary)\n2026-09-22 21:16:41.184 P00   INFO: WAL segment 000000010000000000000004 successfully archived to '/tmp/a8dr-pg-2txtqj7h/repo/archive/payesh/17-1/0000000100000000/000000010000000000000004-abf606bac54bf9865adca79950a28522421ed15f.gz' on repo1\n2026-09-22 21:16:41.184 P00   INFO: check command end: completed successfully (316ms)\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-restore-time",
+    "command": [
+      "bash",
+      "tools/pitr-restore.sh",
+      "--time",
+      "2026-09-23 00:00:00+00",
+      "--no-start",
+      "--dest",
+      "/tmp/a8dr-pg-2txtqj7h/time"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:41.184960+00:00",
+    "elapsed_ms": 12.181931,
+    "exit": 48,
+    "stdout": "== PITR run: /tmp/a8dr-pg-2txtqj7h/time/pitr-20260922-211641-8041 (stanza=payesh port=54329 --type=time --target=2026-09-23 00:00:00+00)\n",
+    "stderr": "ERROR: [048]: invalid command '00:00:00+00'\n"
+  },
+  {
+    "id": "p9-restore-latest",
+    "command": [
+      "bash",
+      "tools/pitr-restore.sh",
+      "--latest",
+      "--no-start",
+      "--dest",
+      "/tmp/a8dr-pg-2txtqj7h/latest"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:41.197317+00:00",
+    "elapsed_ms": 12.524013,
+    "exit": 32,
+    "stdout": "== PITR run: /tmp/a8dr-pg-2txtqj7h/latest/pitr-20260922-211641-8046 (stanza=payesh port=54329 --type=latest)\nP00  ERROR: [032]: 'latest' is not allowed for 'type' option\n            HINT: allowed values are 'lsn', 'name', 'time', 'xid', 'preserve', 'none', 'immediate', 'default', 'standby'\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-restore-native",
+    "command": [
+      "bash",
+      "tools/pitr-restore.sh",
+      "--native",
+      "--time",
+      "2026-09-23 00:00:00+00",
+      "--no-start",
+      "--dest",
+      "/tmp/a8dr-pg-2txtqj7h/native"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:41.209999+00:00",
+    "elapsed_ms": 1.680554,
+    "exit": 1,
+    "stdout": "\u0645\u0635\u0631\u0641: tools/pitr-restore.sh (--time 'TS'|--name N|--xid ID|--latest) [--no-start] [--no-verify] [--dest DIR] [--port N] [--stanza S]\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-restore-name",
+    "command": [
+      "bash",
+      "tools/pitr-restore.sh",
+      "--name",
+      "arena_target",
+      "--no-start",
+      "--dest",
+      "/tmp/a8dr-pg-2txtqj7h/restore",
+      "--port",
+      "55449"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:41.211831+00:00",
+    "elapsed_ms": 301.869651,
+    "exit": 0,
+    "stdout": "== PITR run: /tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052 (stanza=payesh port=55449 --type=name --target=arena_target)\n2026-09-22 21:16:41.221 P00   INFO: restore command begin 2.55.1: --config=/tmp/a8dr-pg-2txtqj7h/pbr.conf --delta --exec-id=8056-aed6ef95 --lock-path=/tmp/a8dr-pg-2txtqj7h/lock --log-level-console=info --log-path=/tmp/a8dr-pg-2txtqj7h --pg1-path=/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/data --repo1-path=/tmp/a8dr-pg-2txtqj7h/repo --spool-path=/tmp/a8dr-pg-2txtqj7h/spool --stanza=payesh --target=arena_target --type=name\n2026-09-22 21:16:41.221 P00   WARN: --delta or --force specified but unable to find 'PG_VERSION' or 'backup.manifest' in '/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/data' to confirm that this is a valid $PGDATA directory. --delta and --force have been disabled and if any files exist in the destination directories the restore will be aborted.\n2026-09-22 21:16:41.226 P00   INFO: repo1: restore backup set 20260922-211639F, recovery will start at 2026-09-22 21:16:39\n2026-09-22 21:16:41.226 P00   INFO: remap data directory to '/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/data'\n2026-09-22 21:16:41.510 P00   INFO: write updated /tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/data/postgresql.auto.conf\n2026-09-22 21:16:41.510 P00   INFO: restore global/pg_control (performed last to ensure aborted restores cannot be started)\n2026-09-22 21:16:41.511 P00   INFO: restore size = 29.5MB, file total = 1284\n2026-09-22 21:16:41.511 P00   INFO: restore command end: completed successfully (291ms)\nOK (--no-start): \u062f\u06cc\u062a\u0627 \u062f\u0631 /tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/data \u0622\u0645\u0627\u062f\u0647 \u0627\u0633\u062a\u061b \u0628\u0648\u062a\u0650 \u062f\u0633\u062a\u06cc:\n  pg_ctl -D '/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/data' -o \"-c config_file='/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/etc/postgresql.conf'\" -l '/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/log/postgres.log' start\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-target-original-start",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/data",
+      "-o",
+      "-c config_file=/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/etc/postgresql.conf",
+      "-l",
+      "/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/original.log",
+      "-w",
+      "start"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:41.514337+00:00",
+    "elapsed_ms": 109.434982,
+    "exit": 1,
+    "stdout": "waiting for server to start.... stopped waiting\n",
+    "stderr": "pg_ctl: could not start server\nExamine the log output.\n"
+  },
+  {
+    "id": "p9-target-start",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/data",
+      "-o",
+      "-c config_file=/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/etc/postgresql.conf -c recovery_target_action=promote -c max_connections=100",
+      "-l",
+      "/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/target.log",
+      "-w",
+      "start"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:41.625592+00:00",
+    "elapsed_ms": 107.806635,
+    "exit": 0,
+    "stdout": "waiting for server to start.... done\nserver started\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-actual",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "SELECT count(*),md5(string_agg(users::text,'|' ORDER BY id)) FROM users"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/run",
+      "PGPORT": "55449",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:41.796760+00:00",
+    "elapsed_ms": 6.296467,
+    "exit": 0,
+    "stdout": "11|f0a622285210b039a5e6ebd6741c1c4d\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-source-identity",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "SELECT current_database(),current_setting('data_directory'),system_identifier FROM pg_control_system()"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:41.803238+00:00",
+    "elapsed_ms": 5.64452,
+    "exit": 0,
+    "stdout": "payesh|/tmp/a8dr-pg-2txtqj7h/source|7688471631945244461\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-target-identity",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "SELECT current_database(),current_setting('data_directory'),system_identifier FROM pg_control_system()"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/run",
+      "PGPORT": "55449",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:41.809032+00:00",
+    "elapsed_ms": 5.36184,
+    "exit": 0,
+    "stdout": "payesh|/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/data|7688471631945244461\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-verify-correct",
+    "command": [
+      "bash",
+      "tools/pitr-verify.sh"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/run",
+      "PGPORT": "55449",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:41.814623+00:00",
+    "elapsed_ms": 62.341989,
+    "exit": 0,
+    "stdout": "PASS: \u0627\u062a\u0635\u0627\u0644 \u0628\u0647 instance\u0650 \u0628\u0627\u0632\u06cc\u0627\u0628\u06cc\u200c\u0634\u062f\u0647\nPASS: \u0631\u06cc\u06a9\u0627\u0648\u0631\u06cc \u062a\u0645\u0627\u0645 \u0648 promote \u0634\u062f\u0647 (pg_is_in_recovery=f)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc users (count=11)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc schools (count=10)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc classes (count=10)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc grades (count=10)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc attendance (count=10)\nCHECKSUM table=users rows200md5=f0a622285210b039a5e6ebd6741c1c4d\nCHECKSUM table=grades rows200md5=7e8495d55a949891c67742d67848572c\nCHECKSUM table=attendance rows200md5=7e8495d55a949891c67742d67848572c\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nPITR_VERIFY: \u0633\u0628\u0632 \u2014 \u0628\u0627\u0632\u06cc\u0627\u0628\u06cc\u0650 payesh \u0645\u0639\u062a\u0628\u0631 \u0627\u0633\u062a\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-verify-wrong-source",
+    "command": [
+      "bash",
+      "tools/pitr-verify.sh"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:41.877118+00:00",
+    "elapsed_ms": 61.307121,
+    "exit": 0,
+    "stdout": "PASS: \u0627\u062a\u0635\u0627\u0644 \u0628\u0647 instance\u0650 \u0628\u0627\u0632\u06cc\u0627\u0628\u06cc\u200c\u0634\u062f\u0647\nPASS: \u0631\u06cc\u06a9\u0627\u0648\u0631\u06cc \u062a\u0645\u0627\u0645 \u0648 promote \u0634\u062f\u0647 (pg_is_in_recovery=f)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc users (count=12)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc schools (count=10)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc classes (count=10)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc grades (count=10)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc attendance (count=10)\nCHECKSUM table=users rows200md5=483c80f9d82cf2d86cab4f657edf2897\nCHECKSUM table=grades rows200md5=7e8495d55a949891c67742d67848572c\nCHECKSUM table=attendance rows200md5=7e8495d55a949891c67742d67848572c\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nPITR_VERIFY: \u0633\u0628\u0632 \u2014 \u0628\u0627\u0632\u06cc\u0627\u0628\u06cc\u0650 payesh \u0645\u0639\u062a\u0628\u0631 \u0627\u0633\u062a\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-verify-postgres-db",
+    "command": [
+      "bash",
+      "tools/pitr-verify.sh"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/run",
+      "PGPORT": "55449",
+      "PGUSER": "user",
+      "PGDATABASE": "postgres"
+    },
+    "utc_start": "2026-09-22T21:16:41.938612+00:00",
+    "elapsed_ms": 59.563478,
+    "exit": 1,
+    "stdout": "PASS: \u0627\u062a\u0635\u0627\u0644 \u0628\u0647 instance\u0650 \u0628\u0627\u0632\u06cc\u0627\u0628\u06cc\u200c\u0634\u062f\u0647\nPASS: \u0631\u06cc\u06a9\u0627\u0648\u0631\u06cc \u062a\u0645\u0627\u0645 \u0648 promote \u0634\u062f\u0647 (pg_is_in_recovery=f)\nFAIL: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc users (count=ERR)\nFAIL: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc schools (count=ERR)\nFAIL: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc classes (count=ERR)\nFAIL: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc grades (count=ERR)\nFAIL: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc attendance (count=ERR)\nCHECKSUM table=users rows200md5=\nCHECKSUM table=grades rows200md5=\nCHECKSUM table=attendance rows200md5=\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nPITR_VERIFY: \u0642\u0631\u0645\u0632 \u2014 \u067e\u06cc\u0634 \u0627\u0632 \u0645\u0635\u0631\u0641\u0650 \u0646\u062a\u06cc\u062c\u0647 \u0627\u0635\u0644\u0627\u062d \u06a9\u0646\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-promote-primary-guard",
+    "command": [
+      "bash",
+      "tools/failover-postgres.sh",
+      "--dry-run"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/run",
+      "PGPORT": "55449",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:41.998344+00:00",
+    "elapsed_ms": 7.706002,
+    "exit": 1,
+    "stdout": "== failover-postgres: standby=/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/run:55449 primary=(127.0.0.1:5432) dry=1 force=0\n",
+    "stderr": "FAIL: \u0645\u0642\u0635\u062f\u0650 \u0627\u0646\u062a\u062e\u0627\u0628\u06cc \u062f\u0631 recovery \u0646\u06cc\u0633\u062a (\u06cc\u0627 \u0627\u0632 \u0642\u0628\u0644 primary \u0627\u0633\u062a \u06cc\u0627 \u062f\u0633\u062a\u0631\u0633\u200c\u067e\u0630\u06cc\u0631 \u0646\u06cc\u0633\u062a) \u2014 \u0628\u0631\u0627\u06cc\u0650 \u0627\u0645\u0646\u06cc\u062a\u0650 \u062f\u0627\u062f\u0647 \u0627\u062f\u0627\u0645\u0647 \u0646\u0645\u06cc\u200c\u062f\u0647\u0645\n"
+  },
+  {
+    "id": "p9-basebackup",
+    "command": [
+      "pg_basebackup",
+      "-h",
+      "/tmp/a8dr-pg-2txtqj7h/socket",
+      "-p",
+      "55448",
+      "-U",
+      "user",
+      "-D",
+      "/tmp/a8dr-pg-2txtqj7h/standby",
+      "-R",
+      "-X",
+      "stream",
+      "-c",
+      "fast"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:42.006218+00:00",
+    "elapsed_ms": 65.221072,
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "id": "p9-standby-start",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8dr-pg-2txtqj7h/standby",
+      "-o",
+      "-p 55452 -k /tmp/a8dr-pg-2txtqj7h/standby-socket -c archive_mode=off",
+      "-l",
+      "/tmp/a8dr-pg-2txtqj7h/standby.log",
+      "-w",
+      "start"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:42.071703+00:00",
+    "elapsed_ms": 108.754252,
+    "exit": 0,
+    "stdout": "waiting for server to start.... done\nserver started\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-standby-before",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "SELECT pg_is_in_recovery(),count(*),md5(string_agg(users::text,'|' ORDER BY id)) FROM users"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/standby-socket",
+      "PGPORT": "55452",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh",
+      "OLD_PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "OLD_PGPORT": "55448"
+    },
+    "utc_start": "2026-09-22T21:16:42.180632+00:00",
+    "elapsed_ms": 9.708022,
+    "exit": 0,
+    "stdout": "t|12|483c80f9d82cf2d86cab4f657edf2897\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-stop-source",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8dr-pg-2txtqj7h/source",
+      "-m",
+      "immediate",
+      "-w",
+      "stop"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:42.190516+00:00",
+    "elapsed_ms": 101.63687,
+    "exit": 0,
+    "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-promote",
+    "command": [
+      "bash",
+      "tools/failover-postgres.sh"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/standby-socket",
+      "PGPORT": "55452",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh",
+      "OLD_PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "OLD_PGPORT": "55448"
+    },
+    "utc_start": "2026-09-22T21:16:42.292304+00:00",
+    "elapsed_ms": 129.65363,
+    "exit": 0,
+    "stdout": "== failover-postgres: standby=/tmp/a8dr-pg-2txtqj7h/standby-socket:55452 primary=(/tmp/a8dr-pg-2txtqj7h/socket:55448) dry=0 force=0\n\u062f\u0631 \u062d\u0627\u0644\u0650 promote ...\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nPROMOTE_OK: /tmp/a8dr-pg-2txtqj7h/standby-socket:55452 \u062d\u0627\u0644\u0627 primary \u0627\u0633\u062a (unreplayed=0B)\n\u0686\u06a9\u200c\u0644\u06cc\u0633\u062a\u0650 \u067e\u0633 \u0627\u0632 \u0627\u0642\u062f\u0627\u0645 (DR_RUNBOOK \u00a7\u06f1.\u06f3):\n  \u06f1) DATABASE_URL \u0628\u0631\u0646\u0627\u0645\u0647 \u0631\u0627 \u0628\u0647 endpoint \u062a\u0627\u0632\u0647 \u0647\u0645\u200c\u0631\u0627\u0633\u062a\u0627 \u06a9\u0646/\u0628\u0627\u0632\u0628\u06cc\u0646\u06cc \u06a9\u0646\n  \u06f2) primary\u0650 \u06a9\u0647\u0646\u0647 \u0631\u0627 fence \u06a9\u0646 \u062a\u0627 \u0647\u0631\u06af\u0632 \u062f\u0648 primary \u0646\u0645\u0627\u0646\u062f\n  \u06f3) standby\u0650 \u062c\u062f\u06cc\u062f \u0631\u0627 \u0627\u0632 \u0631\u0648\u06cc\u0650 primary\u0650 \u062a\u0627\u0632\u0647 rebuild \u06a9\u0646 (STANDBY_BOOTSTRAP=repo)\n  \u06f4) pg_stat_archiver \u0631\u0627 \u0631\u0648\u06cc\u0650 new primary \u0633\u0628\u0632 \u06a9\u0646 (WAL archiving \u062d\u06cc\u0627\u062a\u06cc \u0627\u0633\u062a)\n  \u06f5) \u0631\u0648\u06cc\u062f\u0627\u062f \u0631\u0627 \u062f\u0631 \u0645\u0645\u06cc\u0632\u06cc\u0650 \u062f\u0627\u062e\u0644\u06cc \u062b\u0628\u062a \u06a9\u0646: incident=failover-postgres actor=user\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-standby-after",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "SELECT pg_is_in_recovery(),count(*),md5(string_agg(users::text,'|' ORDER BY id)) FROM users"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/standby-socket",
+      "PGPORT": "55452",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh",
+      "OLD_PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "OLD_PGPORT": "55448"
+    },
+    "utc_start": "2026-09-22T21:16:42.422163+00:00",
+    "elapsed_ms": 6.216308,
+    "exit": 0,
+    "stdout": "f|12|483c80f9d82cf2d86cab4f657edf2897\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-stop-standby",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8dr-pg-2txtqj7h/standby",
+      "-m",
+      "immediate",
+      "-w",
+      "stop"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:42.441275+00:00",
+    "elapsed_ms": 101.696234,
+    "exit": 0,
+    "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+    "stderr": ""
+  },
+  {
+    "id": "p9-stop-data",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8dr-pg-2txtqj7h/restore/pitr-20260922-211641-8052/data",
+      "-m",
+      "immediate",
+      "-w",
+      "stop"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-2txtqj7h/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-2txtqj7h/socket",
+      "PGPORT": "55448",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:42.543152+00:00",
+    "elapsed_ms": 101.682848,
+    "exit": 0,
+    "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-init",
+    "command": [
+      "initdb",
+      "-D",
+      "/tmp/a8dr-pg-x693c5pd/source",
+      "-A",
+      "trust",
+      "--no-locale"
+    ],
+    "environment": {},
+    "utc_start": "2026-09-22T21:16:42.679312+00:00",
+    "elapsed_ms": 348.69741,
+    "exit": 0,
+    "stdout": "The files belonging to this database system will be owned by user \"user\".\nThis user must also own the server process.\n\nThe database cluster will be initialized with locale \"C\".\nThe default database encoding has accordingly been set to \"SQL_ASCII\".\nThe default text search configuration will be set to \"english\".\n\nData page checksums are disabled.\n\ncreating directory /tmp/a8dr-pg-x693c5pd/source ... ok\ncreating subdirectories ... ok\nselecting dynamic shared memory implementation ... posix\nselecting default \"max_connections\" ... 100\nselecting default \"shared_buffers\" ... 128MB\nselecting default time zone ... Etc/UTC\ncreating configuration files ... ok\nrunning bootstrap script ... ok\nperforming post-bootstrap initialization ... ok\nsyncing data to disk ... ok\n\nSuccess. You can now start the database server using:\n\n    pg_ctl -D /tmp/a8dr-pg-x693c5pd/source -l logfile start\n\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-start",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8dr-pg-x693c5pd/source",
+      "-l",
+      "/tmp/a8dr-pg-x693c5pd/source.log",
+      "-w",
+      "start"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:43.028248+00:00",
+    "elapsed_ms": 108.762717,
+    "exit": 0,
+    "stdout": "waiting for server to start.... done\nserver started\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-create-db",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "postgres",
+      "-tAXc",
+      "CREATE DATABASE payesh"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:43.137214+00:00",
+    "elapsed_ms": 21.719954,
+    "exit": 0,
+    "stdout": "CREATE DATABASE\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-seed",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "CREATE TABLE users(id int primary key, value text); INSERT INTO users SELECT i,'run10-'||i FROM generate_series(1,10)i;CREATE TABLE schools(id int primary key, value text); INSERT INTO schools SELECT i,'run10-'||i FROM generate_series(1,10)i;CREATE TABLE classes(id int primary key, value text); INSERT INTO classes SELECT i,'run10-'||i FROM generate_series(1,10)i;CREATE TABLE grades(id int primary key, value text); INSERT INTO grades SELECT i,'run10-'||i FROM generate_series(1,10)i;CREATE TABLE attendance(id int primary key, value text); INSERT INTO attendance SELECT i,'run10-'||i FROM generate_series(1,10)i"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:43.159097+00:00",
+    "elapsed_ms": 11.216471,
+    "exit": 0,
+    "stdout": "CREATE TABLE\nINSERT 0 10\nCREATE TABLE\nINSERT 0 10\nCREATE TABLE\nINSERT 0 10\nCREATE TABLE\nINSERT 0 10\nCREATE TABLE\nINSERT 0 10\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-stanza",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "stanza-create"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:43.170473+00:00",
+    "elapsed_ms": 12.848509,
+    "exit": 0,
+    "stdout": "2026-09-22 21:16:43.175 P00   INFO: stanza-create command begin 2.55.1: --config=/tmp/a8dr-pg-x693c5pd/pbr.conf --exec-id=8272-4785457c --lock-path=/tmp/a8dr-pg-x693c5pd/lock --log-level-console=info --log-path=/tmp/a8dr-pg-x693c5pd --pg1-path=/tmp/a8dr-pg-x693c5pd/source --pg1-port=55450 --pg1-socket-path=/tmp/a8dr-pg-x693c5pd/socket --pg1-user=user --repo1-path=/tmp/a8dr-pg-x693c5pd/repo --stanza=payesh\n2026-09-22 21:16:43.182 P00   INFO: stanza-create for stanza 'payesh' on repo1\n2026-09-22 21:16:43.182 P00   INFO: stanza-create command end: completed successfully (8ms)\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-backup",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "--type=full",
+      "backup"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:43.183482+00:00",
+    "elapsed_ms": 1639.832267,
+    "exit": 0,
+    "stdout": "2026-09-22 21:16:43.188 P00   INFO: backup command begin 2.55.1: --config=/tmp/a8dr-pg-x693c5pd/pbr.conf --exec-id=8274-f4e10726 --lock-path=/tmp/a8dr-pg-x693c5pd/lock --log-level-console=info --log-path=/tmp/a8dr-pg-x693c5pd --pg1-path=/tmp/a8dr-pg-x693c5pd/source --pg1-port=55450 --pg1-socket-path=/tmp/a8dr-pg-x693c5pd/socket --pg1-user=user --repo1-path=/tmp/a8dr-pg-x693c5pd/repo --repo1-retention-full=2 --stanza=payesh --start-fast --type=full\n2026-09-22 21:16:43.195 P00   INFO: execute non-exclusive backup start: backup begins after the requested immediate checkpoint completes\n2026-09-22 21:16:43.210 P00   INFO: backup start archive = 000000010000000000000002, lsn = 0/2000028\n2026-09-22 21:16:43.210 P00   INFO: check archive for prior segment 000000010000000000000001\n2026-09-22 21:16:44.695 P00   INFO: execute non-exclusive backup stop and wait for all WAL segments to archive\n2026-09-22 21:16:44.702 P00   INFO: backup stop archive = 000000010000000000000002, lsn = 0/2000120\n2026-09-22 21:16:44.702 P00   INFO: check archive for segment(s) 000000010000000000000002:000000010000000000000002\n2026-09-22 21:16:44.808 P00   INFO: new backup label = 20260922-211643F\n2026-09-22 21:16:44.822 P00   INFO: full backup size = 29.5MB, file total = 1284\n2026-09-22 21:16:44.822 P00   INFO: backup command end: completed successfully (1635ms)\n2026-09-22 21:16:44.822 P00   INFO: expire command begin 2.55.1: --config=/tmp/a8dr-pg-x693c5pd/pbr.conf --exec-id=8274-f4e10726 --lock-path=/tmp/a8dr-pg-x693c5pd/lock --log-level-console=info --log-path=/tmp/a8dr-pg-x693c5pd --repo1-path=/tmp/a8dr-pg-x693c5pd/repo --repo1-retention-full=2 --stanza=payesh\n2026-09-22 21:16:44.822 P00   INFO: expire command end: completed successfully (0ms)\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-info",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "--output=json",
+      "info"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:44.823652+00:00",
+    "elapsed_ms": 5.980597,
+    "exit": 0,
+    "stdout": "[{\"archive\":[{\"database\":{\"id\":1,\"repo-key\":1},\"id\":\"17-1\",\"max\":\"000000010000000000000002\",\"min\":\"000000010000000000000001\"}],\"backup\":[{\"archive\":{\"start\":\"000000010000000000000002\",\"stop\":\"000000010000000000000002\"},\"backrest\":{\"format\":5,\"version\":\"2.55.1\"},\"database\":{\"id\":1,\"repo-key\":1},\"error\":false,\"info\":{\"delta\":30918284,\"repository\":{\"delta\":3997381,\"size\":3997381},\"size\":30918284},\"label\":\"20260922-211643F\",\"lsn\":{\"start\":\"0/2000028\",\"stop\":\"0/2000120\"},\"prior\":null,\"reference\":null,\"timestamp\":{\"start\":1790111803,\"stop\":1790111804},\"type\":\"full\"}],\"cipher\":\"none\",\"db\":[{\"id\":1,\"repo-key\":1,\"system-id\":7688471648798232636,\"version\":\"17\"}],\"name\":\"payesh\",\"repo\":[{\"cipher\":\"none\",\"key\":1,\"status\":{\"code\":0,\"message\":\"ok\"}}],\"status\":{\"code\":0,\"lock\":{\"backup\":{\"held\":false}},\"message\":\"ok\"}}]",
+    "stderr": ""
+  },
+  {
+    "id": "p10-commit-before-target",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "INSERT INTO users VALUES(11,'keep')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:44.829804+00:00",
+    "elapsed_ms": 11.191369,
+    "exit": 0,
+    "stdout": "INSERT 0 1\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-before-target",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "SELECT pg_create_restore_point('arena_target')"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:44.841138+00:00",
+    "elapsed_ms": 5.861326,
+    "exit": 0,
+    "stdout": "0/3000430\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-expected",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "SELECT count(*),md5(string_agg(users::text,'|' ORDER BY id)) FROM users"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:44.847203+00:00",
+    "elapsed_ms": 6.78437,
+    "exit": 0,
+    "stdout": "11|21001b53d8c6916d95755045375e12c7\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-after-target",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "INSERT INTO users VALUES(12,'must-not-restore'); SELECT pg_switch_wal();"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:44.854134+00:00",
+    "elapsed_ms": 17.352376,
+    "exit": 0,
+    "stdout": "INSERT 0 1\n0/30004D8\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-archive-check",
+    "command": [
+      "pgbackrest",
+      "--stanza=payesh",
+      "check"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:44.871676+00:00",
+    "elapsed_ms": 319.976643,
+    "exit": 0,
+    "stdout": "2026-09-22 21:16:44.877 P00   INFO: check command begin 2.55.1: --config=/tmp/a8dr-pg-x693c5pd/pbr.conf --exec-id=8294-6338cb16 --log-level-console=info --log-path=/tmp/a8dr-pg-x693c5pd --pg1-path=/tmp/a8dr-pg-x693c5pd/source --pg1-port=55450 --pg1-socket-path=/tmp/a8dr-pg-x693c5pd/socket --pg1-user=user --repo1-path=/tmp/a8dr-pg-x693c5pd/repo --stanza=payesh\n2026-09-22 21:16:44.882 P00   INFO: check repo1 configuration (primary)\n2026-09-22 21:16:44.889 P00   INFO: check repo1 archive for WAL (primary)\n2026-09-22 21:16:45.190 P00   INFO: WAL segment 000000010000000000000004 successfully archived to '/tmp/a8dr-pg-x693c5pd/repo/archive/payesh/17-1/0000000100000000/000000010000000000000004-5dcbe9165acb86263db18dfe1cfbac82e62cdc8d.gz' on repo1\n2026-09-22 21:16:45.190 P00   INFO: check command end: completed successfully (314ms)\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-restore-time",
+    "command": [
+      "bash",
+      "tools/pitr-restore.sh",
+      "--time",
+      "2026-09-23 00:00:00+00",
+      "--no-start",
+      "--dest",
+      "/tmp/a8dr-pg-x693c5pd/time"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:45.191941+00:00",
+    "elapsed_ms": 15.099492,
+    "exit": 48,
+    "stdout": "== PITR run: /tmp/a8dr-pg-x693c5pd/time/pitr-20260922-211645-8298 (stanza=payesh port=54329 --type=time --target=2026-09-23 00:00:00+00)\n",
+    "stderr": "ERROR: [048]: invalid command '00:00:00+00'\n"
+  },
+  {
+    "id": "p10-restore-latest",
+    "command": [
+      "bash",
+      "tools/pitr-restore.sh",
+      "--latest",
+      "--no-start",
+      "--dest",
+      "/tmp/a8dr-pg-x693c5pd/latest"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:45.207230+00:00",
+    "elapsed_ms": 16.163865,
+    "exit": 32,
+    "stdout": "== PITR run: /tmp/a8dr-pg-x693c5pd/latest/pitr-20260922-211645-8303 (stanza=payesh port=54329 --type=latest)\nP00  ERROR: [032]: 'latest' is not allowed for 'type' option\n            HINT: allowed values are 'lsn', 'name', 'time', 'xid', 'preserve', 'none', 'immediate', 'default', 'standby'\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-restore-native",
+    "command": [
+      "bash",
+      "tools/pitr-restore.sh",
+      "--native",
+      "--time",
+      "2026-09-23 00:00:00+00",
+      "--no-start",
+      "--dest",
+      "/tmp/a8dr-pg-x693c5pd/native"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:45.223621+00:00",
+    "elapsed_ms": 2.062507,
+    "exit": 1,
+    "stdout": "\u0645\u0635\u0631\u0641: tools/pitr-restore.sh (--time 'TS'|--name N|--xid ID|--latest) [--no-start] [--no-verify] [--dest DIR] [--port N] [--stanza S]\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-restore-name",
+    "command": [
+      "bash",
+      "tools/pitr-restore.sh",
+      "--name",
+      "arena_target",
+      "--no-start",
+      "--dest",
+      "/tmp/a8dr-pg-x693c5pd/restore",
+      "--port",
+      "55451"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:45.225881+00:00",
+    "elapsed_ms": 328.614548,
+    "exit": 0,
+    "stdout": "== PITR run: /tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309 (stanza=payesh port=55451 --type=name --target=arena_target)\n2026-09-22 21:16:45.237 P00   INFO: restore command begin 2.55.1: --config=/tmp/a8dr-pg-x693c5pd/pbr.conf --delta --exec-id=8313-cf1c6684 --lock-path=/tmp/a8dr-pg-x693c5pd/lock --log-level-console=info --log-path=/tmp/a8dr-pg-x693c5pd --pg1-path=/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/data --repo1-path=/tmp/a8dr-pg-x693c5pd/repo --spool-path=/tmp/a8dr-pg-x693c5pd/spool --stanza=payesh --target=arena_target --type=name\n2026-09-22 21:16:45.237 P00   WARN: --delta or --force specified but unable to find 'PG_VERSION' or 'backup.manifest' in '/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/data' to confirm that this is a valid $PGDATA directory. --delta and --force have been disabled and if any files exist in the destination directories the restore will be aborted.\n2026-09-22 21:16:45.243 P00   INFO: repo1: restore backup set 20260922-211643F, recovery will start at 2026-09-22 21:16:43\n2026-09-22 21:16:45.243 P00   INFO: remap data directory to '/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/data'\n2026-09-22 21:16:45.550 P00   INFO: write updated /tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/data/postgresql.auto.conf\n2026-09-22 21:16:45.551 P00   INFO: restore global/pg_control (performed last to ensure aborted restores cannot be started)\n2026-09-22 21:16:45.551 P00   INFO: restore size = 29.5MB, file total = 1284\n2026-09-22 21:16:45.551 P00   INFO: restore command end: completed successfully (315ms)\nOK (--no-start): \u062f\u06cc\u062a\u0627 \u062f\u0631 /tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/data \u0622\u0645\u0627\u062f\u0647 \u0627\u0633\u062a\u061b \u0628\u0648\u062a\u0650 \u062f\u0633\u062a\u06cc:\n  pg_ctl -D '/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/data' -o \"-c config_file='/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/etc/postgresql.conf'\" -l '/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/log/postgres.log' start\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-target-original-start",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/data",
+      "-o",
+      "-c config_file=/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/etc/postgresql.conf",
+      "-l",
+      "/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/original.log",
+      "-w",
+      "start"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:45.554926+00:00",
+    "elapsed_ms": 108.764965,
+    "exit": 1,
+    "stdout": "waiting for server to start.... stopped waiting\n",
+    "stderr": "pg_ctl: could not start server\nExamine the log output.\n"
+  },
+  {
+    "id": "p10-target-start",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/data",
+      "-o",
+      "-c config_file=/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/etc/postgresql.conf -c recovery_target_action=promote -c max_connections=100",
+      "-l",
+      "/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/target.log",
+      "-w",
+      "start"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:45.665254+00:00",
+    "elapsed_ms": 107.997886,
+    "exit": 0,
+    "stdout": "waiting for server to start.... done\nserver started\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-actual",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "SELECT count(*),md5(string_agg(users::text,'|' ORDER BY id)) FROM users"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/run",
+      "PGPORT": "55451",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:45.837716+00:00",
+    "elapsed_ms": 8.196786,
+    "exit": 0,
+    "stdout": "11|21001b53d8c6916d95755045375e12c7\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-source-identity",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "SELECT current_database(),current_setting('data_directory'),system_identifier FROM pg_control_system()"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:45.846103+00:00",
+    "elapsed_ms": 7.073786,
+    "exit": 0,
+    "stdout": "payesh|/tmp/a8dr-pg-x693c5pd/source|7688471648798232636\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-target-identity",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "SELECT current_database(),current_setting('data_directory'),system_identifier FROM pg_control_system()"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/run",
+      "PGPORT": "55451",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:45.853375+00:00",
+    "elapsed_ms": 6.032887,
+    "exit": 0,
+    "stdout": "payesh|/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/data|7688471648798232636\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-verify-correct",
+    "command": [
+      "bash",
+      "tools/pitr-verify.sh"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/run",
+      "PGPORT": "55451",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:45.859707+00:00",
+    "elapsed_ms": 69.096918,
+    "exit": 0,
+    "stdout": "PASS: \u0627\u062a\u0635\u0627\u0644 \u0628\u0647 instance\u0650 \u0628\u0627\u0632\u06cc\u0627\u0628\u06cc\u200c\u0634\u062f\u0647\nPASS: \u0631\u06cc\u06a9\u0627\u0648\u0631\u06cc \u062a\u0645\u0627\u0645 \u0648 promote \u0634\u062f\u0647 (pg_is_in_recovery=f)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc users (count=11)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc schools (count=10)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc classes (count=10)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc grades (count=10)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc attendance (count=10)\nCHECKSUM table=users rows200md5=21001b53d8c6916d95755045375e12c7\nCHECKSUM table=grades rows200md5=c391af9eb7ce406d5a77b32d9724f978\nCHECKSUM table=attendance rows200md5=c391af9eb7ce406d5a77b32d9724f978\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nPITR_VERIFY: \u0633\u0628\u0632 \u2014 \u0628\u0627\u0632\u06cc\u0627\u0628\u06cc\u0650 payesh \u0645\u0639\u062a\u0628\u0631 \u0627\u0633\u062a\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-verify-wrong-source",
+    "command": [
+      "bash",
+      "tools/pitr-verify.sh"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:45.928981+00:00",
+    "elapsed_ms": 65.718247,
+    "exit": 0,
+    "stdout": "PASS: \u0627\u062a\u0635\u0627\u0644 \u0628\u0647 instance\u0650 \u0628\u0627\u0632\u06cc\u0627\u0628\u06cc\u200c\u0634\u062f\u0647\nPASS: \u0631\u06cc\u06a9\u0627\u0648\u0631\u06cc \u062a\u0645\u0627\u0645 \u0648 promote \u0634\u062f\u0647 (pg_is_in_recovery=f)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc users (count=12)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc schools (count=10)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc classes (count=10)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc grades (count=10)\nPASS: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc attendance (count=10)\nCHECKSUM table=users rows200md5=24db8f00d3f189bf38f658d829d6dd43\nCHECKSUM table=grades rows200md5=c391af9eb7ce406d5a77b32d9724f978\nCHECKSUM table=attendance rows200md5=c391af9eb7ce406d5a77b32d9724f978\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nPITR_VERIFY: \u0633\u0628\u0632 \u2014 \u0628\u0627\u0632\u06cc\u0627\u0628\u06cc\u0650 payesh \u0645\u0639\u062a\u0628\u0631 \u0627\u0633\u062a\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-verify-postgres-db",
+    "command": [
+      "bash",
+      "tools/pitr-verify.sh"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/run",
+      "PGPORT": "55451",
+      "PGUSER": "user",
+      "PGDATABASE": "postgres"
+    },
+    "utc_start": "2026-09-22T21:16:45.994877+00:00",
+    "elapsed_ms": 61.646554,
+    "exit": 1,
+    "stdout": "PASS: \u0627\u062a\u0635\u0627\u0644 \u0628\u0647 instance\u0650 \u0628\u0627\u0632\u06cc\u0627\u0628\u06cc\u200c\u0634\u062f\u0647\nPASS: \u0631\u06cc\u06a9\u0627\u0648\u0631\u06cc \u062a\u0645\u0627\u0645 \u0648 promote \u0634\u062f\u0647 (pg_is_in_recovery=f)\nFAIL: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc users (count=ERR)\nFAIL: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc schools (count=ERR)\nFAIL: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc classes (count=ERR)\nFAIL: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc grades (count=ERR)\nFAIL: \u062c\u062f\u0648\u0644\u0650 \u062d\u06cc\u0627\u062a\u06cc attendance (count=ERR)\nCHECKSUM table=users rows200md5=\nCHECKSUM table=grades rows200md5=\nCHECKSUM table=attendance rows200md5=\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nPITR_VERIFY: \u0642\u0631\u0645\u0632 \u2014 \u067e\u06cc\u0634 \u0627\u0632 \u0645\u0635\u0631\u0641\u0650 \u0646\u062a\u06cc\u062c\u0647 \u0627\u0635\u0644\u0627\u062d \u06a9\u0646\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-promote-primary-guard",
+    "command": [
+      "bash",
+      "tools/failover-postgres.sh",
+      "--dry-run"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/run",
+      "PGPORT": "55451",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:46.056722+00:00",
+    "elapsed_ms": 8.123833,
+    "exit": 1,
+    "stdout": "== failover-postgres: standby=/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/run:55451 primary=(127.0.0.1:5432) dry=1 force=0\n",
+    "stderr": "FAIL: \u0645\u0642\u0635\u062f\u0650 \u0627\u0646\u062a\u062e\u0627\u0628\u06cc \u062f\u0631 recovery \u0646\u06cc\u0633\u062a (\u06cc\u0627 \u0627\u0632 \u0642\u0628\u0644 primary \u0627\u0633\u062a \u06cc\u0627 \u062f\u0633\u062a\u0631\u0633\u200c\u067e\u0630\u06cc\u0631 \u0646\u06cc\u0633\u062a) \u2014 \u0628\u0631\u0627\u06cc\u0650 \u0627\u0645\u0646\u06cc\u062a\u0650 \u062f\u0627\u062f\u0647 \u0627\u062f\u0627\u0645\u0647 \u0646\u0645\u06cc\u200c\u062f\u0647\u0645\n"
+  },
+  {
+    "id": "p10-basebackup",
+    "command": [
+      "pg_basebackup",
+      "-h",
+      "/tmp/a8dr-pg-x693c5pd/socket",
+      "-p",
+      "55450",
+      "-U",
+      "user",
+      "-D",
+      "/tmp/a8dr-pg-x693c5pd/standby",
+      "-R",
+      "-X",
+      "stream",
+      "-c",
+      "fast"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:46.065027+00:00",
+    "elapsed_ms": 57.831649,
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "id": "p10-standby-start",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8dr-pg-x693c5pd/standby",
+      "-o",
+      "-p 55454 -k /tmp/a8dr-pg-x693c5pd/standby-socket -c archive_mode=off",
+      "-l",
+      "/tmp/a8dr-pg-x693c5pd/standby.log",
+      "-w",
+      "start"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:46.123023+00:00",
+    "elapsed_ms": 108.210897,
+    "exit": 0,
+    "stdout": "waiting for server to start.... done\nserver started\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-standby-before",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "SELECT pg_is_in_recovery(),count(*),md5(string_agg(users::text,'|' ORDER BY id)) FROM users"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/standby-socket",
+      "PGPORT": "55454",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh",
+      "OLD_PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "OLD_PGPORT": "55450"
+    },
+    "utc_start": "2026-09-22T21:16:46.231419+00:00",
+    "elapsed_ms": 10.071861,
+    "exit": 0,
+    "stdout": "t|12|24db8f00d3f189bf38f658d829d6dd43\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-stop-source",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8dr-pg-x693c5pd/source",
+      "-m",
+      "immediate",
+      "-w",
+      "stop"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:46.241693+00:00",
+    "elapsed_ms": 101.740102,
+    "exit": 0,
+    "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-promote",
+    "command": [
+      "bash",
+      "tools/failover-postgres.sh"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/standby-socket",
+      "PGPORT": "55454",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh",
+      "OLD_PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "OLD_PGPORT": "55450"
+    },
+    "utc_start": "2026-09-22T21:16:46.343684+00:00",
+    "elapsed_ms": 130.622441,
+    "exit": 0,
+    "stdout": "== failover-postgres: standby=/tmp/a8dr-pg-x693c5pd/standby-socket:55454 primary=(/tmp/a8dr-pg-x693c5pd/socket:55450) dry=0 force=0\n\u062f\u0631 \u062d\u0627\u0644\u0650 promote ...\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\nPROMOTE_OK: /tmp/a8dr-pg-x693c5pd/standby-socket:55454 \u062d\u0627\u0644\u0627 primary \u0627\u0633\u062a (unreplayed=0B)\n\u0686\u06a9\u200c\u0644\u06cc\u0633\u062a\u0650 \u067e\u0633 \u0627\u0632 \u0627\u0642\u062f\u0627\u0645 (DR_RUNBOOK \u00a7\u06f1.\u06f3):\n  \u06f1) DATABASE_URL \u0628\u0631\u0646\u0627\u0645\u0647 \u0631\u0627 \u0628\u0647 endpoint \u062a\u0627\u0632\u0647 \u0647\u0645\u200c\u0631\u0627\u0633\u062a\u0627 \u06a9\u0646/\u0628\u0627\u0632\u0628\u06cc\u0646\u06cc \u06a9\u0646\n  \u06f2) primary\u0650 \u06a9\u0647\u0646\u0647 \u0631\u0627 fence \u06a9\u0646 \u062a\u0627 \u0647\u0631\u06af\u0632 \u062f\u0648 primary \u0646\u0645\u0627\u0646\u062f\n  \u06f3) standby\u0650 \u062c\u062f\u06cc\u062f \u0631\u0627 \u0627\u0632 \u0631\u0648\u06cc\u0650 primary\u0650 \u062a\u0627\u0632\u0647 rebuild \u06a9\u0646 (STANDBY_BOOTSTRAP=repo)\n  \u06f4) pg_stat_archiver \u0631\u0627 \u0631\u0648\u06cc\u0650 new primary \u0633\u0628\u0632 \u06a9\u0646 (WAL archiving \u062d\u06cc\u0627\u062a\u06cc \u0627\u0633\u062a)\n  \u06f5) \u0631\u0648\u06cc\u062f\u0627\u062f \u0631\u0627 \u062f\u0631 \u0645\u0645\u06cc\u0632\u06cc\u0650 \u062f\u0627\u062e\u0644\u06cc \u062b\u0628\u062a \u06a9\u0646: incident=failover-postgres actor=user\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-standby-after",
+    "command": [
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-d",
+      "payesh",
+      "-tAXc",
+      "SELECT pg_is_in_recovery(),count(*),md5(string_agg(users::text,'|' ORDER BY id)) FROM users"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/standby-socket",
+      "PGPORT": "55454",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh",
+      "OLD_PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "OLD_PGPORT": "55450"
+    },
+    "utc_start": "2026-09-22T21:16:46.474469+00:00",
+    "elapsed_ms": 6.280493,
+    "exit": 0,
+    "stdout": "f|12|24db8f00d3f189bf38f658d829d6dd43\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-stop-standby",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8dr-pg-x693c5pd/standby",
+      "-m",
+      "immediate",
+      "-w",
+      "stop"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:46.493612+00:00",
+    "elapsed_ms": 101.918011,
+    "exit": 0,
+    "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+    "stderr": ""
+  },
+  {
+    "id": "p10-stop-data",
+    "command": [
+      "pg_ctl",
+      "-D",
+      "/tmp/a8dr-pg-x693c5pd/restore/pitr-20260922-211645-8309/data",
+      "-m",
+      "immediate",
+      "-w",
+      "stop"
+    ],
+    "environment": {
+      "PGBACKREST_CONFIG": "/tmp/a8dr-pg-x693c5pd/pbr.conf",
+      "PGHOST": "/tmp/a8dr-pg-x693c5pd/socket",
+      "PGPORT": "55450",
+      "PGUSER": "user",
+      "PGDATABASE": "payesh"
+    },
+    "utc_start": "2026-09-22T21:16:46.595714+00:00",
+    "elapsed_ms": 101.549934,
+    "exit": 0,
+    "stdout": "waiting for server to shut down.... done\nserver stopped\n",
+    "stderr": ""
+  }
+]

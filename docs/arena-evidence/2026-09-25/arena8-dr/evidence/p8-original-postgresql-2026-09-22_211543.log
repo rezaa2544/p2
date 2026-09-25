@@ -1,0 +1,23 @@
+2026-09-22 21:15:43.535 GMT [7353] LOG:  starting PostgreSQL 17.11 (Debian 17.11-0+deb13u1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-09-22 21:15:43.535 GMT [7353] LOG:  listening on IPv6 address "::1", port 55447
+2026-09-22 21:15:43.535 GMT [7353] LOG:  listening on IPv4 address "127.0.0.1", port 55447
+2026-09-22 21:15:43.535 GMT [7353] LOG:  listening on Unix socket "/tmp/a8dr-pg-afjnpgpv/restore/pitr-20260922-211543-7343/run/.s.PGSQL.55447"
+2026-09-22 21:15:43.537 GMT [7357] LOG:  database system was interrupted; last known up at 2026-09-22 21:15:40 GMT
+2026-09-22 21:15:43.542 P00   INFO: archive-get command begin 2.55.1: [00000002.history, pg_wal/RECOVERYHISTORY] --config=/tmp/a8dr-pg-afjnpgpv/pbr.conf --exec-id=7359-f96cbaae --lock-path=/tmp/a8dr-pg-afjnpgpv/lock --log-level-console=info --log-path=/tmp/a8dr-pg-afjnpgpv --pg1-path=/tmp/a8dr-pg-afjnpgpv/source --repo1-path=/tmp/a8dr-pg-afjnpgpv/repo --stanza=payesh
+2026-09-22 21:15:43.545 P00  ERROR: [032]: PostgreSQL working directory '/tmp/a8dr-pg-afjnpgpv/restore/pitr-20260922-211543-7343/data' is not the same as option pg1-path '/tmp/a8dr-pg-afjnpgpv/source'
+                                    HINT: is the PostgreSQL data_directory configured the same as the pg1-path option?
+2026-09-22 21:15:43.545 P00   INFO: archive-get command end: aborted with exception [032]
+2026-09-22 21:15:43.546 GMT [7357] LOG:  starting backup recovery with redo LSN 0/2000028, checkpoint LSN 0/2000080, on timeline ID 1
+2026-09-22 21:15:43.551 P00   INFO: archive-get command begin 2.55.1: [000000010000000000000002, pg_wal/RECOVERYXLOG] --config=/tmp/a8dr-pg-afjnpgpv/pbr.conf --exec-id=7361-b435c584 --lock-path=/tmp/a8dr-pg-afjnpgpv/lock --log-level-console=info --log-path=/tmp/a8dr-pg-afjnpgpv --pg1-path=/tmp/a8dr-pg-afjnpgpv/source --repo1-path=/tmp/a8dr-pg-afjnpgpv/repo --stanza=payesh
+2026-09-22 21:15:43.554 P00  ERROR: [032]: PostgreSQL working directory '/tmp/a8dr-pg-afjnpgpv/restore/pitr-20260922-211543-7343/data' is not the same as option pg1-path '/tmp/a8dr-pg-afjnpgpv/source'
+                                    HINT: is the PostgreSQL data_directory configured the same as the pg1-path option?
+2026-09-22 21:15:43.554 P00   INFO: archive-get command end: aborted with exception [032]
+2026-09-22 21:15:43.555 GMT [7357] LOG:  invalid checkpoint record
+2026-09-22 21:15:43.555 GMT [7357] FATAL:  could not locate required checkpoint record at 0/2000080
+2026-09-22 21:15:43.555 GMT [7357] HINT:  If you are restoring from a backup, touch "/tmp/a8dr-pg-afjnpgpv/restore/pitr-20260922-211543-7343/data/recovery.signal" or "/tmp/a8dr-pg-afjnpgpv/restore/pitr-20260922-211543-7343/data/standby.signal" and add required recovery options.
+	If you are not restoring from a backup, try removing the file "/tmp/a8dr-pg-afjnpgpv/restore/pitr-20260922-211543-7343/data/backup_label".
+	Be careful: removing "/tmp/a8dr-pg-afjnpgpv/restore/pitr-20260922-211543-7343/data/backup_label" will result in a corrupt cluster if restoring from a backup.
+2026-09-22 21:15:43.556 GMT [7353] LOG:  startup process (PID 7357) exited with exit code 1
+2026-09-22 21:15:43.556 GMT [7353] LOG:  terminating any other active server processes
+2026-09-22 21:15:43.556 GMT [7353] LOG:  shutting down due to startup process failure
+2026-09-22 21:15:43.557 GMT [7353] LOG:  database system is shut down
