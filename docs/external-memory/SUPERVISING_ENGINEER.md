@@ -489,3 +489,45 @@ Chat history، prompt و حافظه مدل منبع نهایی وضعیت missio
 
 اگر verification نهایی انجام نشده باشد، وضعیت تغییر **UNVERIFIED** است و نباید با `✅` یا DONE گزارش شود.
 
+
+
+
+## 12.16 — Fresh Repository Defect Audit / Two-Atria Remediation Control — 2026-09-25
+
+**Canonical defect register:** `docs/audit/MASTER_DEFECT_PRIORITY_2026-09-25.md`
+
+The Supervising Engineer performed a fresh repository/source audit and reconciled it with Ground Truth, Project Intelligence, Current Work Execution Plan, Atria carry-over, A-30..A-39 and the latest independent fresh-defect report.
+
+### Current fresh-defect truth
+- **F1 — P0 OPEN:** bootstrap→PG seed can silently skip incompatible rows, does not advance identity sequences, and can combine with ID allocation + `ON CONFLICT (id) DO UPDATE` to overwrite seeded identity rows. **Root-cause fix first.**
+- **F2 — P1 OPEN:** legacy parent scope still queries PostgreSQL-nonexistent `users.parent_id`; production turns schema drift into a 404.
+- **F3 — P1 FIXED-SCOPED / REVALIDATION_REQUIRED:** current `pull` collection allowlist/scoping blocks the previously reported arbitrary `parent_links` exposure; final regression required.
+- **F4 — P1 OPEN:** manager can reach analytics region branches without proof of region ownership; school/province guard does not establish region ownership.
+- **F5 — P1 FIXED-SCOPED / REVALIDATION_REQUIRED:** current province resolution includes `office_id → offices.province_id/province_code`; final regression required.
+
+### Mandatory remediation order
+**F1 → A-30 → A-37 → F4 → F2 → A-31..A-36 → A-18/A-20/A-24 → A-38 → A-39 → remaining carry-over → independent multi-AI validation.**
+
+### Two-Atria mission ledger
+**Atria-1 — Product/Security/Data Root Causes**
+- Scope: F1, F2, F4, A-31..A-36, A-18/A-20/A-24 product/runtime remediation.
+- Non-scope: A-30/A-37 gate implementation, except review/evidence as requested.
+- Target: main via required delivery contract.
+- Status: ASSIGNED / awaiting verified execution.
+
+**Atria-2 — Gate/Test-Integrity/Reliability**
+- Scope: A-30, A-37, A-39 preparation/acceptance work, A-01..A-17/A-23 test/CI/operational carry-over, A-38 preparation.
+- Non-scope: F1/F2/F4 product fixes owned by Atria-1.
+- Target: main via required delivery contract.
+- Status: ASSIGNED / awaiting verified execution.
+
+**Non-overlap:** the two Atria agents must not concurrently modify the same invariant/file. If a dependency crosses scopes, one agent is executor and the other reviewer.
+
+### Phase control
+The project remains **HARDENING / RECONCILIATION — NOT VERIFIED**. Broad testing/certification is explicitly blocked until the open P0/P1 root-cause queue is fixed or formally dispositioned with evidence. F3/F5 remain revalidation obligations and are not certified by source inspection.
+
+### Progress/reporting control
+For every Atria report the Supervising Engineer must immediately map:
+**AGENT → MISSION → FINDING IDs → SCOPE → BASE SHA → COMMIT → PUSHED → TARGET → TESTS → EVIDENCE → CURRENT HEAD → REMAINING ITEMS → NEXT ACTION**.
+
+Progress percentage is based on verified scope/evidence, not claimed activity. Each item is shown as **✅** only after the corresponding delivery/evidence gate is actually verified; otherwise it remains **⬜ / UNVERIFIED**.
