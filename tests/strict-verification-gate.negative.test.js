@@ -228,8 +228,14 @@ addCase('V-05', 'V-05', 'top-level BLOCKED_UNTIL status while items look green',
   r.status = 'BLOCKED_UNTIL_THREE_AI_AGREEMENT';
 });
 
+addCase('V-05b', 'V-05', 'top-level status invented (not in machine, not BLOCKED)', (r) => {
+  r.status = 'VERIFIED_MADE_UP';
+});
+
 /* V-06: local-only HEAD binding — handled in extra (needs divergent origin) */
 addCase('V-06', 'V-06', 'HEAD not contained in origin/main (unpushed local line)', null, { divergentOrigin: true });
+
+addCase('V-06b', 'V-06', 'origin/main ref missing (cannot prove remote binding)', null, { noOrigin: true });
 
 /* V-07: scanner misses shell false-greens */
 addCase('V-07', 'fake-green.sh', 'false-green || true hidden in a .sh test', null, { addFile: { path: 'tests/fake-green.sh', content: '#!/bin/sh\ncmd_volatile || true\necho "all good"\n' } });
@@ -276,6 +282,8 @@ addCase('V-12b', 'V-12', 'registry missing schema keys (no policy/status/allowed
   delete r.policy; delete r.allowed_statuses; delete r.reviews_recorded;
 });
 
+addCase('V-12c', 'V-12', 'schema file weakened (evidence keys stripped) — pinned contract must notice', null, { tamperSchema: true });
+
 /* GOOD control: must stay accepted */
 cases.push({ id: 'GOOD', expectFail: null, description: 'fully valid registry stays VERIFIED', mutate: null, extra: {} });
 
@@ -294,6 +302,17 @@ for (const c of cases) {
       /* local-only line: origin/main stays on the PARENT commit while HEAD is the
          crafted child — original gate never consults origin/main (V-06). */
       git(dir, 'update-ref refs/remotes/origin/main HEAD~1');
+    }
+    if (c.extra && c.extra.noOrigin) {
+      git(dir, 'update-ref -d refs/remotes/origin/main');
+    }
+    if (c.extra && c.extra.tamperSchema) {
+      const sp = path.join(dir, 'docs', 'verification', 'VERIFICATION_EVIDENCE_SCHEMA.json');
+      if (fs.existsSync(sp)) {
+        const sc = JSON.parse(fs.readFileSync(sp, 'utf8'));
+        sc.required_evidence_keys = ['command']; /* strip the whole evidence contract */
+        fs.writeFileSync(sp, JSON.stringify(sc, null, 2));
+      }
     }
     const r = runGate(dir);
     if (c.expectFail === null) {
