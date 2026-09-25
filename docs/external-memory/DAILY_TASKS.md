@@ -78,3 +78,30 @@ This SHA includes the synchronization updates themselves. The verification regis
 - [ ] Treat unpushed commits as WORK_INCOMPLETE.
 - [ ] Treat unmerged PRs as WORK_INCOMPLETE when main merge was required.
 - [ ] After each material change, update intelligence + memory + roadmap as applicable.
+
+
+
+## 2026-09-25 — FRESH AUDIT / TWO-ATRIA EXECUTION QUEUE
+
+### P0 — execute first
+1. [ ] **Atria-1 / F1:** reproduce clean-PG bootstrap data loss, sequence drift and identity overwrite; fix all three mechanisms and add permanent regression.
+2. [ ] **Atria-2 / A-30:** close remaining Strict Verification Gate integrity defects without weakening the gate.
+3. [ ] **Atria-2 / A-37:** complete certification-path test inventory and false-green triage.
+
+### P1 — next
+4. [ ] **Atria-1 / F4:** close manager→foreign-region analytics authorization path and add negative tests for both analytics modules.
+5. [ ] **Atria-1 / F2:** remove/gate the obsolete `users.parent_id` PG query; preserve authoritative `parent_links` behavior; add legacy PG regression.
+6. [ ] [ ] Atria-1 / A-31..A-36 root-cause closure.
+7. [ ] Atria-1 / A-18/A-20/A-24 current-head sync/OCC/conflict reconciliation.
+8. [ ] Atria-2 / A-38 preparation; do not rebind registry yet.
+
+### Revalidation
+9. [ ] F3 parent_links pull isolation on final hardening SHA.
+10. [ ] F5 edu_office province resolution on final hardening SHA.
+
+### After defect closure
+11. [ ] A-39 E4 reliability/DR acceptance.
+12. [ ] Freeze hardening SHA and rebuild Verification Registry.
+13. [ ] Start independent ChatGPT + Arena + Atria validation.
+
+**Rule:** no item is DONE from agent prose; commit/push/current-head/evidence must be verified.
