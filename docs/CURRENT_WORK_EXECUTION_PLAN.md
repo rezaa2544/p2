@@ -564,3 +564,12 @@ The Supervising Engineer fixed the safely actionable portions of F1/F2/F4 before
 - **Atria-3 — new independent executor/reviewer slot; exact non-overlapping ownership must be assigned before code changes**
 
 No Atria agent may duplicate the already-applied F1/F2/F4 changes without first reproducing a residual defect.
+
+
+## 2026-09-25 — Canonical Integration Receipt
+- Canonical main HEAD after integration: eafca3809bb0a89bff68b1375e0292426ff35098
+- Integration PR: #418
+- Legacy PRs reconciled/closed as superseded: #402, #403, #407, #410, #411, #412, #413, #417.
+- Integration method: reconcile each candidate against current main, preserve applicable intent, integrate one logical unit, then verify the resulting remote HEAD.
+- Important: closure of a legacy PR does not mean its original branch was merged verbatim; duplicate/stale/conflicting portions were intentionally superseded when current main already contained the fix or when preserving them verbatim would risk regression.
+- Verification status: NOT VERIFIED. Broad certification remains blocked until current-HEAD evidence is regenerated.
