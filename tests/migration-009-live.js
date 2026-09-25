@@ -20,7 +20,7 @@
        مثل زنجیرهٔ موجود: هر مهاجرت فقط یک‌بار اجرا می‌شود)؛ ولی پس از down
        کامل، apply مجدد سبز است (رفت/برگشت/رفت)
 
-   بدونِ باینری‌هایِ PG (PATH یا PG_LIVE_BIN) یا ماژولِ pg: self-skip.
+   بدونِ باینری‌هایِ PG (PATH یا PG_LIVE_BIN) یا ماژولِ pg: fail-closed prerequisite gate.
    اجرا:
      PG_LIVE_BIN=/path/to/pg/bin node tests/migration-009-live.js
    ═══════════════════════════════════════════════════════════════════ */
@@ -85,8 +85,8 @@ function hasPgModule() { try { require.resolve('pg'); return true; } catch (e) {
 const BIN = findPgBin();
 if (!BIN || !hasPgModule()) {
   skip('migration-009 live gate', !BIN ? 'باینری‌هایِ PostgreSQL در PATH/PG_LIVE_BIN نیستند' : 'ماژولِ pg نصب نیست');
-  console.log('\nmigration-009-live: 0/0 (skip)؛ سبزِ نهایی: ✅\n');
-  process.exit(0);
+  console.log('\nmigration-009-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisites are NOT-RUN and exit 2\n');
+  process.exit(2);
 }
 
 const PORT = 55452;
