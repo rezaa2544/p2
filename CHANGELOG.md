@@ -48,3 +48,14 @@ This SHA includes the synchronization updates themselves. The verification regis
 - Added docs/external-memory/SUPERVISING_ENGINEER.md.
 - Added mandatory delivery contract and push/PR/merge completion rules.
 - Recorded the root cause of prior push non-compliance as a missing enforcement/hand-off gate rather than a missing prompt instruction.
+
+
+
+## 2026-09-25
+
+### Added — Master defect priority and two-Atria remediation
+- Added `docs/audit/MASTER_DEFECT_PRIORITY_2026-09-25.md`.
+- Reconciled the latest fresh defect hunt against current main.
+- Added current-main open root-cause findings F1/F2/F4 and marked F3/F5 for final revalidation rather than duplicate remediation.
+- Established non-overlapping Atria-1 / Atria-2 remediation ownership.
+- Changed execution order to root-cause remediation first, then independent test/certification.
