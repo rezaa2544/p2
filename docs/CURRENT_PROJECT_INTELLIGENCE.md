@@ -126,3 +126,8 @@ Do **not** start Capability Matrix / Role Matrix / final E2E / Performance certi
 
 ### Agent ownership invariant
 ChatGPT 7 is not an executor for this workstream. The transferred work belongs to Arena 10 and must remain separately attributed in all future reports.
+
+
+## FINAL SYNCHRONIZATION RECEIPT — 2026-09-25
+**Exact main HEAD after this synchronization series:** `7c1a4ce3c29810910bfee72e17358d81032c33ea`.
+This SHA includes the synchronization updates themselves. The verification registry remains intentionally bound to `e4584806c1af2a1e5db648c8452580a8fa8cbcec` until the hardening SHA is frozen and evidence is regenerated; therefore this receipt is a project-state update, not a certification.
