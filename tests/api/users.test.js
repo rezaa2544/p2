@@ -122,7 +122,7 @@ async function main() {
 
   await test('USR4: PATCH /api/v1/users/:id updates profile', async () => {
     const r = await req('PATCH', `/api/v1/users/${createdUserId}`, {
-      body: { full_name: 'دبیر ریاضی ویرایش شده' },
+      body: { full_name: 'دبیر ریاضی ویرایش شده', base_version: 1 },
       cookie: cookieMgr1
     });
     assert.strictEqual(r.status, 200);
@@ -158,7 +158,7 @@ async function main() {
 
   await test('USR7: PATCH self by manager still works (positive control)', async () => {
     const r = await req('PATCH', `/api/v1/users/${manager1.id}`, {
-      body: { full_name: manager1.full_name },
+      body: { full_name: manager1.full_name, base_version: 1 },
       cookie: cookieMgr1
     });
     assert.strictEqual(r.status, 200);

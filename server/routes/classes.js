@@ -188,6 +188,16 @@ function createClassRoutes(ctx) {
       created_at: new Date().toISOString()
     };
 
+    /* A-21: relationship IDs are untrusted input. A class may reference only
+       a teacher belonging to the same school. */
+    if (newClass.homeroom_teacher_id != null) {
+      const teacher = (store.users || []).find(u =>
+        Number(u.id) === Number(newClass.homeroom_teacher_id) && u.role === 'teacher');
+      if (!teacher || teacher.school_id == null || Number(teacher.school_id) !== Number(schoolId)) {
+        return { status: 403, body: { ok: false, code: 'out_of_scope', message: 'سرپرست کلاس باید دبیر همان مدرسه باشد' } };
+      }
+    }
+
     if (!Array.isArray(store.classes)) store.classes = [];
     /* Wave 1: PG-first — the insert commits before the cache is touched, so a
        PG failure returns here with the store still clean (memory mode: no-op). */

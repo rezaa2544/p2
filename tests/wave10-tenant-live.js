@@ -24,7 +24,7 @@
      L10 superadmin (SUPER_SCOPED): هر دو مدرسه را می‌بیند — گواهِ این‌که
          داده‌ی هر دو مدرسه واقعاً در جدول هست و سبزیِ L1..L9 بی‌جهت نیست
 
-   self-skip: بدونِ باینری‌هایِ PG (PATH یا PG_LIVE_BIN) یا ماژولِ pg
+   fail-closed prerequisite gate: بدونِ باینری‌هایِ PG (PATH یا PG_LIVE_BIN) یا ماژولِ pg
    خروجی 0/0 skip و exit 0 — CI قرمز نمی‌شود (الگوی wave10-pg-live.js).
 
    اجرا:
@@ -50,7 +50,7 @@ function finish() {
   process.exit(failc ? 1 : 0);
 }
 
-/* ── کشفِ باینری‌ها و ماژول (شرطِ self-skip — الگوی wave10-pg-live) ── */
+/* ── کشفِ باینری‌ها و ماژول (شرطِ fail-closed prerequisite gate — الگوی wave10-pg-live) ── */
 function findPgBin() {
   const cand = [];
   if (process.env.PG_LIVE_BIN) cand.push(process.env.PG_LIVE_BIN);
@@ -69,8 +69,8 @@ const BIN = findPgBin();
 if (!BIN || !hasPgModule()) {
   skip('wave10 tenant live gate', !BIN ? 'باینری‌هایِ PostgreSQL (initdb/postgres/pg_ctl) در PATH/PG_LIVE_BIN نیستند'
     : 'ماژولِ pg نصب نیست');
-  console.log('\nwave10-tenant-live: 0/0 (skip)؛ سبزِ نهایی: ✅\n');
-  process.exit(0);
+  console.log('\nwave10-tenant-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisites are NOT-RUN and exit 2\n');
+  process.exit(2);
 }
 
 const PORT = 55460;

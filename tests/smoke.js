@@ -69,6 +69,9 @@ const dom = new JSDOM(html, {
   virtualConsole: new (require('jsdom').VirtualConsole)()
     .on('jsdomError', (e) => consoleErrors.push(e.message))
     .on('error', (m) => consoleErrors.push(String(m))),
+  // Install beforeParse: application scripts can call scrollTo during boot.
+  // Overriding only after JSDOM construction is too late to prevent its error.
+  beforeParse: (window) => { window.scrollTo = () => {}; },
 });
 
 const win = dom.window;

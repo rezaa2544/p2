@@ -11,6 +11,8 @@
    ۲. لایهٔ پایداری فوری و همگام: RAM db + پایداری با Store
    ═══════════════════════════════════════════════════════════════════ */
 const LOG_KEY='sms_log_v1', SESSION_KEY='sms_session_v1', BOSS_KEY='sms_boss_v1', PERSONA_KEY='sms_persona_v1';
+/* R95: version-tracked collections mirror server VERSION_TRACKED. */
+const _VERSIONED_C = { grades:1, attendance:1, discipline:1, schools:1, classes:1, subjects:1, users:1, enrollments:1, schedule:1 };
 /* A-24: every queued update/delete includes its original observed base.
    Production/strict applies OCC also to structural and formerly-LWW data. */
 let log=[];

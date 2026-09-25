@@ -143,7 +143,7 @@ async function main() {
   await test('ST6: PATCH /api/v1/students/:id (Teacher IEP update vs Manager full update)', async () => {
     // Teacher updates IEP notes
     const rIep = await req('PATCH', `/api/v1/students/${createdStudentId}`, {
-      body: { iep_notes: 'یادداشت ویژه تحصیلی دانش‌آموز' },
+      body: { iep_notes: 'یادداشت ویژه تحصیلی دانش‌آموز', base_version: 1 },
       cookie: cookieTch1
     });
     assert.strictEqual(rIep.status, 200);
@@ -151,7 +151,7 @@ async function main() {
 
     // Manager updates grade level
     const rMgr = await req('PATCH', `/api/v1/students/${createdStudentId}`, {
-      body: { grade_level: 12 },
+      body: { grade_level: 12, base_version: 2 },
       cookie: cookieMgr1
     });
     assert.strictEqual(rMgr.status, 200);

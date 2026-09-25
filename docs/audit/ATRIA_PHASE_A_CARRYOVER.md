@@ -99,6 +99,20 @@ This register is a mandatory carry-over queue for:
 
 It does not replace the canonical execution plan; it makes the unresolved Phase A work explicit and prevents loss of scope.
 
+## Arena Sync branch handoff — 2026-09-24 (not main closure)
+
+A-18/A-20 have fresh reproductions and scoped candidate fixes on
+`arena-sync/offline-occ-20260924`, based directly on main
+`4bff3bcb757162f040e82ffa26f3d40e46eb7a36` (not the DR branch). See
+`docs/SYNC_OCC_EVIDENCE_CONTRACT.md` for the changed contracts, five-round
+real-PG test commands and limitations. The associated constant offline-drill
+assertion was replaced with response checks; this is not blanket A-07..A-17 closure.
+
+Disposition: **TESTED locally / independent gate NOT VERIFIED**, pending final-SHA
+evidence, independent reviews, authenticated publication and Tech Lead merge.
+Do not clear this carry-over queue from a branch test result. **Roadmap
+Reconciliation Required** after review/merge; no certification or production GO.
+
 
 ## 2026-09-24 — Cross-report additions
 

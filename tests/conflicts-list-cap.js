@@ -88,7 +88,7 @@ function mkApi(store){
       store.sync_conflicts.push({ id: 500 + i, school_id: 1, status: 'resolved',
         created_at: '2026-09-01T00:00:00Z',
         resolved_at: '2026-09-0' + (2 + i) + 'T00:00:00Z', updated_at: '2026-09-0' + (2 + i) + 'T00:00:00Z' });
-    store.sync_conflicts.push({ id: 900, school_id: 1, status: 'open',
+    store.sync_conflicts.push({ id: 900, collection: 'grades', record_id: 55, school_id: 1, status: 'open',
       base_version: 2, server_version: 4, winner: null,
       server_state: { id: 55, score: 18, version: 4 },
       incoming: null, created_at: '2026-09-11T00:00:00Z', updated_at: '2026-09-11T00:00:00Z' });
@@ -120,7 +120,7 @@ function mkApi(store){
       store.sync_conflicts.push({ id: 700 + i, school_id: 1, status: 'resolved',
         created_at: '2026-09-01T00:00:00Z',
         resolved_at: '2026-09-0' + (1 + i) + 'T00:00:00Z', updated_at: '2026-09-0' + (1 + i) + 'T00:00:00Z' });
-    store.sync_conflicts.push({ id: 901, school_id: 1, status: 'open',
+    store.sync_conflicts.push({ id: 901, collection: 'grades', record_id: 55, school_id: 1, status: 'open',
       base_version: 2, server_version: 4, winner: null,
       server_state: { id: 55 }, incoming: null,
       created_at: '2026-09-11T00:00:00Z', updated_at: '2026-09-11T00:00:00Z' });

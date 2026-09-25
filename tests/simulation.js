@@ -528,7 +528,7 @@ async function main() {
       W(`S.filters={};S.route="schedule";renderRoute();`);
       W(`S.route="dashboard";renderRoute();`);
     }
-    assert(true, 'پنج دور پرش بدون خطا');
+    assert(W(`document.body && document.body.innerHTML.length > 0`), 'DOM پس از پنج دور رندر خالی/نابود نشده است');
   });
   sim('چالش', 'یکپارچگی دفترچه: ساخت/ویرایش/حذف = سه ردیف log با رد پای کاربر', () => {
     W('S.user=db.users.find(u=>u.username==="manager1");S.persona=null;S.boss=null;S.route="classes";S.filters={};');

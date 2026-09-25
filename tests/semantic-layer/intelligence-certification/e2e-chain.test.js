@@ -26,6 +26,7 @@ function runTests() {
   /* A-31 / I-08: شبیه‌سازی بدونِ شاهدِ رانتایم هرگز «تأییدشده» نیست. */
   assert.strictEqual(chainResult.verified, false, 'شبیه‌سازی بدون شاهد رانتایم نباید تاییدشده باشد');
   assert.strictEqual(chainResult.verification_mode, 'SIMULATION', 'حالت پیش‌فرض باید شبیه‌سازی باشد');
+  assert.strictEqual(chainResult.execution_mode, 'SYNTHETIC_SIMULATION');
   assert.strictEqual(chainResult.unbroken_loop, false, 'بدون مشاهده رانتایمی، پیوستگی مدار ادعا نمی‌شود');
   assert.strictEqual(chainResult.human_in_the_loop_preserved, true, 'حاکمیت انسانی باید در مدار حفظ شده باشد');
   assert.strictEqual(chainResult.zero_ranking_preserved, true, 'منع رتبه‌بندی باید در مدار حفظ شده باشد');
@@ -39,6 +40,7 @@ function runTests() {
   const runtimeChain = executeEndToEndChain(mockSignal, { timestamp: '2026-09-18T10:00:00.000Z', runtimeEvidence });
   assert.strictEqual(runtimeChain.verified, true, 'با شاهد رانتایم زنجیره تایید می‌شود');
   assert.strictEqual(runtimeChain.verification_mode, 'RUNTIME', 'حالت باید رانتایمی باشد');
+  assert.strictEqual(runtimeChain.execution_mode, 'PRODUCTION_RUNTIME');
   assert.strictEqual(runtimeChain.unbroken_loop, true, 'با شاهد رانتایم مدار پیوسته است');
 
   // بررسی گام‌های کلیدی در ردپای زنجیره

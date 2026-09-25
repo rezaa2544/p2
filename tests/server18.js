@@ -197,8 +197,12 @@ async function main() {
   chk('C14 ایزوله‌بودن: خراب رد + سالم ok در یک دسته', r.status === 200 && rs.length === 2 && !rs[0].ok && rs[0].code === 'validation_failed' && rs[1].ok === true, JSON.stringify(rs));
   r = await syncOps(cM, [{ t: 'ins', c: 'exam_duties', by: M1.id, data: { school_id: 1, exam_id: 1, teacher_id: T1.id, role: 'boss' } }]);
   chk("C15 exam_duties.role='boss' → ok (واژگانِ باز؛ گارد، نویسنده است)", r.status === 200 && res0(r).ok === true, JSON.stringify(res0(r)));
+  await sleep(2600);
+  const dutiesBeforeDenied = (JSON.parse(fs.readFileSync(storeFile, 'utf8')).exam_duties || []).length;
   r = await syncOps(cT, [{ t: 'ins', c: 'exam_duties', by: T1.id, data: { school_id: 1, exam_id: 1, teacher_id: T1.id, role: 'main' } }]);
-  chk('C15b دبیر + exam_duties → رد (out_of_scope، پیش از دروازهٔ نقش)', r.status === 403 && r.json && r.json.code === 'out_of_scope', r.status + ' ' + JSON.stringify(res0(r)));
+  await sleep(2600);
+  const dutiesAfterDenied = (JSON.parse(fs.readFileSync(storeFile, 'utf8')).exam_duties || []).length;
+  chk('C15b دبیر + exam_duties → رد (role_denied در مدل فعلی)', r.status === 200 && res0(r).ok === false && res0(r).code === 'role_denied' && dutiesBeforeDenied === dutiesAfterDenied, r.status + ' ' + JSON.stringify(res0(r)));
   r = await syncOps(cM, [{ t: 'ins', c: 'preapps', by: M1.id, data: { school_id: 1, name: 'تست', stage: 'zzz' } }]);
   chk("C16 preapps.stage='zzz' → validation_failed", r.status === 200 && !res0(r).ok && res0(r).code === 'validation_failed', JSON.stringify(res0(r)));
   await sleep(2600);

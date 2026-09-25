@@ -89,6 +89,20 @@ jobs:
             echo "Results are reported by the Fortify action below and/or in the Fortify platform."
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Fail closed when Fortify credentials are unavailable
+        if: ${{ env.FOD_CREDENTIALS_PRESENT == 'false' || env.IS_FORK_PR == 'true' }}
+        run: |
+          echo "Fortify scan was NOT EXECUTED. This workflow cannot be green without a real Fortify scan."
+          {
+            echo "## Fortify AST Scan — BLOCKED"
+            echo ""
+            echo "**Scan status:** `NOT SCANNED`"
+            echo "**Gate result:** `BLOCKED / FAILURE`"
+            echo "No SAST/SCA evidence exists for this run."
+            echo "Configure FOD_USER + FOD_PAT (or FOD_CLIENT_ID/SECRET) and rerun on a non-fork context."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
       # Perform SAST and/or SCA scan via Fortify on Demand/Fortify Hosted/ScanCentral SAST/Debricked. Based on
       # configuration, the Fortify GitHub Action can optionally set up the application version/release, generate
       # job summaries and Pull Request comments, and/or export SAST results to the GitHub code scanning dashboard.

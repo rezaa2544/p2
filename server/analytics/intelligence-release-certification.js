@@ -888,6 +888,7 @@ function executeEndToEndChain(inputSignal = {}, options = {}) {
   return deepFreeze({
     verified: evidenceOk,
     verification_mode: verificationMode,
+    execution_mode: evidenceOk ? 'PRODUCTION_RUNTIME' : 'SYNTHETIC_SIMULATION',
     total_steps: traceWithMode.length,
     human_in_the_loop_preserved: true,
     zero_ranking_preserved: true,
@@ -910,6 +911,12 @@ function generatePhase3ReleaseCertificate(params = {}, options = {}) {
   const sovereignty = params.sovereignty || validateHumanSovereigntyAcrossPlatform(params);
   const zeroRanking = params.zeroRanking || validateZeroRankingCompliance(params);
   const e2eChain = params.e2eChain || executeEndToEndChain();
+  const independentVerification = params.independentVerification || null;
+  const externallyVerified = independentVerification &&
+    independentVerification.verified === true &&
+    independentVerification.verifier_id &&
+    independentVerification.evidence_bundle_id &&
+    independentVerification.verification_signature;
 
   /* A-31 / I-08: شبیه‌سازی هرگز جای راستی‌آزمایی رانتایمی نمی‌نشیند —
      زنجیره فقط وقتی معتبر است که مشاهدهٔ رانتایمی داشته باشد. */
@@ -918,7 +925,8 @@ function generatePhase3ReleaseCertificate(params = {}, options = {}) {
                      sovereignty.compliant &&
                      zeroRanking.compliant &&
                      e2eChain.verified === true &&
-                     e2eChain.verification_mode === 'RUNTIME';
+                     e2eChain.verification_mode === 'RUNTIME' &&
+                     externallyVerified === true;
 
   const status = isEligible ? CERTIFICATION_STATUS.CERTIFIED : CERTIFICATION_STATUS.REJECTED;
 
@@ -965,7 +973,12 @@ function generatePhase3ReleaseCertificate(params = {}, options = {}) {
     },
     certified_at: nowIso,
     certificate_fingerprint: fingerprint,
-    audited_by: 'Phase 3 Intelligence Release Gate'
+    audited_by: externallyVerified ? String(independentVerification.verifier_id) : null,
+    independent_verification: externallyVerified ? {
+      verifier_id: String(independentVerification.verifier_id),
+      evidence_bundle_id: String(independentVerification.evidence_bundle_id),
+      verification_signature_present: true
+    } : null
   };
 
   return deepFreeze(certificate);
@@ -1006,7 +1019,8 @@ function runPhase3Certification(params = {}, options = {}) {
     qualityGates,
     sovereignty,
     zeroRanking,
-    e2eChain
+    e2eChain,
+    independentVerification: options && options.independentVerification
   }, options);
 
   const result = {

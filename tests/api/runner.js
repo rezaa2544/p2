@@ -7,10 +7,19 @@
 /* Test harness execution flag: allows in-memory JSON store REST tests to run
    without attached PostgreSQL authority in dev/test only. */
 process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY = '1';
+// These 30 suites are JSON-store REST contract tests, not live-PG tests.
+// CI service credentials must not silently redirect them to PostgreSQL and 503.
+for (const key of ['DATABASE_URL', 'PGURL', 'READ_DATABASE_URL', 'REDIS_URL']) delete process.env[key];
 
 const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+
+const REAL_STORE = path.join(__dirname, '..', '..', 'server', 'data', 'payesh.json');
+if (!fs.existsSync(REAL_STORE)) {
+  console.log('ℹ️ API test fixture missing; generating deterministic server/data/payesh.json via server/seed.js');
+  execSync(`node ${JSON.stringify(path.join(__dirname, '..', '..', 'server', 'seed.js'))}`, { stdio: 'inherit' });
+}
 
 const API_TESTS = [
   'bootstrap.test.js',

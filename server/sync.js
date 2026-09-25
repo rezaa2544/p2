@@ -1063,12 +1063,11 @@ function createSync(ctx){
         /* Wave 1: hydrate cross-instance misses from PG before the upsert check. */
         const ex = await findForApply(op.c, data.id, undo);
         if(ex){
-          const uRec = undo ? undo.items.push({ k: 'rec', c: op.c, id: ex.id,
-            before: JSON.parse(JSON.stringify(ex)) }) - 1 : -1;   /* باگ ۲: before + after */
-          Object.assign(ex, data); Object.assign(ex, prot);
-          if(undo) undo.items[uRec].after = JSON.parse(JSON.stringify(ex));
+          await rollbackUndo();
+          for (const r of results) if (r) r.ok = false;
+          return sendJson(res, 409, { ok: false, code: 'record_exists', results });
         }
-        else { Object.assign(data, prot); mirrorAppend(op.c, data); }
+        Object.assign(data, prot); mirrorAppend(op.c, data);
         data.updated_at = new Date().toISOString();   /* تکمیلِ رکورد پیش از ثبتِ after */
         /* باگ ۱ (بازبین، دور ۲): uPush فقط برای درجِ خودِ این op — var تابع‌محدوده
            بود و مقدارش از دورِ قبل می‌ماند؛ op برخوردیِ بعدی (مسیرِ ex) با رکوردِ
@@ -1222,9 +1221,14 @@ function createSync(ctx){
     let mirrorFailed = false;
     if(batchAll.length && db && typeof db.persistOpsBatch === 'function'){
       try{
-        await db.persistOpsBatch(batchAll);
+        await (typeof db.persistSyncBatch === 'function' ? db.persistSyncBatch(batchAll) : db.persistOpsBatch(batchAll));
       }catch(mirrorErr){
         const why = String((mirrorErr && mirrorErr.message) || mirrorErr);
+        if (mirrorErr && mirrorErr.code === 'record_exists') {
+          await rollbackUndo();
+          for (const r of results) if (r) r.ok = false;
+          return sendJson(res, 409, { ok: false, code: 'record_exists', results });
+        }
 
         /* Final OCC gate: the earlier read/compare is advisory only. PostgreSQL's
            conditional UPDATE/DELETE is the authoritative compare-and-write. A
@@ -1383,6 +1387,18 @@ function createSync(ctx){
     sendJson(res, 200, mirrorFailed ? { ok: true, results, mirror_failed: true } : { ok: true, results });
   }
 
-  return { apiSync, canWrite, inScope };
+  // Do not acknowledge an in-flight UID as durable. Requests sharing a UID
+  // wait for the earlier commit/rollback; unrelated requests remain concurrent.
+  const pending = new Map();
+  async function syncAfterPending(req, res, body) {
+    const list = body && Array.isArray(body.ops) && body.ops.length <= (MAX_BATCH || 500) ? body.ops : [];
+    const keys = [...new Set(list.filter(op => op && typeof op.uid === 'string' && op.uid.length <= 128).map(op => op.uid))];
+    const previous = keys.map(key => pending.get(key)).filter(Boolean);
+    let release; const gate = new Promise(resolve => { release = resolve; });
+    for (const key of keys) pending.set(key, gate);
+    try { await Promise.all(previous); return await apiSync(req, res, body); }
+    finally { for (const key of keys) if (pending.get(key) === gate) pending.delete(key); release(); }
+  }
+  return { apiSync: syncAfterPending, canWrite, inScope };
 }
 module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, virtualDayOfflineBasis, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED };

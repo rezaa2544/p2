@@ -11,6 +11,7 @@ var PULL_SYNC_CURSOR_KEY = 'payesh_last_pull_time';
    سازگاری با کلاینت‌های قدیمی/سرورِ بدون کلید باقی می‌ماند. */
 var PULL_CURSOR_KEY = 'payesh_pull_cursor';
 var PULL_IS_SYNCING = false;
+var PULL_APPLIED_TIME = 0; // Monotonic accepted server snapshot watermark.
 
 /* ── P0-2 (پ۳ 2026-09-12): کشِ کرانداِر گزارش‌ها — لایهٔ کلاینت ──────
    دفاعِ دولایه: سرور مجموعه‌های سنگینِ گزارشی را کران‌دار می‌فرستد
@@ -211,7 +212,7 @@ function pullFromServer(options) {
     }
 
     // ادغام تغییرات در پایگاه داده کلاینت
-    mergeServerDelta(payload);
+    if (!mergeServerDelta(payload)) return { ok: false, code: 'stale_pull' };
 
     // ثبت زمان آخرین همگام‌سازی موفق + کرسرِ امضاشدهٔ بعدی (gap 2)
     if (payload.server_time && typeof Store !== 'undefined') {
@@ -275,11 +276,18 @@ function mergeServerDelta(payload) {
     return false;
   }
 
+  var responseTime = Date.parse(payload.server_time || '');
+  var persistedTime = typeof Store !== 'undefined' ? Date.parse(Store.get(PULL_SYNC_CURSOR_KEY) || '') : NaN;
+  var watermark = Math.max(PULL_APPLIED_TIME, isNaN(persistedTime) ? 0 : persistedTime);
+  if (!isNaN(responseTime) && responseTime < watermark) return false;
+  if (!isNaN(responseTime)) PULL_APPLIED_TIME = Math.max(watermark, responseTime);
+
   // استخراج شناسه‌های رکوردهایی که در صف آفلاین منتظر ارسال هستند تا بازنویسی نشوند
   var pendingSet = {};
   if (typeof SYNC !== 'undefined' && Array.isArray(SYNC.queue)) {
     for (var qi = 0; qi < SYNC.queue.length; qi++) {
-      var qItem = SYNC.queue[qi];
+      var queued = SYNC.queue[qi];
+      var qItem = queued && (queued.op || queued);
       if (qItem && qItem.c) {
         var opId = qItem.id != null ? qItem.id : (qItem.data ? qItem.data.id : null);
         if (opId != null) {
@@ -312,9 +320,14 @@ function mergeServerDelta(payload) {
 
     if (isFullSnapshot) {
       var keptRows = [];
+      var incomingById = new Map();
+      records.forEach(function(x) { if (x && x.id != null) incomingById.set(x.id, x); });
       for (var ki = 0; ki < db[c].length; ki++) {
         var oldRow = db[c][ki];
-        if (oldRow && oldRow.id != null && pendingSet[c + '::' + oldRow.id]) {
+        var incomingRow = oldRow && incomingById.get(oldRow.id);
+        var newerVersion = oldRow && incomingRow && Number(oldRow.version) > Number(incomingRow.version || 0);
+        var newerTimestamp = oldRow && !isNaN(responseTime) && Date.parse(oldRow.updated_at || '') > responseTime;
+        if (oldRow && oldRow.id != null && (pendingSet[c + '::' + oldRow.id] || newerVersion || newerTimestamp)) {
           keptRows.push(oldRow);
         }
       }
@@ -333,6 +346,8 @@ function mergeServerDelta(payload) {
 
       var existingIdx = db[c].findIndex(function(x) { return x.id === rec.id; });
       if (existingIdx > -1) {
+        var currentVersion = Number(db[c][existingIdx].version || 0);
+        if (currentVersion > Number(rec.version || 0)) continue;
         Object.assign(db[c][existingIdx], rec);
       } else {
         db[c].push(rec);

@@ -53,7 +53,8 @@ function runTests() {
     regionId: 1,
     academicYear: '1404-1405',
     user: mockUser
-  }, { timestamp: '2026-09-18T12:00:00.000Z', gateResults: allPassed, runtimeEvidence });
+  }, { timestamp: '2026-09-18T12:00:00.000Z', gateResults: allPassed, runtimeEvidence,
+    independentVerification: { verified: true, verifier_id: 'independent-reviewer-1', evidence_bundle_id: 'bundle-a31-001', verification_signature: 'sig-a31-001' } });
   assert.strictEqual(evidencedSnapshot.certification_status, CERTIFICATION_STATUS.CERTIFIED);
   assert.strictEqual(evidencedSnapshot.release_ready, true);
 
@@ -69,6 +70,8 @@ function runTests() {
   assert.strictEqual(cert.governance_summary.zero_ranking_policy, 'ENFORCED_ZERO_TOLERANCE');
   assert.strictEqual(cert.e2e_verification.unbroken_closed_loop, true);
   assert.strictEqual(evidencedSnapshot.e2e_chain_execution.verification_mode, 'RUNTIME');
+  assert.strictEqual(cert.audited_by, 'independent-reviewer-1');
+  assert.ok(cert.independent_verification && cert.independent_verification.verification_signature_present);
   assert.ok(cert.certificate_fingerprint.length === 64, 'چک‌سام گواهینامه باید هش معتبر SHA-256 باشد');
 
   // ۲. سناریوی رد صلاحیت در صورت بروز نقض حاکمیت انسانی
