@@ -1308,3 +1308,12 @@ Expected HEAD:
 749b1532d3bc77dd7d7090e27a970b64ad30dee6
 
 No RUNTIME_VERIFIED or DONE status is permitted until the post-fix runtime chain is evidenced.
+
+
+# 107. Canonical HEAD update after F1 fallback closure — 2026-09-26
+
+- Code remediation commit: 7a240d1ab5dcb98b97e86e981558d5923e392bb4
+- Canonical main HEAD after code remediation: 7a240d1ab5dcb98b97e86e981558d5923e392bb4
+- The repository blob for server/index.js was reconstructed from the known-good 2726c87 server blob and the missing outer row-level catch was added.
+- Source-level syntax status: remediation is structurally complete; runtime syntax PASS still requires Codespaces evidence.
+- Required next evidence remains: node --check server/index.js, then npm start, then health/readiness/API/DB/Redis/E2E.
