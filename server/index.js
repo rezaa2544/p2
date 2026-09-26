@@ -247,7 +247,18 @@ async function seedPgFromBootstrap(store, db) {
           try {
             const fields = Object.keys(row);
             const params = fields.map(f => valOf(row[f]));
-            const placeholders = fields.map((_, n) => '
+            const placeholders = fields.map((_, n) => '$' + (n + 1));
+            const sql = 'INSERT INTO ' + ident(col) + ' (' + fields.map(ident).join(', ') + ') VALUES (' + placeholders.join(', ') + ') ON CONFLICT DO NOTHING;';
+            try {
+              await db.query(sql, params);
+              rows++;
+            } catch (rowErr) {
+              skipped++;
+            }
+          } catch (rowErr) {
+            skipped++;
+          }
+        }
         /* F1: every table gets its sequence realigned after bootstrap writes.
            A failed sequence operation is part of the seed failure, never a
            silent warning that can leave the boot falsely green. */
