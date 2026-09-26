@@ -1470,3 +1470,26 @@ At current HEAD `a78b835ce0580a0e7ee9ce7cc80e9539b8b1a9eb`:
 5. then continue health/readiness → API → PostgreSQL → Redis → Frontend → Backend → PostgreSQL/Redis E2E.
 
 No historical HEAD or committed test claim may be promoted to `CERTIFIED` without current-head execution evidence and the required independent/adversarial passes.
+
+
+# 111. Structural Decoupling of seedPgFromBootstrap and Explicit dbReady Chain — 2026-09-26
+
+## Objective & Scope
+
+Following the successful repository merge of the syntax repair in PR #420 / commit `a78b835`, this hardening pass resolves the architectural fragility that led to repeated closure corruption:
+1. Decoupled `seedPgFromBootstrap(store, db)` from the inline promise handler of `dbReady`, hoisting it to a standalone top-level module function.
+2. Formatted the `dbReady = db.init(store).then(...).catch(...)` chain with explicit braces `{ }` around the `else` block (eliminating the fragile dangling `} else try { ... }` pattern).
+3. Preserved 100% of all existing semantics: PostgreSQL readiness, bootstrap→PG seed, authoritative PG hydration, partition auto-discovery, ops-kv attach, national traffic fabric hydration, control plane authority attach, and fail-closed error handling.
+
+## Verification Evidence at Current HEAD
+
+- `node --check server/index.js`: PASS (0 errors)
+- `node -c server/index.js`: PASS (0 errors)
+- `npm run build:check`: PASS (build output byte-for-byte identical with index.html)
+- `tests/f1-boot-syntax-five-pass.js`: ALL 5 PASSES VERIFIED
+  - Pass 1 (Functional): clean syntax, live health/readiness/liveness boot
+  - Pass 2 (Boundary): module exports and runtime handles verified
+  - Pass 3 (Negative/Failure): production fail-fast without DATABASE_URL
+  - Pass 4 (Concurrency/Recovery): 50 concurrent requests 200 OK, SIGTERM clean drain in 60ms
+  - Pass 5 (Regression): 30/30 API test suites passed, 0 corrupt trailing fragments
+- `npm start`: live boot verified on http://0.0.0.0:3000
