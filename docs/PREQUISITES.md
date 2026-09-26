@@ -1401,7 +1401,8 @@ No `RUNTIME_VERIFIED`, `CERTIFIED`, or `DONE` status is permitted until current-
 
 ## Current repository truth
 
-- Current canonical main HEAD: `a78b835ce0580a0e7ee9ce7cc80e9539b8b1a9eb`
+- Repository HEAD before this documentation-only synchronization commit: `a78b835ce0580a0e7ee9ce7cc80e9539b8b1a9eb`
+- Current canonical main HEAD after synchronization: `85dd575ee3bb5ad6b77dde1a85772540c3d09295`
 - PR #420: merged
 - PR #420 title: `Pending changes exported from your codespace`
 - Merge commit: `a78b835ce0580a0e7ee9ce7cc80e9539b8b1a9eb`
