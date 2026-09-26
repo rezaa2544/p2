@@ -1194,3 +1194,60 @@ Promptها باید مستقل، قابل کپی و بدون نیاز به تو�
 |---|---|---|
 | 2026-09-26 | افزودن Report-Driven Supervisor Protocol، تیک وضعیت، تشخیص خودکار Next Action، تفکیک Promptها و PREQUISITES-first bootstrap | تبدیل دریافت هر گزارش به یک چرخهٔ استاندارد و خودکار برای جلوگیری از فراموشی، دوباره‌کاری و اجرای بدون context |
 | 2026-09-26 | اجباری کردن جملهٔ مطالعهٔ PREQUISITES در ابتدای هر Prompt و تعریف failure-to-bootstrap | تضمین رعایت قوانین توسط تمام Chat/Agentها بدون نیاز به یادآوری کاربر |
+
+
+# 105. Runtime Incident — F1 server/index.js syntax corruption — 2026-09-26
+
+## وضعیت
+
+- **Incident:** اجرای `npm start` در Codespaces به SyntaxError در `server/index.js:250` متوقف شد.
+- **Root Cause:** بدنهٔ fallback تابع `seedPgFromBootstrap()` در entrypoint از وسط expression قطع شده بود؛ بنابراین parser قبل از هرگونه DB/Redis readiness gate متوقف می‌شد.
+- **Impact:** Server process اصلاً به مرحلهٔ `listen()` و اتصال runtime به PostgreSQL/Redis نمی‌رسید؛ در نتیجه Frontend می‌توانست بالا بیاید ولی API server قابل اجرا نبود.
+- **Classification:** F1 / P0 / BUILD-BLOCKER / RUNTIME-BLOCKER.
+- **Historical note:** همین corruption در چند HEAD قبلی نیز وجود داشت؛ بنابراین finding جدیدِ runtime است اما root cause جدیدی خارج از F1 محسوب نمی‌شود.
+
+## اصلاح انجام‌شده
+
+Commit canonical:
+`3451b4cbe1ec51b9fd6a5016bd5d41aa32f05e16`
+
+اصلاح شامل:
+1. بازسازی fallback row-by-row با INSERT پارامتری.
+2. جلوگیری از swallow شدن failureهای row-level.
+3. realignment کردن PostgreSQL identity sequence بعد از seed هر table.
+4. تبدیل failure هر row/sequence به `skipped`.
+5. تبدیل `skipped > 0` به خطای صریح `bootstrap_seed_incomplete`.
+6. بازگرداندن closure صحیح تابع `seedPgFromBootstrap()` پیش از readiness logic.
+
+## Evidence status
+
+- [x] Root cause از خطای واقعی Codespaces مشخص شد.
+- [x] خرابی در source repository بازتولید/بازبینی شد.
+- [x] اصلاح روی `main` ثبت شد.
+- [x] بخش اصلاح‌شده از GitHub read-back شد.
+- [ ] `node --check server/index.js` در Codespaces اجرا و PASS نشده است.
+- [ ] `npm start` بعد از اصلاح اجرا و PASS نشده است.
+- [ ] PostgreSQL واقعی در Codespaces متصل و readiness آن اثبات نشده است.
+- [ ] Redis واقعی در Codespaces متصل و readiness آن اثبات نشده است.
+- [ ] Frontend → Backend → PostgreSQL/Redis E2E هنوز Runtime-Verified نیست.
+
+## قانون ادامهٔ این Incident
+
+تا زمانی که این زنجیره در همان environment اثبات نشده:
+
+`SOURCE FIX → node --check → npm start → health → readiness → API → PostgreSQL/Redis → Frontend E2E`
+
+وضعیت **NOT VERIFIED / RUNTIME_VERIFIED نشده** باقی می‌ماند.
+
+## دستور canonical برای Codespaces
+
+پس از pull/sync آخرین `main`:
+
+```bash
+git pull --ff-only origin main
+git rev-parse HEAD
+node --check server/index.js
+npm start
+```
+
+اگر `node --check` سبز شد ولی `npm start` متوقف شد، خطای بعدی باید به‌عنوان **next runtime blocker** ثبت و reconcile شود؛ نباید بدون evidence به سراغ تغییرات تصادفی در کد رفت.
