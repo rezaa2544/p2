@@ -934,3 +934,263 @@ ROADMAP ↔ FEATURES ↔ ROLES ↔ API ↔ SYNC ↔ DATA ↔ SECURITY ↔ TESTS 
 | 2026-09-26 | افزودن Branch/Merge/Release/Production/Runbook/Support discipline، Session reconciliation، Integrity Invariants و Maximum Useful Parallelism | جلوگیری از چند-HEAD، از دست رفتن کار و رسیدن ناقص به بهره‌برداری |
 
 **قاعده:** هر update بعدی باید receipt کوتاه، اثر تغییر، و در صورت repository change، SHA/PR مربوطه را ثبت کند.
+
+
+# 103. Report-Driven Supervisor Protocol — قانون اجباری پس از دریافت هر گزارش
+
+از این بخش به بعد، **هر گزارشی که کاربر برای مهندس ناظر ارسال می‌کند** یک Trigger رسمی برای چرخهٔ کنترل پروژه است. این قانون باید بدون یادآوری مجدد کاربر، هم توسط مهندس ناظر و هم توسط هر Chat/Agent که در پروژه نقش اجرایی یا نظارتی دارد رعایت شود.
+
+## 103.1 اصل Trigger
+
+به‌محض دریافت هر گزارش:
+
+**REPORT RECEIVED → READ PREQUISITES → RECONCILE PROJECT STATE → CHECK CURRENT HEAD → CLASSIFY REPORT → UPDATE STATUS → DETERMINE NEXT WORK → GENERATE MISSION PROMPTS → HANDOFF**
+
+هیچ گزارش جدیدی نباید مستقیماً به اجرای کد، صدور مأموریت یا اعلام وضعیت منجر شود، مگر اینکه این چرخه طی شده باشد.
+
+## 103.2 اولین اقدام اجباری مهندس ناظر
+
+مهندس ناظر باید ابتدا:
+
+1. `docs/PREQUISITES.md` را به‌عنوان سند مادر بررسی کند؛
+2. وضعیت فعلی `main` و Current HEAD را از repository بررسی کند؛
+3. در صورت نیاز اسناد canonical مرتبط با گزارش را بخواند؛
+4. گزارش را با Mission، Defect، Roadmap، Agent/Chat، PR/Branch و Evidence موجود تطبیق دهد؛
+5. مشخص کند گزارش چه چیزی را **تغییر داده، تأیید کرده، رد کرده یا نیازمند revalidation کرده است**.
+
+**ممنوع:** شروع تحلیل اجرایی صرفاً بر اساس متن گزارش، بدون بررسی PREQUISITES و Truth فعلی repository.
+
+## 103.3 خروجی اجباری شماره ۱ — خلاصهٔ وضعیت با تیک
+
+پس از reconciliation، مهندس ناظر باید قبل از هر پرامپت یا دستور اجرایی، یک خلاصهٔ کوتاه و تیک‌دار ارائه کند.
+
+حداقل قالب:
+
+- [x] **PREQUISITES بررسی شد**
+- [x] **Current HEAD بررسی شد**
+- [x] **گزارش با وضعیت پروژه تطبیق داده شد**
+- [x] **Findingهای جدید / تکراری / رفع‌شده / نیازمند revalidation مشخص شد**
+- [x] **Mission و Ownerهای تحت تأثیر مشخص شد**
+- [x] **اثر گزارش بر Roadmap / Defect Queue / Evidence مشخص شد**
+- [ ] **کار بعدی:** ...
+- [ ] **Owner / Chat:** ...
+- [ ] **Evidence موردنیاز:** ...
+
+تیک `[x]` فقط برای کاری مجاز است که واقعاً بررسی یا انجام شده باشد؛ تیک نباید بر اساس فرض زده شود.
+
+## 103.4 خروجی اجباری شماره ۲ — تشخیص خودکار کار بعدی
+
+مهندس ناظر باید از روی **برنامهٔ کاری canonical** تشخیص دهد که پس از گزارش، چه اقدامی باید انجام شود.
+
+ترتیب تصمیم:
+
+**Current Truth → Open Defects → Dependencies → Blockers → Critical Path → Existing Missions → Next Safe Action**
+
+اگر گزارش باعث تغییر priority یا dependency شود، برنامهٔ کاری باید با آن reconcile شود.
+
+اگر کار بعدی از قبل در roadmap/execution plan تعریف شده باشد، نباید بدون دلیل یک task جدید و تکراری ساخته شود.
+
+اگر کار جدید است:
+
+**FOUND → CLASSIFY → LINK/CREATE → PRIORITIZE → ASSIGN**
+
+## 103.5 خروجی اجباری شماره ۳ — تفکیک Chatهای موردنیاز
+
+مهندس ناظر باید مشخص کند:
+
+- آیا فقط یک Chat لازم است؟
+- آیا چند Chat واقعاً مستقل هستند؟
+- کدام Chat executor است؟
+- کدام Chat reviewer مستقل است؟
+- dependency بین Chatها چیست؟
+- چه کاری نباید همزمان انجام شود؟
+- integration point کجاست؟
+- کدام Chat باید منتظر evidence Chat دیگر بماند؟
+
+اصل:
+
+> **هر Chat فقط وقتی مأموریت می‌گیرد که وجود آن نسبت به کار واحد یا Chat دیگر ارزش اجرایی مشخص داشته باشد.**
+
+تعداد Chat بیشتر به‌خودی‌خود مزیت نیست.
+
+## 103.6 قانون اجباری تولید Prompt برای هر Chat
+
+هرگاه مهندس ناظر تشخیص دهد که یک یا چند Chat باید کاری انجام دهند، برای **هر Chat یک Prompt جداگانه** تولید شود.
+
+Promptها باید مستقل، قابل کپی و بدون نیاز به توضیح شفاهی تکمیلی باشند.
+
+هر Prompt حداقل باید شامل این موارد باشد:
+
+1. نقش Chat
+2. هدف دقیق
+3. جملهٔ اجباری مطالعهٔ PREQUISITES
+4. Current HEAD / Base SHA در صورت نیاز
+5. Scope
+6. Non-Scope
+7. فایل‌ها/حوزه‌های مجاز
+8. Invariant یا defect موردنظر
+9. Dependency
+10. ممنوعیت تغییرات خارج از scope
+11. تست‌های لازم
+12. Evidence لازم
+13. نحوهٔ گزارش نهایی
+14. Delivery target
+15. شرط پایان Mission
+
+## 103.7 جملهٔ اجباری ابتدای تمام Promptها
+
+**اولین بخش عملیاتی هر Prompt که مهندس ناظر برای Chat/Agent تولید می‌کند باید صریحاً این دستور را داشته باشد:**
+
+> **قبل از شروع هرگونه بررسی، تغییر، اجرا یا تصمیم‌گیری، ابتدا سند `docs/PREQUISITES.md` را کامل و دقیق مطالعه کن و قوانین، وضعیت پروژه، Truth hierarchy، Current HEAD، Mission/Ownership، Evidence و پروتکل‌های آن را مبنای اجباری کار خود قرار بده. تا این مطالعه و تطبیق با وضعیت فعلی repository انجام نشده، هیچ اقدام اجرایی انجام نده.**
+
+این جمله باید در **اول هر Prompt** تکرار شود و حذف یا کوتاه‌سازی آن مجاز نیست.
+
+پس از آن، Prompt باید در صورت نیاز مطالعهٔ این اسناد canonical را نیز الزام کند:
+
+- `docs/external-memory/SUPERVISING_ENGINEER.md`
+- `docs/ROADMAP_CURRENT_GROUND_TRUTH_2026-09-21.md`
+- `docs/CURRENT_PROJECT_INTELLIGENCE.md`
+- `docs/CURRENT_WORK_EXECUTION_PLAN.md`
+- `docs/external-memory/PROJECT_DASHBOARD.md`
+- `docs/external-memory/DAILY_TASKS.md`
+- `docs/external-memory/DECISION_LOG.md`
+- اسناد audit/verification مرتبط با Mission
+
+## 103.8 قانون «اول PREQUISITES، بعد کار» برای همهٔ Chatها
+
+هر Chat/Agent موظف است قبل از اقدام:
+
+**READ → UNDERSTAND → RECONCILE → ACKNOWLEDGE MISSION → ACT**
+
+اگر Chat نتواند Current HEAD، scope، owner، dependency، evidence requirement یا ممنوعیت‌های Mission را از اسناد canonical تشخیص دهد:
+
+**SUPERVISOR/AGENT BOOTSTRAP FAILED → NO EXECUTION → RE-READ CANONICAL DOCS → VERIFY CURRENT HEAD → CONTINUE ONLY AFTER BOOTSTRAP**
+
+هیچ Chat مجاز نیست به دلیل طولانی بودن سند، آن را نادیده بگیرد و صرفاً بر اساس Prompt وارد اجرا شود.
+
+## 103.9 قانون عدم نیاز به یادآوری کاربر
+
+کاربر نباید هر بار یادآوری کند که:
+
+- PREQUISITES مطالعه شود؛
+- وضعیت فعلی بررسی شود؛
+- گزارش reconcile شود؛
+- کار بعدی از roadmap تشخیص داده شود؛
+- Chat مناسب انتخاب شود؛
+- Promptها جداگانه تولید شوند؛
+- هر Prompt با دستور مطالعهٔ PREQUISITES شروع شود.
+
+این‌ها **رفتارهای پیش‌فرض و اجباری سیستم اجرایی پروژه** هستند.
+
+## 103.10 اگر گزارش ناقص یا مبهم باشد
+
+اگر گزارش برای تصمیم اجرایی کافی نباشد:
+
+**REPORT → IDENTIFY MISSING EVIDENCE → CLASSIFY UNKNOWN → DO NOT GUESS → REQUEST/GENERATE EVIDENCE MISSION**
+
+مهندس ناظر نباید gap را با حدس پر کند.
+
+## 103.11 اگر گزارش با PREQUISITES یا repository تناقض داشته باشد
+
+ترتیب مرجع:
+
+**CURRENT REPOSITORY / CURRENT EVIDENCE → CANONICAL PROJECT DOCS → REPORT → HISTORICAL MEMORY**
+
+گزارش متناقض نباید بدون reconciliation به current truth تبدیل شود.
+
+## 103.12 اگر گزارش باعث تغییر Mission شود
+
+هر تغییر در:
+
+- owner
+- scope
+- priority
+- dependency
+- blocker
+- target
+- current status
+- evidence requirement
+- branch/PR
+- next action
+
+باید همان زمان در منابع canonical مربوطه synchronize شود.
+
+## 103.13 قالب استاندارد پاسخ مهندس ناظر پس از هر گزارش
+
+مگر اینکه کاربر قالب دیگری بخواهد، پاسخ عملیاتی باید این ترتیب را داشته باشد:
+
+### 1. وضعیت سریع
+- [x] PREQUISITES
+- [x] Current HEAD
+- [x] Report reconciliation
+- [x] Mission/Owner
+- [x] Evidence
+- [ ] Next action
+
+### 2. نتیجهٔ گزارش
+خلاصهٔ بسیار کوتاه از آنچه واقعاً تغییر کرده یا تأیید شده است.
+
+### 3. وضعیت کار
+فقط وضعیت‌های مستند:
+**DONE / IN PROGRESS / BLOCKED / NOT VERIFIED / REVALIDATION_REQUIRED / NEXT**
+
+### 4. برنامهٔ اقدام بعدی
+به‌ترتیب dependency و critical path.
+
+### 5. Promptهای Chatها
+برای هر Chat یک Prompt جداگانه و کامل، با جملهٔ اجباری PREQUISITES در ابتدای آن.
+
+### 6. Evidence / Delivery
+مشخص شود چه evidence، SHA، test، branch/PR یا runtime verification بعداً لازم است.
+
+## 103.14 قانون گزارش نهایی هر Chat به مهندس ناظر
+
+هر Chat پس از Mission باید گزارشی ارائه کند که حداقل این موارد را داشته باشد:
+
+**MISSION / OWNER / BASE SHA / CURRENT HEAD / STATUS / CHANGES / TESTS / EVIDENCE / COMMIT / PUSHED / PR / BLOCKERS / NEXT ACTION**
+
+و گزارش آن Chat نیز باید توسط مهندس ناظر reconcile شود؛ گزارش Chat به‌تنهایی current truth نیست.
+
+## 103.15 قانون زنجیرهٔ کامل
+
+زنجیرهٔ استاندارد از لحظهٔ دریافت گزارش تا اجرای کار بعدی:
+
+**USER REPORT**
+→ **PREQUISITES CHECK**
+→ **CURRENT HEAD CHECK**
+→ **REPORT RECONCILIATION**
+→ **TICKED STATUS SUMMARY**
+→ **NEXT ACTION FROM WORK PLAN**
+→ **CHAT/AGENT OWNERSHIP**
+→ **SEPARATE PROMPTS**
+→ **PREQUISITES-FIRST BOOTSTRAP**
+→ **EXECUTION**
+→ **TEST / EVIDENCE**
+→ **REPORT**
+→ **SUPERVISOR RECONCILIATION**
+→ **PROJECT MEMORY SYNC**
+→ **NEXT ACTION**
+
+هیچ حلقه‌ای نباید بدون دلیل حذف شود.
+
+## 103.16 Self-Enforcement
+
+این پروتکل بخشی از **Project Integrity Invariants** محسوب می‌شود.
+
+بنابراین:
+- مهندس ناظر نمی‌تواند بگوید «کاربر یادآوری نکرد»؛
+- Chat/Agent نمی‌تواند بگوید «در Prompt ذکر نشده بود»؛
+- نبودن یادآوری کاربر، مجوز عبور از PREQUISITES نیست؛
+- Prompt ناقص، Mission معتبر محسوب نمی‌شود؛
+- گزارش بدون reconciliation، مبنای اعلام DONE/CERTIFIED نیست.
+
+اصل:
+
+> **PREQUISITES باید قبل از هر اقدام خوانده شود؛ گزارش باید قبل از هر اقدام reconcile شود؛ کار بعدی باید از Truth و برنامهٔ کاری استخراج شود؛ و هر Chat باید مأموریت مستقل و PREQUISITES-first داشته باشد.**
+
+# 104. Change Log — Report-Driven Execution Protocol
+
+| تاریخ | تغییر | دلیل |
+|---|---|---|
+| 2026-09-26 | افزودن Report-Driven Supervisor Protocol، تیک وضعیت، تشخیص خودکار Next Action، تفکیک Promptها و PREQUISITES-first bootstrap | تبدیل دریافت هر گزارش به یک چرخهٔ استاندارد و خودکار برای جلوگیری از فراموشی، دوباره‌کاری و اجرای بدون context |
+| 2026-09-26 | اجباری کردن جملهٔ مطالعهٔ PREQUISITES در ابتدای هر Prompt و تعریف failure-to-bootstrap | تضمین رعایت قوانین توسط تمام Chat/Agentها بدون نیاز به یادآوری کاربر |
