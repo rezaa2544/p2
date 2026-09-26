@@ -247,7 +247,43 @@ async function seedPgFromBootstrap(store, db) {
           try {
             const fields = Object.keys(row);
             const params = fields.map(f => valOf(row[f]));
-            const placeholders = fields.map((_, n) => '
+            const placeholders = fields.map((_, n) => '$' + (n + 1));
+            const sql = 'INSERT INTO ' + ident(col) + ' (' + fields.map(ident).join(', ') + ') VALUES (' + placeholders.join(', ') + ') ON CONFLICT DO NOTHING;';
+            try {
+              await db.query(sql, params);
+              rows++;
+            } catch (rowErr) {
+              skipped++;
+            }
+          }
+        }
+        /* F1: every table gets its sequence realigned after bootstrap writes.
+           A failed sequence operation is part of the seed failure, never a
+           silent warning that can leave the boot falsely green. */
+        try {
+          const sr = await db.query('SELECT pg_get_serial_sequence($1, $2) AS seq', [col, 'id']);
+          const sequenceName = sr.rows && sr.rows[0] && sr.rows[0].seq;
+          if (sequenceName) {
+            await db.query(
+              'SELECT setval($1::regclass, COALESCE((SELECT MAX(id) FROM ' + ident(col) + '), 1), true)',
+              [sequenceName]
+            );
+          }
+        } catch (seqErr) {
+          skipped++;
+        }
+      }
+    }
+    if (skipped > 0) {
+      const e = new Error('bootstrap→PG seed incomplete: ' + skipped + ' row/sequence operation(s) failed');
+      e.code = 'bootstrap_seed_incomplete';
+      e.skipped = skipped;
+      throw e;
+    }
+    return { rows, tables, skipped };
+  }
+
+  /* P0-1: mirror of the cache/Redis readiness gate below. db.init now reports
      ok:false in production when PostgreSQL is absent/unreachable — the server
      must not serve traffic from the JSON store. */
   if (info && info.ok === false) {
