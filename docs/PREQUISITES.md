@@ -82,7 +82,11 @@ Atria Critical/High
 → Failure / Recovery
 → Performance
 → Final Certification
+→ Production Readiness
+→ Full Operational Handoff
 ```
+
+**هدف نهایی پروژه:** صرفاً «بسته شدن باگ‌ها» نیست؛ مسیر باید تا **تکمیل، اعتبارسنجی، آماده‌سازی تولید، بهره‌برداری و عملیاتی شدن کامل Payesh** ادامه پیدا کند.
 
 **ممنوع:** شروع بازنویسی بزرگ معماری، migration گسترده frontend/backend یا certification نهایی در حالی که hardening باز است؛ مگر Architecture Review صریحاً ترتیب را تغییر دهد.
 
@@ -116,6 +120,23 @@ Candidate
 - استفاده از evidence قدیمی برای HEAD جدید
 - integration موازی بر مبنای یک HEAD قدیمی
 - بستن PR بدون تعیین تکلیف تغییرات مفید
+
+## 3.1 قانون جلوگیری از چند HEAD و چند رشته اجرایی
+
+مشکل «دو HEAD» یا چند مسیر مستقل که هر کدام خود را نسخه اصلی معرفی کنند نباید تکرار شود.
+
+الزام:
+
+1. `main` تنها Canonical Integration Line است.
+2. هر branch باید صریحاً base SHA خود را مشخص کند.
+3. هر integration قبل از ادغام با **current main HEAD** reconcile شود.
+4. branchهای قدیمی پس از تعیین تکلیف باید merge/close شوند و نباید به‌عنوان مسیر موازی فعال باقی بمانند.
+5. هیچ agent یا chat مجاز نیست یک branch قدیمی را مستقل از current main به‌عنوان «نسخه اصلی» ادامه دهد.
+6. evidence هر branch فقط برای همان SHA/target معتبر است.
+7. اگر دو HEAD یا دو وضعیت متناقض مشاهده شد، **STOP → RECONCILE → SELECT CANONICAL MAIN → CONTINUE**.
+8. ساختن رشته کاری موازی برای دور زدن وضعیت canonical ممنوع است.
+
+هدف این قانون جلوگیری از تکرار خطای تاریخی چند-HEAD و جلوگیری از diverged work است.
 
 ---
 
@@ -167,6 +188,24 @@ Candidate
 
 هیچ material event نباید فقط در یک فایل ثبت شود و وضعیت مرتبط آن در سایر محل‌های مربوط stale بماند.
 
+**مهندس ناظر موظف است پس از هر گزارش، هر تغییر repository، هر commit/PR/merge مهم، هر تغییر mission/agent و هر تصمیم مادی، ابتدا اثر آن را در کل repository و وضعیت پروژه بررسی کند و سپس اطلاعات لازم را خودش در مراجع مربوط ثبت/همگام کند.**
+
+این بررسی باید در حد لازم شامل:
+
+- current main HEAD و commit graph
+- فایل‌های تغییرکرده
+- open/closed PRهای مرتبط
+- branchهای مرتبط
+- mission/owner
+- defect/roadmap status
+- tests/evidence
+- dependencies/blockers
+- اسناد affected
+
+باشد.
+
+**گزارش agent به‌تنهایی باعث تغییر status نمی‌شود؛ repository و evidence باید کنترل شوند.**
+
 بعد از هر تغییر مرتبط، impact روی این موارد بررسی شود:
 
 - این سند PREQUISITES
@@ -189,9 +228,42 @@ Candidate
 
 ---
 
-# 7. ساختار حافظه پروژه
+# 7. حفاظت فعال از مسیر پروژه و جلوگیری از خرابکاری
 
-## 7.1 لایه‌های حافظه
+«حفاظت» در این سند به معنی جلوگیری از تغییر قانونی یا محدود کردن توسعه نیست؛ به معنی **کنترل تغییرات مخرب، متناقض، خارج از scope و غیرقابل‌ردیابی** است.
+
+مهندس ناظر باید بعد از هر گزارش یا تغییر بررسی کند که:
+
+1. agent/chat دیگری invariant یا فایل مربوط را خراب نکرده باشد؛
+2. تغییر جدید باعث regression نشده باشد؛
+3. scope یک mission توسط chat دیگری بدون هماهنگی تغییر نکرده باشد؛
+4. branch قدیمی روی main یا روی mission جدید اثر ناخواسته نداشته باشد؛
+5. فایل‌های حافظه/roadmap/verification با کد متناقض نشده باشند؛
+6. evidence قدیمی به اشتباه به current HEAD نسبت داده نشده باشد؛
+7. هیچ chat با ایجاد branch/commit موازی مسیر canonical را دور نزده باشد؛
+8. تغییرات خارج از scope یا destructive بدون approval وارد نشده باشند.
+
+اگر انحراف یا خرابکاری مشاهده شد:
+
+```
+STOP AFFECTED WORK
+→ IDENTIFY CHANGE
+→ IDENTIFY OWNER
+→ COMPARE WITH CANONICAL HEAD
+→ ASSESS IMPACT
+→ RESTORE/REMEDIATE SAFELY
+→ UPDATE MEMORY
+→ REVALIDATE
+→ RESUME
+```
+
+هیچ chat یا agent نباید بتواند با یک گزارش صرف، وضعیت پروژه را «تمام‌شده» اعلام کند.
+
+---
+
+# 8. ساختار حافظه پروژه
+
+## 8.1 لایه‌های حافظه
 
 ### A. این سند
 مرجع مادر:
@@ -242,7 +314,7 @@ Verification Registry و Strict Verification Gate برای ادعاهای verifi
 
 ---
 
-# 8. ترتیب اجباری مطالعه در شروع هر نشست
+# 9. ترتیب اجباری مطالعه در شروع هر نشست
 
 ```
 1. PREQUISITES.md
@@ -271,7 +343,7 @@ DELIVERY TARGET
 
 ---
 
-# 9. Agent / Chat Mission Registry
+# 10. Agent / Chat Mission Registry
 
 هر agent باید دارای این اطلاعات باشد:
 
@@ -314,7 +386,7 @@ DELIVERY TARGET
 
 ---
 
-# 10. Report → Mission Reconciliation
+# 11. Report → Mission Reconciliation
 
 هر گزارش agent باید:
 
@@ -349,7 +421,7 @@ NEXT ACTION
 
 ---
 
-# 11. Status System
+# 12. Status System
 
 وضعیت‌ها باید بر اساس evidence واقعی انتخاب شوند:
 
@@ -392,7 +464,7 @@ NEXT ACTION
 
 ---
 
-# 12. Progress و تیک‌های تأیید
+# 13. Progress و تیک‌های تأیید
 
 برای هر mission:
 
@@ -406,7 +478,7 @@ NEXT ACTION
 
 ---
 
-# 13. Delivery Contract
+# 14. Delivery Contract
 
 هر assignment اجرایی باید شامل:
 
@@ -449,7 +521,7 @@ NEXT ACTION
 
 ---
 
-# 14. Root-Cause Engineering
+# 15. Root-Cause Engineering
 
 برای هر defect:
 
@@ -483,7 +555,7 @@ REAPPEARANCE
 
 ---
 
-# 15. Scope Completeness
+# 16. Scope Completeness
 
 قبل از closure باید inventory مربوطه بررسی شود:
 
@@ -505,7 +577,7 @@ REAPPEARANCE
 
 ---
 
-# 16. Security / Authorization
+# 17. Security / Authorization
 
 برای Security، Tenant Isolation، Ownership، OCC، Revocation و Conflict:
 
@@ -522,7 +594,7 @@ REAPPEARANCE
 
 ---
 
-# 17. Data Integrity / Persistence
+# 18. Data Integrity / Persistence
 
 برای داده حساس باید روشن باشد:
 
@@ -540,7 +612,7 @@ REAPPEARANCE
 
 ---
 
-# 18. Test Integrity — False Green ممنوع
+# 19. Test Integrity — False Green ممنوع
 
 موارد زیر بدون justification صریح blocker هستند:
 
@@ -564,7 +636,7 @@ REAPPEARANCE
 
 ---
 
-# 19. Testing Pyramid
+# 20. Testing Pyramid
 
 ```
 Unit
@@ -585,7 +657,7 @@ Unit
 
 ---
 
-# 20. No Self-Certification
+# 21. No Self-Certification
 
 عامل اجراکننده مرجع نهایی صحت کار خودش نیست.
 
@@ -601,7 +673,7 @@ Certification نیازمند:
 
 ---
 
-# 21. Parallel Work / Conflict Control
+# 22. Parallel Work / Conflict Control
 
 Workstreamها باید non-overlapping باشند.
 
@@ -624,7 +696,7 @@ Workstreamها باید non-overlapping باشند.
 
 ---
 
-# 22. Minimal Safe Change
+# 23. Minimal Safe Change
 
 اصل:
 
@@ -643,7 +715,7 @@ Workstreamها باید non-overlapping باشند.
 
 ---
 
-# 23. Regression Permanence
+# 24. Regression Permanence
 
 Regression مهم باید دائمی و قابل اجرای مجدد باشد.
 
@@ -655,7 +727,7 @@ Recurring defects باید در Reappearance Regression Suite باقی بمان�
 
 ---
 
-# 24. Stop / Escalate
+# 25. Stop / Escalate
 
 در این شرایط توقف:
 
@@ -676,7 +748,7 @@ Recurring defects باید در Reappearance Regression Suite باقی بمان�
 
 ---
 
-# 25. Final Handoff
+# 26. Final Handoff
 
 قبل از پایان هر کار:
 
@@ -693,7 +765,7 @@ Recurring defects باید در Reappearance Regression Suite باقی بمان�
 
 ---
 
-# 26. قوانین توسعه و ساختار کد
+# 27. قوانین توسعه و ساختار کد
 
 مرجع کامل:
 
@@ -776,7 +848,7 @@ Schema فقط از migration.
 
 ---
 
-# 27. Naming و قابلیت پیدا کردن کد
+# 28. Naming و قابلیت پیدا کردن کد
 
 توسعه‌دهنده آینده باید برای هر قابلیت بتواند بدون جست‌وجوی تصادفی محل این موارد را پیدا کند:
 
@@ -797,7 +869,7 @@ Schema فقط از migration.
 
 ---
 
-# 28. Feature Contract
+# 29. Feature Contract
 
 هر قابلیت جدید باید این زنجیره را داشته باشد:
 
@@ -832,7 +904,7 @@ Checklist:
 
 ---
 
-# 29. وضعیت Defect / Hardening
+# 30. وضعیت Defect / Hardening
 
 مرجع تفصیلی:
 
@@ -870,7 +942,7 @@ Checklist:
 
 ---
 
-# 30. قانون 37 مورد
+# 31. قانون 37 مورد
 
 فهرست 37 موردی که کاربر قبلاً تعیین کرده، نباید حذف یا فراموش شود.
 
@@ -903,7 +975,7 @@ BLOCKED
 
 ---
 
-# 31. Atria Control
+# 32. Atria Control
 
 Atria-1، Atria-2 و Atria-3 باید scopeهای غیرهمپوشان داشته باشند.
 
@@ -929,7 +1001,7 @@ AGENT
 
 ---
 
-# 32. معماری فعلی و مسیر آینده
+# 33. معماری فعلی و مسیر آینده
 
 Payesh اکنون یک معماری دوگانه دارد:
 
@@ -952,7 +1024,7 @@ Redis برای cache/state/coordination استفاده می‌شود.
 
 ---
 
-# 33. معماری آینده
+# 34. معماری آینده
 
 مرجع کامل:
 
@@ -998,7 +1070,7 @@ Problem
 
 ---
 
-# 34. قابلیت‌های آینده
+# 35. قابلیت‌های آینده
 
 مرجع کامل capability registry:
 
@@ -1067,7 +1139,7 @@ Problem
 
 ---
 
-# 35. Feature Card اجباری برای آینده
+# 36. Feature Card اجباری برای آینده
 
 هر قابلیت آینده باید حداقل این اطلاعات را داشته باشد:
 
@@ -1103,7 +1175,7 @@ REJECTED
 
 ---
 
-# 36. Codebase Migration Strategy
+# 37. Codebase Migration Strategy
 
 بعد از Hardening:
 
@@ -1127,7 +1199,7 @@ REJECTED
 
 ---
 
-# 37. Decision Gate قبل از هر اقدام
+# 38. Decision Gate قبل از هر اقدام
 
 قبل از تغییر باید پاسخ این 7 سؤال روشن باشد:
 
@@ -1145,7 +1217,7 @@ REJECTED
 
 ---
 
-# 38. Efficiency Rule
+# 39. Efficiency Rule
 
 هدف:
 
@@ -1163,7 +1235,7 @@ REJECTED
 
 ---
 
-# 39. Session End / Handoff
+# 40. Session End / Handoff
 
 قبل از پایان نشست:
 
@@ -1182,7 +1254,7 @@ REJECTED
 
 ---
 
-# 40. پروتکل «پیشنیاز را آپدیت کن»
+# 41. پروتکل «پیشنیاز را آپدیت کن»
 
 از این پس این عبارت یک فرمان اجرایی مشخص است.
 
@@ -1220,6 +1292,7 @@ REJECTED
 - capability
 - blockers
 - next actions
+- branch/HEAD topology
 
 شناسایی شوند.
 
@@ -1259,7 +1332,7 @@ EDIT
 
 ---
 
-# 41. قانون تغییرات کوچک
+# 42. قانون تغییرات کوچک
 
 کوچک‌ترین تغییر هم اگر روی این موارد اثر دارد باید synchronize شود:
 
@@ -1276,12 +1349,13 @@ EDIT
 - dependency
 - blocker
 - next action
+- branch/HEAD topology
 
 اما اگر تغییری هیچ اثر واقعی بر این موارد ندارد، از update بی‌دلیل جلوگیری شود.
 
 ---
 
-# 42. قانون جلوگیری از دوباره‌کاری
+# 43. قانون جلوگیری از دوباره‌کاری
 
 قبل از شروع هر کار:
 
@@ -1292,6 +1366,7 @@ SEARCH EXISTING
 → CHECK AGENT OWNERSHIP
 → CHECK AUDIT / ROADMAP
 → CHECK RECENT EVIDENCE
+→ CHECK BRANCH / HEAD TOPOLOGY
 → THEN ACT
 ```
 
@@ -1299,7 +1374,7 @@ SEARCH EXISTING
 
 ---
 
-# 43. قانون «Developer Discoverability»
+# 44. قانون Developer Discoverability
 
 هدف نهایی repository:
 
@@ -1325,7 +1400,7 @@ Capability
 
 ---
 
-# 44. Definition of Done
+# 45. Definition of Done
 
 یک کار فقط وقتی DONE است که:
 
@@ -1349,7 +1424,7 @@ Scope complete
 
 ---
 
-# 45. Definition of Certified
+# 46. Definition of Certified
 
 CERTIFIED فقط زمانی:
 
@@ -1371,7 +1446,7 @@ CERTIFIED فقط زمانی:
 
 ---
 
-# 46. ممنوعیت‌های مطلق
+# 47. ممنوعیت‌های مطلق
 
 - جعل evidence
 - ادعای push بدون GitHub verification
@@ -1390,43 +1465,94 @@ CERTIFIED فقط زمانی:
 - certification خوداظهاری
 - حذف اطلاعات پروژه برای کوتاه کردن گزارش
 - تغییر status بدون evidence
+- ایجاد یا نگهداری چند Canonical HEAD
+- ادامه مسیر کاری موازی که از current main جدا شده و بدون reconciliation ادامه پیدا کند
+- قفل یا محدود کردن غیرضروری بخشی از repository به‌گونه‌ای که اجرای mission، بررسی، توسعه، تست یا بهره‌برداری را مختل کند
 
 ---
 
-# 47. اصل نهایی
+# 48. Repository Availability / No-Unnecessary-Lock Rule
 
-این پروژه باید هم‌زمان:
+**اصل:** هیچ بخش، فایل، ماژول، branch یا مسیر کاری نباید بدون دلیل فنی و ثبت‌شده قفل، مخفی، غیرقابل‌دسترسی یا محدود شود.
 
-**سریع + دقیق + قابل ردیابی + قابل توسعه + قابل راستی‌آزمایی**
+این اصل به معنی حذف کنترل‌های امنیتی یا Git governance لازم نیست؛ بلکه یعنی:
 
-باشد.
+- محدودیت باید **ضروری، مشخص، مستند و متناسب** باشد.
+- محدودیت نباید صرفاً برای جلوگیری از دسترسی توسعه‌دهنده/agent به بخشی از پروژه ایجاد شود.
+- اگر دسترسی برای یک mission لازم است، باید مسیر قانونی و مشخص آن وجود داشته باشد.
+- فایل‌ها و اسناد موردنیاز توسعه نباید عمداً خارج از discoverability قرار گیرند.
+- branch protection یا review gate در صورت نیاز باید برای **حفاظت از canonical main** استفاده شود، نه برای ایجاد بن‌بست کاری.
+- هیچ chat نباید با lock، branch انحصاری یا دسترسی اختصاصی، مسیر کل پروژه را متوقف کند.
+- اگر محدودیتی مانع کار لازم شد، وضعیت باید **BLOCKED** ثبت شود و owner/unblocker مشخص باشد.
 
-سرعت با حذف کنترل به‌دست نمی‌آید؛ با حذف دوباره‌کاری، ambiguity، stale memory، duplicate fixing و false-green به‌دست می‌آید.
+هدف:
 
-کیفیت با زیاد کردن فایل و گزارش به‌دست نمی‌آید؛ با:
-
-```
-Single Source of Truth
-+ Clear Ownership
-+ Root-Cause Fixing
-+ Permanent Regression
-+ Evidence Binding
-+ Continuous Synchronization
-+ Safe Architecture Evolution
-```
-
-به‌دست می‌آید.
-
-**پیشنیاز = قرارداد مادر اجرای پروژه.**
-
-هر سند تخصصی می‌تواند جزئیات بیشتری داشته باشد، اما نباید با این سند تناقض داشته باشد. در صورت تناقض، ابتدا reconciliation انجام می‌شود و هیچ تغییر اجرایی بر اساس وضعیت مبهم شروع نمی‌شود.
+> **Repository باید کنترل‌شده باشد، نه قفل‌شده؛ قابل حفاظت باشد، نه غیرقابل توسعه.**
 
 ---
 
-# 48. Change Log این سند
+# 49. مسیر اجباری تا تکمیل و بهره‌برداری
+
+هدف نهایی execution فقط تولید commit یا بستن issue نیست.
+
+مسیر باید تا این انتها دنبال شود:
+
+```
+Planning
+→ Implementation
+→ Integration
+→ Verification
+→ Hardening
+→ Full Regression
+→ Security / Authorization Validation
+→ Reliability / Recovery
+→ Performance / Capacity
+→ Operational Readiness
+→ Production Readiness
+→ Deployment
+→ Runtime Verification
+→ Operational Handoff
+→ Post-Deployment Monitoring
+→ Full Project Completion
+```
+
+هر phase باید acceptance criteria داشته باشد.
+
+**هیچ mission صرفاً به دلیل اینکه code نوشته شد، پایان‌یافته تلقی نمی‌شود.**
+
+اگر بخشی از پروژه هنوز برای استفاده واقعی آماده نیست:
+
+**PROJECT_COMPLETE = NO**
+
+تا زمانی که تمام prerequisites بهره‌برداری، deployment، monitoring، recovery، security، data integrity، documentation و handoff لازم تعیین تکلیف نشده باشند.
+
+---
+
+# 50. Final Handoff
+
+قبل از پایان هر کار:
+
+1. diff review
+2. changed files vs scope
+3. test واقعی
+4. count + exit code
+5. evidence → SHA binding
+6. remote/PR/merge verification
+7. current HEAD read-back
+8. synchronization اسناد affected
+9. blocker/limitation
+10. next action
+11. بررسی اینکه branch/HEAD topology هنوز canonical و تک‌مسیره است
+12. بررسی اینکه هیچ lock/access restriction غیرضروری ایجاد نشده باشد
+13. بررسی اینکه تغییر با مسیر نهایی پروژه تا بهره‌برداری سازگار است
+
+---
+
+# 51. Change Log این سند
 
 | تاریخ | تغییر | دلیل |
 |---|---|---|
 | 2026-09-26 | ایجاد PREQUISITES به‌عنوان سند مادر | یکپارچه‌سازی حافظه اجرایی، قوانین، roadmap، execution، verification، agent control و synchronization |
+| 2026-09-26 | افزودن کنترل بازبینی کل repository بعد از گزارش/تغییر، حفاظت فعال از مسیر پروژه، قانون جلوگیری از چند HEAD، اصل Repository Availability و مسیر اجباری تا بهره‌برداری | جلوگیری از تکرار چند-HEAD، خرابکاری/انحراف بین chatها، محدودیت غیرضروری و متوقف شدن پروژه قبل از عملیاتی شدن |
 
 **قاعده:** هر update بعدی باید یک receipt کوتاه در همین Change Log ثبت کند: تاریخ، تغییر، علت و در صورت repository change، SHA/PR مربوطه.
