@@ -1395,3 +1395,77 @@ No `RUNTIME_VERIFIED`, `CERTIFIED`, or `DONE` status is permitted until current-
 - **Pass 5 (Independent Regression): VERIFIED**
   - Backend API regression runner `tests/api/runner.js` executed 30/30 suites passing with 0 errors.
   - Zero syntax corruption fragments remaining in `server/index.js`.
+
+
+# 110. Repository synchronization after PR #420 / Codespace export — 2026-09-26
+
+## Current repository truth
+
+- Current canonical main HEAD: `a78b835ce0580a0e7ee9ce7cc80e9539b8b1a9eb`
+- PR #420: merged
+- PR #420 title: `Pending changes exported from your codespace`
+- Merge commit: `a78b835ce0580a0e7ee9ce7cc80e9539b8b1a9eb`
+- The previous supervisor snapshot was `44014a2ee7b87bdd3e1aa38bfc70b52b84c13400`.
+- Comparison `44014a2e... → a78b835c...`: 3 commits ahead, 0 behind.
+
+## Changes reconciled
+
+### 1. F1 / server entrypoint structural repair
+`server/index.js` changed from the malformed/duplicated state to a structurally closed bootstrap path:
+- restored closure of `seedPgFromBootstrap(store, db)`;
+- moved sequence realignment outside the row fallback catch so it runs per table after chunk processing;
+- moved the fail-closed `skipped > 0` check and return outside the collection loop;
+- removed approximately 12,212 trailing duplicated/corrupted lines after `module.exports`;
+- current `server/index.js` blob: `e2c9327b906d409efa9c931f283b0f2798cac33b`.
+
+### 2. Formal F1 five-pass verification artifact added
+New file:
+`tests/f1-boot-syntax-five-pass.js`
+
+The committed verification suite covers:
+- syntax check and live health/readiness/liveness boot;
+- module/export boundary checks;
+- production fail-fast without `DATABASE_URL`;
+- 50 concurrent HTTP requests and graceful SIGTERM shutdown;
+- API regression runner and server-file integrity checks.
+
+The repository documentation reports all five passes as VERIFIED. This is **reported repository evidence**, not an independent supervisor certification; current-head evidence must still be distinguished from self-reported/committed test claims.
+
+### 3. Offline pull / version-order hardening
+The codespace export also modified the generated/distribution artifacts:
+- `index.html`
+- `USER_GUIDE.html`
+
+Changes include:
+- added `_VERSIONED_C` collection version metadata;
+- added `PULL_APPLIED_TIME` watermark;
+- reject stale pull responses by server timestamp;
+- preserve queued/pending local rows when incoming full snapshots are older by version/timestamp;
+- reject incoming records whose version is older than the locally stored version;
+- return `stale_pull` when a pull response is rejected.
+
+This maps directly to the existing hardening queue around **A-18/A-24 and FND-07/NCR-16 (LWW/base_version/pull ordering)** and must be revalidated with adversarial offline/concurrency/replay tests. It is not a new independent defect unless later evidence shows a distinct root cause.
+
+### 4. Build artifact synchronization
+- `USER_GUIDE.html` build marker changed from `02bc229ecf35` to `ed8e7c00b38a`.
+- `index.html` contains the corresponding sync/version-order changes.
+- These generated-artifact changes must remain synchronized with the source/build contract.
+
+## Status reconciliation
+
+- F1 source remediation: **FIXED-SCOPED / repository-verified; runtime evidence is represented by the committed five-pass report but remains subject to independent re-run.**
+- F1 five-pass suite: **PRESENT / reported VERIFIED; independently re-run = pending.**
+- Offline pull/LWW hardening: **FIXED-SCOPED / adversarial revalidation pending.**
+- Current project phase remains **HARDENING / ROOT-CAUSE REMEDIATION — NOT VERIFIED**.
+- No broad certification is inferred from PR #420 or its committed verification claims.
+
+## Mandatory next verification
+
+At current HEAD `a78b835ce0580a0e7ee9ce7cc80e9539b8b1a9eb`:
+1. run `node --check server/index.js`;
+2. run `node tests/f1-boot-syntax-five-pass.js`;
+3. run the relevant API/test integrity gates;
+4. revalidate offline pull ordering, replay, version conflict, and stale-response paths;
+5. then continue health/readiness → API → PostgreSQL → Redis → Frontend → Backend → PostgreSQL/Redis E2E.
+
+No historical HEAD or committed test claim may be promoted to `CERTIFIED` without current-head execution evidence and the required independent/adversarial passes.
