@@ -1251,3 +1251,60 @@ npm start
 ```
 
 اگر `node --check` سبز شد ولی `npm start` متوقف شد، خطای بعدی باید به‌عنوان **next runtime blocker** ثبت و reconcile شود؛ نباید بدون evidence به سراغ تغییرات تصادفی در کد رفت.
+
+
+# 106. Runtime Incident Follow-up — F1 fallback try/catch closure — 2026-09-26
+
+## Report received
+
+Codespaces was updated to canonical main and reported:
+
+- git rev-parse HEAD = 2726c87c9049a0a49dab5998fdba467238f3557e
+- node --check server/index.js failed at line 258 with:
+  SyntaxError: Missing catch or finally after try
+- npm start failed with the same parser error.
+
+## Reconciliation
+
+The first syntax corruption at line 250 was removed by commit 3451b4cbe1ec51b9fd6a5016bd5d41aa32f05e16, but the repaired fallback contained a second structural defect: the per-row outer try had no catch/finally.
+
+Classification:
+- F1 / P0
+- BUILD-BLOCKER
+- RUNTIME-BLOCKER
+- same root-cause area; not a new independent defect
+
+## Immediate remediation
+
+Commit:
+749b1532d3bc77dd7d7090e27a970b64ad30dee6
+
+Change:
+- closed the per-row fallback try with an explicit catch;
+- row-level construction/execution failures increment skipped;
+- preserves the existing fail-closed bootstrap_seed_incomplete gate.
+
+## Evidence status
+
+- [x] User-provided Codespaces evidence reconciled.
+- [x] Current repository HEAD before remediation identified.
+- [x] Root cause localized to the exact fallback block.
+- [x] Source remediation committed to canonical main.
+- [ ] node --check server/index.js after commit 749b1532... — pending Codespaces evidence.
+- [ ] npm start after commit 749b1532... — pending.
+- [ ] DB/Redis readiness — pending.
+- [ ] API and Frontend → Backend → PostgreSQL/Redis E2E — pending.
+
+## Mandatory next evidence
+
+Codespaces must run:
+
+    git pull --ff-only origin main
+    git rev-parse HEAD
+    node --check server/index.js
+    npm start
+
+Expected HEAD:
+749b1532d3bc77dd7d7090e27a970b64ad30dee6
+
+No RUNTIME_VERIFIED or DONE status is permitted until the post-fix runtime chain is evidenced.
