@@ -1317,3 +1317,40 @@ No RUNTIME_VERIFIED or DONE status is permitted until the post-fix runtime chain
 - The repository blob for server/index.js was reconstructed from the known-good 2726c87 server blob and the missing outer row-level catch was added.
 - Source-level syntax status: remediation is structurally complete; runtime syntax PASS still requires Codespaces evidence.
 - Required next evidence remains: node --check server/index.js, then npm start, then health/readiness/API/DB/Redis/E2E.
+
+
+# 108. F1 remediation re-opened: prior canonical code commit was malformed — 2026-09-26
+
+The Codespaces evidence showed that the previous claimed F1 remediation was not actually syntactically valid at the canonical HEAD.
+
+Observed sequence:
+- `72309e514aca0a6522b5bd5a5f3f4a4611942366`: `node --check server/index.js` still failed at line 250 with `SyntaxError: Invalid or unexpected token`.
+- GitHub inspection confirmed the malformed source remained in `server/index.js`; the `placeholders` expression was truncated inside a string literal.
+- Therefore the previous source-level completion statement was invalidated and the F1 status remains **NOT VERIFIED / RUNTIME-BLOCKED**.
+
+Corrective code commit:
+`456c061ee709e8a24c1a3fa373e4f4ae4a6f8c9d`
+Message:
+`fix(bootstrap): repair malformed row fallback syntax`
+
+Current canonical main HEAD:
+`456c061ee709e8a24c1a3fa373e4f4ae4a6f8c9d`
+
+Verified GitHub source state:
+- `server/index.js` blob: `2c03ed769b8b1730fe0cc2bb76bb0830b4573149`
+- fallback placeholder generation is complete;
+- parameterized fallback INSERT is complete;
+- nested row-level catch is present;
+- outer fallback-row catch is present;
+- sequence realignment block remains present.
+
+Runtime status:
+- [ ] Codespaces `node --check server/index.js`
+- [ ] Codespaces `npm start`
+- [ ] health/readiness
+- [ ] API
+- [ ] PostgreSQL
+- [ ] Redis
+- [ ] Frontend → Backend → PostgreSQL/Redis E2E
+
+No `RUNTIME_VERIFIED`, `CERTIFIED`, or `DONE` status is permitted until current-HEAD runtime evidence is received.
