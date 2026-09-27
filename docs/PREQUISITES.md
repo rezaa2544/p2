@@ -497,7 +497,6 @@ Dependency حذف‌شده نیز باید اثراتش بررسی و مستند
 - feature implemented ولی planned نشان داده‌شده
 - evidence مربوط به SHA قدیمی
 - documentation خلاف code
-
 هدف:
 
 **No stale truth.**
@@ -997,7 +996,6 @@ ROADMAP ↔ FEATURES ↔ ROLES ↔ API ↔ SYNC ↔ DATA ↔ SECURITY ↔ TESTS 
 ## 103.5 خروجی اجباری شماره ۳ — تفکیک Chatهای موردنیاز
 
 مهندس ناظر باید مشخص کند:
-
 - آیا فقط یک Chat لازم است؟
 - آیا چند Chat واقعاً مستقل هستند؟
 - کدام Chat executor است؟
@@ -1493,3 +1491,553 @@ Following the successful repository merge of the syntax repair in PR #420 / comm
   - Pass 4 (Concurrency/Recovery): 50 concurrent requests 200 OK, SIGTERM clean drain in 60ms
   - Pass 5 (Regression): 30/30 API test suites passed, 0 corrupt trailing fragments
 - `npm start`: live boot verified on http://0.0.0.0:3000
+
+# 112. Evidence Gate — دروازه شواهد و الزام سراسری پروژه
+
+## 112.1 تعریف و جایگاه
+
+**Evidence Gate (دروازه شواهد)** یکی از Project Integrity Invariants و یک گیت اجباری برای تمام مأموریت‌ها، تغییرات، تست‌ها، گزارش‌ها، releaseها و ادعاهای وضعیت پروژه است.
+
+اصل حاکم:
+
+> **هیچ ادعای DONE / PASSED / VERIFIED / CERTIFIED / PRODUCTION-READY بدون Evidence معتبر، قابل ردیابی و متصل به وضعیت فعلی پروژه پذیرفته نیست.**
+
+Evidence Gate جایگزین تست، review یا judgment مهندسی نیست؛ نقطه‌ای است که بررسی می‌کند ادعای انجام/تأیید واقعاً با شواهد کافی پشتیبانی شده است.
+
+این قانون برای همه اعمال می‌شود:
+- Chat
+- Agent
+- Atria
+- Executor
+- Reviewer
+- مهندس ناظر
+- CI/CD
+- automation
+- documentation
+- runtime verification
+- security review
+- release/certification
+
+هیچ agent یا roleای از این Gate مستثنی نیست.
+
+## 112.2 تفاوت Report، Finding، Evidence و Certification
+
+**REPORT** گزارش agent یا Chat است و می‌تواند شامل ادعا، مشاهده و پیشنهاد باشد.
+
+**FINDING** نتیجه یک بررسی است که ممکن است هنوز مستقل تأیید نشده باشد.
+
+**EVIDENCE** یک artifact یا observation قابل بازتولید و قابل بررسی است که نشان می‌دهد یک claim در شرایط مشخص درست یا نادرست بوده است.
+
+**CERTIFICATION** نتیجه نهایی supervisor/reviewer پس از بررسی Evidence، reconciliation و acceptance criteria است.
+
+بنابراین:
+
+REPORT ≠ EVIDENCE
+
+و:
+
+EVIDENCE ≠ CERTIFICATION
+
+گزارش agent به‌تنهایی مجوز عبور از Evidence Gate نیست.
+
+## 112.3 حداقل بسته شواهد (Minimum Evidence Packet)
+
+هر Mission که خروجی آن به تغییر، رفع defect، تأیید capability، تغییر status یا certification منجر می‌شود باید حداقل این اطلاعات را داشته باشد:
+
+~~~text
+MISSION_ID
+OWNER
+REVIEWER
+BASE_SHA
+CURRENT_HEAD
+BRANCH
+WORKTREE_STATUS
+CLAIM
+SCOPE
+CHANGED_FILES
+COMMANDS
+TESTS
+TEST_RESULTS
+EXPECTED
+ACTUAL
+EVIDENCE_ARTIFACTS
+ENVIRONMENT
+RUNTIME_VERSION
+TIMESTAMP
+COMMIT
+PUSHED
+PR
+REVIEW_STATUS
+BLOCKERS
+NEXT_ACTION
+~~~
+
+مواردی که برای نوع خاص Mission کاربرد ندارند باید صریحاً N/A شوند؛ حذف بی‌صدا مجاز نیست.
+
+## 112.4 طبقه‌بندی شواهد
+
+Evidence باید در یکی از این طبقات ثبت شود:
+
+1. SOURCE_EVIDENCE: inspection کد، diff، file/blob، configuration، schema/migration، contract.
+2. TEST_EVIDENCE: unit، integration، API، regression، smoke، E2E، property/invariant، adversarial/negative.
+3. RUNTIME_EVIDENCE: boot، health/readiness/liveness، real API response، DB/Redis connectivity، browser/runtime behavior.
+4. SECURITY_EVIDENCE: authorization negative tests، tenant/office/province isolation، authentication، rate limiting، secret handling، abuse/adversarial tests.
+5. DELIVERY_EVIDENCE: commit SHA، branch، PR، merge، CI run، deployment artifact.
+6. REVIEW_EVIDENCE: independent source inspection، alternate test، reviewer result، second environment، adversarial validation.
+7. RECOVERY_EVIDENCE: failure injection، rollback، restore، restart، replay/recovery، post-recovery verification.
+8. DOCUMENTATION_EVIDENCE: synchronized source-of-truth documents، architecture/contract updates، status reconciliation، changelog.
+
+## 112.5 الزام اتصال Evidence به SHA و Environment
+
+هر Evidence مهم باید به وضعیت دقیق اجرای خود bind شود:
+
+EVIDENCE → SHA → BRANCH → ENVIRONMENT → COMMAND/OBSERVATION → TIMESTAMP
+
+اگر Evidence مربوط به SHA دیگری باشد، برای HEAD فعلی معتبر فرض نمی‌شود مگر اینکه dependency و unchanged invariant به‌صورت قابل اثبات ثبت شده باشد.
+
+اگر environment متفاوت باشد، PASS فقط برای همان environment معتبر است؛ تعمیم به environment دیگر نیازمند evidence یا contract صریح است.
+
+## 112.6 Freshness Rule
+
+Evidence دارای عمر منطقی است.
+
+Evidence باید دوباره اعتبارسنجی شود اگر:
+- source code تغییر کرده؛
+- dependency مؤثر تغییر کرده؛
+- configuration مؤثر تغییر کرده؛
+- schema/migration تغییر کرده؛
+- environment مؤثر تغییر کرده؛
+- contract تغییر کرده؛
+- security boundary تغییر کرده؛
+- incident/regression مرتبط رخ داده؛
+- HEAD از commit مورد آزمایش عبور کرده و تغییر مؤثر داشته است.
+
+در این شرایط Evidence قبلی به STALE / REVALIDATION_REQUIRED تبدیل می‌شود.
+
+Evidence تاریخی نباید به‌عنوان current evidence ارائه شود.
+
+## 112.7 Evidence Gate Decision States
+
+دروازه فقط یکی از این نتایج را می‌دهد:
+
+- PASS — تمام required evidenceها معتبر و acceptance criteria برآورده شده‌اند.
+- BLOCKED — Evidence ضروری موجود نیست یا prerequisite اجرا نشده است.
+- FAILED — Evidence وجود دارد و نشان می‌دهد acceptance criteria برآورده نشده است.
+- STALE — Evidence مربوط به وضعیت قبلی است و برای وضعیت فعلی معتبر نیست.
+- REVALIDATION_REQUIRED — change/incident/dependency/environment جدید evidence قبلی را نیازمند بازآزمایی کرده است.
+- INVALID — Evidence ناقص، متناقض، غیرقابل بازتولید، ساختگی یا غیرقابل انتساب است.
+- WAIVED — فقط با exception رسمی و approval مجاز؛ هرگز به معنی PASS نیست.
+
+## 112.8 ممنوعیت عبور بدون Evidence
+
+این تبدیل‌ها بدون Evidence Gate ممنوع‌اند:
+
+PLANNED → DONE
+RUNNING → PASSED
+VERIFYING → VERIFIED
+FIXED → CERTIFIED
+TESTED → PRODUCTION-READY
+REPORTED → RESOLVED
+
+همچنین ممنوع است:
+- checkbox فقط بر اساس گفته agent تیک بخورد؛
+- PASS بدون command/test/observation قابل بررسی اعلام شود؛
+- Evidence مربوط به commit قدیمی بدون reconciliation استفاده شود؛
+- test report قدیمی بعد از تغییر مؤثر استفاده شود؛
+- build success به functional correctness تعمیم داده شود؛
+- unit-test PASS به E2E/runtime PASS تعمیم داده شود؛
+- static inspection به security certification تعمیم داده شود؛
+- finding فقط چون یک test سبز شده حذف شود.
+
+## 112.9 Evidence برای انواع Claim
+
+| Claim | حداقل Evidence |
+|---|---|
+| bug fixed | source/diff + regression test + current SHA |
+| test passed | command + result + test identity + environment |
+| build passed | exact build command + artifact/parity result |
+| API fixed | positive + relevant negative test |
+| authorization fixed | allowed + denied + scope-boundary evidence |
+| security issue fixed | source inspection + adversarial/negative validation |
+| DB/migration safe | schema/migration + forward validation + rollback/recovery when applicable |
+| sync/offline fixed | version/conflict/replay/concurrency evidence |
+| runtime healthy | boot + health/readiness/liveness + relevant dependencies |
+| Redis/DB ready | real dependency connectivity/readiness when required |
+| performance acceptable | workload + baseline + measured result + acceptance criterion |
+| recovery successful | injected failure + recovery action + post-recovery verification |
+| documentation synchronized | current SHA + affected docs + reconciliation |
+| PR delivered | branch + commit + PR + merge/CI evidence |
+| certified | all required evidence + independent review + supervisor reconciliation |
+
+این جدول حداقل است؛ Mission Contract می‌تواند الزامات سخت‌گیرانه‌تری تعیین کند.
+
+## 112.10 Positive + Negative Evidence Rule
+
+برای invariantهای امنیتی، authorization، validation، isolation، state transition و failure handling، positive test به‌تنهایی کافی نیست.
+
+در صورت کاربرد باید هر سه مسیر بررسی شوند:
+
+POSITIVE / EXPECTED
+NEGATIVE / FORBIDDEN
+BOUNDARY / EDGE
+
+برای multi-tenant یا scope-sensitive logic، در صورت کاربرد:
+
+VALID SCOPE
+INVALID SCOPE
+CROSS-TENANT / CROSS-SCOPE
+MISSING / EXPIRED AUTHORITY
+
+نبودن negative evidence در یک invariant حساس باید به‌عنوان evidence gap ثبت شود.
+
+## 112.11 Independent Review Rule
+
+برای تغییرات عادی، reviewer باید حداقل یک بررسی مستقل انجام دهد.
+
+برای موارد Critical/P0/P1، security boundary، authorization، data integrity، migration، recovery و certification:
+
+EXECUTOR → INDEPENDENT REVIEWER → REVALIDATION
+
+Reviewer نباید صرفاً متن گزارش executor را تکرار کند.
+
+روش مستقل می‌تواند شامل source inspection مستقل، test متفاوت، adversarial test، runtime observation، environment متفاوت یا بررسی invariant به‌جای implementation باشد.
+
+اگر independent review موردنیاز انجام نشده باشد:
+
+Evidence Gate ≠ PASS
+
+## 112.12 Evidence Anti-False-Green Rule
+
+هر mechanismای که می‌تواند بدون اثبات واقعی PASS بدهد، evidence معتبر تولید نمی‌کند.
+
+موارد مشکوک شامل:
+- assert(true)
+- testهای بدون assertion واقعی
+- process.exit(0) برای پنهان کردن failure
+- catch کردن خطا و اعلام PASS
+- mock کردن همان چیزی که باید واقعاً verify شود
+- skip کردن test بدون quarantine ثبت‌شده
+- fixtureای که failure واقعی را حذف می‌کند
+- چاپ PASS بدون exit/result قابل بررسی
+- testای که assertion مربوط به claim ندارد.
+
+هر false-green باید finding مستقل یا regression/process defect محسوب شود.
+
+## 112.13 Evidence Artifact Integrity
+
+Artifactهای Evidence باید:
+- قابل شناسایی باشند؛
+- قابل انتساب به Mission باشند؛
+- قابل ارتباط با SHA باشند؛
+- در صورت نیاز timestamp و environment داشته باشند؛
+- قابل بازتولید یا independently inspectable باشند؛
+- secret یا PII غیرضروری نداشته باشند.
+
+Log خامی که فقط بخشی از command/result را نشان می‌دهد، در صورت عدم امکان اثبات context، evidence کامل محسوب نمی‌شود.
+
+## 112.14 Reproducibility Rule
+
+برای هر test/finding مهم:
+
+COMMAND
+INPUT
+ENVIRONMENT
+EXPECTED
+ACTUAL
+EXIT/STATUS
+SHA
+TIMESTAMP
+
+باید به‌صورت کافی ثبت شود تا reviewer بتواند مسیر بررسی را تکرار کند.
+
+عبارت‌هایی مانند «اجرا کردم، درست بود» یا «تست‌ها سبز شدند» به‌تنهایی Evidence نیستند.
+
+## 112.15 Evidence Invalidation
+
+هر change مرتبط باید Evidence قبلی را بازبینی کند.
+
+اگر تغییر باعث شود invariant قبلی دیگر قابل اتکا نباشد:
+
+OLD EVIDENCE → INVALIDATED
+STATUS → REVALIDATION_REQUIRED
+NEW TEST/REVIEW → REQUIRED
+
+پس از regression:
+
+DETECT → INVALIDATE AFFECTED EVIDENCE → FIX → REVALIDATE → RESTORE STATUS
+
+## 112.16 Evidence و Git/Delivery
+
+برای هر تغییر source که قرار است تحویل‌شده محسوب شود، زنجیره زیر باید با نوع Mission سازگار باشد:
+
+WORKTREE → TEST → EVIDENCE → COMMIT → PUSH → PR → REVIEW → MERGE → CI → CURRENT-HEAD REVALIDATION
+
+COMMITTED به معنی VERIFIED نیست.
+MERGED به معنی CERTIFIED نیست.
+CI PASS به معنی RUNTIME VERIFIED نیست.
+
+## 112.17 Evidence Gate و Mission Lifecycle
+
+هر Mission باید از این الگو پیروی کند:
+
+PLANNED → READY → RUNNING → VERIFYING → EVIDENCE_GATE → PASSED → COMMITTED → CI_RUNNING → VERIFIED
+
+Failure path:
+
+EVIDENCE_GATE → BLOCKED / FAILED / STALE / INVALID / REVALIDATION_REQUIRED
+
+Mission فقط پس از رفع وضعیت Gate مجاز به ادامه است.
+
+## 112.18 مسئولیت‌ها
+
+### Executor
+Evidence اولیه و گزارش دقیق را تولید می‌کند.
+
+### Reviewer
+Evidence را مستقل بررسی می‌کند.
+
+### Supervisor
+reconciliation، کفایت Evidence و Gate status را تعیین می‌کند.
+
+### CI/Automation
+machine evidence قابل اتکا تولید می‌کند و نباید verdict جعلی تولید کند.
+
+### Documentation Owner
+source-of-truth و status را sync می‌کند.
+
+### هر Agent/Chat
+مسئول رعایت Gate است و نمی‌تواند به دلیل نبود reminder از آن عبور کند.
+
+## 112.19 Evidence Ledger Integration
+
+هر Evidence قابل استفاده باید در Evidence Ledger به claim مربوط شود:
+
+CLAIM → EVIDENCE_ID → TYPE → MISSION_ID → SHA → ENV → COMMAND/ARTIFACT → OWNER → REVIEWER → RESULT → CREATED_AT → LAST_VALIDATED → STATUS
+
+اگر claim در Ledger ثبت نشده یا reference آن قابل ردیابی نباشد، claim برای certification کامل محسوب نمی‌شود.
+
+## 112.20 Exception / Waiver
+
+هیچ bypass دائمی برای Evidence Gate وجود ندارد.
+
+اگر به دلیل محدودیت واقعی امکان تولید یک evidence وجود ندارد:
+
+GAP IDENTIFIED → IMPACT ASSESSED → RISK DOCUMENTED → MITIGATION DEFINED → HUMAN APPROVAL (if required) → WAIVER RECORDED → EXPIRATION/REVIEW DATE → FOLLOW-UP EVIDENCE
+
+WAIVED هرگز خودکار به PASS تبدیل نمی‌شود.
+
+Security، data integrity و destructive changes به‌صورت پیش‌فرض قابل bypass نیستند مگر با تصمیم انسانی صریح و ثبت‌شده.
+
+## 112.21 Evidence Gate برای تست‌های Blocked
+
+اگر test به دلیل نبودن dependency واقعی، credential، PostgreSQL، Redis، browser یا environment اجرا نشود:
+
+BLOCKED
+
+و نه PASS.
+
+مثال:
+
+DATABASE_URL missing → truth-gate BLOCKED → NOT VERIFIED
+
+نبودن environment، evidence نبودن را به evidence تبدیل نمی‌کند.
+
+## 112.22 Evidence Gate برای Documentation
+
+هر ادعای current truth در documentation باید با repository truth reconcile شود.
+
+اگر document بگوید HEAD = X ولی repository بگوید HEAD = Y و Y جدیدتر باشد، documentation مربوطه stale است.
+
+هر synchronization مهم باید حداقل این‌ها را بررسی کند:
+
+HEAD
+BRANCH
+WORKTREE
+MISSION STATUS
+DEFECT STATUS
+TEST STATUS
+EVIDENCE STATUS
+PR/CI STATUS
+ROADMAP
+DASHBOARD
+
+## 112.23 Evidence Gate برای Security و Critical Changes
+
+برای تغییرات امنیتی یا Critical/P0/P1، حداقل باید بررسی شود:
+- source-level control؛
+- positive path؛
+- negative path؛
+- boundary/scope isolation؛
+- regression؛
+- relevant runtime behavior؛
+- independent review؛
+- current SHA binding.
+
+برای authorization، در صورت applicable بودن:
+
+ALLOWED
+DENIED
+WRONG SCOPE
+WRONG TENANT
+MISSING AUTHORITY
+EXPIRED/INVALID AUTHORITY
+
+## 112.24 Evidence Gate Self-Test
+
+خود Evidence Gate نیز باید قابل آزمون باشد.
+
+باید بتوانیم ثابت کنیم که Gate:
+1. بدون Evidence PASS نمی‌دهد؛
+2. Evidence مربوط به SHA قدیمی را stale تشخیص می‌دهد؛
+3. test failure را PASS نمی‌کند؛
+4. missing dependency را BLOCKED می‌کند؛
+5. false-green pattern را detect می‌کند؛
+6. reviewer evidence را از executor report متمایز می‌کند؛
+7. waiver را با PASS اشتباه نمی‌گیرد؛
+8. current-head mismatch را detect می‌کند؛
+9. incident می‌تواند Evidence قبلی را invalidate کند؛
+10. statusهای پروژه را با Evidence status هماهنگ نگه می‌دارد.
+
+Evidence Gate بدون این self-test نباید به‌عنوان gate قابل اعتماد فرض شود.
+
+## 112.25 Supervisor Acceptance Checklist
+
+پیش از اعلام PASSED یا VERIFIED:
+
+- [ ] Mission مشخص است.
+- [ ] Owner مشخص است.
+- [ ] Scope مشخص است.
+- [ ] Base SHA و Current HEAD مشخص‌اند.
+- [ ] Claim دقیق و قابل آزمون است.
+- [ ] Required evidence مشخص است.
+- [ ] Evidence واقعاً تولید شده است.
+- [ ] Evidence به SHA صحیح bind است.
+- [ ] Environment مشخص است.
+- [ ] Test command/result قابل بازبینی است.
+- [ ] Expected/Actual مشخص است.
+- [ ] Negative/boundary checks در صورت نیاز انجام شده‌اند.
+- [ ] Regression بررسی شده است.
+- [ ] Security impact بررسی شده است.
+- [ ] Reviewer مستقل در موارد لازم انجام شده است.
+- [ ] Artifactها قابل ردیابی‌اند.
+- [ ] secret/PII غیرضروری افشا نشده است.
+- [ ] Git delivery وضعیت صحیح دارد.
+- [ ] CI/runtime evidence لازم وجود دارد.
+- [ ] Documentation و dashboard sync هستند.
+- [ ] Evidence stale یا invalid نشده است.
+- [ ] blocker یا waiver پنهان وجود ندارد.
+- [ ] Next action روشن است.
+
+هر checkboxی که بدون Evidence قابل اثبات تیک بخورد، نقض این قانون است.
+
+## 112.26 گزارش استاندارد Evidence Gate
+
+~~~text
+[EVIDENCE_GATE]
+
+MISSION_ID:
+CLAIM:
+OWNER:
+REVIEWER:
+
+BASE_SHA:
+CURRENT_HEAD:
+BRANCH:
+WORKTREE:
+
+ENVIRONMENT:
+RUNTIME:
+
+REQUIRED_EVIDENCE:
+- ...
+
+COLLECTED_EVIDENCE:
+- ...
+
+COMMANDS:
+- ...
+
+EXPECTED:
+- ...
+
+ACTUAL:
+- ...
+
+NEGATIVE/BOUNDARY:
+- ...
+
+ARTIFACTS:
+- ...
+
+RESULT:
+PASS | BLOCKED | FAILED | STALE | INVALID | REVALIDATION_REQUIRED | WAIVED
+
+EVIDENCE_STATUS:
+VALID | INCOMPLETE | STALE | INVALID
+
+COMMIT:
+PUSHED:
+PR:
+CI:
+
+BLOCKERS:
+NEXT_ACTION:
+TIMESTAMP:
+~~~
+
+## 112.27 قانون عدم ارتقای خودکار
+
+هیچ agent، script یا automation نباید فقط بر اساس متن گزارش وضعیت را ارتقا دهد.
+
+ارتقا باید:
+
+REPORT → RECONCILE → EVIDENCE CHECK → GATE DECISION → STATUS UPDATE
+
+باشد، نه REPORT → DONE.
+
+## 112.28 قانون سراسری و تقدم
+
+این بخش برای همه Missionها و همه roleها **لازم‌الاجرا** است.
+
+در صورت تعارض بین گزارش agent، checklist محلی، conversation memory، documentation قدیمی، status dashboard و Evidence Gate، برای ادعای verification، **Evidence معتبر و current repository truth** مرجع تصمیم است.
+
+این Gate باید در Mission Contract، Report-Driven Supervisor Protocol، Evidence Ledger، CI/verification scripts و certification workflow منعکس شود.
+
+هیچ Prompt، Chat، Agent، branch یا workstream نمی‌تواند با wording متفاوت این الزام را حذف کند.
+
+## 112.29 Enforcement Rule
+
+نقض Evidence Gate یک **Process Integrity Defect** است.
+
+نمونه‌های نقض:
+- اعلام DONE بدون evidence؛
+- استفاده از evidence قدیمی؛
+- پنهان کردن test failure؛
+- گزارش PASS بدون execution؛
+- حذف negative test لازم؛
+- ادعای runtime verification بدون runtime؛
+- ادعای CI verification بدون CI evidence؛
+- ادعای reviewer approval بدون reviewer evidence؛
+- ارتقای status توسط automation بدون validation.
+
+نقض باید:
+1. گزارش شود؛
+2. status ادعای متاثر به NOT VERIFIED یا REVALIDATION_REQUIRED برگردد؛
+3. evidence chain بازسازی شود؛
+4. در صورت تکرار، process/automation اصلاح شود.
+
+## 112.30 اصل نهایی
+
+> **در پروژه پایش، هر ادعا باید شاهد داشته باشد، هر شاهد باید قابل ردیابی باشد، هر شاهد باید به وضعیت صحیح پروژه bind باشد، و هیچ status بالاتری از سطح اثبات موجود مجاز نیست.**
+
+فرمول اجرایی:
+
+CLAIM → EVIDENCE → REPRODUCE → RECONCILE → REVIEW → GATE → STATUS
+
+این زنجیره برای تمام پروژه اجباری است.
+
+# 113. Change Log — Evidence Gate
+
+| تاریخ | تغییر | دلیل |
+|---|---|---|
+| 2026-09-27 | افزودن Evidence Gate جامع و سراسری شامل تعریف Evidence، حداقل بسته شواهد، انواع Evidence، SHA/Environment binding، freshness/invalidation، negative testing، independent review، anti-false-green، waiver، self-test، lifecycle و enforcement | تبدیل Evidence Ledger موجود به یک دروازه اجرایی و غیرقابل‌عبور برای جلوگیری از DONE/VERIFIED/CERTIFIED بدون شواهد معتبر و current |
