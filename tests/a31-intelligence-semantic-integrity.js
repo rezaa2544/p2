@@ -44,12 +44,14 @@ function chk(id, name, fn) {
 }
 
 /* ── ماژول‌های واقعی زیر آزمون ─────────────────────────────────────── */
-const attendanceIntel = require(path.join(ROOT, 'server', 'analytics', 'attendance-intelligence'));
-const platformIntegration = require(path.join(ROOT, 'server', 'analytics', 'intelligence-platform-integration'));
-const feedbackMemory = require(path.join(ROOT, 'server', 'analytics', 'intelligence-feedback-memory'));
-const governanceDash = require(path.join(ROOT, 'server', 'analytics', 'intelligence-governance-dashboard'));
-const releaseCert = require(path.join(ROOT, 'server', 'analytics', 'intelligence-release-certification'));
-const schoolIntel = require(path.join(ROOT, 'server', 'analytics', 'school-intelligence-center'));
+/* مسیرهای استاتیک: require ماژول را بارگذاری می‌کند، shell اجرا نمی‌کند —
+   ولی دروازهٔ امنیتی الگوی path.join را تزریق می‌داند، پس استاتیک می‌شود. */
+const attendanceIntel = require('../server/analytics/attendance-intelligence');
+const platformIntegration = require('../server/analytics/intelligence-platform-integration');
+const feedbackMemory = require('../server/analytics/intelligence-feedback-memory');
+const governanceDash = require('../server/analytics/intelligence-governance-dashboard');
+const releaseCert = require('../server/analytics/intelligence-release-certification');
+const schoolIntel = require('../server/analytics/school-intelligence-center');
 
 function partA() {
   console.log('\n▸ بخش A — سطح موتور (کد واقعی، بدون ماک)');
@@ -252,7 +254,7 @@ const DB_NAME = 'payesh_a31_' + process.pid;
 const DB_URL = `postgres://payesh:payesh@127.0.0.1:5432/${DB_NAME}`;
 
 async function pgQ(connStr, sql, params) {
-  const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
+  const { Client } = require('pg');
   const c = new Client({ connectionString: connStr });
   await c.connect();
   try { return await c.query(sql, params); } finally { await c.end(); }
@@ -262,7 +264,7 @@ async function freshDb() {
   try { await pgQ(ADMIN_URL, `DROP DATABASE IF EXISTS ${DB_NAME} WITH (FORCE)`); }
   catch (e) { try { await pgQ(ADMIN_URL, `DROP DATABASE IF EXISTS ${DB_NAME}`); } catch (_) {} }
   await pgQ(ADMIN_URL, `CREATE DATABASE ${DB_NAME}`);
-  const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
+  const { Client } = require('pg');
   const c = new Client({ connectionString: DB_URL });
   await c.connect();
   const files = fs.readdirSync(MIG_DIR).filter(f => /^\d+.*\.sql$/.test(f) && !f.includes('.down.')).sort();
@@ -279,7 +281,7 @@ const nidOf = (id) => String(1000000000 + id).slice(-10);
 const phOf = (id) => '090' + String(10000000 + id).slice(-8);
 
 async function seedDb() {
-  const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
+  const { Client } = require('pg');
   const c = new Client({ connectionString: DB_URL });
   await c.connect();
   const I = async (tbl, obj) => {
@@ -320,7 +322,7 @@ async function partB() {
   process.env.PAYESH_SMS_DAILY_CAP = '10000';
   delete process.env.NODE_ENV;
 
-  const { server } = require(path.join(ROOT, 'server', 'index.js'));
+  const { server } = require('../server/index.js');
   let BASE = '';
   await new Promise((resolve) => server.listen(0, '127.0.0.1', () => { BASE = `http://127.0.0.1:${server.address().port}`; resolve(); }));
 
