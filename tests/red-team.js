@@ -119,7 +119,7 @@ async function main() {
     const ready = await waitForServer(port, child);
     if (!ready) throw new Error('Server did not boot: ' + serverLog.slice(-500));
 
-    async function login(user) {
+    const login = async (user) => {
       assert(user && user.active, 'active user fixture is required');
       const phone = String(user.phone).replace(/[\s\-()]/g, '');
       const sent = await request(port, 'POST', '/api/auth/send-code', { body: { phone } });

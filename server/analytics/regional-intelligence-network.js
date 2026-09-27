@@ -56,7 +56,14 @@ function enforceRegionalTenantIsolation(requester, data = {}, options = {}) {
     // دسترسی کشوری
   } else if (role === 'edu_office') {
     // بازرس/کارشناس منطقه فقط مجاز به منطقه تحت پوشش خویش است
-    if (userRegionId != null && userRegionId !== targetRegionId) {
+    /* N-04: when the officer carries no region_id/office_id the comparison was
+       skipped entirely and the guard returned true — an unassigned officer
+       could read any region. Fail closed instead: no regional grant, no
+       regional data. */
+    if (userRegionId == null) {
+      throw new Error('REGIONAL_TENANT_ISOLATION_VIOLATION: edu_office lacks region_id/office_id assignment');
+    }
+    if (userRegionId !== targetRegionId) {
       throw new Error(`REGIONAL_TENANT_ISOLATION_VIOLATION: edu_office of region ${userRegionId} cannot access region ${targetRegionId}`);
     }
   } else {

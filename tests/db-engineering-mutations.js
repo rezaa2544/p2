@@ -40,7 +40,7 @@ kill('M4 تبدیل OCC SQL به update بدون version کشته می‌شود'
 
 kill('M5 برگشت max(id)+1 به مسیر PostgreSQL کشته می‌شود', () => {
   const ids = read('server/ids.js');
-  const pgNextBody = ids.match(/const pgNext = async[\s\S]*?;\n\n  \/\* مکس\+۱ محافظت‌شده/)[0];
+  const pgNextBody = ids.match(/const pgNext = async[\s\S]*?;\n\n {2}\/\* مکس\+۱ محافظت‌شده/)[0];
   assert.match(pgNextBody, /pg_get_serial_sequence/);
   assert.doesNotMatch(pgNextBody, /localMax\(list\) \+ 1/);
 });

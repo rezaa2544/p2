@@ -110,7 +110,7 @@ function scanSegments(sql) {
        of a literal. Without this the scanner would swallow 'w0' as an opaque
        string and interpolation would never see it. */
     if ((ch === "'" || ch === '"') && plain.endsWith(':')) {
-      const vref = /^(['\"])([A-Za-z_][A-Za-z0-9_]*)\1/.exec(sql.slice(i));
+      const vref = /^(['"])([A-Za-z_][A-Za-z0-9_]*)\1/.exec(sql.slice(i));
       if (vref) { plain += vref[0]; i += vref[0].length; continue; }  /* whole :'name' token */
       /* not a well-formed :'var' — fall through to ordinary string lexing */
     }

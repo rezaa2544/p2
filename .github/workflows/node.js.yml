@@ -73,6 +73,14 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm ci
+    # N-23: the lint contract used to be configured (.eslintrc.json) but eslint
+    # was not a dependency, had no script, and no CI step ran it — the rule set
+    # was entirely unenforced. Now installed as a devDependency and gated here.
+    # --max-warnings freezes the pre-existing no-empty/no-unused-vars baseline
+    # so it can only shrink; every other eslint:recommended rule is a hard
+    # error and blocks the build.
+    - name: Lint (N-23 — the lint contract is now enforced)
+      run: npm run lint
     - name: Comprehensive canonical regression runner
       run: npm run test:all
     - name: Runtime Reliability — Lease fencing static contract

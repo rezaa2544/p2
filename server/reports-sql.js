@@ -252,6 +252,9 @@ function validateTerm(v) {
   if (v == null || v === '') return { ok: true, value: null };
   const s = String(v);
   if (s.length > 60) return { ok: false, value: null };
+  /* The control characters ARE the validation target — this rejects any term
+     containing C0/DEL, so this is not an accidental control char in a pattern. */
+  /* eslint-disable-next-line no-control-regex */
   if (/[\u0000-\u001f\u007f]/.test(s)) return { ok: false, value: null };
   return { ok: true, value: s };
 }

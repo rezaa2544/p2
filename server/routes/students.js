@@ -191,12 +191,17 @@ function createStudentRoutes(ctx) {
     const _found = await findLive('users', id);
     const student = (_found && _found.role === 'student') ? _found : null;
     /* Wave 5 — محدوده از policy.inScope (users collection): مدیر فقط مدرسهٔ
-       خودش fail-closed؛ دبیر IEP هم‌مدرسه (آینهٔ استثنایِ sync)؛ رکوردِ
-       یافته‌شده به‌عنوان data پاس می‌شود تا در حالتِ PG (کپیِ detached،
-       نبودِ در store) هم دقیق حل شود (ویو ۱). */
-    const scopeOk = !!student && (policy.inScope(user, store, 'users', student.id, student)
-      || (user.role === 'teacher' && student.school_id != null && Number(student.school_id) === Number(user.school_id)));
-    if (!student || !scopeOk) {
+       خودش fail-closed؛ رکوردِ یافته‌شده به‌عنوان data پاس می‌شود تا در
+       حالتِ PG (کپیِ detached، نبودِ در store) هم دقیق حل شود (ویو ۱).
+       N-31 — دامنهٔ نوشتنِ IEP دبیر باید دقیقاً هم‌تراز با داموهٔ خواندن
+       باشد. دروازهٔ خواندنِ تک‌رکوردی (getStudentById بالا) از کالکشن
+       'students' می‌گذرد (studentRecordOk: دبیر فقط شاگردانِ کلاس‌هایی که
+       واقعاً تدریس می‌کند)، ولی این مسیر قبلاً با کالکشن 'users' +
+       یک شرطِ عریضِ «هم‌مدرسه» چک می‌شد — یعنی دبیر می‌توانست iep_notesِ
+       هر دانش‌آموزِ مدرسه را بنویسد در حالی که اجازهٔ خواندنش را نداشت.
+       حالا هر دو مسیر از همان دروازهٔ واحد می‌گذرند. */
+    const gate = policy.restReadGate(store, user, 'students', student);
+    if (!student || !gate.ok) {
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }
 
@@ -288,6 +293,7 @@ function createStudentRoutes(ctx) {
       audit: () => audit('student_deleted', { user_id: user.id, student_id: Number(id) })
     });
     if (!del.ok) {
+      if (del.status === 409) return { status: 409, body: { ok: false, code: del.code || 'occ_conflict', message: del.message } };  /* N-19 */
       if (del.status === 503) return pgDown();
       return { status: 404, body: { ok: false, code: 'not_found', message: 'دانش‌آموز یافت نشد' } };
     }

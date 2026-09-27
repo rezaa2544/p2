@@ -114,7 +114,16 @@ async function main() {
     assert.strictEqual(r.status, 201);
     assert.strictEqual(r.json.ok, true);
     assert.strictEqual(r.json.data.status, 'late');
-    assert.strictEqual(r.json.data.late, 15);
+    /* N-24/N-15: there is no `late` column on attendance — the real columns
+       are late_at / late_minutes (migration 001 + authz/model.json). The API
+       maps a scalar body.late onto late_minutes, and must NOT echo a phantom
+       top-level `late` (PostgreSQL mode would reject it with 42703). The old
+       assertion (r.json.data.late === 15) tested the phantom column and has
+       been red since the column was corrected. */
+    assert.strictEqual(r.json.data.late_minutes, 15,
+      'a scalar body.late must be persisted onto late_minutes');
+    assert.ok(!('late' in r.json.data),
+      'the response must not echo the phantom top-level `late` field');
     createdAttId = r.json.data.id;
   });
 

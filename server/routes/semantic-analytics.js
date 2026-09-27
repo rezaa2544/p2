@@ -265,6 +265,18 @@ function createSemanticAnalyticsRoutes(ctx) {
       }
     }
     const timelineStudentRec = studentRec;
+    /* N-23 (eslint no-undef — a REAL runtime defect): every sibling report in
+       this file resolves its collections via schoolRecords(); this one did
+       not, so `rec` was undefined and the timeline threw ReferenceError the
+       moment a teacher/counselor actually reached the build. The query runs
+       only after the tenant + student-record gates above, so a 403 costs
+       nothing. */
+    const rec = await schoolRecords({
+      attendance: 'attendance',
+      grades: 'grades',
+      discipline: 'discipline',
+      exams: 'exams'
+    }, schoolId);
     const timeline = buildStudentTimeline({
       student: timelineStudentRec,
       attendance: rec.attendance.filter((a) => Number(a.student_id) === studentId),

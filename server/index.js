@@ -42,6 +42,9 @@ const { createAudit, clientIp } = require('./audit');
 const db = require('./db');
 const redis = require('./redis');
 const cache = require('./cache');
+/* N-06: placeholder/low-entropy JWT keys must be rejected at boot, not just
+   short ones (see server/key-strength.js). */
+const { weakJwtKeyReason } = require('./key-strength');
 /* Delta Phase 4 (gap 1): sync backpressure uses the same distributed
    fixed-window limiter as auth (Redis live, in-memory dev fallback). */
 const rateLimit = require('./rate-limit');
@@ -138,6 +141,27 @@ function loadStore(){
   /* Wave 6: شمارندهٔ نگهبان به Redis رفت — نگه‌داشتنِ نسخهٔ قدیمی
      (فقط‌رشد و بدونِ GC در payesh.json) معنا ندارد. */
   if(s.__auth && s.__auth.enum) delete s.__auth.enum;
+
+  /* PUB-01: the product has no user-password concept at all (docs/PLAN_PHONE_AUTH.md
+     — phone + OTP only, confirmed locked 2026-09-05), yet the demo generator used
+     to ship `password: '123456'` on every account and the users table has no such
+     column. projection.js already strips it from responses, but a single universal
+     credential string riding in the store file is a credential-hygiene defect: any
+     future code path that reads it authenticates everyone. Strip it at load so no
+     store file — committed, cached, or hand-edited — can keep carrying it. */
+  if(Array.isArray(s.users)){
+    let stripped = 0;
+    for(const u of s.users){
+      if(u && Object.prototype.hasOwnProperty.call(u, 'password')){
+        delete u.password;
+        stripped++;
+      }
+    }
+    if(stripped){
+      console.warn('[store] PUB-01: removed a residual `password` field from ' + stripped +
+        ' user record(s) — the product has no password concept (phone+OTP only); regenerate the store with `node server/seed.js`');
+    }
+  }
   return s;
 }
 const store = loadStore();
@@ -187,6 +211,14 @@ async function seedPgFromBootstrap(store, db) {
     const arr = (store[col] || []).filter((r) => r && r.id != null);
     if (!arr.length) continue;
     tables++;
+    /* N-23 (eslint no-undef, a REAL runtime defect): the sequence-advance
+       block below runs once per collection, AFTER the chunk loop has closed —
+       it used to reference `cleanRows`, which is scoped to the chunk body and
+       is gone by then, so every seeded collection with explicit ids threw
+       "cleanRows is not defined" and the sequence was never advanced. The
+       largest explicit id must be accumulated across all chunks here, then
+       applied after the loop. */
+    let maxSeedId = 0;
     for (let i = 0; i < arr.length; i += CHUNK) {
       const cleanRows = [];
       const fieldSet = new Set();
@@ -203,6 +235,12 @@ async function seedPgFromBootstrap(store, db) {
           }
         }
         if (data.id != null) cleanRows.push(data);
+      }
+      /* N-23: track the largest explicit id across every chunk so the sequence
+         can be advanced once, after the loop (see the block below). */
+      for (const row of cleanRows) {
+        const rid = Number(row.id);
+        if (Number.isFinite(rid) && rid > maxSeedId) maxSeedId = rid;
       }
       if (!cleanRows.length) continue;
 
@@ -260,7 +298,9 @@ async function seedPgFromBootstrap(store, db) {
     }
     /* F1: every table gets its sequence realigned after bootstrap writes.
        A failed sequence operation is part of the seed failure, never a
-       silent warning that can leave the boot falsely green. */
+       silent warning that can leave the boot falsely green. The realignment
+       reads MAX(id) from the table itself, so no accumulated binding can go
+       out of scope here (N-23). */
     try {
       const sr = await db.query('SELECT pg_get_serial_sequence($1, $2) AS seq', [col, 'id']);
       const sequenceName = sr.rows && sr.rows[0] && sr.rows[0].seq;
@@ -336,8 +376,25 @@ const dbReady = db.init(store)
       } catch (e) { /* tables missing ⇒ not a clean-empty PG — hydrate as before */ }
       if (keepBootstrap) {
         console.log('[store] PG is empty and a bootstrap JSON store is present — hydration SKIPPED (P0-BUG-04 guard); seeding PG from the bootstrap store now (one-time)...');
-        const r = await seedPgFromBootstrap(store, db);
-        console.log('[store] bootstrap→PG seed done: ' + r.rows + ' row(s) / ' + r.tables + ' table(s)');
+        /* N-09: the seed must never abort the boot. seedPgFromBootstrap throws
+           bootstrap_seed_incomplete when a row/sequence operation cannot map —
+           one permanently unmappable row escaping into dbReady's catch makes
+           the whole boot unrecoverable. Restore the documented
+           fail-closed-but-recoverable contract: surface the partial outcome
+           (including the skipped count) and keep booting. A partial seed still
+           leaves the bootstrap data authoritative for this boot, and the
+           mirrorIncomplete guard below already prevents a trimmed PG snapshot
+           from overwriting the store file on exit. */
+        try {
+          const r = await seedPgFromBootstrap(store, db);
+          console.log('[store] bootstrap→PG seed done: ' + r.rows + ' row(s) / ' + r.tables + ' table(s)' +
+            (r.skipped ? ' (skipped: ' + r.skipped + ')' : ''));
+        } catch (seedErr) {
+          const detail = seedErr && seedErr.code === 'bootstrap_seed_incomplete'
+            ? 'incomplete — ' + (seedErr.skipped || 0) + ' row/sequence operation(s) could not be mapped'
+            : 'failed — ' + (seedErr && seedErr.message ? seedErr.message : String(seedErr));
+          console.warn('[store] bootstrap→PG seed ' + detail + '; continuing (the seed must never abort the boot)');
+        }
       } else {
         /* Wave 1: PG is authoritative — replace store domain collections with
            PG truth at boot (per-table failures warn and keep going). */
@@ -620,10 +677,13 @@ if(!JWT_SECRET){
     console.log('generated JWT secret -> ' + KEY_FILE);
   }
 }
-/* R96 P0-3: کلیدِ HS256 باید حداقل 256 بیت باشد — کلیدِ ضعیف، استارت را
-   می‌کُشد تا مجبور به rotation شود (خارج از repository). */
-if(Buffer.byteLength(JWT_SECRET, 'utf8') < 32){
-  console.error('Error: JWT key shorter than 256 bits — rotate it (set PAYESH_JWT_SECRET or regenerate ' + KEY_FILE + ')');
+/* R96 P0-3 + N-06: کلیدِ HS256 باید حداقل ۲۵۶ بیت باشد و نباید یک placeholder
+   منتشرشده یا کم‌آنتروپی باشد — کلیدِ ضعیف، استارت را می‌کُشد تا مجبور به
+   rotation شود (خارج از repository). قبلاً فقط طول چک می‌شد و placeholderِ
+   .env.example بدون مشکل عبور می‌کرد. */
+const JWT_WEAK_REASON = weakJwtKeyReason(JWT_SECRET);
+if(JWT_WEAK_REASON){
+  console.error('Error: JWT key rejected — ' + JWT_WEAK_REASON + '. Generate one with `openssl rand -hex 32` and set PAYESH_JWT_SECRET (or regenerate ' + KEY_FILE + ').');
   process.exit(1);
 }
 /* R96 P0-3: rotation — کلیدِ قبلی برایِ مدتِ عمرِ نشست‌ها معتبر می‌ماند */
@@ -709,6 +769,17 @@ function sendJsonCounting(res, status, obj){
 }
 function readBody(req, limit){
   return new Promise((resolve, reject) => {
+    /* N-28 — WAF کلِ بدنه را پیش از مسیر خوانده و روی req نگه داشته است.
+       بازپخش از بافر (unshift بعد از رویدادِ end مجاز نیست) — همbatim
+       و هم بدونِ مصرفِ دوبارهٔ سوکت. */
+    if (req._wafBodyBuffer) {
+      const cap = limit || 1024 * 1024;
+      if (req._wafBodyBuffer.length > cap) return reject(new Error('too_large'));
+      if (!req._wafBodyBuffer.length) return resolve({});
+      try { return resolve(JSON.parse(req._wafBodyBuffer.toString('utf8'))); }
+      catch (e) { return reject(new Error('bad_json')); }
+    }
+    if (req._wafBodyTooLarge) return reject(new Error('too_large'));
     let size = 0; const chunks = []; let over = false;
     req.on('data', c => {
       size += c.length;
@@ -874,10 +945,16 @@ function nationalCapacityGateMiddleware(req, res) {
   const isWrite = req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH' || req.method === 'DELETE';
   if (isWrite) rollingWindowWrites++;
 
-  const simRps = Number(req.headers['x-simulated-rps'] || 0);
-  const simConcurrent = Number(req.headers['x-simulated-concurrent-users'] || 0);
-  const simWrites = Number(req.headers['x-simulated-writes'] || 0);
-  const simDbConns = Number(req.headers['x-simulated-db-connections'] || 0);
+  /* N-30 — سرآیندهای x-simulated-* فقط در dev/test و با اopt-in صریح
+     پذیرفته می‌شوند. در production هر کاربری می‌توانست با x-simulated-rps:0
+     اندازه‌گیرِ واقعی را خاموش کند (دور زدنِ مهارِ ظرفیت) یا با
+     x-simulated-writes:999999 یک 429 کاذب تولید کند (انکارِ سرویس).
+     PAYESH_SIMULATION_HEADERS=1 آن‌ها را دوباره فعال می‌کند. */
+  const simAllowed = String(process.env.PAYESH_SIMULATION_HEADERS || '').trim().toLowerCase() === '1';
+  const simRps = simAllowed ? Number(req.headers['x-simulated-rps'] || 0) : 0;
+  const simConcurrent = simAllowed ? Number(req.headers['x-simulated-concurrent-users'] || 0) : 0;
+  const simWrites = simAllowed ? Number(req.headers['x-simulated-writes'] || 0) : 0;
+  const simDbConns = simAllowed ? Number(req.headers['x-simulated-db-connections'] || 0) : 0;
 
   const observedMetrics = {
     rps: simRps > 0 ? simRps : rollingWindowRps,

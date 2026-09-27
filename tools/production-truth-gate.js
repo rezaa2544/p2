@@ -95,21 +95,24 @@ function rollbackMigrations(url) {
   }
 }
 
-function flood(port, n, pth, headers) {
-  return new Promise(async (resolve) => {
-    const out = new Array(n);
-    let i = 0;
-    const conc = 40;
-    async function worker() {
-      while (true) {
-        const k = i++;
-        if (k >= n) return;
-        out[k] = await req(port, 'GET', pth, null, null, headers);
-      }
+/* N-23: this was `new Promise(async (resolve) => {...})` — an async executor
+   is an anti-pattern (errors thrown synchronously in the executor before the
+   first await are lost, and the promise can settle twice). The sole caller
+   awaits the result, so returning the value from an async function is
+   equivalent and lossless. */
+async function flood(port, n, pth, headers) {
+  const out = new Array(n);
+  let i = 0;
+  const conc = 40;
+  async function worker() {
+    for (;;) {
+      const k = i++;
+      if (k >= n) return;
+      out[k] = await req(port, 'GET', pth, null, null, headers);
     }
-    await Promise.all(Array.from({ length: conc }, worker));
-    resolve(out);
-  });
+  }
+  await Promise.all(Array.from({ length: conc }, worker));
+  return out;
 }
 
 function walkJs(dir, visit) {

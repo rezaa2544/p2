@@ -34,7 +34,7 @@ const PATTERNS = [
   { name: 'AWS access key', re: /\bAKIA[0-9A-Z]{16}\b/g },
   { name: 'PEM private key', re: /-----BEGIN (RSA|EC|OPENSSH|DSA|PGP)? ?PRIVATE KEY-----/g },
   { name: 'long hex (≥64) — کاندیدای کلید', re: /\b[0-9a-fA-F]{64,}\b/g },
-  { name: 'Bearer/Authorization hardcoded', re: /Authorization['"]?\s*[:=]\s*['"][A-Za-z0-9._\-]{16,}/g },
+  { name: 'Bearer/Authorization hardcoded', re: /Authorization['"]?\s*[:=]\s*['"][A-Za-z0-9._-]{16,}/g },
 ];
 
 function walk(dir, out) {

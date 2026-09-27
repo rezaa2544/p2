@@ -43,9 +43,9 @@ function extractSpec(text) {
   const set = new Set();
   let cur = null;
   for (const line of text.split('\n')) {
-    const pm = line.match(/^  (\/[^:]+):\s*$/);
+    const pm = line.match(/^ {2}(\/[^:]+):\s*$/);
     if (pm) { cur = pm[1]; continue; }
-    const om = line.match(/^    (get|post|put|delete|patch):\s*$/);
+    const om = line.match(/^ {4}(get|post|put|delete|patch):\s*$/);
     if (om && cur) set.add(om[1].toUpperCase() + ' ' + cur);
   }
   return set;

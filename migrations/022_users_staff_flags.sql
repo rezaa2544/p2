@@ -7,6 +7,10 @@
 -- restore the flags and policy.js gates (E.4/E.5/head) failed closed (deny).
 -- Fix: add the three columns (integer, NULL = flag unset = deny everywhere).
 
+BEGIN;
+
 ALTER TABLE users ADD COLUMN IF NOT EXISTS lib_staff integer;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS asset_staff integer;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_head integer;
+
+COMMIT;

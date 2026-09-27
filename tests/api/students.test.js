@@ -141,6 +141,23 @@ async function main() {
   });
 
   await test('ST6: PATCH /api/v1/students/:id (Teacher IEP update vs Manager full update)', async () => {
+    /* N-31 — دامنهٔ نوشتنِ IEP دبیر هم‌تراز با دامنهٔ خواندن است: فقط
+       شاگردانِ کلاس‌هایی که واقعاً تدریس می‌کند. دانش‌آموزِ تازه باید
+       ابتدا در یکی از کلاس‌هایِ تدرسیِ این دبیر ثبت‌نام شود. */
+    const taughtClassIds = new Set(
+      (store.schedule || []).filter(x => Number(x.teacher_id) === Number(teacher1.id)).map(x => Number(x.class_id))
+    );
+    (store.classes || []).forEach(c => {
+      if (Number(c.homeroom_teacher_id) === Number(teacher1.id)) taughtClassIds.add(Number(c.id));
+    });
+    const realClassIds = new Set((store.classes || []).map(c => Number(c.id)));
+    const taughtClass = (store.classes || []).find(c => taughtClassIds.has(Number(c.id)) && realClassIds.has(Number(c.id)));
+    assert.ok(taughtClass, 'کلاسِ تدرسی برای دبیرِ ۱ یافت نشد');
+    store.enrollments.push({
+      school_id: 1, class_id: taughtClass.id, student_id: createdStudentId,
+      id: Math.max(0, ...store.enrollments.map(e => Number(e.id) || 0)) + 1
+    });
+
     // Teacher updates IEP notes
     const rIep = await req('PATCH', `/api/v1/students/${createdStudentId}`, {
       body: { iep_notes: 'یادداشت ویژه تحصیلی دانش‌آموز', base_version: 1 },

@@ -48,7 +48,7 @@ function stripLeadingBegin(sql) {
 
 function stripTrailingCommit(sql) {
   let end = sql.length;
-  while (true) {
+  for (;;) {
     const before = end;
     while (end > 0 && /[\t\n\r\f\v ]/.test(sql[end - 1])) end--;
     if (end >= 2 && sql.slice(end - 2, end) === '*/') {
@@ -321,7 +321,7 @@ async function migrateDown(client, targetVersion = null, options = {}) {
 async function migrateAllDown(client, options = {}) {
   await ensureLedgerTable(client);
   const results = [];
-  while (true) {
+  for (;;) {
     const rolled = await migrateDown(client, null, options);
     if (!rolled) break;
     results.push(rolled);

@@ -672,13 +672,24 @@ function createSync(ctx){
           weight: ops.length
         });
       } catch (rlE) {
-        /* B5: with REDIS_URL configured the limiter now throws REDIS_REQUIRED.
-           Backpressure is an advisory throttle (auth is the hard gate) — degrade
-           audibly instead of failing the write path, but NEVER pretend it ran. */
-        r = null;
-        if (rlE && rlE.code === 'REDIS_REQUIRED') {
-          try { audit('sync_backpressure_degraded_redis_down', { user_id: s.id }); } catch (_) {}
-        }
+        /* N-10 (B5 consistency): with REDIS_URL configured the limiter throws
+           REDIS_REQUIRED when Redis is down. The old code set r = null and let
+           the gate pass, so an UNKNOWN throttle decision was treated as
+           "allowed": a Redis outage disabled the only brake on the one path
+           that drives persistOpsBatch, outbox appends and store writes — an
+           unbounded write-amplification vector. The send-code and login
+           limiters fail closed (503) on exactly this condition; this path must
+           too. Answer 503 so the client keeps the batch untouched in its local
+           queue and retries (the same data-preserving contract as the 429). */
+        const limiterCode = (rlE && rlE.code) || 'UNKNOWN';
+        try { audit('sync_backpressure_unavailable', { user_id: s.id, limiter_code: limiterCode }); } catch (_) {}
+        try { metrics.inc('payesh_sync_backpressure_unavailable_total', []); } catch (_) {}
+        return sendJson(res, 503, {
+          ok: false,
+          code: 'sync_backpressure_unavailable',
+          retry_after_s: 5,
+          message: 'محدودکنندهٔ همگام‌سازی در دسترس نیست — تغییرات در صفِ محلی می‌مانند و کمی بعد دوباره ارسال می‌شوند'
+        });
       }
       if (r && r.allowed === false) {
         metrics.inc('payesh_sync_backpressure_rejections_total', []);
@@ -1119,7 +1130,7 @@ function createSync(ctx){
            مجموعه‌ها اشتباه می‌گرفت (grades:42 vs announcements:42). */
         if(undo) undo.items.push({ k: 'popDelRec', idx: store.__deleted_records.length - 1, id: delId, c: op.c, at: tomb.at, ref: tomb });
         audit('record_deleted', { user_id: s.id, role: s.role, school_id: s.school_id, collection: op.c, record_id: delId, summary: 'حذف رکورد ' + delId + ' از ' + op.c });
-        mirror.push({ uid: op.uid, c: op.c, t: 'del', id: delId, base_version: op.base_version });   /* P1-14 */
+        mirror.push({ uid: op.uid, c: op.c, t: 'del', id: delId, base_version: op.base_version, school_id: delSchoolId });   /* P1-14 + N-17: school_id feeds the durable tombstone */
       }
       store.__server_version = (store.__server_version || 0) + 1;
       if(undo) undo.bumps++;   /* باگ ۲: فقط افزایش‌های خودِ این درخواست */

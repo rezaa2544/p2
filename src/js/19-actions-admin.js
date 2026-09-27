@@ -98,7 +98,7 @@ function adminActions(e, el, id, a, rawId){
        if(mgUser)patch.username=mgUser;
        update('users',existing.id,patch);
      } else if(mgName&&mgUser){
-       insert('users',{school_id:sid,role:'manager',full_name:mgName,username:mgUser,password:'123456', /* ستونِ آرشیوی — محصول رمز ندارد */
+       insert('users',{school_id:sid,role:'manager',full_name:mgName,username:mgUser, /* ستونِ آرشیوی — محصول رمز ندارد */
          national_id:mgNid||makeNid(),phone:mgPhone||'',active:1,title:'مدیر مدرسه',created_at:todayISO()});
      }
      closeModal();toast(s.id?'تغییرات ذخیره شد':'مدرسه و حساب مدیر ثبت شد','ok');render();},
@@ -136,7 +136,7 @@ function adminActions(e, el, id, a, rawId){
      let uid=x.id;
      if(uid)update('users',uid,data);
      else{ if(db.users.some(u=>u.username===V('u_user'))){toast('نام کاربری تکراری است','err');return;}
-       uid=insert('users',Object.assign({username:V('u_user'),password:'123456',created_at:todayISO()},data)).id; } /* ستونِ آرشیوی */
+       uid=insert('users',Object.assign({username:V('u_user'),created_at:todayISO()},data)).id; } /* ستونِ آرشیوی */
      const cls=$('#u_class')?V('u_class'):'';
      if(data.role==='student'){db.enrollments.filter(en=>en.student_id===uid).forEach(en=>remove('enrollments',en.id));
        if(cls)insert('enrollments',{school_id:schoolId,class_id:Number(cls),student_id:uid});}

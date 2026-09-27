@@ -46,10 +46,10 @@ function generateP9(){
   const mk=(name,level,scope,username)=>{
     const o=add('offices',Object.assign({name,level,active:1},scope));
     const headUser=add('users',{school_id:null,office_id:o.id,role:'edu_office',is_head:1,
-      full_name:'رئیس '+name,username:username+'_head',password:'123456',
+      full_name:'رئیس '+name,username:username+'_head',
       national_id:makeNid(),phone:demoPhone(),active:1,created_at:daysAgoISO(320)});
     const expertUser=add('users',{school_id:null,office_id:o.id,role:'edu_office',is_head:0,
-      full_name:'کارشناس '+name,username,password:'123456',
+      full_name:'کارشناس '+name,username,
       national_id:makeNid(),phone:demoPhone(),active:1,created_at:daysAgoISO(320)});
     o.user_id=headUser.id;
     return o;
@@ -424,7 +424,7 @@ const P9_ACTIONS = {
     const o=insert('offices',{name,level:V('of_level'),province_id:Number(V('of_p'))||null,
       county_id:Number(V('of_c'))||null,district_id:Number(V('of_d'))||null,active:1});
     const u=insert('users',{school_id:null,office_id:o.id,role:'edu_office',full_name:V('of_user')||('کارشناس '+name),
-      username,password:'123456',national_id:makeNid(),phone:'',active:1,created_at:todayISO()});
+      username,national_id:makeNid(),phone:'',active:1,created_at:todayISO()});
     update('offices',o.id,{user_id:u.id});
     closeModal(); toast('اداره و حساب کارشناس ساخته شد','ok'); render();
   },

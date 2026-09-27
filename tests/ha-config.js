@@ -120,7 +120,7 @@ chk('env-example: هیچ کلیدِ رازی مقدارِ پر ندارد', fill
 grp('CFG-SEC — الگوهایِ راز');
 /* رازِ هاردکد = مقدارِ «عینی» که حتی یکِ $ (compose/env) یا __ (template) در
    خودِ مقدار نباشد؛ ارجاع‌هایِ ${VAR} و پیشوندِ $VAR مجازند. */
-const secretPat = /(?:password|passwd|secret|token|api[-_]?key)[ \t]*[:=][ \t]*["']?\$?[A-Za-z0-9+\/._-]{12,}/i;
+const secretPat = /(?:password|passwd|secret|token|api[-_]?key)[ \t]*[:=][ \t]*["']?\$?[A-Za-z0-9+/._-]{12,}/i;
 const secretValueLiteral = (m) => { const v = (m.match(/[:=]\s*["']?([^"']*)/) || [])[1] || ''; return !v.includes('$') && !v.includes('__'); };
 let secHits = [];
 ['infra/postgres/docker-compose.ha.yml', 'infra/redis/docker-compose.sentinel.yml',

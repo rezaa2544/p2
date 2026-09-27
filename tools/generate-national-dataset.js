@@ -63,7 +63,7 @@ function arg(name, def){
 const has = (name) => argv.indexOf(name) > -1;
 
 if(has('--help') || has('-h')){
-  console.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(1, 45).join('\n').replace(/^   /gm, ''));
+  console.log(fs.readFileSync(__filename, 'utf8').split('\n').slice(1, 45).join('\n').replace(/^ {3}/gm, ''));
   process.exit(0);
 }
 /* --plan پیش‌فرضِ مقیاسِ ملی دارد (جدولِ 10 میلیون)؛ تولید، مقیاسِ کوچکِ CI */

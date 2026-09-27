@@ -150,7 +150,7 @@ chk('روشِ ارتباطی + ثبتِ هندآف', /HANDOFF/.test(sec8) && /ک
 
 /* ── RB-CMD — ارجاع‌هایِ زنده ── */
 grp('RB-CMD — ارجاع‌هایِ فایلِ واقعی');
-const REF = /(?:docs|tools|infra|tests|server|migrations|nginx)\/[A-Za-z0-9_.\/-]+\.(?:md|sh|js|yml|yaml|ini|conf|template|sql)/g;
+const REF = /(?:docs|tools|infra|tests|server|migrations|nginx)\/[A-Za-z0-9_./-]+\.(?:md|sh|js|yml|yaml|ini|conf|template|sql)/g;
 const refs = [...new Set((rb.match(REF) || []))];
 chk('دست‌کم ۱۵ ارجاعِ فایلی در سند', refs.length >= 15, String(refs.length));
 const dead = refs.filter((r) => !fs.existsSync(path.join(ROOT, r)));

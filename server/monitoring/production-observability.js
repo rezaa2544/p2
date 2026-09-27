@@ -46,6 +46,17 @@ const SERVICE_STATUS = Object.freeze({
   UNKNOWN: 'unknown'
 });
 
+/* N-11: collectors must distinguish "measured and fine" from "not measured".
+   Returns true only when the caller supplied at least one of the expected
+   metric keys. */
+function _hasAnyKey(obj, keys) {
+  if (!obj || typeof obj !== 'object') return false;
+  for (let i = 0; i < keys.length; i++) {
+    if (obj[keys[i]] !== undefined && obj[keys[i]] !== null) return true;
+  }
+  return false;
+}
+
 /**
  * سطوح شدت هشدارهای رصدپذیری
  */
@@ -252,6 +263,23 @@ function collectApplicationMetrics(rawMetrics = {}) {
  * جمع‌آوری و ارزیابی شاخص‌های عملکردی پایگاه داده
  */
 function collectDatabaseMetrics(rawMetrics = {}) {
+  /* N-11: an absent measurement is not a healthy measurement. When the caller
+     supplies no database metrics at all we must not invent plausible-looking
+     numbers (22 connections, 12ms latency) and stamp the service HEALTHY —
+     a down database looked identical to a live one. Report UNKNOWN with null
+     values so the dashboard cannot paint a dead service green. */
+  const DB_KEYS = ['active_connections', 'max_connections', 'slow_query_count', 'slow_query_threshold_ms', 'transaction_latency_ms', 'deadlock_count', 'last_deadlock_timestamp', 'top_slow_patterns'];
+  if (!_hasAnyKey(rawMetrics, DB_KEYS)) {
+    return deepFreeze({
+      status: SERVICE_STATUS.UNKNOWN,
+      measured: false,
+      connection_pool: { active_connections: null, max_connections: null, utilization_ratio: null, state: 'UNMEASURED' },
+      slow_queries: { slow_query_count: null, threshold_ms: null, top_patterns: [] },
+      transaction_latency_ms: null,
+      deadlocks: { deadlock_count: null, last_deadlock_timestamp: null }
+    });
+  }
+
   const activeConnections = Number.isFinite(rawMetrics.active_connections) ? rawMetrics.active_connections : 22;
   const maxConnections = Number.isFinite(rawMetrics.max_connections) ? rawMetrics.max_connections : 100;
   const poolUtilization = maxConnections > 0 ? Number((activeConnections / maxConnections).toFixed(3)) : 0.22;
@@ -270,6 +298,7 @@ function collectDatabaseMetrics(rawMetrics = {}) {
 
   return deepFreeze({
     status,
+    measured: true,
     connection_pool: {
       active_connections: activeConnections,
       max_connections: maxConnections,
@@ -293,6 +322,21 @@ function collectDatabaseMetrics(rawMetrics = {}) {
  * جمع‌آوری و ارزیابی شاخص‌های عملکردی صف رویدادها (P1-SC-02)
  */
 function collectQueueMetrics(rawMetrics = {}) {
+  /* N-11: no queue metrics supplied ⇒ UNKNOWN, not a fabricated 210 eps
+     "STREAMING_NOMINAL" pipeline. */
+  const QUEUE_KEYS = ['event_throughput_per_sec', 'consumer_lag', 'retry_rate', 'dead_letter_queue_size'];
+  if (!_hasAnyKey(rawMetrics, QUEUE_KEYS)) {
+    return deepFreeze({
+      status: SERVICE_STATUS.UNKNOWN,
+      measured: false,
+      event_throughput_per_sec: null,
+      consumer_lag: null,
+      retry_rate: null,
+      dead_letter_queue_size: null,
+      pipeline_state: 'UNMEASURED'
+    });
+  }
+
   const throughput = Number.isFinite(rawMetrics.event_throughput_per_sec) ? rawMetrics.event_throughput_per_sec : 210;
   const consumerLag = Number.isFinite(rawMetrics.consumer_lag) ? rawMetrics.consumer_lag : 8;
   const retryRate = Number.isFinite(rawMetrics.retry_rate) ? rawMetrics.retry_rate : 0.005;
@@ -307,6 +351,7 @@ function collectQueueMetrics(rawMetrics = {}) {
 
   return deepFreeze({
     status,
+    measured: true,
     event_throughput_per_sec: throughput,
     consumer_lag: consumerLag,
     retry_rate: retryRate,
@@ -319,6 +364,20 @@ function collectQueueMetrics(rawMetrics = {}) {
  * جمع‌آوری و ارزیابی شاخص‌های کارایی کش توزیع‌شده (P1-SC-01)
  */
 function collectCacheMetrics(rawMetrics = {}) {
+  /* N-11: no cache metrics supplied ⇒ UNKNOWN, not an invented 0.88 hit
+     ratio that makes a dead Redis look healthy. */
+  const CACHE_KEYS = ['hit_ratio', 'miss_ratio', 'eviction_rate', 'memory_pressure'];
+  if (!_hasAnyKey(rawMetrics, CACHE_KEYS)) {
+    return deepFreeze({
+      status: SERVICE_STATUS.UNKNOWN,
+      measured: false,
+      hit_ratio: null,
+      miss_ratio: null,
+      eviction_rate_per_sec: null,
+      memory_pressure: null
+    });
+  }
+
   const hitRatio = Number.isFinite(rawMetrics.hit_ratio) ? rawMetrics.hit_ratio : 0.88;
   const missRatio = Number.isFinite(rawMetrics.miss_ratio) ? rawMetrics.miss_ratio : Number((1 - hitRatio).toFixed(3));
   const evictionRate = Number.isFinite(rawMetrics.eviction_rate) ? rawMetrics.eviction_rate : 2;
@@ -333,6 +392,7 @@ function collectCacheMetrics(rawMetrics = {}) {
 
   return deepFreeze({
     status,
+    measured: true,
     hit_ratio: hitRatio,
     miss_ratio: missRatio,
     eviction_rate_per_sec: evictionRate,
@@ -531,11 +591,16 @@ function buildObservabilityHealthSnapshot(params = {}, options = {}) {
     cacheMetrics.status
   ];
 
+  /* N-11: an unmeasured service must never let the overall snapshot read
+     HEALTHY. CRITICAL still wins, then DEGRADED, then UNKNOWN — only a
+     fully-measured, fully-healthy stack reports healthy. */
   let overallStatus = OBSERVABILITY_STATUS.HEALTHY;
   if (serviceStatuses.includes(SERVICE_STATUS.CRITICAL)) {
     overallStatus = OBSERVABILITY_STATUS.CRITICAL;
   } else if (serviceStatuses.includes(SERVICE_STATUS.DEGRADED)) {
     overallStatus = OBSERVABILITY_STATUS.DEGRADED;
+  } else if (serviceStatuses.includes(SERVICE_STATUS.UNKNOWN)) {
+    overallStatus = SERVICE_STATUS.UNKNOWN;
   }
 
   // ۵. تدوین پاکت استاندارد سلامت

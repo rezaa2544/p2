@@ -550,6 +550,168 @@ function generateLongitudinalInsights(params = {}, options = {}) {
   });
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   N-03: real longitudinal snapshots from store records.
+   ----------------------------------------------------------------
+   The longitudinal route used to mint five "standard default" periods from
+   loop indices (`factor = 1 + idx * 0.02`) while the real grades/attendance
+   it had already fetched were never read. A school with zero records was
+   reported as overall_trend: IMPROVING backed by five periods of fabricated
+   evidence. This helper derives every period and every metric from actual
+   records: no records → no snapshots, and the profile then honestly reports
+   total_periods: 0 / direction STABLE instead of an invented trend. */
+
+const _PERSIAN_YM = new Intl.DateTimeFormat('en-US-u-ca-persian', { year: 'numeric', month: 'numeric' });
+const _TERM_LABELS = { 'نوبت اول': 1, 'نوبت دوم': 2 };
+
+/* Jalali (persian) year+month of an ISO date. Node ships full ICU, so this
+   is the same calendar the client renders (src/js/01-helpers.js jalali()). */
+function persianYearMonth(iso) {
+  if (!iso) return null;
+  try {
+    const parts = _PERSIAN_YM.formatToParts(new Date(iso));
+    let y = null, m = null;
+    for (let i = 0; i < parts.length; i++) {
+      if (parts[i].type === 'year') y = +parts[i].value;
+      else if (parts[i].type === 'month') m = +parts[i].value;
+    }
+    if (!y || !m) return null;
+    return { y: y, m: m };
+  } catch (e) { return null; }
+}
+
+/* The Iranian school year opens on Mehr 1 (Jalali month 7): months 7-12 open
+   school year Y, months 1-6 belong to the year that opened at Y-1. */
+function _schoolYearOf(ym) {
+  if (!ym) return null;
+  return ym.m >= 7 ? ym.y : ym.y - 1;
+}
+
+function _gradePeriodKey(g) {
+  const ym = persianYearMonth(g.created_at || g.date);
+  const sy = _schoolYearOf(ym);
+  if (sy == null) return null;
+  const tn = _TERM_LABELS[g.term] || (ym && ym.m >= 7 ? 1 : 2);
+  return sy + '-T' + tn;
+}
+
+function _attendancePeriodKey(a) {
+  const ym = persianYearMonth(a.date || a.taken_at);
+  const sy = _schoolYearOf(ym);
+  if (sy == null) return null;
+  return sy + '-T' + (ym.m >= 7 ? 1 : 2);
+}
+
+/* normalized 0-20 gpa of one grade record */
+function _gradeGpa(g) {
+  const s = Number(g.score);
+  const mx = Number(g.max_score || 20);
+  if (!isFinite(s) || !isFinite(mx) || mx <= 0) return null;
+  return Math.min(20, (s / mx) * 20);
+}
+
+function _round1(v) { return Math.round(v * 10) / 10; }
+
+/**
+ * @param {Object} params - { schoolId, grades, attendance, discipline } — all
+ *   already scoped to the school by the caller; schoolId is informational.
+ * @returns {Object} { snapshots: Array, data_availability: Object }
+ */
+function computeSchoolSnapshotsFromRecords(params) {
+  params = params || {};
+  const grades = Array.isArray(params.grades) ? params.grades : [];
+  const attendance = Array.isArray(params.attendance) ? params.attendance : [];
+  const discipline = Array.isArray(params.discipline) ? params.discipline : [];
+
+  const buckets = new Map();
+  const bucket = (key) => {
+    if (!buckets.has(key)) buckets.set(key, { key: key, grades: [], attendance: [], discipline: [] });
+    return buckets.get(key);
+  };
+
+  for (let i = 0; i < grades.length; i++) {
+    const key = _gradePeriodKey(grades[i]);
+    if (key) bucket(key).grades.push(grades[i]);
+  }
+  for (let i = 0; i < attendance.length; i++) {
+    const key = _attendancePeriodKey(attendance[i]);
+    if (key) bucket(key).attendance.push(attendance[i]);
+  }
+  for (let i = 0; i < discipline.length; i++) {
+    const key = persianYearMonth(discipline[i].date || discipline[i].created_at);
+    const sy = _schoolYearOf(key);
+    if (sy != null) bucket(sy + '-T' + (key.m >= 7 ? 1 : 2)).discipline.push(discipline[i]);
+  }
+
+  const snapshots = [];
+  const keys = Array.from(buckets.keys()).sort();
+  for (let k = 0; k < keys.length; k++) {
+    const b = buckets.get(keys[k]);
+    const snap = {
+      period: b.key,
+      health_index: null,
+      average_gpa: null,
+      calendar_rate: null,
+      chronic_absence_rate: null,
+      has_intervention: b.discipline.length > 0,
+      records: { grades: b.grades.length, attendance: b.attendance.length, discipline: b.discipline.length }
+    };
+
+    const gpaVals = [];
+    for (let i = 0; i < b.grades.length; i++) {
+      const v = _gradeGpa(b.grades[i]);
+      if (v != null) gpaVals.push(v);
+    }
+    if (gpaVals.length) {
+      let sum = 0;
+      for (let i = 0; i < gpaVals.length; i++) sum += gpaVals[i];
+      snap.average_gpa = _round1(sum / gpaVals.length);
+    }
+
+    if (b.attendance.length) {
+      let present = 0;
+      for (let i = 0; i < b.attendance.length; i++) if (b.attendance[i].status === 'present') present++;
+      snap.calendar_rate = _round1((present / b.attendance.length) * 100);
+
+      /* chronic absence = share of distinct students missing >= 20% of sessions */
+      const perStudent = new Map();
+      for (let i = 0; i < b.attendance.length; i++) {
+        const a = b.attendance[i];
+        const sid = a.student_id;
+        let rec = perStudent.get(sid);
+        if (!rec) { rec = { total: 0, miss: 0 }; perStudent.set(sid, rec); }
+        rec.total++;
+        if (a.status === 'absent' || a.status === 'late') rec.miss++;
+      }
+      let chronic = 0;
+      perStudent.forEach((rec) => { if (rec.total > 0 && (rec.miss / rec.total) >= 0.2) chronic++; });
+      snap.chronic_absence_rate = _round1((chronic / perStudent.size) * 100);
+    }
+
+    /* documented composite over the metrics that actually exist in this
+       period (weights renormalized); never a constant. */
+    let wsum = 0, acc = 0;
+    if (snap.average_gpa != null) { acc += 0.4 * (snap.average_gpa / 20) * 100; wsum += 0.4; }
+    if (snap.calendar_rate != null) { acc += 0.4 * snap.calendar_rate; wsum += 0.4; }
+    if (snap.chronic_absence_rate != null) { acc += 0.2 * (100 - snap.chronic_absence_rate); wsum += 0.2; }
+    if (wsum > 0) snap.health_index = _round1(acc / wsum);
+
+    snapshots.push(snap);
+  }
+
+  return {
+    snapshots: snapshots,
+    data_availability: deepFreeze({
+      grade_records: grades.length,
+      attendance_records: attendance.length,
+      discipline_records: discipline.length,
+      periods_available: snapshots.length,
+      derived_from_store: true,
+      fabricated_defaults: false
+    })
+  };
+}
+
 /**
  * ساخت پرونده تاریخی و طولی مدرسه بدون رتبه‌بندی رقابتی (Ipsative Assessment)
  *
@@ -699,5 +861,6 @@ module.exports = {
   calculateSustainableImprovement,
   generateLongitudinalInsights,
   buildLongitudinalSchoolProfile,
-  buildRegionalTrendMap
+  buildRegionalTrendMap,
+  computeSchoolSnapshotsFromRecords
 };

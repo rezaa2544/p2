@@ -118,7 +118,7 @@ const mutations = [
     name: 'M11 برگرداندنِ باگِ flag-2 بازبین (صفحهٔ آخر دوباره همهٔ مدارس با ردیفِ خالی)',
     file: 'route',
     mutate: (s) => s.replace(
-      /const paged = hasMore \|\| \(cursor != null && cursor !== ''\);\n    const list = paged \? schools\.filter\(\(s\) => bySchool\.has\(Number\(s\.id\)\)\) : schools;/,
+      /const paged = hasMore \|\| \(cursor != null && cursor !== ''\);\n {4}const list = paged \? schools\.filter\(\(s\) => bySchool\.has\(Number\(s\.id\)\)\) : schools;/,
       "const list = hasMore ? schools.filter((s) => bySchool.has(Number(s.id))) : schools; /* MUTANT: reviewer flag-2 bug restored */")
   }
 ];

@@ -281,11 +281,20 @@ function enforceCertificationAccessGuard(user, target = {}) {
     return true;
   }
 
+  const targetRegionId = target.region_id != null ? Number(target.region_id) : null;
+
   if (role === 'edu_office') {
-    const userRegion = Number(user.region_id || user.district_id);
-    const targetRegion = target.region_id != null ? Number(target.region_id) : null;
-    if (targetRegion && userRegion !== targetRegion) {
-      throw new Error(`INTELLIGENCE_CERTIFICATION_TENANT_ISOLATION_VIOLATION: دسترسی به منطقه ${targetRegion} برای منطقه ${userRegion} مسدود است`);
+    /* N-04: Number(region_id || district_id) silently collapses an unassigned
+       officer to region 0, and the truthiness test then skips on a falsy
+       target. Resolve the assignment explicitly and fail closed. */
+    const userRegionId = user.region_id != null
+      ? Number(user.region_id)
+      : (user.district_id != null ? Number(user.district_id) : null);
+    if (userRegionId == null) {
+      throw new Error('INTELLIGENCE_CERTIFICATION_TENANT_ISOLATION_VIOLATION: edu_office lacks region_id assignment');
+    }
+    if (targetRegionId != null && targetRegionId !== userRegionId) {
+      throw new Error(`INTELLIGENCE_CERTIFICATION_TENANT_ISOLATION_VIOLATION: دسترسی به منطقه ${targetRegionId} برای منطقه ${userRegionId} مسدود است`);
     }
     return true;
   }
@@ -293,8 +302,14 @@ function enforceCertificationAccessGuard(user, target = {}) {
   const userSchool = Number(user.school_id);
   const targetSchool = target.school_id != null ? Number(target.school_id) : null;
 
-  if (targetSchool && userSchool !== targetSchool) {
+  if (targetSchool != null && userSchool !== targetSchool) {
     throw new Error(`INTELLIGENCE_CERTIFICATION_TENANT_ISOLATION_VIOLATION: دسترسی به مدرسه ${targetSchool} برای کاربر مدرسه ${userSchool} مسدود است`);
+  }
+  /* F4: school-resident roles hold no regional tenant grant — a region-scoped
+     target (region_id without school_id) must never fall through the
+     own-school check. */
+  if (targetRegionId != null && targetSchool == null) {
+    throw new Error(`INTELLIGENCE_CERTIFICATION_TENANT_ISOLATION_VIOLATION: staff of school ${userSchool} cannot access regional scope ${targetRegionId}`);
   }
 
   return true;
@@ -707,7 +722,9 @@ function validateQualityGateStatus(options = {}) {
 function executeEndToEndChain(inputSignal = {}, options = {}) {
   const timestamp = options.timestamp || '2026-09-18T12:00:00.000Z';
   const schoolId = inputSignal.school_id || 101;
-  const regionId = inputSignal.region_id || 1;
+  /* N-35 — null (منطقهٔ نامشخص) را حفظ کن؛ فقط نبودِ کاملِ کلید
+     (undefined) پیش‌فرضِ ۱ می‌گیرد. */
+  const regionId = inputSignal.region_id === undefined ? 1 : inputSignal.region_id;
 
   // ۱. سیگنال خام آموزشی
   const step01_raw = {
@@ -994,7 +1011,11 @@ function generatePhase3ReleaseCertificate(params = {}, options = {}) {
 function runPhase3Certification(params = {}, options = {}) {
   const nowIso = options.timestamp || '2026-09-18T12:00:00.000Z';
   const schoolId = params.schoolId != null ? Number(params.schoolId) : 101;
-  const regionId = params.regionId != null ? Number(params.regionId) : 1;
+  /* N-35 — routeها اکنون صریحاً null (منطقهٔ نامشخص) پاس می‌دهند؛ آن را
+     حفظ کن تا گواهی منطقهٔ غیرواقعی ادعا نکند. پیش‌فرضِ ۱ فقط وقتی است
+     که پارامتر کلاً ارائه نشده باشد (undefined) تا رفتارِ قطعیِ تست‌ها
+     (فراخوانیِ بدون regionId) حفظ شود. */
+  const regionId = params.regionId === undefined ? 1 : params.regionId;
   const academicYear = params.academicYear || '1404-1405';
 
   if (params.user) {

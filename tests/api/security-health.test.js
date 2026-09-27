@@ -24,6 +24,10 @@ process.env.PAYESH_STORE = T_STORE;
 process.env.PAYESH_AUDIT = T_AUDIT;
 process.env.PAYESH_KEY   = T_KEY;
 process.env.PAYESH_DEMO_CODE = '1';
+/* the tenant-policy authority gate requires either a live PostgreSQL authority
+   or an explicit dev override; without this the endpoints return 503 in the
+   in-memory test environment. */
+process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY = '1';
 
 const { server, store } = require(path.join(ROOT, 'server', 'index.js'));
 
@@ -94,9 +98,15 @@ async function run() {
     assert.strictEqual(mgrOwnRes.status, 200, 'Manager accessing own school security health must return 200');
     assert.strictEqual(mgrOwnRes.json.ok, true);
     assert.strictEqual(mgrOwnRes.json.security_status, 'HEALTHY');
+    /* N-12: these fields are now probed from the live runtime instead of
+       being unconditional literals. Assert the probe values the default
+       configuration actually produces (WAF defaults to report mode). */
     assert.strictEqual(mgrOwnRes.json.zero_trust.enabled, true);
     assert.strictEqual(mgrOwnRes.json.zero_trust.policy_engine, 'ACTIVE');
-    assert.strictEqual(mgrOwnRes.json.zero_trust.runtime_protection, 'ENABLED');
+    assert.ok(mgrOwnRes.json.zero_trust.runtime_protection === 'ENABLED' || mgrOwnRes.json.zero_trust.runtime_protection === 'DETECTION_ONLY',
+      'runtime_protection must be a real probe result, not a constant');
+    assert.ok(mgrOwnRes.json.zero_trust_probes, 'zero_trust_probes must be present');
+    assert.strictEqual(mgrOwnRes.json.zero_trust_probes.probe_errors.length, 0, 'security probes must not error');
     assert.strictEqual(mgrOwnRes.json.governance.human_decision_sovereignty, true);
     assert.strictEqual(mgrOwnRes.json.governance.zero_ranking_guarantee, true);
     assert.strictEqual(mgrOwnRes.json.governance.tenant_isolation, true);

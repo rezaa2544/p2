@@ -738,7 +738,7 @@ function commitImport(st){
         var rec = insert('users', { school_id: sid,
           role: st.entity === 'students' ? 'student' : 'teacher',
           full_name: d.full_name, username: freeName(st.entity === 'students' ? 'st' : 'tc'),
-          password: '123456', national_id: d.national_id || null, phone: d.phone || '',
+           national_id: d.national_id || null, phone: d.phone || '',
           active: 1, father_nid: d.father_nid || null, mother_nid: d.mother_nid || null,
           birth_date: d.birth_date || null, gender: d.gender || null,
           subject: d.subject || null, status: 'active', created_at: todayISO() });
@@ -769,7 +769,7 @@ function commitImport(st){
           if(!parent){
             parent = insert('users', { school_id: sid, role: 'parent',
               full_name: pname || (rel + ' ' + d.full_name), username: freeName('pr'),
-              password: '123456', national_id: pnid || null,
+               national_id: pnid || null,
               phone: pphone || d.phone || '',
               active: 1, status: 'active', created_at: todayISO() });
             if(pnid) parentByNid[pnid] = parent;

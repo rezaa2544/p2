@@ -110,13 +110,6 @@ async function firstRecord(req, ent, cookie) {
   return list[0];
 }
 
-/* اولین رکوردِ قابلِ خواندنِ هر مجموعه را برمی‌گرداند */
-async function firstRecord(req, ent, cookie) {
-  const g = await req('GET', ent.path + '?limit=5', null, cookie);
-  const list = g.json && (g.json.data || g.json);
-  if (!Array.isArray(list) || !list.length) return null;
-  return list[0];
-}
 
 /* مقدارِ ذخیره‌شده را از طریقِ لیست می‌خوانیم (attendance/grades مسیرِ
    GET-by-id ندارند، ولی همگی لیست دارند). */

@@ -68,10 +68,27 @@ function createDeleteService({ store, db, markDirty, outbox }) {
        و خطا به فراخواننده انتشار می‌یابد (W7: رول‌بک + throw). */
     if(pgLive && Number.isFinite(delId)
         && typeof db.transaction === 'function' && typeof db.persistOpWithClient === 'function'){
-      await db.transaction(async (client) => {
-        await db.persistOpWithClient(client, { c: collection, t: 'del', id: delId });
-        if (outbox) await outbox.append(evt, client);
-      });
+      /* N-19: REST delete had no version predicate while the sync del path does
+         (db.js `DELETE ... WHERE id=$1 AND version=$2`). Pin the delete on the
+         version this layer actually read, so a concurrent update between read
+         and delete is rejected instead of silently discarding the newer write.
+         Only pinned when the record carries a real positive version (migration
+         013 adds `version` to every application table). */
+      const readVersion = Number(rec.version);
+      const delOp = { c: collection, t: 'del', id: delId, school_id: (rec && rec.school_id != null ? rec.school_id : null) };
+      if (Number.isInteger(readVersion) && readVersion >= 1) delOp.base_version = readVersion;
+      try {
+        await db.transaction(async (client) => {
+          await db.persistOpWithClient(client, delOp);
+          if (outbox) await outbox.append(evt, client);
+        });
+      } catch (txErr) {
+        if (txErr && txErr.code === 'occ_conflict') {
+          return { ok: false, status: 409, code: 'occ_conflict',
+            message: 'رکورد پس از خواندن تغییر کرده است — حذف رد شد (تلاش دوباره)' };
+        }
+        throw txErr;   /* W7: یک خطایِ واقعی، نه تقارنِ نسخه — انتشار همانندِ قبل */
+      }
     }
     /* ۱) نسخه — پیش از بایگانی بالا می‌رود */
     rec.version = evt.version;

@@ -155,8 +155,19 @@ setTimeout(async () => {
       });
       remove('classes',${ctx.cls});
     })()`);
-    assert(!db.users.some(u => u.id === ctx.sA || u.id === ctx.sB), 'کاربران آزمایشی حذف نشدند');
-    assert(!db.classes.some(c => c.id === ctx.cls), 'کلاس آزمایشی حذف نشد');
+    /* N-23 (eslint no-undef — a REAL runtime defect): `db` is a client-side
+       global that only exists inside the jsdom window (W() = win.eval); these
+       assertions ran in the Node scope where `db` is undefined, so the test
+       threw ReferenceError the moment it reached here. Check the leftovers
+       through the same browser context the deletions ran in. */
+    const leftovers = W(`(function(){
+      return {
+        users: db.users.some(function(u){ return u.id === ${ctx.sA} || u.id === ${ctx.sB}; }),
+        classes: db.classes.some(function(c){ return c.id === ${ctx.cls}; })
+      };
+    })()`);
+    assert(!leftovers.users, 'کاربران آزمایشی حذف نشدند');
+    assert(!leftovers.classes, 'کلاس آزمایشی حذف نشد');
   });
 
   await seq;

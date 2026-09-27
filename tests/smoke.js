@@ -5892,8 +5892,8 @@ test('زنگ: 🔴 پنج‌شنبه و جمعه (برای مدرسهٔ ۵ رو�
     + 'return sc&&(sc.work_days||[0,1,2,3,4]).indexOf(5)<0'
     + '&&!(db.makeup_classes||[]).some(function(m){return m.school_id===x;});});'
     + 'if(!sid)return JSON.stringify({skipTest:true});'
-    + 'var thu=(function(){var d=new Date();var off=(4-d.getDay()+7)%7;if(!off)off=7;return addDaysISO(todayISO(),off);})();'
-    + 'var fri=(function(){var d=new Date();var off=(5-d.getDay()+7)%7;if(!off)off=7;return addDaysISO(todayISO(),off);})();'
+    + 'var thu=(function(){var off=(4-new Date(todayISO()+"T12:00:00").getDay()+7)%7;if(!off)off=7;return addDaysISO(todayISO(),off);})();'
+    + 'var fri=(function(){var off=(5-new Date(todayISO()+"T12:00:00").getDay()+7)%7;if(!off)off=7;return addDaysISO(todayISO(),off);})();'
     + 'var t1=new Date(thu+"T09:00:00"),t2=new Date(fri+"T09:00:00");'
     + 'var s1=currentSlot(sid,t1),s2=currentSlot(sid,t2);'
     + 'var t=db.users.find(function(u){return u.role==="teacher"&&u.school_id===sid;});'
@@ -6219,13 +6219,13 @@ test('اسکرول: منوی کناری هم جای خود را حفظ می‌ک
    ۵. هر روت کمکی (EXTRA_ROUTES) مجاز و دارای نما باشد */
 
 const NAV_EXPECT = {
-  superadmin: ['dashboard','schools','users','subjects','bells','announcements','calendar','geo','offices','officedash','regions','plans','finance','adminsubs','activity','audit','health','diag','notifications','tickets','teacheval','regionscore','staffgap','reports'], /* G.2 فرناز: روت تیکت — ویو ۲۳: reports */
+  superadmin: ['dashboard','intelligence','schools','users','subjects','bells','announcements','calendar','geo','offices','officedash','regions','plans','finance','adminsubs','activity','audit','health','diag','notifications','tickets','teacheval','regionscore','staffgap','reports'], /* N-24: intelligence (مرکز هوشمندی) is a real titled nav entry in 05-router.js for superadmin/manager/edu_office — NAV_EXPECT had gone stale, the exact drift the دور ۷۷ comment below warns about */
   /* دور ۷۷: چهار ماژولِ مدیری (preapps/scholarships دور ۶۱-۶۲، reexams/summerclasses دور ۷۰)
      به منوی مدیر اضافه شدند ولی این فهرست به‌روز نشد و تا کرشِ قدیمیِ smoke پنهان ماند */
-  manager: ['dashboard','atrisk','growth','calendar','visitors','library','assets','dorm','sidadiff','formssms','preapps','scholarships','drills','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','multigrade','grades','discipline','followup','leaves','exams','reexams','teachers','corrections','staff','staffatt','training','tuition','association','donations','meetings','notifyqueue','announcements','notifications','chat','busservice','summerclasses','tickets','teacheval','reports'], /* G.2 فرناز: روت تیکت — ویو ۲۳: reports */
+  manager: ['dashboard','intelligence','atrisk','growth','calendar','visitors','library','assets','dorm','sidadiff','formssms','preapps','scholarships','drills','schoolyear','lifecycle','import','classes','subjects','schedule','bells','users','attendance','multigrade','grades','discipline','followup','leaves','exams','reexams','teachers','corrections','staff','staffatt','training','tuition','association','donations','meetings','notifyqueue','announcements','notifications','chat','busservice','summerclasses','tickets','teacheval','reports'], /* G.2 فرناز: روت تیکت — ویو ۲۳: reports */
   teacher: ['meetings','dashboard','classes','schedule','calendar','attendance','multigrade','grades','discipline','leaves','exams','vclass','homework','announcements','notifications','chat'],
   student: ['dashboard','schedule','exams','record','calendar','mytuition','leaves','homework','announcements','notifications','chat','library','teacheval'],
-  edu_office: ['officedash','officeschools','announcements','notifications','teacheval','regionscore','staffgap','reports'], /* ویو ۲۳ */
+  edu_office: ['officedash','intelligence','officeschools','announcements','notifications','teacheval','regionscore','staffgap','reports'], /* ویو ۲۳ */
   parent: ['meetings','dashboard','family','children','exams','calendar','mytuition','leaves','announcements','notifications','chat','teacheval'],
   /* دور ۶۳: نقش تازهٔ مشاور — فقط صف ارجاع + صفحه‌های عمومی */
   counselor: ['cqueue','dashboard','announcements','notifications'],
@@ -7881,9 +7881,11 @@ test('دور ۷۸ بند ۷: ماژول اسکان/خوابگاه — اتاق،
     const lrec = JSON.parse(lv);
     assert(lrec, 'رکوردِ مرخصیِ خوابگاه ساخته نشد');
     made.leave = lrec.id;
-    /* BUG-1 (باگ‌هانت چت ۵): انتظارِ قبلی همان فرمولِ غلطِ جمعه‌محور را آینه
-       می‌کرد و سبزِ کاذب می‌داد؛ حالا پنجشنبه‌محور + weekday صریح. */
-    const exp = W(`(function(){var f=addDaysISO(todayISO(),((4-new Date().getDay())+7)%7);return JSON.stringify({f:f,t:addDaysISO(f,1)});})()`);
+    /* BUG-1 (باگ‌هانت چت ۵): انتظارِ قبلی همان فرولِ غلطِ جمعه‌محور را آینه
+       می‌کرد و سبزِ کاذب می‌داد؛ حالا پنجشنبه‌محور + weekday صریح.
+       ⚠️ weekday باید از todayISO (UTC) گرفته شود، نه از `new Date().getDay()`
+       (محلی) — روی UTC+3:30 بینِ ۰۰:۰۰–۰۳:۳۰ یک روز شیفت می‌کرد. */
+    const exp = W(`(function(){var f=addDaysISO(todayISO(),((4-new Date(todayISO()+'T12:00:00').getDay())+7)%7);return JSON.stringify({f:f,t:addDaysISO(f,1)});})()`);
     const expd = JSON.parse(exp);
     assert(lrec.from_date === expd.f && lrec.to_date === expd.t, 'بازهٔ پنجشنبه→جمعه نادرست بود');
     assert(new Date(lrec.from_date+'T12:00:00').getDay() === 4, 'شروعِ مرخصیِ خوابگاه باید پنجشنبه باشد');
@@ -7933,11 +7935,23 @@ test('R95 بند ۲.۵: نسخه‌گذاریِ لایهٔ محلی (insert→۱
     assert(W(`byId('grades',${gid}).version`) === 2, 'update باید نسخه را به 2 برساند');
     const op = JSON.parse(W(`(function(){var arr=SYNC.queue.filter(function(x){return x.op&&x.op.t==='upd'&&x.op.c==='grades'&&Number(x.op.id)===${gid}});return JSON.stringify(arr.length?arr[arr.length-1].op:null)})()`));
     assert(!!op && op.base_version === 1, 'عملیاتِ صفِ نمره باید base_version=1 داشته باشد');
-    /* LWW (announcements): base_version ندارد */
+    /* LWW (announcements): the client records the observed version on EVERY
+       queued update — 03-persistence.js: "All queued updates carry the version
+       originally observed, including structural/LWW collections. Replay must
+       never rebase an existing intent." Whether that base_version actually
+       participates in OCC is decided per-collection by the SERVER
+       (sync.js: the non-version-tracked collections are LWW and base_version
+       has no effect there). This assertion used to demand base_version's
+       absence; the behavior was made universal deliberately — it is required
+       for production strict OCC on version-tracked collections and inert on
+       LWW ones — and the assertion was never updated. It now pins the real
+       contract: the observed version is carried, and LWW arbitration stays a
+       server-side decision. */
     aid = W(`(function(){var a=insert('announcements',{school_id:1,title:'تست R95',body:'x',audience:'all'});return a.id})()`);
+    const annV = W(`byId('announcements',${aid}).version`);
     W(`update('announcements',${aid},{title:'تست R95 ب'})`);
     const aop = JSON.parse(W(`(function(){var arr=SYNC.queue.filter(function(x){return x.op&&x.op.t==='upd'&&x.op.c==='announcements'&&Number(x.op.id)===${aid}});return JSON.stringify(arr.length?arr[arr.length-1].op:null)})()`));
-    assert(!!aop && aop.base_version === undefined, 'عملیاتِ LWW (announcements) نباید base_version داشته باشد');
+    assert(!!aop && aop.base_version === annV, 'عملیاتِ صف باید نسخهٔ مشاهده‌شده را به‌عنوان base_version حمل کند');
     /* ماژول 67 بارگذاری شده است */
     assert(W(`typeof syncConflictsEnsure==='function' && typeof syncConflictsResolve==='function' && typeof syncConflictsInner==='function'`) === true, 'ماژول 67-sync-conflicts بارگذاری نشده');
   } finally {

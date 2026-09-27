@@ -34,7 +34,7 @@ if (MUT) {
   const mangled = path.join(__dirname, '..', 'server', 'sync.p06-mutated.js');
   const muts = {
     M1: [/const uRec = undo \? undo\.items\.push\(\{ k: 'rec'[\s\S]*?\}\) - 1 : -1;/g, 'const uRec = -1;'],
-    M2: [/    pruneProcessedUids\(\);   \/\* P0-6[^*]*\*\//, ''],
+    M2: [/ {4}pruneProcessedUids\(\); {3}\/\* P0-6[^*]*\*\//, ''],
     M3: [/mirrorAppend\(op\.c, data\);/, 'store[op.c].push(data);'],
     M5: [/&& u\.after && JSON\.stringify\(r\) === JSON\.stringify\(u\.after\)/, ''],
     M6: [/if\(Array\.isArray\(store\.__deleted_records\) && store\.__deleted_records\.length > 5000\)\{[\s\S]*?\}/, ''],
@@ -45,14 +45,14 @@ if (MUT) {
     M8: [/if\(pgHas\) store\[u\.c\]\.push\(u\.rec\);/, 'store[u.c].push(u.rec);'],
     M9: [/dr\.indexOf\(u\.ref\)/, 'dr.findIndex((x) => x && x.id === u.id)'],
     /* P1-2: */
-    N1: [/    \/\* P1-2 \(Wave 18 §۵-۳\): قطعِ آینه از مسیرِ نوشتن در PG-live[\s\S]*?\n    \}\n/, ''],
+    N1: [/ {4}\/\* P1-2 \(Wave 18 §۵-۳\): قطعِ آینه از مسیرِ نوشتن در PG-live[\s\S]*?\n {4}\}\n/, ''],
     N2: [/if\(u\.k !== 'pop' \|\| safeSet\.indexOf\(u\.c\) !== -1\) continue;/, "if(u.k !== 'pop') continue;"],
-    N3: [/    \/\* P1-2: اول TTL[\s\S]*?\n    \}/, ''],
+    N3: [/ {4}\/\* P1-2: اول TTL[\s\S]*?\n {4}\}/, ''],
     /* بازبین دور ۱ #124: */
     N4: [/(function uidDedupTtlMs\(\)\{)[\s\S]*?if\(!\(db && typeof db\.isPostgres === 'function' && db\.isPostgres\(\)\)\) return 0;/, '$1'],
     N5: [/uPush\('sync_conflicts', mirrorAppend\('sync_conflicts', cf\)\);/, 'store.sync_conflicts.push(cf);'],
-    N6: [/      if\(undo && undo\.items\.length\) await rollbackUndo\(\);\n/, ''],
-    N7: [/idx: store\[c\]\.length - 1,\n            after: JSON\.parse\(JSON\.stringify\(row\)\) \}\);/, 'idx: store[c].length - 1 });'],
+    N6: [/ {6}if\(undo && undo\.items\.length\) await rollbackUndo\(\);\n/, ''],
+    N7: [/idx: store\[c\]\.length - 1,\n {12}after: JSON\.parse\(JSON\.stringify\(row\)\) \}\);/, 'idx: store[c].length - 1 });'],
   };
   if (!muts[MUT]) { console.error('جهش ناشناخته: ' + MUT); process.exit(2); }
   fs.writeFileSync(mangled, src.replace(muts[MUT][0], muts[MUT][1]));

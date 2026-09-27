@@ -23,7 +23,7 @@ const SUITE = 'tests/national-dataset-integrity.js';
 const mutations = [
   {
     name: 'تولیدِ enrollments حذف شود (فایل نیست ⇒ N1/N2 قرمز)',
-    mutate: (s) => s.replace(/\/\* 7\) enrollments[\s\S]*?log\('  enrollments ' \+ done\.enrollments\.rows\);\n\}\n/, '')
+    mutate: (s) => s.replace(/\/\* 7\) enrollments[\s\S]*?log\(' {2}enrollments ' \+ done\.enrollments\.rows\);\n\}\n/, '')
   },
   {
     name: 'نسبتِ اقساط خراب شود (۲ به‌جای ۳ ولی stats همان ۳ را ادعا کند ⇒ N2/N7/N9 قرمز)',

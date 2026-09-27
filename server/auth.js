@@ -200,8 +200,19 @@ function createAuth(ctx){
     return crypto.createHash('sha256').update(ip + '|' + ua).digest('hex').slice(0, 16);
   }
 
+  /* N-08: the OTP is a low-entropy secret (6 digits ≈ 20 bits). A plain
+     sha256 of it — persisted in otp.json as codes[phone].h — could be
+     brute-forced or rainbow-tabled offline the moment that file leaks,
+     because the digest needs no server-held secret to verify. HMAC with a
+     server pepper makes the hash unverifiable without the pepper, so a
+     leaked store yields nothing. A dedicated PAYESH_OTP_PEPPER wins;
+     otherwise the (already secret, per-instance) JWT signing key stands in. */
+  const OTP_PEPPER = (process.env.PAYESH_OTP_PEPPER || '').trim() || JWT_SECRET;
+  if(!OTP_PEPPER){
+    throw new Error('createAuth: no OTP pepper available — set PAYESH_OTP_PEPPER or pass JWT_SECRET');
+  }
   function hashCode(code, phone){
-    return crypto.createHash('sha256').update(code + '|' + phone).digest('hex');
+    return crypto.createHmac('sha256', OTP_PEPPER).update(code + '|' + phone).digest('hex');
   }
   /* A-35 — شکلِ کاننیکالِ تلفن برایِ کلیدهایِ احراز (cooldown/codes/rate):
      فرمت‌هایِ +98/0098/صفرِ پیش‌گیرنده یک‌کاشته می‌شوند تا یک تلفنِ واقعی
@@ -488,11 +499,29 @@ let rLi, rLp;
     }
     /* حقِ فراموشی (gdpr.js): همان پاک‌سازی + ابطالِ همهٔ نشست‌ها. */
     const purged = gdpr.eraseUserData(store, uid);
-    await gdpr.eraseUserSessions(uid, s.jti, SESSION_TTL_S);
-    audit('account_deleted', { user_id: uid, role: s.role, school_id: s.school_id, purged: purged, ip: clientIp(req), summary: 'حذف کامل حساب کاربری: ' + uid + ' (' + s.role + ')' });
+    /* N-07: eraseUserData has already mutated the store in memory. The
+       session revocation below talks to Redis and intentionally throws
+       REVOCATION_UNAVAILABLE when Redis is down (A-22 fail-closed). If that
+       throw propagates, ctx.markDirty() is never reached and the erasure is
+       never persisted to payesh.json — the user's PII silently returns on
+       restart while the API returns 500. Persist the erasure first, then
+       surface any revocation failure as a degraded-but-durable result. */
+    let revocationFailed = null;
+    try {
+      await gdpr.eraseUserSessions(uid, s.jti, SESSION_TTL_S);
+    } catch (revErr) {
+      revocationFailed = revErr.code || String(revErr.message || revErr);
+      try { audit('gdpr_revocation_degraded', { user_id: uid, code: revocationFailed, summary: 'erasure persisted; session revocation unavailable' }); } catch (_) {}
+    }
     if(ctx.markDirty) ctx.markDirty();
     /* نشستِ فعلی هم همین حالا می‌میرد (cookie پاک) */
     res.setHeader('Set-Cookie', SESSION_NAME + '=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
+    if (revocationFailed) {
+      /* The data erasure is durable; only the distributed session kill is
+         pending. Report it honestly rather than failing the whole delete. */
+      return sendJson(res, 200, { ok: true, deleted: true, warning: 'session_revocation_unavailable', revocation_code: revocationFailed });
+    }
+    audit('account_deleted', { user_id: uid, role: s.role, school_id: s.school_id, purged: purged, ip: clientIp(req), summary: 'حذف کامل حساب کاربری: ' + uid + ' (' + s.role + ')' });
     sendJson(res, 200, { ok: true, deleted: true });
   }
 

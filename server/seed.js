@@ -11,6 +11,18 @@
    => the server's identity base is EXACTLY the world the client shows
       (same records, same ids) — no duplicated data model, no drift.
 
+   PUB-01 — read this before deploying anything built from this file:
+     the dataset is DETERMINISTIC and reproducible from the public repo.
+     Every phone, national_id and relationship in it can be recomputed by
+     anyone who reads src/js/02-demo-data.js. That is intentional for the
+     offline demo contract (client and server must show the same world),
+     and it is exactly why this dataset must NEVER serve as the identity
+     base of a real deployment: it is public knowledge by construction.
+     A production deployment seeds its own data and does not ship this
+     file's output. The generator no longer emits a `password` field at
+     all (the product has no password concept — docs/PLAN_PHONE_AUTH.md),
+     and index.js strips any residual one at load.
+
    Usage:  node server/seed.js        (writes server/data/payesh.json)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
@@ -27,6 +39,13 @@ function saveDb(db) {
   if (!db || !Array.isArray(db.users) || db.users.length < 10) {
     throw new Error('db not ready or invalid user count');
   }
+  /* PUB-01: refuse to freeze a store that still carries a password field —
+     the generator no longer emits one, so this is a hard guard against a
+     regression sneaking a universal credential back into the dataset. */
+  const offenders = db.users.filter((u) => u && Object.prototype.hasOwnProperty.call(u, 'password'));
+  if (offenders.length) {
+    throw new Error('PUB-01: ' + offenders.length + ' generated user record(s) carry a `password` field — the product has no password concept; refusing to write a store with a universal credential');
+  }
   fs.mkdirSync(DATA_DIR, { recursive: true });
   const tmp = OUT + '.tmp';
   /* Wave 24 (KPI-3): قالبِ ASCII-escaped — پارسِ بوتِ سرور سریع‌تر */
@@ -39,6 +58,8 @@ function saveDb(db) {
     ' | schools: ' + db.schools.length +
     ' | classes: ' + db.classes.length +
     ' | parent_links: ' + db.parent_links.length);
+  console.log('   ⚠️ PUB-01: this dataset is deterministic and reproducible from the public repo —');
+  console.log('      demo data only; never the identity base of a real deployment.');
 }
 
 function seedWithVm() {

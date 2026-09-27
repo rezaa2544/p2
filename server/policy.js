@@ -350,7 +350,20 @@ function inScope(session, store, coll, recId, data) {
       }
       return schoolInOfficeScope(store, u, sid);
     }
-    return true; /* بقیه: اختیارِ بین‌مدرسه‌ای که مدل داده است */
+    /* N-34 — کالکشن‌هایِ خارج از EO_SCOPE_GATED: «اختیارِ بین‌مدرسه‌ای»
+       یعنی مدارسِ داخلِ هندسهٔ دفتر، نه هر مدرسه‌ای در کشور. قبلاً اینجا
+       یک return true بی‌قیدوشرط بود — یعنی یک ادارهٔ منطقه‌ای می‌توانست
+       رکوردِ مدرسه‌ای خارج از منطقهٔ خودش را بنویسد. مدلِ مجوز
+       (authz/write-perms) به edu_office اجازهٔ نوشتن فقط در همان هفت
+       کالکشنِ gated را می‌دهد، پس این مسیر در عمل فقط برای کالکشن‌هایی
+       طی می‌شود که اداره اصلاً مجازِ نوشتن درشان نیست — fail-closed درست
+       است. آینهٔ readOk بالا: school_id معتبر + در محدودهٔ دفتر. */
+    const tNs = rec || data || {};
+    const sidNs = tNs.school_id != null ? tNs.school_id
+      : (tNs.user_id != null ? (((store.users) || []).find((x) => Number(x.id) === Number(tNs.user_id)) || {}).school_id : null);
+    if (sidNs != null) return schoolInOfficeScope(store, u, sidNs);
+    if (tNs.office_id != null) return Number(tNs.office_id) === Number(u.office_id);
+    return false; /* بی‌مهارِ حل‌نشدنی ⇒ رد */
   }
   /* manager/counselor/driver و بقیه: سطحِ مدرسه — با رشتهٔ student برای
      مجموعه‌های بی‌school_id (R96)؛ بی‌مهارِ قابل‌حل ⇒ رد (fail-closed). */

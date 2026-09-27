@@ -165,6 +165,29 @@ const {
   ALLOWED_WEIGHTS
 } = require('../infrastructure/phase6-canary-engine');
 
+/* N-26 — گاردِ مشترکِ دامنهٔ استانی برای مسیرهایِ نوشتنِ پایلوت.
+   قبل از این، province_idیِ بدنه بدونِ هیچ مقایسه‌ای با منطقهٔ بازیگر به
+   لایهٔ زیرین پاس داده می‌شد (و آن لایه فقط وقتی region_id حقیقت‌دار بود
+   مقایسه می‌کرد — یعنی یک ادارهٔ منطقه‌ای می‌توانست استانی در منطقهٔ دیگر
+   را فعال/تغییر دهد). fail-closed: superadmin هر استانی؛ edu_office فقط
+   استانِ هم‌منطقه، و نبودِ region_id یعنی *هیچ* استانی. */
+function provincialScopeViolation(user, provinceId) {
+  const target = getProvincialPilotById(provinceId);
+  if (!target) {
+    return {
+      status: 404,
+      body: { ok: false, code: 'not_found', error_code: PILOT_SCALING_ERRORS.PILOT_SCOPE_VIOLATION, message: 'استان موردنظر در رجیستری پایلوت ملی یافت نشد' }
+    };
+  }
+  if (user.role === 'edu_office' && (!user.region_id || user.region_id !== target.region_id)) {
+    return {
+      status: 403,
+      body: { ok: false, code: 'forbidden', error_code: PILOT_SCALING_ERRORS.PILOT_SCOPE_VIOLATION, message: 'این عملیات فقط برای استان‌های هم‌منطقهٔ اداره مجاز است' }
+    };
+  }
+  return null;
+}
+
 function createSystemRoutes(ctx) {
   const store = ctx.store || {};
   const db = ctx.db;
@@ -671,8 +694,14 @@ function createSystemRoutes(ctx) {
           zero_trust: {
             enabled: snapshot.zero_trust.enabled,
             policy_engine: snapshot.zero_trust.policy_engine,
-            runtime_protection: snapshot.zero_trust.runtime_protection
+            runtime_protection: snapshot.zero_trust.runtime_protection,
+            identity_verification: snapshot.zero_trust.identity_verification,
+            session_protection: snapshot.zero_trust.session_protection,
+            access_boundary: snapshot.zero_trust.access_boundary
           },
+          /* N-12: expose the live probes so consumers can see what was
+             actually verified rather than trusting asserted literals. */
+          zero_trust_probes: snapshot.zero_trust_probes,
           governance: {
             human_decision_sovereignty: snapshot.governance.human_decision_sovereignty,
             zero_ranking_guarantee: snapshot.governance.zero_ranking_guarantee,
@@ -1069,7 +1098,7 @@ function createSystemRoutes(ctx) {
       };
     }
 
-    const allowedRoles = ['superadmin', 'admin', 'edu_office', 'manager'];
+    const allowedRoles = ['superadmin', 'edu_office', 'manager'];
     if (!allowedRoles.includes(user.role)) {
       return {
         status: 403,
@@ -1079,8 +1108,11 @@ function createSystemRoutes(ctx) {
 
     await refreshProvincialFromSoT();
     let regionFilter = searchParams.get('region_id') || undefined;
-    if (user.role === 'edu_office' && user.region_id) {
-      regionFilter = String(user.region_id);
+    if (user.role === 'edu_office') {
+      /* N-26 — fail-closed: اداره فقط منطقهٔ خودش را می‌بیند. نبودِ region_id
+         دیگر به معنای «دیدنِ همه» نیست؛ به یک مقدارِ غیرِ منطبق مهار می‌شود
+         تا نماهای ملی به‌جای نمایِ منطقه نشت نکنند. */
+      regionFilter = user.region_id ? String(user.region_id) : '__no_region__';
     }
 
     const capacity = getProvincialCapacityOverview(regionFilter);
@@ -1109,13 +1141,22 @@ function createSystemRoutes(ctx) {
       };
     }
 
-    const allowedRoles = ['superadmin', 'admin', 'edu_office'];
+    const allowedRoles = ['superadmin', 'edu_office'];
     if (!allowedRoles.includes(user.role)) {
       return {
         status: 403,
         body: { ok: false, code: 'forbidden', error_code: PILOT_SCALING_ERRORS.PILOT_SCOPE_VIOLATION, message: 'نقش کاربر مجاز به فعال‌سازی پایلوت استانی نیست' }
       };
     }
+
+    /* N-26 — گاردِ مشترکِ دامنهٔ استانی (fail-closed). مسیرِ GET همین
+       endpointregionFilter را به منطقهٔ بازیگر می‌بندد، ولی مسیرهایِ *نوشتن*
+       province_idیِ بدنه را مستقیماً پاس می‌دادند. لایهٔ زیرین هم فقط وقتی
+       مقایسه می‌کند که operator.region_id حقیقت‌دار باشد (fail-open): یک ادارهٔ
+       بدونِ region_id می‌توانست هر استانی را فعال کند. superadmin هر استانی؛
+       edu_office فقط استانِ هم‌منطقهٔ خودش، و نبودِ region_id یعنی *هیچ* استانی. */
+    const scopeErr = provincialScopeViolation(user, body && body.province_id);
+    if (scopeErr) return scopeErr;
 
     try {
       assertNoZeroRanking(body);
@@ -1171,13 +1212,18 @@ function createSystemRoutes(ctx) {
       };
     }
 
-    const allowedRoles = ['superadmin', 'admin', 'edu_office'];
+    const allowedRoles = ['superadmin', 'edu_office'];
     if (!allowedRoles.includes(user.role)) {
       return {
         status: 403,
         body: { ok: false, code: 'forbidden', error_code: PILOT_SCALING_ERRORS.PILOT_SCOPE_VIOLATION, message: 'نقش کاربر مجاز به تنظیم ترافیک پایلوت نیست' }
       };
     }
+
+    /* N-26 — همان گاردِ دامنهٔ استانیِ مسیرِ فعال‌سازی: updateProvincialTrafficRollout
+       هیچ گاردِ منطقه‌ایِ خودی ندارد، پس اینجا fail-closed بسته می‌شود. */
+    const scopeErr = provincialScopeViolation(user, body && body.province_id);
+    if (scopeErr) return scopeErr;
 
     try {
       assertNoZeroRanking(body);
@@ -1824,8 +1870,21 @@ function createSystemRoutes(ctx) {
    * Phase 5 Step 07 (P2-NI-05): رصد و اعتبارسنجی تلطیف بارهای انفجاری نوشت (Outbox Smoothing)
    */
   async function nationalWriteSmoothing(req, searchParams) {
-    const user = await authenticateSysadmin(req);
-    if (!user) return { status: 401, body: { ok: false, code: 'UNAUTHORIZED' } };
+    /* N-23 (eslint no-undef — a REAL runtime defect): this called
+       authenticateSysadmin(req), a helper that does not exist anywhere in the
+       server, so the endpoint threw ReferenceError on every request. Every
+       sibling handler in this file reads the already-authenticated caller
+       from req.user (populated by the JWT middleware) — same here. The report
+       is superadmin-only: it exposes and SIMULATES national outbox pressure
+       (simulateBurst is a what-if model, not a real write), so a role gate is
+       the right call, not an imaginary sysadmin auth helper. */
+    const user = req.user;
+    if (!user) {
+      return { status: 401, body: { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' } };
+    }
+    if (user.role !== 'superadmin') {
+      return { status: 403, body: { ok: false, code: 'forbidden', message: 'گزارش تلطیف بار نوشت ملی تنها برای superadmin در دسترس است' } };
+    }
 
     const engine = getNationalWriteSmoothingEngine();
     const metrics = engine.getMetrics();

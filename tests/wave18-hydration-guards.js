@@ -109,7 +109,7 @@ function chk(name, cond, detail){
                [true,{mirror_incomplete:false},true],[true,{mirror_incomplete:true},false]];
     for (const [pg,h,want] of m) if (db.shouldPersistMirrorFile(pg,h) !== want) process.exit(1);
     process.exit(0);`;
-  function kill(tag, from, to){
+  const kill = (tag, from, to) => {
     const src = fs.readFileSync(DB, 'utf8');
     if (src.indexOf(from) < 0) { chk('M:' + tag, false, 'الگوی جهش پیدا نشد'); return; }
     fs.writeFileSync(TMPDB, src.replace(from, to));

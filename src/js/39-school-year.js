@@ -340,7 +340,7 @@ function preConfirm(sid, preId){
     var uname = 'st' + nid + String(Date.now()).slice(-4);
     sidStu = insert('users', {
       school_id: sid, role: 'student', full_name: name,
-      username: uname, password: '123456', national_id: nid || null,
+      username: uname,  national_id: nid || null,
       phone: pe.phone || null, grade_level: Number(pe.grade || 0) || null,
       field: pe.field || null, status: 'active', active: 1,
       created_at: todayISO() }).id;

@@ -585,6 +585,17 @@ async function sendBatch(batch){
     if(raw.status < 300){
       return (raw.body && raw.body.results) || [];
     }
+    /* N-10: 503 sync_backpressure_unavailable = سرور نمی‌تواند دسته را اکنون
+       بپذیرد چون محدودکننده‌اش (Redis) در دسترس نیست — گذرا، نه خطایِ op و نه
+       dead-letter. این شاخه پیش از throw عمومیِ ۵xx باید همین قراردادِ 429 را
+       اجرا کند وگرنه دسته پس از ۵ تلاش بی‌جهت DLQ می‌شود. */
+    if(raw.status === 503 && raw.body && raw.body.code === 'sync_backpressure_unavailable'){
+      const ra = Math.max(0, Number(raw.body.retry_after_s) || 0);
+      const e = new Error('سرور زیر فشار است (429)');
+      e.code = 'sync_backpressure';
+      e.retryAfterS = ra;
+      throw e;
+    }
     if(raw.status >= 500) throw new Error('خطای سرور ' + raw.status + ' در ' + SYNC.serverUrl);
     const code = (raw.body && raw.body.code) || 'http_' + raw.status;
     /* 401 = نشستِ ناکام — گذرا؛ بعد از ورودِ دوباره دوباره تلاش می‌شود */

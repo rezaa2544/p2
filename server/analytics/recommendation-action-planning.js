@@ -122,6 +122,12 @@ function enforceRecommendationAccessGuard(requester, targetEntity, options = {})
     if (targetSchoolId != null && userSchoolId !== targetSchoolId) {
       throw new Error(`RECOMMENDATION_TENANT_ISOLATION_VIOLATION: manager of school ${userSchoolId} cannot access actions of school ${targetSchoolId}`);
     }
+    /* F4: a school manager holds no regional tenant grant — a region-scoped
+       target (region_id without school_id) must never fall through the
+       own-school check. */
+    if (targetRegionId != null && targetSchoolId == null) {
+      throw new Error(`RECOMMENDATION_TENANT_ISOLATION_VIOLATION: manager of school ${userSchoolId} cannot access regional scope ${targetRegionId}`);
+    }
     return true;
   }
 
@@ -133,6 +139,12 @@ function enforceRecommendationAccessGuard(requester, targetEntity, options = {})
     }
     if (targetSchoolId != null && userSchoolId !== targetSchoolId) {
       throw new Error(`RECOMMENDATION_TENANT_ISOLATION_VIOLATION: counselor of school ${userSchoolId} cannot access school ${targetSchoolId}`);
+    }
+    /* F4: a counselor holds no regional tenant grant — a region-scoped target
+       (region_id without school_id) must never fall through the own-school
+       check. */
+    if (targetRegionId != null && targetSchoolId == null) {
+      throw new Error(`RECOMMENDATION_TENANT_ISOLATION_VIOLATION: counselor of school ${userSchoolId} cannot access regional scope ${targetRegionId}`);
     }
     return true;
   }

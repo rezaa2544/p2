@@ -28,7 +28,13 @@ const SYNC_PATH = process.env.PAYESH_SYNC_PATH || path.join(ROOT, 'server/sync.j
 
 /* ─────────────────────────── ابزارهایِ عمومی ─────────────────────── */
 function allFiles(){ return fs.readdirSync(SRC).filter(f => f.endsWith('.js')).sort(); }
-const readLines = f => fs.readFileSync(path.join(SRC, f), 'utf8').split('\n');
+/* N-02/N-13: normalize CRLF → LF at read time. The container-range scanners
+   below compare lines with exact `=== '};'` / `=== '  };'`, and a checked-out
+   working tree on Windows carries CRLF, so those comparisons never matched,
+   zero action containers were found and the gate reported "0 actions" while
+   still printing a green "full match". Strip \r once, centrally, so every
+   exact comparison in this tool sees LF-normalized text. */
+const readLines = f => fs.readFileSync(path.join(SRC, f), 'utf8').replace(/\r\n/g, '\n').split('\n');
 
 /* ─────────────────── نقشهٔ تابع‌هایِ نام‌دارِ کلاینت ─────────────── */
 function buildFunctionMap(){

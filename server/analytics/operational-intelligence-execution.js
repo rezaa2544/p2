@@ -108,22 +108,38 @@ function enforceExecutionAccessGuard(user, target = {}) {
     return true;
   }
 
+  const targetRegionId = target.region_id != null ? Number(target.region_id) : null;
+
   // نقش‌های اداری منطقه
   if (role === 'edu_office') {
-    const userRegion = Number(user.region_id || user.district_id);
-    const targetRegion = target.region_id != null ? Number(target.region_id) : null;
-    if (targetRegion && userRegion !== targetRegion) {
-      throw new Error(`OPERATIONAL_EXECUTION_TENANT_ISOLATION_VIOLATION: دسترسی به منطقه ${targetRegion} برای منطقه ${userRegion} غیرمجاز است`);
+    /* N-04: Number(region_id || district_id) silently collapses an unassigned
+       officer to region 0, and the truthiness test then skips on a falsy
+       target. Resolve the assignment explicitly and fail closed — an officer
+       with no regional grant gets nothing. */
+    const userRegionId = user.region_id != null
+      ? Number(user.region_id)
+      : (user.district_id != null ? Number(user.district_id) : null);
+    if (userRegionId == null) {
+      throw new Error('OPERATIONAL_EXECUTION_TENANT_ISOLATION_VIOLATION: edu_office lacks region_id assignment');
+    }
+    if (targetRegionId != null && targetRegionId !== userRegionId) {
+      throw new Error(`OPERATIONAL_EXECUTION_TENANT_ISOLATION_VIOLATION: دسترسی به منطقه ${targetRegionId} برای منطقه ${userRegionId} غیرمجاز است`);
     }
     return true;
   }
 
-  // نقش‌های مقیم مدرسه (مدیر، معاون، مشاور، معلم)
+  // نقش‌های مقیم مدرسه (مدیر، معون، مشاور، معلم)
   const userSchool = Number(user.school_id);
   const targetSchool = target.school_id != null ? Number(target.school_id) : null;
 
-  if (targetSchool && userSchool !== targetSchool) {
+  if (targetSchool != null && userSchool !== targetSchool) {
     throw new Error(`OPERATIONAL_EXECUTION_TENANT_ISOLATION_VIOLATION: دسترسی به مدرسه ${targetSchool} برای مدرسه ${userSchool} غیرمجاز است`);
+  }
+  /* F4: school-resident roles hold no regional tenant grant — a region-scoped
+     target (region_id without school_id) must never fall through the
+     own-school check. */
+  if (targetRegionId != null && targetSchool == null) {
+    throw new Error(`OPERATIONAL_EXECUTION_TENANT_ISOLATION_VIOLATION: staff of school ${userSchool} cannot access regional scope ${targetRegionId}`);
   }
 
   return true;
@@ -516,28 +532,19 @@ function buildExecutionDashboard(params = {}) {
   }
 
   let tasks = [];
+  let tasksSource = 'none';
   if (Array.isArray(params.tasks)) {
     tasks = params.tasks;
+    tasksSource = 'caller_tasks';
   } else if (Array.isArray(params.workflows)) {
     for (const wf of params.workflows) {
       if (Array.isArray(wf.tasks)) tasks.push(...wf.tasks);
     }
-  } else {
-    // نمونه استاندارد پیش‌فرض
-    const defaultWorkflow = createExecutionWorkflow({
-      schoolId,
-      regionId,
-      approvedDecision: {
-        decision_id: `DEC-SCH${schoolId}-01`,
-        title: 'طرح تقویت انگیزش تحصیلی پایه نهم',
-        domain: 'ACADEMIC',
-        urgency: 'WEEKLY',
-        assigned_role: 'manager'
-      },
-      options
-    });
-    tasks = defaultWorkflow.tasks;
+    tasksSource = 'caller_workflows';
   }
+  /* N-03: with neither tasks nor workflows supplied, the dashboard previously
+     synthesized a default intervention workflow and counted its invented
+     tasks as real activity. It now reports an empty board instead. */
 
   // شمارش بر مبنای وضعیت
   const tasksByState = {
@@ -577,7 +584,9 @@ function buildExecutionDashboard(params = {}) {
   }
 
   const totalTasks = tasks.length;
-  const complianceRate = totalTasks > 0 ? Number((((totalTasks - breachedCount) / totalTasks) * 100).toFixed(1)) : 100.0;
+  /* N-03: zero tasks is NOT 100% SLA compliance — reporting a perfect score
+     for an empty board invented a metric. null means "no tasks to measure". */
+  const complianceRate = totalTasks > 0 ? Number((((totalTasks - breachedCount) / totalTasks) * 100).toFixed(1)) : null;
 
   const activeBlockers = detectExecutionBlockers(tasks, options);
 
@@ -585,8 +594,14 @@ function buildExecutionDashboard(params = {}) {
     school_id: schoolId,
     region_id: regionId,
     academic_year: academicYear,
-    total_workflows: Array.isArray(params.workflows) ? params.workflows.length : 1,
+    total_workflows: Array.isArray(params.workflows) ? params.workflows.length : 0,
     total_tasks: totalTasks,
+    data_availability: {
+      tasks_supplied: totalTasks,
+      task_source: tasksSource,
+      derived_from_store: totalTasks > 0,
+      fabricated_defaults: false
+    },
     tasks_by_state: tasksByState,
     sla_summary: {
       on_track_count: onTrackCount,

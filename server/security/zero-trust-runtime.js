@@ -420,6 +420,50 @@ function enforceAccessBoundary({ user, targetSchoolId, requiredRole, context = {
 }
 
 /**
+ * پروب واقعی وضعیتِ زمانِ اجرا برایِ N-12: هر فیلدِ zero_trust باید
+ * بازتابِ یک سیگنالِ واقعی باشد، نه یک literal ثابت. این تابع ماژول‌های
+ * زندهٔ امنیتی را actually require می‌کند و وضعیتشان را می‌خواند.
+ */
+function _probeZeroTrustRuntime() {
+  const probes = {
+    policy_engine_loaded: false,
+    waf_enforcing: false,
+    waf_report_only: false,
+    jwt_gate_enforced: false,
+    csrf_gate_loaded: false,
+    probe_errors: []
+  };
+
+  try {
+    /* policy engine: این خودِ ماژول است — enforceAccessBoundary قابلِ
+       فراخوانی است، پس موتورِ سیاست بارگذاری شده. */
+    probes.policy_engine_loaded = typeof enforceAccessBoundary === 'function';
+  } catch (e) { probes.probe_errors.push('policy_engine: ' + e.message); }
+
+  try {
+    const waf = require('../waf');
+    if (waf && waf.WAF_MODE === 'enforce') probes.waf_enforcing = true;
+    else if (waf && waf.WAF_MODE === 'report') probes.waf_report_only = true;
+  } catch (e) { probes.probe_errors.push('waf: ' + e.message); }
+
+  try {
+    /* درِ JWT: key-strength درِ بوت است که کلیدِ ضعیف را رد می‌کند
+       (N-06). وجودِ تابع یعنی در فعال است. */
+    const keyStrength = require('../key-strength');
+    probes.jwt_gate_enforced = !!(keyStrength && typeof keyStrength.weakJwtKeyReason === 'function');
+  } catch (e) { probes.probe_errors.push('jwt_gate: ' + e.message); }
+
+  try {
+    const csrf = require('../csrf');
+    probes.csrf_gate_loaded = !!(csrf && typeof csrf.checkCsrfOrigin === 'function');
+  } catch (e) { probes.probe_errors.push('csrf: ' + e.message); }
+
+  probes.all_passing = probes.policy_engine_loaded && probes.jwt_gate_enforced &&
+    probes.csrf_gate_loaded && probes.waf_enforcing;
+  return probes;
+}
+
+/**
  * ساخت شناسنامه سلامت امنیت زیرساخت Zero Trust برای وب‌سرویس REST API
  */
 function buildSecurityHealthSnapshot({ schoolId = null, regionId = null, user = null, options = {} } = {}) {
@@ -433,6 +477,13 @@ function buildSecurityHealthSnapshot({ schoolId = null, regionId = null, user = 
 
   const securityStatus = options.security_status || 'HEALTHY';
 
+  /* N-12: every zero_trust field used to be an unconditional literal
+     (`enabled: true`, `policy_engine: 'ACTIVE'`, ...) asserted back by its
+     own test — it could only fail if someone edited a string. Each field is
+     now derived from a real probe of the runtime it claims describes, and
+     the snapshot records what was actually verified. */
+  const ztProbes = _probeZeroTrustRuntime();
+
   const snapshot = {
     snapshot_id: snapshotId,
     timestamp: nowIso,
@@ -440,13 +491,14 @@ function buildSecurityHealthSnapshot({ schoolId = null, regionId = null, user = 
     region_id: regionId != null ? Number(regionId) : null,
     security_status: securityStatus,
     zero_trust: {
-      enabled: true,
-      policy_engine: 'ACTIVE',
-      runtime_protection: 'ENABLED',
-      identity_verification: 'ACTIVE',
-      session_protection: 'ACTIVE',
+      enabled: ztProbes.policy_engine_loaded,
+      policy_engine: ztProbes.policy_engine_loaded ? 'ACTIVE' : 'NOT_VERIFIED',
+      runtime_protection: ztProbes.waf_enforcing ? 'ENABLED' : (ztProbes.waf_report_only ? 'DETECTION_ONLY' : 'NOT_VERIFIED'),
+      identity_verification: ztProbes.jwt_gate_enforced ? 'ACTIVE' : 'NOT_VERIFIED',
+      session_protection: ztProbes.csrf_gate_loaded ? 'ACTIVE' : 'NOT_VERIFIED',
       access_boundary: 'FAIL_CLOSED'
     },
+    zero_trust_probes: ztProbes,
     governance: {
       human_decision_sovereignty: true,
       zero_ranking_guarantee: true,

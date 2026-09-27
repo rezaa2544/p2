@@ -24,9 +24,14 @@ const SCHOOL_DEFS=[
   ['دبستان و متوسطه اندیشه','AN-106','متوسطه اول','دخترانه',[],'عادی',{has_tuition:0,has_dorm:0,has_iep:0,has_workshop:0,has_multigrade:0,has_second_term_exam:1}]];
 
 let db, ids={};
-/* ستونِ password: آرشیوی — محصول رمز عبور ندارد (ورود فقط با تلفن؛ 📄 docs/PLAN_PHONE_AUTH.md).
-   مقدار ثابت '123456' فقط پرکنندهٔ دمو است و در هیچ جایِ ورود استفاده نمی‌شود.
-   (TODOی bcrypt که اینجا بود، با حذفِ مفهومِ رمز از محصول بی‌کاربرد شده و در دور ۷۸ پاک شد.) */
+/* ستونِ password: حذف‌شده (PUB-01) — محصول رمز عبور ندارد (ورود فقط با تلفن؛
+   📄 docs/PLAN_PHONE_AUTH.md، تصمیمِ قفل‌شدهٔ ۲۰۲۶-۰۹-۰۵). این فیلد پیش از این
+   یک پرکنندهٔ ثابت '۱۲۳۴۵۶' رویِ همهٔ حساب‌ها بود: مقداری که از خودِ مخزن قابل
+   بازتولید است و اگر روزی مسیری آن را بخواند، یک رمزِ واحدِ همگانی می‌سازد.
+   جدولِ users چنین ستونی ندارد و projection.js آن را از خروجی می‌تراشید، ولی
+   رد کردنِ یک رشتهٔ رمزِ ثابت در فایلِ دیتاست کافی است تا نقصِ بهداشتِ اعتبار
+   شمرده شود. اکنون اصلاً تولید نمی‌شود، و server/index.js در زمانِ بارگذاری
+   هر نسخهٔ قدیمیِ باقی‌مانده را پاک می‌کند. */
 
 /* ---- شناسه‌های ساختگی برای نسخهٔ دمو ----
    ⚠️ قاعده: هیچ دادهٔ واقعی وارد نسخهٔ دمو نمی‌شود.
@@ -58,12 +63,17 @@ function add(c,o){
   return o;
 }
 
-function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const iso=daysAgoISO(d);const w=new Date(iso).getDay();if(w===4||w===5)continue;out.push(iso);}return out;}
+/* 🔴 روزِ هفته باید از همان مبدأِ UTCِ todayISO/daysAgoISO گرفته شود.
+   `new Date().getDay()` روی UTC+3:30 بینِ ۰۰:۰۰–۰۳:۳۰ یک روز جلوتر از
+   `toISOString()` است؛ استفادهٔ جداگانه از آن سبب می‌شود «پنجشنبهٔ پیشِ
+   رو» ناگهان چهارشنبه (یا تعطیلِ واقعی، روز کاری) شود. */
+function utcWeekdayOf(iso){return new Date(iso+'T12:00:00').getDay();}
+function schoolDays(n){const out=[];for(let d=0;d<n*1.5&&out.length<n;d++){const iso=daysAgoISO(d);const w=utcWeekdayOf(iso);if(w===4||w===5)continue;out.push(iso);}return out;}
 
 function generate(){
   SEED=20260901; ids={};
   db={school_years:[],teacher_notes:[],sms_wallet:[],sms_log:[],notify_queue:[],meeting_slots:[],student_transfers:[],transfer_requests:[],student_archive:[],nid_conflicts:[],schools:[],users:[],subjects:[],classes:[],enrollments:[],parent_links:[],schedule:[],substitutions:[],attendance:[],grades:[],discipline:[],announcements:[],notifications:[],leaves:[],calendar:[],messages:[],tuition_plans:[],tuitions:[],installments:[],transactions:[],teacher_schools:[],exam_terms:[],exams:[],exam_duties:[],parent_verifications:[],corrections:[],provinces:[],counties:[],districts:[],offices:[],parent_subscriptions:[],subscription_payments:[],app_settings:[],bell_schedules:[],counselor_refs:[],counselor_msgs:[],pre_enrollments:[],bus_routes:[],bus_students:[],bus_events:[],bus_needs:[],bus_locations:[],bus_followups:[],vclass_sessions:[],vclass_attendance:[],vclass_questions:[],vclass_links:[],class_subject_members:[],hw_assignments:[],hw_submissions:[],dojo_types:[],attendance_modes:[],certificates:[],visitors:[],lib_books:[],lib_loans:[],assets:[],sedascores:[],makeup_classes:[],nudges:[],teacher_sms:[],internships:[],preapps:[],scholarships:[],reexams:[],assoc_minutes:[],summer_classes:[],dorm_rooms:[],dorm_assignments:[],dorm_meals:[],support_tickets:[],staff_attendance:[],training_courses:[],safety_drills:[],donations:[],staff_posts:[],report_logs:[]};
-  add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',password:'123456',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
+  add('users',{school_id:null,role:'superadmin',full_name:'مدیر کل سامانه',username:'superadmin',national_id:nid(),phone:demoPhone(),active:1,created_at:daysAgoISO(400)});
   const dates=schoolDays(20);
   let sCount=0;
   SCHOOL_DEFS.forEach((def,si)=>{
@@ -84,10 +94,12 @@ function generate(){
       organization_id: null,
       created_at:daysAgoISO(500-si*20)});
     const first = gender==='پسرانه'?MALE:FEMALE;
-    const manager=add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'manager'+(si+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,title:'مدیر مدرسه',created_at:daysAgoISO(480)});
-    add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'deputy'+(si+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,title:'معاون آموزشی',created_at:daysAgoISO(470)});
+    const manager=add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'manager'+(si+1),national_id:nid(),phone:demoPhone(),active:1,title:'مدیر مدرسه',created_at:daysAgoISO(480)});
+    add('users',{school_id:school.id,role:'manager',full_name:pick(first)+' '+pick(LAST),username:'deputy'+(si+1),national_id:nid(),phone:demoPhone(),active:1,title:'معاون آموزشی',created_at:daysAgoISO(470)});
     /* روزِ جبرانی (دمو): اولین جمعهٔ پیشِ رو برای FZ-102 */
-    if(si===1){/* جمعهٔ پیشِ رو — getDay در JS: جمعه=۵ (نزدِ جدولِ برنامه شنبه=۰!) */var _frOff=(5-new Date().getDay()+7)%7; if(_frOff===0)_frOff=7; add('makeup_classes',{school_id:school.id,date:addDaysISO(todayISO(),_frOff),note:'روزِ جبرانی (دمو)'});}
+    if(si===1){/* جمعهٔ پیشِ رو — getDay در JS: جمعه=۵ (نزدِ جدولِ برنامه شنبه=۰!)
+       ⚠️ مبدأ باید todayISO (UTC) باشد، نه ساعتِ محلی — وگرنه بینِ
+       ۰۰:۰۰–۰۳:۳۰ (UTC+3:30) روزِ جبرانی یک شیفت می‌خورد. */var _frOff=(5-utcWeekdayOf(todayISO())+7)%7; if(_frOff===0)_frOff=7; add('makeup_classes',{school_id:school.id,date:addDaysISO(todayISO(),_frOff),note:'روزِ جبرانی (دمو)'});}
     /* دروس بر اساس برنامه‌ی درسی واقعی: پایه‌ها و (در متوسطه دوم) رشته‌ها */
     const _lvGrades = GRADES_OF_LEVEL[level] || [];
     const _lvFields = needsField(level) ? ['ریاضی فیزیک','علوم تجربی','ادبیات و علوم انسانی'] : [''];
@@ -102,7 +114,7 @@ function generate(){
     }));
     const teachers=[];
     for(let t=0;t<12;t++){const s=subs[t%subs.length];
-      teachers.push(add('users',{school_id:school.id,role:'teacher',full_name:pick(first)+' '+pick(LAST),username:'teacher'+(si+1)+'_'+(t+1),password:'123456',national_id:nid(),phone:demoPhone(),active:1,subject_id:s.id,subject:s.name,degree:pick(['کارشناسی','کارشناسی ارشد','دکتری']),created_at:daysAgoISO(460-t)}));}
+      teachers.push(add('users',{school_id:school.id,role:'teacher',full_name:pick(first)+' '+pick(LAST),username:'teacher'+(si+1)+'_'+(t+1),national_id:nid(),phone:demoPhone(),active:1,subject_id:s.id,subject:s.name,degree:pick(['کارشناسی','کارشناسی ارشد','دکتری']),created_at:daysAgoISO(460-t)}));}
     const grades = _lvGrades;
     const fields = needsField(level)?_lvFields:['عمومی'];
     const classes=[];
@@ -170,14 +182,14 @@ function generate(){
         /* آیا این دانش‌آموز به خانوادهٔ قبلی می‌پیوندد؟ */
         const joinFamily = famParent && famSize < famTarget;
         const ln = joinFamily ? famLast : pick(LAST);
-        const st=add('users',{school_id:school.id,role:'student',full_name:pick(first)+' '+ln,username:'student'+sCount,password:'123456',national_id:nid(),phone:demoPhone(),active:chance(.98)?1:0,created_at:daysAgoISO(300+ri(120))});
+        const st=add('users',{school_id:school.id,role:'student',full_name:pick(first)+' '+ln,username:'student'+sCount,national_id:nid(),phone:demoPhone(),active:chance(.98)?1:0,created_at:daysAgoISO(300+ri(120))});
         add('enrollments',{school_id:school.id,class_id:c.id,student_id:st.id});
         if(joinFamily){
           /* خواهر/برادر: ولیِ موجود، نام خانوادگی یکسان، بدون رکورد کاربر تازه */
           add('parent_links',{parent_id:famParent.id,student_id:st.id,relation:'پدر'});
           famSize++;
         } else {
-          const pa=add('users',{school_id:school.id,role:'parent',full_name:pick(MALE)+' '+ln,username:'parent'+sCount,password:'123456',national_id:nid(),phone:demoPhone(),active:1,job:pick(['کارمند','آزاد','پزشک','مهندس','معلم']),created_at:daysAgoISO(300)});
+          const pa=add('users',{school_id:school.id,role:'parent',full_name:pick(MALE)+' '+ln,username:'parent'+sCount,national_id:nid(),phone:demoPhone(),active:1,job:pick(['کارمند','آزاد','پزشک','مهندس','معلم']),created_at:daysAgoISO(300)});
           add('parent_links',{parent_id:pa.id,student_id:st.id,relation:'پدر'});
           /* خانوادهٔ تازه: اندازه‌اش را همین‌جا قطعی تعیین می‌کنیم.
              دو خانوادهٔ نخستِ مدرسهٔ اول سه‌فرزندی می‌شوند تا حالت
@@ -448,7 +460,7 @@ function generate(){
      در انتهای generate() تا idهای پیشین دست‌نخورده بمانند. */
   (function(){
     /* SIM-01: نگهبان/پذیرش (E.9) — کاربرِ تازه در مدرسهٔ ۱ (نمونهٔ اصلی دمو) */
-    add('users',{school_id:1,role:'guard',full_name:'رضا نگهبانی',username:'guard1',password:'123456',
+    add('users',{school_id:1,role:'guard',full_name:'رضا نگهبانی',username:'guard1',
       national_id:'9990000311',phone:'09990000031',active:1,title:'نگهبان/پذیرش',created_at:daysAgoISO(200)});
     /* SIM-02/03: پرچم‌های تفویضی روی دبیرانِ *موجودِ* مدرسهٔ ۱ (بدون کاربر تازه —
        قراردادِ 54-library/55-assets: دبیرِ همان مدرسه با پرچم). انتخابِ قطعی:

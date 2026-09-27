@@ -141,7 +141,7 @@ const __JS_CODE_CHAR_MAP = {
   '\u2029': '\\u2029'
 };
 function escapeUnsafeForJsCode(str) {
-  return str.replace(/[<>\/\\\b\f\n\r\t\0\u2028\u2029]/g, function (x) { return __JS_CODE_CHAR_MAP[x]; });
+  return str.replace(/[<>/\\\b\f\n\r\t\0\u2028\u2029]/g, function (x) { return __JS_CODE_CHAR_MAP[x]; });
 }
 const BADGE_VAL = (v) => `(function(){var r=document.getElementById('root').innerHTML;var i=r.indexOf('· کلاس:');return i>-1&&r.indexOf(${escapeUnsafeForJsCode(JSON.stringify(v))},i)>-1;})()`;
 

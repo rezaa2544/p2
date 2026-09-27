@@ -31,7 +31,8 @@ const policy = require('../policy');
 const {
   enforceLongitudinalAccessGuard,
   buildLongitudinalSchoolProfile,
-  buildRegionalTrendMap
+  buildRegionalTrendMap,
+  computeSchoolSnapshotsFromRecords
 } = require('../analytics/longitudinal-intelligence-monitoring');
 
 const {
@@ -92,8 +93,32 @@ function createAnalyticsRoutes(ctx) {
   // API با همان تاریخِ چندین ماه پیش مهر می‌شد و دو گواهی در روزهای مختلف،
   // fingerprint یکسان می‌گرفتند. اکنون route مهر زمان واقعی را تزریق می‌کند
   // (مگر اینکه tests آن را با env override مساوی‌سازی کند).
-  const ROUTE_NOW = process.env.PAYESH_ANALYTICS_FIXED_NOW || new Date().toISOString();
-  const nowOptions = (extra) => Object.assign({ timestamp: ROUTE_NOW, now: ROUTE_NOW }, extra || {});
+  // N-32 — این مهر باید در زمانِ هر تولیدِ گواهی محاسبه شود، نه یک بار در
+  // بارگذاریِ ماژول. در غیرِ این صورت همهٔ گواهی‌هایِ یک پروسه (حتی در
+  // روزهای مختلف) fingerprint یکسان می‌گرفتند و قابلیتِ تشخیصِ گواهی‌های
+  // صادرشده در زمان‌های مختلف از بین می‌رفت.
+  const FIXED_NOW = process.env.PAYESH_ANALYTICS_FIXED_NOW || null;
+  const nowOptions = (extra) => {
+    const ts = FIXED_NOW || new Date().toISOString();
+    return Object.assign({ timestamp: ts, now: ts }, extra || {});
+  };
+
+  /* N-35 — حلِ صادقانهٔ منطقهٔ گزارش: قبلاً همهٔ فراخوانی‌ها
+     `user.region_id || 1` بودند — یعنی هر کاربری که منطقه‌ای نداشت
+     (در دادهٔ فعلی: همهٔ کاربران) خروجی‌اش به منطقهٔ ۱ گره می‌خورد و
+     گواهیِ مدرسه‌ای در تهران به منطقهٔ ۱ نسبت داده می‌شد. اکنون اولین
+     منبعِ معتبر برداشت می‌شود: منطقهٔ خودِ کاربر، سپس منطقهٔ مدرسهٔ
+     هدف؛ اگر هیچ‌کدام نبود null (نامشخص) برگردانده می‌شود — نه ۱. */
+  function resolveReportRegion(user, schoolId) {
+    const ur = Number(user && user.region_id);
+    if (Number.isFinite(ur) && ur > 0) return ur;
+    if (schoolId != null) {
+      const sch = ((store && store.schools) || []).find(s => Number(s.id) === Number(schoolId));
+      const sr = sch && Number(sch.region_id);
+      if (Number.isFinite(sr) && sr > 0) return sr;
+    }
+    return null;
+  }
 
   async function schoolIntelligenceReport(req, searchParams) {
     const user = req.user || req.session;
@@ -412,22 +437,14 @@ function createAnalyticsRoutes(ctx) {
         };
       }
 
-      // شبیه‌سازی / استخراج اسنپ‌شات‌های دوره‌ای از داده‌های تاریخی
+      /* N-03: snapshots are derived from the school's real records, not from
+         loop indices. A school with no records yields zero periods and the
+         profile then reports total_periods: 0 / direction STABLE. */
       const grades = (store.grades || []).filter(g => Number(g.school_id) === entityId);
       const attendance = (store.attendance || []).filter(a => Number(a.school_id) === entityId);
-
-      const periods = ['1404-T1', '1404-T2', '1405-T1', '1405-T2', '1406-T1'];
-      const snapshots = periods.map((p, idx) => {
-        const factor = 1 + (idx * 0.02);
-        return {
-          period: p,
-          health_index: Math.min(100, Math.round(75.0 * factor * 10) / 10),
-          average_gpa: Math.min(20, Math.round(15.0 * factor * 10) / 10),
-          calendar_rate: Math.min(100, Math.round(88.0 * factor * 10) / 10),
-          chronic_absence_rate: Math.max(2, Math.round((12.0 - idx * 1.5) * 10) / 10),
-          has_intervention: idx === 2
-        };
-      });
+      const discipline = (store.discipline || []).filter(d => Number(d.school_id) === entityId);
+      const computed = computeSchoolSnapshotsFromRecords({ schoolId: entityId, grades, attendance, discipline });
+      const snapshots = computed.snapshots;
 
       const profile = buildLongitudinalSchoolProfile({
         schoolId: entityId,
@@ -444,6 +461,7 @@ function createAnalyticsRoutes(ctx) {
           entity_type: 'school',
           entity_id: entityId,
           period_range: periodRange,
+          data_availability: computed.data_availability,
           profile
         }
       };
@@ -460,16 +478,20 @@ function createAnalyticsRoutes(ctx) {
       }
 
       const schools = (store.schools || []).filter(s => Number(s.region_id || s.district_id) === entityId);
+      let periodsAvailable = 0;
       const schoolTrendSummaries = schools.map(sch => {
         const sid = Number(sch.id);
-        const periods = ['1404-T1', '1404-T2', '1405-T1', '1405-T2', '1406-T1'];
-        const sSnapshots = periods.map((p, idx) => ({
-          period: p,
-          health_index: 70 + (sid % 5) * 3 + idx * 1.2
-        }));
+        /* N-03: per-school snapshots from that school's own records */
+        const computed = computeSchoolSnapshotsFromRecords({
+          schoolId: sid,
+          grades: (store.grades || []).filter(g => Number(g.school_id) === sid),
+          attendance: (store.attendance || []).filter(a => Number(a.school_id) === sid),
+          discipline: (store.discipline || []).filter(d => Number(d.school_id) === sid)
+        });
+        periodsAvailable += computed.data_availability.periods_available;
         const sProfile = buildLongitudinalSchoolProfile({
           schoolId: sid,
-          snapshots: sSnapshots,
+          snapshots: computed.snapshots,
           periodRange,
           options: nowOptions()
         });
@@ -477,7 +499,8 @@ function createAnalyticsRoutes(ctx) {
           school_id: sid,
           school_name: sch.name || `مدرسه ${sid}`,
           overall_trend: sProfile.overall_trend,
-          persistence_classification: sProfile.persistence_classification
+          persistence_classification: sProfile.persistence_classification,
+          total_periods: sProfile.total_periods
         };
       });
 
@@ -496,6 +519,7 @@ function createAnalyticsRoutes(ctx) {
           entity_type: 'region',
           entity_id: entityId,
           period_range: periodRange,
+          data_availability: { derived_from_store: true, fabricated_defaults: false, periods_available: periodsAvailable },
           trend_map: trendMap
         }
       };
@@ -643,7 +667,7 @@ function createAnalyticsRoutes(ctx) {
 
       const profile = buildOrganizationalLearningProfile({
         schoolId,
-        regionId: user.region_id || 1,
+        regionId: resolveReportRegion(user, schoolId),
         academicYear,
         history,
         options: { requester: user }
@@ -739,7 +763,7 @@ function createAnalyticsRoutes(ctx) {
          شفافیت/پوشش حذف شدند — مدرسهٔ بدون اقدام، گزارشِ «بی‌داده» می‌گیرد. */
       const snapshot = buildGovernanceSnapshot({
         schoolId,
-        regionId: user.region_id || 1,
+        regionId: resolveReportRegion(user, schoolId),
         academicYear,
         data: { actions },
         options: { requester: user }
@@ -822,7 +846,7 @@ function createAnalyticsRoutes(ctx) {
 
       const snapshot = buildPolicySimulationSnapshot({
         schoolId,
-        regionId: user.region_id || 1,
+        regionId: resolveReportRegion(user, schoolId),
         academicYear,
         options: { requester: user }
       });
@@ -893,7 +917,7 @@ function createAnalyticsRoutes(ctx) {
 
       const snapshot = buildDecisionCommandSnapshot({
         schoolId,
-        regionId: user.region_id || 1,
+        regionId: resolveReportRegion(user, schoolId),
         academicYear,
         options: { requester: user }
       });
@@ -965,7 +989,7 @@ function createAnalyticsRoutes(ctx) {
 
       const dashboard = buildExecutionDashboard({
         schoolId,
-        regionId: user.region_id || 1,
+        regionId: resolveReportRegion(user, schoolId),
         academicYear,
         options: { requester: user }
       });
@@ -1038,7 +1062,7 @@ function createAnalyticsRoutes(ctx) {
 
       const snapshot = buildOutcomeEvaluationSnapshot({
         schoolId,
-        regionId: user.region_id || 1,
+        regionId: resolveReportRegion(user, schoolId),
         academicYear,
         options: { requester: user }
       });
@@ -1111,7 +1135,7 @@ function createAnalyticsRoutes(ctx) {
 
       const snapshot = buildUnifiedIntelligenceSnapshot({
         schoolId,
-        regionId: user.region_id || 1,
+        regionId: resolveReportRegion(user, schoolId),
         academicYear,
         options: { requester: user }
       });
@@ -1195,7 +1219,7 @@ function createAnalyticsRoutes(ctx) {
 
       const certification = runPhase3Certification({
         schoolId,
-        regionId: user.region_id || 1,
+        regionId: resolveReportRegion(user, schoolId),
         academicYear,
         user
       }, nowOptions());
@@ -1265,7 +1289,9 @@ function createAnalyticsRoutes(ctx) {
     operationalExecutionReport,
     outcomeEvaluationReport,
     intelligencePlatformReport,
-    intelligenceCertificationReport
+    intelligenceCertificationReport,
+    /* N-35 — فقط برای تستِ مستقیمِ اولویتِ حلِ منطقه (کاربر > مدرسه > null). */
+    __resolveReportRegionForTest: resolveReportRegion
   };
 }
 

@@ -43,7 +43,7 @@ const BASELINE = path.join(__dirname, 'docs-refs-baseline.json');
    ۱) جایگزین‌ها باید **بلندترین اول** بیایند، وگرنه `js` پیش از `json` می‌خورد و
       ‏`tools/x.json` به `tools/x.js` بریده می‌شود (ارجاعِ کهنهٔ ساختگی).
    ۲) پسا‌نگرِ `(?![A-Za-z0-9_.-])` تا پسوند، پیشوندِ یک پسوندِ بلندتر نباشد. */
-const REF_RE = /\b((?:tests|tools|scripts|src\/js|docs|migrations|server|infra)\/[A-Za-z0-9_.\-\/]+\.(?:json|yaml|yml|html|css|sql|js|md|sh|ps1))(?![A-Za-z0-9_.-])/g;
+const REF_RE = /\b((?:tests|tools|scripts|src\/js|docs|migrations|server|infra)\/[A-Za-z0-9_./-]+\.(?:json|yaml|yml|html|css|sql|js|md|sh|ps1))(?![A-Za-z0-9_.-])/g;
 
 /* پیشوندهایی که واقعاً در این مخزن فایل نگه می‌دارند */
 const REAL_PREFIXES = ['tests/', 'tools/', 'scripts/', 'src/js/', 'docs/', 'migrations/', 'server/', 'infra/'];
@@ -87,10 +87,15 @@ function ignoreRegex(pattern) {
   if (p.startsWith('/')) p = p.slice(1);
   const body = p
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    /* \u0001 is a deliberate sentinel: a control char cannot appear in a docs
+       glob, so it stands in for the ** -> .* rewrite without colliding with a
+       literal '*'. Not an accidental control character. */
+    /* eslint-disable no-control-regex */
     .replace(/\*\*/g, '\u0001')
     .replace(/\*/g, '[^/]*')
     .replace(/\?/g, '[^/]')
     .replace(/\u0001/g, '.*');
+    /* eslint-enable no-control-regex */
   const head = anchored ? '^' : '(?:^|/)';
   return new RegExp(head + body + (dirOnly ? '(?:/|$)' : '$'));
 }

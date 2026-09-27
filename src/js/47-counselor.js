@@ -575,7 +575,7 @@ function generateP12(){
   db.schools.filter(function(s){return s.active;}).forEach(function(s,si){
     var first=(s.gender==='دخترانه')?FEMALE:MALE;
     add('users',{school_id:s.id,role:'counselor',full_name:pick(first)+' '+pick(LAST),
-      username:'counselor'+(si+1),password:'123456',national_id:nid(),phone:demoPhone(),
+      username:'counselor'+(si+1),national_id:nid(),phone:demoPhone(),
       active:1,title:'مشاور مدرسه',created_at:daysAgoISO(470-si)});
   });
   /* دانش‌آموزان الگودار — تا نمای پیگیری و صف مشاور در دمو خالی نباشد */

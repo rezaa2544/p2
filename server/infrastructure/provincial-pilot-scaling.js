@@ -541,16 +541,18 @@ async function activateProvincialPilot(provinceId, approvalPayload = {}) {
   }
 
   const operator = approvalPayload.operator || {};
-  if (!operator.id || !['superadmin', 'admin', 'edu_office'].includes(operator.role)) {
+  if (!operator.id || !['superadmin', 'edu_office'].includes(operator.role)) {
     const err = new Error('صلاحیت اپراتور تاییدکننده احراز نگردید');
     err.code = PILOT_SCALING_ERRORS.ROLLOUT_APPROVAL_REQUIRED;
     throw err;
   }
 
-  // اعتبارسنجی دامنه دسترسی اداره منطقه
-  if (operator.role === 'edu_office' && operator.region_id && operator.region_id !== province.region_id) {
+  // اعتبارسنجی دامنه دسترسی اداره منطقه — N-26: fail-closed. نبودِ region_id
+  // دیگر به معنای «هر استانی» نیست؛ یک اداره بدونِ منطقهٔ قابلِ استناد نمی‌تواند
+  // اصلاً استانی را فعال کند.
+  if (operator.role === 'edu_office' && (!operator.region_id || operator.region_id !== province.region_id)) {
     const err = new Error(
-      `PHASE5_PILOT_SCOPE_VIOLATION: اپراتور اداره منطقه "${operator.region_id}" مجاز به فعال‌سازی استان وابسته به منطقه "${province.region_id}" نیست`
+      `PHASE5_PILOT_SCOPE_VIOLATION: اپراتور اداره منطقه "${operator.region_id || 'نامشخص'}" مجاز به فعال‌سازی استان وابسته به منطقه "${province.region_id}" نیست`
     );
     err.code = PILOT_SCALING_ERRORS.PILOT_SCOPE_VIOLATION;
     throw err;

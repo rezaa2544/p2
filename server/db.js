@@ -106,6 +106,19 @@ function memoryFallbackRequested() {
   return process.env.ALLOW_MEMORY_FALLBACK === '1';
 }
 
+/* N-20: one OCC posture, one signal. sync.js (line ~814) already forces
+   compare-and-write in production via PAYESH_ENV / NODE_ENV, but this layer's
+   own PAYESH_STRICT_OCC switch was never set by anything — so the REST /
+   delete-service / sms paths ran last-writer-wins even in production, giving
+   the same table two concurrency models at once. Both layers now read the same
+   production signal, so a production deployment has one model everywhere and
+   dev/test keeps the forgiving LWW path. */
+function strictOccEnabled() {
+  return process.env.PAYESH_STRICT_OCC === '1'
+    || process.env.PAYESH_ENV === 'production'
+    || process.env.NODE_ENV === 'production';
+}
+
 /**
  * Why the JSON/in-memory backing store is (not) usable right now.
  * Pure/env-only — safe to call from boot gates and tests.
@@ -563,7 +576,16 @@ async function hydrateStoreFromPg(store, opts) {
       let rows;
       if (cap !== undefined) {
         const res = await pool.query(`SELECT * FROM "${key}" ORDER BY id LIMIT $1`, [cap]);
-        rows = reviveRows(res.rows);
+        /* N-22: the capped path used to assign reviveRows(res.rows) directly,
+           bypassing stripInternalColumns — so a boot with
+           PAYESH_PG_HYDRATE_LIMIT set populated the in-memory mirror with
+           server-internal columns (chg_id) that readCollection/readOne strip
+           on every other path. The mirror is what auth's fallback lookups,
+           the sync delta and several route list endpoints serialize, so the
+           client-visible row shape silently diverged from memory mode (and
+           chg_id could enter an op payload, where validate.js rejects it as
+           unknown_field). One pipe, one shape. */
+        rows = stripInternalColumns(reviveRows(res.rows));
       } else {
         rows = await readCollection(key);
       }
@@ -606,9 +628,18 @@ function shouldPersistMirrorFile(pgLive, hydrateResult){
  * محیط‌های آزمونِ بار معنا دارد.)
  */
 function hydrationUsersCapped(h){
-  return !!(h && Array.isArray(h.capped) && h.capped.some(function(s){
+  /* N-22: این تابع قبلاً فقط h.capped را نگاه می‌کرد و env-skipped را
+     نادیده می‌گرفت — در حالی که PAYESH_PG_HYDRATE_SKIP=users کلِ آینهٔ
+     users را خالی می‌کند و عاقبتش از سقف‌گذاری هم سهمگین‌تر است (هیچ
+     کاربری در آینه نیست)، بی‌آنکه هشداری چاپ شود. هر دو مسیرِ برش را
+     گزارش می‌کند تا عملگر بداند مسیرهایِ fallback (auth، جست‌وجوی
+     شناسه‌ای، لیستِ مسیرها) ردیف‌های گسیخته را نمی‌بینند. */
+  if (!h) return false;
+  if (Array.isArray(h.capped) && h.capped.some(function(s){
     return String(s).split(':')[0] === 'users';
-  }));
+  })) return true;
+  if (Array.isArray(h.env_skipped) && h.env_skipped.indexOf('users') > -1) return true;
+  return false;
 }
 
 /* F1 (chaos-drill #185 — بحرانی): «PG انتظار می‌رود؟»
@@ -680,6 +711,44 @@ function isPartitionedTable(name) {
  * Semantics mirror the old persistOp: empty-data ins/upd is a no-op; uid tracking is
  * best-effort (silent); del with no id skips the DELETE but still tracks the uid.
  */
+/**
+ * N-17: durable delta tombstone. Deletions were recorded only in the
+ * in-memory store.__deleted_records ring (capped at 5000 — smaller than the
+ * 7-day delta window) while the prepared server_tombstones table was never
+ * wired. In PG mode the JSON store is deliberately not persisted, so a
+ * restart — or a second instance — dropped every tombstone and a hard-deleted
+ * row re-emerged as live data on the next client pull (deleted users
+ * included). Writing the tombstone in the same transaction as the DELETE
+ * makes the two atomic: a deletion can never commit without its tombstone.
+ *
+ * Table-existence is degraded-once: a database that has not yet received
+ * migration 023 keeps working (the tombstone stays in the in-memory ring,
+ * exactly the pre-fix behaviour) instead of failing every delete.
+ */
+let tombstoneTableAvailable = true;
+async function recordTombstone(client, collection, recordId, schoolId) {
+  if (!tombstoneTableAvailable) return;
+  if (!client || typeof client.query !== 'function') return;
+  const coll = String(collection || '');
+  const rid = Number(recordId);
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(coll)) return;
+  if (!Number.isFinite(rid) || rid <= 0) return;
+  const sid = (schoolId != null && Number.isFinite(Number(schoolId))) ? Number(schoolId) : null;
+  try {
+    await client.query(
+      'INSERT INTO server_tombstones ("collection", record_id, school_id, deleted_at) VALUES ($1, $2, $3, NOW());',
+      [coll, rid, sid]
+    );
+  } catch (err) {
+    if (err && (err.code === '42P01' || err.code === '42P02' || /does not exist/i.test(String(err.message || '')))) {
+      tombstoneTableAvailable = false;
+      console.warn('[DB] server_tombstones is not present (migration 023 not applied) — delta tombstones stay in-memory only until migrated');
+    } else {
+      throw err;
+    }
+  }
+}
+
 async function persistOpWithClient(client, op) {
   const col = op.c;
   const t = op.t;
@@ -789,7 +858,7 @@ async function persistOpWithClient(client, op) {
         throw e;
       }
     } else {
-      if (process.env.PAYESH_STRICT_OCC === '1') {
+      if (strictOccEnabled()) {
         const e = new Error('optimistic concurrency conflict: missing required base_version');
         e.code = 'missing_base_version';
         e.status = 409;
@@ -819,7 +888,7 @@ async function persistOpWithClient(client, op) {
           throw e;
         }
       } else {
-        if (process.env.PAYESH_STRICT_OCC === '1') {
+        if (strictOccEnabled()) {
           const e = new Error('optimistic concurrency conflict: missing required base_version');
           e.code = 'missing_base_version';
           e.status = 409;
@@ -836,6 +905,19 @@ async function persistOpWithClient(client, op) {
       `INSERT INTO server_processed_uids (uid, processed_at) VALUES ($1, NOW()) ON CONFLICT (uid) DO NOTHING;`,
       [op.uid]
     ).catch(() => {});
+  }
+
+  /* N-17: the delta tombstone rides in this same transaction so a deletion
+     can never commit without its tombstone (see recordTombstone). Scope comes
+     from the op/record when available; pull.js still treats a null scope as
+     global, matching the in-memory ring's existing behaviour. */
+  if (t === 'del') {
+    const afterDelId = Number(op.id != null ? op.id : (data && data.id));
+    if (afterDelId) {
+      const afterSchoolId = (op.school_id != null ? op.school_id
+        : (data && data.school_id != null ? data.school_id : null));
+      await recordTombstone(client, col, afterDelId, afterSchoolId);
+    }
   }
 }
 
@@ -1092,6 +1174,11 @@ module.exports = {
   persistOpsBatchWithClient,
   persistOpsBatch,
   persistSyncBatch,
+  /* N-17: durable delta tombstone — same transaction as the DELETE */
+  recordTombstone,
+  __resetTombstoneFlagForTests: () => { tombstoneTableAvailable = true; },
+  /* N-20: the single OCC posture shared with sync.js */
+  strictOccEnabled,
   __setPoolForTests,
   /* Wave 10 (chg_id): کنارگذاریِ ستون‌های داخلی برای خواننده‌های بیرونی (pull/delta) */
   stripInternalColumns,

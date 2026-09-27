@@ -27,9 +27,9 @@ const spec = fs.readFileSync(SPEC, 'utf8');
 const specRoutes = new Map();
 let curPath = null;
 for (const line of spec.split('\n')) {
-  const pm = line.match(/^  (\/[^:]+):\s*$/);
+  const pm = line.match(/^ {2}(\/[^:]+):\s*$/);
   if (pm) { curPath = pm[1]; continue; }
-  const om = line.match(/^    (get|post|put|delete|patch):\s*$/);
+  const om = line.match(/^ {4}(get|post|put|delete|patch):\s*$/);
   if (om && curPath) specRoutes.set(om[1].toUpperCase() + ' ' + curPath, true);
 }
 

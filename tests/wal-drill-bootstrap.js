@@ -77,7 +77,7 @@ test('B3 پیش‌بینیِ پوشش: الگویِ اسکریپت هر migratio
 
 test('B4 شکستِ migration اجرا را می‌بندد (die)، نه ادامهٔ بی‌صدا', () => {
   assert(/die "migration failed/.test(code), 'dieِ migrationِ شکست‌خورده نیست');
-  const failEcho = code.match(/echo "    FAIL \$m";?/g) || [];
+  const failEcho = code.match(/echo " {4}FAIL \$m";?/g) || [];
   assert(failEcho.length === 0 || /die "migration failed/.test(src),
     'FAIL بی‌در‌پی (بدونِ توقف) باقی مانده');
   assert(/ON_ERROR_STOP=1/.test(code), 'psql بدونِ ON_ERROR_STOP اجرا می‌شود');

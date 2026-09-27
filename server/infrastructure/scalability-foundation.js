@@ -85,8 +85,8 @@ function generateTenantCacheKey(tenantId, namespace, key) {
     throw new Error('INFRASTRUCTURE_TENANT_ISOLATION_VIOLATION: ایجاد کلید کش بدون شناسه معتبر مستأجر ممنوع است');
   }
 
-  const cleanTenant = String(tenantId).trim().replace(/[^a-zA-Z0-9_\-]/g, '');
-  const cleanNamespace = String(namespace || 'default').trim().replace(/[^a-zA-Z0-9_\-]/g, '');
+  const cleanTenant = String(tenantId).trim().replace(/[^a-zA-Z0-9_-]/g, '');
+  const cleanNamespace = String(namespace || 'default').trim().replace(/[^a-zA-Z0-9_-]/g, '');
   const cleanKey = String(key || 'root').trim().replace(/[\s\r\n]/g, '_');
 
   return `${TENANT_CACHE_PREFIX}${cleanTenant}:${cleanNamespace}:${cleanKey}`;
@@ -104,9 +104,9 @@ function invalidateTenantCache(tenantId, namespace = null) {
     throw new Error('INFRASTRUCTURE_TENANT_ISOLATION_VIOLATION: ابطال کش بدون شناسه معتبر مستأجر مجاز نیست');
   }
 
-  const cleanTenant = String(tenantId).trim().replace(/[^a-zA-Z0-9_\-]/g, '');
+  const cleanTenant = String(tenantId).trim().replace(/[^a-zA-Z0-9_-]/g, '');
   if (namespace) {
-    const cleanNamespace = String(namespace).trim().replace(/[^a-zA-Z0-9_\-]/g, '');
+    const cleanNamespace = String(namespace).trim().replace(/[^a-zA-Z0-9_-]/g, '');
     return `${TENANT_CACHE_PREFIX}${cleanTenant}:${cleanNamespace}:*`;
   }
 
@@ -136,10 +136,17 @@ function enforceInfrastructureTenantIsolation(user, target = {}) {
   }
 
   if (role === 'edu_office') {
-    const userRegion = Number(user.region_id || user.district_id);
-    const targetRegion = target.region_id != null ? Number(target.region_id) : null;
-    if (targetRegion && userRegion !== targetRegion) {
-      throw new Error(`INFRASTRUCTURE_TENANT_ISOLATION_VIOLATION: دسترسی به منطقه ${targetRegion} برای منطقه ${userRegion} مسدود است`);
+    /* N-04: Number(region_id || district_id) collapses an unassigned officer to
+       region 0 and the truthiness test skips on a falsy target. Fail closed. */
+    const userRegionId = user.region_id != null
+      ? Number(user.region_id)
+      : (user.district_id != null ? Number(user.district_id) : null);
+    const targetRegionId = target.region_id != null ? Number(target.region_id) : null;
+    if (userRegionId == null) {
+      throw new Error('INFRASTRUCTURE_TENANT_ISOLATION_VIOLATION: edu_office lacks region_id assignment');
+    }
+    if (targetRegionId != null && targetRegionId !== userRegionId) {
+      throw new Error(`INFRASTRUCTURE_TENANT_ISOLATION_VIOLATION: دسترسی به منطقه ${targetRegionId} برای منطقه ${userRegionId} مسدود است`);
     }
     return true;
   }

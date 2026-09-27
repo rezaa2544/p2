@@ -119,6 +119,12 @@ function enforceDecisionCommandAccessGuard(requester, context, options = {}) {
     if (targetSchoolId != null && targetSchoolId !== userSchoolId) {
       throw new Error(`DECISION_COMMAND_TENANT_ISOLATION_VIOLATION: unauthorized access to school ${targetSchoolId} by staff of school ${userSchoolId}`);
     }
+    /* F4: a school manager/counselor holds no regional tenant grant — a
+       region-scoped target (region_id without school_id) must never fall
+       through the own-school check. */
+    if (targetRegionId != null && targetSchoolId == null) {
+      throw new Error(`DECISION_COMMAND_TENANT_ISOLATION_VIOLATION: staff of school ${userSchoolId} cannot access regional scope ${targetRegionId}`);
+    }
     return true;
   }
 
@@ -414,34 +420,12 @@ function buildDecisionCommandSnapshot(params = {}) {
   }
 
   // ۲. استخراج یا ساخت اقلام تصمیم
-  const rawDecisions = engineOutputs.decisions || [
-    {
-      decision_id: `DEC-SCH${schoolId}-01`,
-      title: 'مداخله تخصصی حضور برای دانش‌آموزان در معرض ریسک غیبت مزمن',
-      domain: 'ATTENDANCE',
-      workflow_state: DECISION_WORKFLOW_STATE.HUMAN_REVIEW_REQUIRED,
-      urgency: DECISION_URGENCY.IMMEDIATE_24H,
-      evidence_strength: 90,
-      affected_scope: 45,
-      intervention_readiness: 85,
-      human_owner_available: true,
-      assigned_role: 'counselor',
-      evidence_summary: ['الگوی غیبت روزهای چهارشنبه', 'افت تجمعی حضور زیر ۸۰٪']
-    },
-    {
-      decision_id: `DEC-SCH${schoolId}-02`,
-      title: 'برگزاری کارگاه روش‌های سنجش تکوینی برای معلمان',
-      domain: 'TEACHING',
-      workflow_state: DECISION_WORKFLOW_STATE.RECOMMENDED,
-      urgency: DECISION_URGENCY.WEEKLY,
-      evidence_strength: 80,
-      affected_scope: 70,
-      intervention_readiness: 90,
-      human_owner_available: true,
-      assigned_role: 'manager',
-      evidence_summary: ['ناهنجاری مرز قبولی در نمرات ریاضی نهم']
-    }
-  ];
+  /* N-03: the engine used to mint two full decision items (evidence_strength
+     90/80) from constants when the caller supplied none, and presented them
+     as derived intelligence. An empty input now yields an empty decision
+     list — the command board honestly reports zero decisions. */
+  const callerDecisions = Array.isArray(engineOutputs.decisions) ? engineOutputs.decisions : null;
+  const rawDecisions = callerDecisions || [];
 
   // ۳. اعتبارسنجی پیوستگی زنجیره
   const chainIntegrity = validateIntelligenceChainIntegrity({
@@ -493,6 +477,11 @@ function buildDecisionCommandSnapshot(params = {}) {
     ],
     command_board: commandBoard,
     engine_inputs_summary: engineInputsSummary,
+    data_availability: {
+      decisions_supplied: rawDecisions.length,
+      derived_from_store: rawDecisions.length > 0,
+      fabricated_defaults: false
+    },
     chain_integrity: chainIntegrity,
     priority_matrix_summary: {
       high_priority_count: highPriorityCount,

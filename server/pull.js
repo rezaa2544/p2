@@ -10,7 +10,7 @@
 
 const url = require('url');
 const { projectUserByRole } = require('./middleware/projection');
-const { deltaRowsSql, deltaRowsByChgSql, CHG_TABLES } = require('./syncdelta'); /* Wave 4 + Wave 10 (cursor v3) */
+const { deltaRowsSql, deltaRowsByChgSql, tombstonesSql, CHG_TABLES } = require('./syncdelta'); /* Wave 4 + Wave 10 (cursor v3) + N-17 */
 const { createCursor } = require('./cursor'); /* Delta Hardening Phase 2 (gap 2) */
 const { sendJsonCompressed } = require('./compress'); /* Delta Phase 4 (gap 2) */
 const metrics = require('./metrics'); /* Delta Phase 4 (gaps 2+4) */
@@ -97,6 +97,34 @@ function createPull(ctx) {
   }
 
   /**
+   * N-17: durable tombstones. The in-memory store.__deleted_records ring is
+   * capped at 5000 (smaller than the 7-day delta window) and in PG mode the
+   * JSON store is deliberately not persisted — so after a restart, or on a
+   * second instance, the ring was empty and hard-deleted rows re-emerged as
+   * live data. server_tombstones is now written in the same transaction as
+   * the DELETE (db.js recordTombstone); this reads it back on delta pulls.
+   * Returns null when PG is not live or the table is missing, so pull falls
+   * back to the in-memory ring exactly as before. The statements are inline
+   * literals so they are statically auditable; tests/n17-*.js pins them to
+   * the canonical syncdelta.tombstonesSql builder so the two cannot drift.
+   */
+  async function fetchDeltaTombstones(sinceISO, schoolId) {
+    if (!(db && typeof db.isPostgres === 'function' && db.isPostgres()
+          && typeof db.query === 'function')) return null;
+    try {
+      const hasSchool = schoolId != null && Number.isFinite(Number(schoolId));
+      const res = hasSchool
+        ? await db.query('SELECT "collection" AS c, record_id AS id, school_id, deleted_at AS at FROM server_tombstones WHERE deleted_at > $1 AND (school_id IS NULL OR school_id = $2) ORDER BY deleted_at ASC, id ASC', [sinceISO, Number(schoolId)])
+        : await db.query('SELECT "collection" AS c, record_id AS id, school_id, deleted_at AS at FROM server_tombstones WHERE deleted_at > $1 ORDER BY deleted_at ASC, id ASC', [sinceISO]);
+      const rows = Array.isArray(res && res.rows) ? res.rows : [];
+      return rows.map((r) => ({ c: r.c, id: Number(r.id), at: r.at, school_id: r.school_id != null ? Number(r.school_id) : null }));
+    } catch (e) {
+      // server_tombstones absent (pre-023 migration) or DB hiccup → in-memory ring
+      return null;
+    }
+  }
+
+  /**
    * Wave 10 (cursor v3): دلتای مبتنی بر change-ID — `chg_id > watermark`
    * به‌جای مقایسهٔ زمانی. همان انضباطِ fetchDeltaRows (فقط PG زنده؛ خطا ⇒
    * null ⇒ fallback به خوانشِ کامل). خروجی {rows, byChg} است چون فیلترِ
@@ -175,7 +203,35 @@ function createPull(ctx) {
         childIds.add(userId);
         return records.filter(u => childIds.has(u.id)).map(u => projectUserByRole(u, role));
       }
-      return records.filter(u => Number(u.school_id) === schoolId).map(u => projectUserByRole(u, role));
+      /* N-27 — کمترینِ امتیاز برای نقش‌های پشتیبانی. قبلاً هر نقشی که شاخهٔ
+         صریح نداشت (driver، guard، edu_office) به fallthrough می‌رسید و کلِ
+         دایرکتوریِ کاربرانِ مدرسه را می‌گرفت — حتی نقش‌های سطحِ ۱ که در
+         کلاینت اصلاً دایرکتوری را رندر نمی‌کنند. اکنون هر نقشِ قاعدهٔ صریح
+         خودش را دارد:
+         - driver: دانش‌آموزان + رانندگانِ هم‌مدرسه (روسترِ سرویس و انتخابِ
+           راننده در 48-bus-service) + خودش.
+         - guard: مدیرانِ هم‌مدرسه (تماسِ پذیرش در 53-visitors) + خودش.
+         - edu_office: مدارسِ داخلِ محدودهٔ دفتر (آینهٔ policy.filterReadable).
+         - هر نقشِ ناشناخته: فقط خودش — هیچ دایرکتوری‌ای بدونِ قاعدهٔ صریح
+           نشت نمی‌کند (fail-closed). */
+      if (role === 'driver') {
+        return records
+          .filter(u => Number(u.school_id) === schoolId
+            && (Number(u.id) === userId || u.role === 'student' || u.role === 'driver'))
+          .map(u => projectUserByRole(u, role));
+      }
+      if (role === 'guard') {
+        return records
+          .filter(u => Number(u.school_id) === schoolId
+            && (Number(u.id) === userId || u.role === 'manager'))
+          .map(u => projectUserByRole(u, role));
+      }
+      if (role === 'edu_office') {
+        return records
+          .filter(u => u.school_id != null && policy.schoolInOfficeScope(store, session, u.school_id))
+          .map(u => projectUserByRole(u, role));
+      }
+      return records.filter(u => Number(u.id) === userId).map(u => projectUserByRole(u, role));
     }
 
     if (c === 'classes') {
@@ -457,9 +513,24 @@ function createPull(ctx) {
        window), so `isDelta` (a `since` was presented) — not full_snapshot —
        gates this block. */
     let deletedRecords = [];
-    if (isDelta && Array.isArray(store.__deleted_records)) {
+    if (isDelta) {
       const schoolId = session.school_id != null ? Number(session.school_id) : null;
-      deletedRecords = store.__deleted_records.filter(d => {
+      /* N-17: in PG mode the durable table is authoritative — it survives
+         restarts and is visible to every instance, while the in-memory ring
+         (capped at 5000) is lost the moment the JSON store is not persisted.
+         Union both sources, deduped by (collection, id, at); the scoping
+         filter below is applied to the union either way. */
+      const pgTombstones = await fetchDeltaTombstones(since, schoolId);
+      const ring = Array.isArray(store.__deleted_records) ? store.__deleted_records : [];
+      const seen = new Set();
+      const union = [];
+      for (const d of (pgTombstones || []).concat(ring)) {
+        const key = String(d.c) + ':' + String(d.id) + ':' + String(d.at);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        union.push(d);
+      }
+      deletedRecords = union.filter(d => {
         const dAt = d.at ? new Date(d.at).getTime() : 0;
         if (dAt <= sinceTime) return false;
         if (session.role === 'superadmin') return true;

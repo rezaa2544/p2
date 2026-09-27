@@ -275,8 +275,10 @@ $ node tools/migrate-helper.js --next
 | ۰۱۹ | `019_phase7_authority_foundation.sql` / `.down` | زیرساخت مرجعیت واحد (canary_state, governance_ledger, tenant_policy, system_audit) | مرج (فاز ۷) |
 | ۰۲۰ | `020_operator_identity_fix.sql` / `.down` | توسعه هویت اپراتور به رشته (UUID/نام‌کاربری/حساب سرویس) | مرج (فاز ۷.۵) |
 | ۰۲۱ | `021_outbox_processing_lease.sql` / `.down` | lease برای پردازش outbox و recovery پس از crash | مرج (فاز ۸) |
+| ۰۲۲ | `022_users_staff_flags.sql` / `.down` | ستون‌های پرچم کارکنان (lib_staff/asset_staff/is_head) برای ماندگاری AuthZ پس از restart | مرج (فاز ۸) |
+| ۰۲۳ | `023_server_tombstones.sql` / `.down` | جدولِ سنگ‌قبرِ دلتای ماندگار — تا قبل از این مهاجرت فقط در `schema.sql` (خروجیِ تولیدی) وجود داشت و با هیچ مهاجرتی ساخته نمی‌شد (N-17) | اصلاحِ حسابرسی (N-17) |
 
-> مهاجرت بعدی شمارهٔ `021` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را به جدول اضافه کند — مالک: نویسندهٔ مهاجرت.
+> مهاجرت بعدی شمارهٔ `024` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را به جدول اضافه کند — مالک: نویسندهٔ مهاجرت.
 
 ---
 

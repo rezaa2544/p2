@@ -25,13 +25,20 @@ function createSms(ctx){
   const sendJson = ctx.sendJson;
   const markDirty = ctx.markDirty;
 
-  /* Wave1-W: آینهٔ اتمیکِ آیتم — شکست، مثلِ sync، برای کلاینت نامرئی است
-     (audit + JSON اعمال‌شده می‌ماند)؛ همهٔ نوشت‌هایِ آیتم در یک تراکنش. */
+  /* Wave1-W + N-18: the mirror IS the commit — a failed mirror means the
+     wallet debit / sms_log rows never landed in PostgreSQL. Previously the
+     failure was swallowed (audit only) while the request answered 200 on
+     RAM state alone, so a restart left PG showing the queue item still
+     `pending` and the school was re-billed. Callers now receive the outcome
+     and must undo their RAM mutation when it is false. */
   async function mirrorItem(itemOps, where){
-    if(!db || typeof db.persistOpsBatch !== 'function' || !itemOps.length) return;
-    try { await db.persistOpsBatch(itemOps); }
-    catch(e){ audit('sms_mirror_failed', Object.assign({ ops: itemOps.length }, where,
-      { error: String((e && e.message) || e) })); }
+    if(!db || typeof db.persistOpsBatch !== 'function' || !itemOps.length) return true;
+    try { await db.persistOpsBatch(itemOps); return true; }
+    catch(e){
+      audit('sms_mirror_failed', Object.assign({ ops: itemOps.length }, where,
+        { error: String((e && e.message) || e), code: (e && e.code) || null }));
+      return false;
+    }
   }
 
   const PROVIDER = process.env.PAYESH_SMS_PROVIDER || '';
@@ -221,6 +228,8 @@ function createSms(ctx){
       const cost = results.reduce((a, r) => a + (r.parts || parts), 0);
       if(!Array.isArray(store.sms_log)) store.sms_log = [];
       const itemOps = []; /* Wave1-W: نوشت‌هایِ آیتم — یک تراکنش برایِ همه */
+      const sentKeys = []; /* N-18: کلیدهای sentIndex برای rollback */
+      const logStart = store.sms_log.length; /* N-18: نقطهٔ برگشتِ sms_log */
       for(const r of results){
         const dup = sentIndex.has(qid + '|' + r.parent.id);
         if(dup) continue;                       /* ایدمپوتانس */
@@ -228,20 +237,51 @@ function createSms(ctx){
           user_id: r.parent.id, phone: r.phone, body: q.body, parts: r.parts,
           status: 'sent', provider_msg: r.msg, queue_id: qid, created_at: today() };
         store.sms_log.push(lrec);
-        sentIndex.add(qid + '|' + r.parent.id); /* A-06: ایندکسِ همین درخواست را تازه نگه می‌دارد */
+        const skey = qid + '|' + r.parent.id;
+        sentIndex.add(skey); /* A-06: ایندکسِ همین درخواست را تازه نگه می‌دارد */
+        sentKeys.push(skey);
         itemOps.push({ c: 'sms_log', t: 'ins', data: lrec });
       }
-      w.balance = Number(w.balance || 0) - cost;
-      itemOps.push({ c: 'sms_wallet', t: 'upd', data: w });
-      out.credits_used += cost;
-      out.sent++;
+      /* N-18 (lost money): the debit was `w.balance = …` followed by an
+         unconditional UPDATE with no base_version — two concurrent sends for
+         one school both read balance=B, both write B−cost, and one debit is
+         silently lost. sms_wallet has carried a version column since
+         migration 013, so pin the wallet update on the version we read: the
+         second writer now hits occ_conflict and the batch is rejected instead
+         of overwriting the first debit. */
+      const walletBaseVersion = Number(w.version) || 1;
+      const prevBalance = Number(w.balance || 0);
+      w.balance = prevBalance - cost;
+      w.version = walletBaseVersion + 1; /* RAM را همگام با CAS نگه می‌دارد */
+      itemOps.push({ c: 'sms_wallet', t: 'upd', base_version: walletBaseVersion, data: w });
       q.status = 'sent';
       q.decided_at = new Date().toISOString();
       q.decided_by = s.id;
       itemOps.push({ c: 'notify_queue', t: 'upd', data: q });
-      await mirrorItem(itemOps, { school: q.school_id, queue_id: qid, kind: 'send' });
+      const mirrorOk = await mirrorItem(itemOps, { school: q.school_id, queue_id: qid, kind: 'send' });
+      if(!mirrorOk){
+        /* N-18: آینه نشد ⇒ در PG چیزی ثبت نشد. حالتِ RAM برگردانده می‌شود
+           تا retry ایدمپنت بماند و پاسخِ ۲۰۰ رویِ دادهٔ نیمه‌کاره دروغ نگوید. */
+        store.sms_log.splice(logStart);
+        for(const skey of sentKeys) sentIndex.delete(skey);
+        w.balance = prevBalance;
+        w.version = walletBaseVersion;
+        q.status = 'pending';
+        delete q.decided_at; delete q.decided_by;
+        out.mirror_failed = (out.mirror_failed || 0) + 1;
+        audit('sms_send_rolled_back', { school: q.school_id, queue_id: qid, credits: cost });
+        continue;
+      }
+      out.credits_used += cost;
+      out.sent++;
       markDirty();
       audit('sms_send', { school: q.school_id, n: parents.length, parts: cost, credits: cost, dry: DRY_RUN });
+    }
+    /* N-18: اگر هر آیتمی نتوانست در PG ثبت شود، کلِ پاسخِ ۲۰۰ دروغ است —
+       کلاینت با ۵۰۳ دوباره تلاش می‌کند (آیتم‌های ناموفق در صف می‌مانند). */
+    if(out.mirror_failed){
+      return sendJson(res, 503, Object.assign({ ok: false, code: 'sms_mirror_failed',
+        mirror_failed: out.mirror_failed, sent: out.sent, failed: out.failed }, out));
     }
     return sendJson(res, 200, Object.assign({ ok: true }, out));
   }

@@ -121,7 +121,18 @@ const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.scho
       school_id: schoolId,
       date: String(body.date).trim(),
       status: String(body.status).trim(),
-      late: Number(body.late || 0),
+      /* N-15: there is no "late" column on attendance — the real columns
+         are late_at / late_minutes (migration 001, authz/model.json, and
+         the client's own sync/demo path at src/js/02-demo-data.js:196).
+         body.late may arrive as a scalar minute count or as the client's
+         { late_at, late_minutes } event object; either way only real
+         columns are written. */
+      late_at: (body.late && typeof body.late === 'object')
+        ? (body.late.late_at || null)
+        : (body.late_at || null),
+      late_minutes: (body.late && typeof body.late === 'object')
+        ? (body.late.late_minutes != null ? Number(body.late.late_minutes) : null)
+        : Number(body.late != null && body.late !== '' ? body.late : 0),
       note: body.note ? String(body.note).trim() : '',
       version: 1,
       created_at: new Date().toISOString()
@@ -194,7 +205,21 @@ const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.scho
     /* Wave 1: patch روی کپی محاسبه می‌شود؛ store فقط پس از کامیت PG لمس می‌شود. */
     const next = Object.assign({}, rec);
     if (body.status !== undefined) next.status = String(body.status).trim();
-    if (body.late !== undefined) next.late = Number(body.late);
+    /* N-15: map body.late onto the real late_at / late_minutes columns
+       (scalar minute count or the client's event object). A legacy
+       in-memory row may still carry a phantom top-level "late" — never
+       re-persist it (42703 in PostgreSQL mode). */
+    if (body.late !== undefined) {
+      if (body.late && typeof body.late === 'object') {
+        next.late_at = body.late.late_at || null;
+        next.late_minutes = body.late.late_minutes != null ? Number(body.late.late_minutes) : null;
+      } else {
+        next.late_minutes = Number(body.late);
+      }
+    }
+    if (body.late_at !== undefined) next.late_at = body.late_at;
+    if (body.late_minutes !== undefined) next.late_minutes = Number(body.late_minutes);
+    delete next.late;
     if (body.note !== undefined) next.note = String(body.note).trim();
     bump(next);
 
@@ -245,6 +270,7 @@ const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.scho
       audit: () => audit('attendance_deleted', { user_id: user.id, record_id: Number(id) })
     });
     if (!del.ok) {
+      if (del.status === 409) return { status: 409, body: { ok: false, code: del.code || 'occ_conflict', message: del.message } };  /* N-19 */
       if (del.status === 503) return pgDown();
       return { status: 404, body: { ok: false, code: 'not_found', message: 'رکورد یافت نشد' } };
     }

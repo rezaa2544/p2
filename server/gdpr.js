@@ -41,6 +41,16 @@ function eraseUserData(store, uid) {
   purge('parent_verifications', (r) => Number(r.parent_id) === uid);
   purge('parent_subscriptions', (r) => Number(r.user_id) === uid);
   purge('messages', (r) => Number(r.from_id) === uid);
+  /* N-07 (residue): the purge list covered only the five collections above,
+     leaving the user's free text in notifications, discipline records,
+     homework submissions, counselor messages, teacher notes and support
+     tickets. A deletion left readable PII behind in those collections. */
+  purge('notifications', (r) => Number(r.user_id) === uid);
+  purge('discipline', (r) => Number(r.student_id) === uid || Number(r.created_by) === uid);
+  purge('hw_submissions', (r) => Number(r.student_id) === uid);
+  purge('counselor_msgs', (r) => Number(r.student_id) === uid || Number(r.author_id) === uid);
+  purge('teacher_notes', (r) => Number(r.student_id) === uid || Number(r.teacher_id) === uid);
+  purge('support_tickets', (r) => Number(r.user_id) === uid || Number(r.student_id) === uid);
   purge('users', (r) => Number(r.id) === uid);
   return purged;
 }

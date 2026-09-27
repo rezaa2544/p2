@@ -111,7 +111,7 @@ async function pool(n, worker) {
   const out = new Array(n);
   let next = 0;
   const runners = new Array(Math.min(n, 64)).fill(0).map(async () => {
-    while (true) {
+    for (;;) {
       const i = next++;
       if (i >= n) return;
       out[i] = await worker(i);

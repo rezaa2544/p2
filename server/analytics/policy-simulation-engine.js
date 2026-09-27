@@ -99,6 +99,12 @@ function enforcePolicySimulationAccessGuard(requester, context, options = {}) {
     if (targetSchoolId != null && targetSchoolId !== userSchoolId) {
       throw new Error(`POLICY_SIMULATION_TENANT_ISOLATION_VIOLATION: unauthorized access to school ${targetSchoolId} by staff of school ${userSchoolId}`);
     }
+    /* F4: a school manager/counselor holds no regional tenant grant — a
+       region-scoped target (region_id without school_id) must never fall
+       through the own-school check. */
+    if (targetRegionId != null && targetSchoolId == null) {
+      throw new Error(`POLICY_SIMULATION_TENANT_ISOLATION_VIOLATION: staff of school ${userSchoolId} cannot access regional scope ${targetRegionId}`);
+    }
     return true;
   }
 
@@ -323,6 +329,17 @@ function buildPolicySimulationSnapshot(params = {}) {
   }
 
   // ۲. استخراج یا مقداردهی پیش‌فرض شاخص‌های مبنا
+  /* N-03: the engine must not present its own default assumptions as measured
+     data. Track which baseline metrics the caller actually supplied so the
+     snapshot's data_quality/confidence reflect reality instead of constants. */
+  const supplied = (params.baselineMetrics && typeof params.baselineMetrics === 'object') ? params.baselineMetrics : null;
+  const BASELINE_FIELDS = ['current_attendance_rate', 'current_gpa', 'chronic_absence_rate', 'active_interventions_count'];
+  let suppliedCount = 0;
+  for (let i = 0; i < BASELINE_FIELDS.length; i++) {
+    if (supplied && supplied[BASELINE_FIELDS[i]] != null && supplied[BASELINE_FIELDS[i]] !== '') suppliedCount++;
+  }
+  const baselineSource = suppliedCount === BASELINE_FIELDS.length ? 'caller_supplied' : (suppliedCount > 0 ? 'partial' : 'engine_defaults');
+
   const baseMetrics = {
     current_attendance_rate: Number(params.baselineMetrics?.current_attendance_rate || 87.5),
     current_gpa: Number(params.baselineMetrics?.current_gpa || 15.2),
@@ -385,11 +402,20 @@ function buildPolicySimulationSnapshot(params = {}) {
     },
     assumptions: assumptions,
     limitations: limitations,
-    uncertainty_level: 'MEDIUM',
-    confidence_level: CONFIDENCE_LEVEL.HIGH,
+    uncertainty_level: baselineSource === 'caller_supplied' ? 'MEDIUM' : 'HIGH',
+    /* N-03: confidence and data_quality now follow the data actually received.
+       With engine-default baselines there is no underlying measurement, so
+       completeness/freshness are null (unknown) rather than invented. */
+    confidence_level: baselineSource === 'caller_supplied' ? CONFIDENCE_LEVEL.HIGH : CONFIDENCE_LEVEL.LOW,
     data_quality: {
-      completeness_pct: 94.5,
-      freshness_days: 3
+      completeness_pct: baselineSource === 'caller_supplied' ? 100 : (suppliedCount / BASELINE_FIELDS.length) * 100,
+      freshness_days: null,
+      baseline_source: baselineSource,
+      baseline_fields_supplied: suppliedCount,
+      baseline_fields_total: BASELINE_FIELDS.length,
+      note: baselineSource === 'caller_supplied'
+        ? 'baseline metrics supplied by caller'
+        : 'no/partial baseline metrics supplied — engine default assumptions are in use, not measurements'
     },
     human_review_status: 'PENDING_HUMAN_REVIEW',
     automated_policy_execution: false,

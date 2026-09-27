@@ -98,7 +98,7 @@ chk('S6c SOAK_DURATION و SPIKE_BASE هم پارامتریک‌اند',
 
 /* ── S7: بدونِ hostِ هاردکد ─────────────────────────────────────── */
 {
-  const hosts = src.match(/https?:\/\/[a-zA-Z0-9.\-]+/g) || [];
+  const hosts = src.match(/https?:\/\/[a-zA-Z0-9.-]+/g) || [];
   const bad = hosts.filter(h => !/localhost|127\.0\.0\.1|waf\.local/.test(h));
   chk('S7 هیچ host غیر-localhostی هاردکد نشده', bad.length === 0, bad.join(','));
 }

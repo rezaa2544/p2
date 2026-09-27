@@ -95,7 +95,11 @@ function dormActions(e, el, id, a, rawId){
      const studentId=Number(el.dataset.sid);
      const st=studentId?byId('users',studentId):null;
      if(!st){render();return;}
-     const jsDay=new Date().getDay(); /* getDay: یکشنبه=۰ … پنجشنبه=۴، جمعه=۵، شنبه=۶ */
+     /* 🔴 مبدأِ واحد: todayISO روی UTC است ولی `new Date().getDay()` روی
+        ساعتِ محلی — روی UTC+3:30 بینِ ۰۰:۰۰–۰۳:۳۰ این دو یک روز فاصله
+        دارند و «پنجشنبهٔ پیشِ رو» ناگهان چهارشنبه می‌شد. روزِ هفته
+        باید از همان تاریخِ ISO گرفته شود. */
+     const jsDay=new Date(todayISO()+'T12:00:00').getDay(); /* getDay: یکشنبه=۰ … پنجشنبه=۴، جمعه=۵، شنبه=۶ */
      /* BUG-1 (باگ‌هانت چت ۵): هدف پنجشنبهٔ پیشِ روست (۴)، نه جمعه (۵) —
         نسخهٔ قبلی ((۵-jsDay)+۷)٪۷ همیشه جمعه→شنبه می‌ساخت. */
      const dUntilThu=((4-jsDay)+7)%7; /* اگر امروز پنجشنبه باشد: ۰ */

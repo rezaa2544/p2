@@ -303,6 +303,7 @@ function createClassRoutes(ctx) {
       audit: () => audit('class_deleted', { user_id: user.id, class_id: Number(id) })
     });
     if (!del.ok) {
+      if (del.status === 409) return { status: 409, body: { ok: false, code: del.code || 'occ_conflict', message: del.message } };  /* N-19 */
       if (del.status === 503) return pgDown();
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کلاس یافت نشد' } };
     }

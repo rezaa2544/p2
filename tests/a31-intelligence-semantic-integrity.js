@@ -307,7 +307,9 @@ async function partB() {
 
   process.env.DATABASE_URL = DB_URL;
   process.env.REDIS_URL = 'redis://127.0.0.1:6379';
-  process.env.PAYESH_JWT_SECRET = 'a'.repeat(32) + 'b'.repeat(32);
+  /* N-06: the boot gate now rejects low-entropy keys ('aaaa…bbbb' has only two
+     distinct characters). Use a real random key instead. */
+  process.env.PAYESH_JWT_SECRET = require('crypto').randomBytes(32).toString('hex');
   process.env.PAYESH_DEMO_CODE = '1';
   process.env.PAYESH_ENV = 'test';
   process.env.PAYESH_SMS_COOLDOWN_S = '0';

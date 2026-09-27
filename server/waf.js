@@ -19,8 +19,21 @@ var RATE_WINDOW = 60;      /* ثانیه */
 var REDIS_TIMEOUT_MS = 100;/* سقفِ انتظارِ Redis در هر درخواست */
 var AUDIT_PER_RULE = 5;    /* سقفِ ممیزی در دقیقه برای هر rule (ضدِ سیل) */
 
-/* P0 #6 — حالتِ WAF: report (پیش‌فرض، فقط-تشخیص) | enforce (مسدودکننده). */
-var WAF_MODE = process.env.PAYESH_WAF_MODE === 'enforce' ? 'enforce' : 'report';
+/* P0 #6 — حالتِ WAF: report (فقط-تشخیص) | enforce (مسدودکننده).
+   N-28 — پیش‌فرض در production اکنون enforce است: یک فایروالِ برنامه‌ای که
+   فقط لاگ می‌کرد عملاً فایده‌ای نداشت و هر بارِ استقرار که
+   PAYESH_WAF_MODE=enforce را فراموش می‌کرد کلِ این لایه را بی‌اثر می‌کرد.
+   همچنان با تنظیمِ صریحِ PAYESH_WAF_MODE=report در dev/test قابلِ خاموش‌کردن
+   است. */
+function detectWafMode() {
+  var explicit = String(process.env.PAYESH_WAF_MODE || '').trim().toLowerCase();
+  if (explicit === 'enforce') return 'enforce';
+  if (explicit === 'report') return 'report';
+  var env = String(process.env.PAYESH_ENV || '').trim().toLowerCase();
+  var nodeEnv = String(process.env.NODE_ENV || '').trim().toLowerCase();
+  return (env === 'production' || nodeEnv === 'production') ? 'enforce' : 'report';
+}
+var WAF_MODE = detectWafMode();
 
 /* fail-safe: مسیرهای ضروری که در enforce هرگز مسدود نمی‌شوند (حتی اگر
    الگویی بخورد) — پروب‌های زیرساخت؛ اپراتور می‌تواند با PAYESH_WAF_ALLOW
@@ -43,7 +56,7 @@ function isAllowlisted(pathname) {
 
 var RULES = [
   { id: 'traversal', field: 'url', res: [
-    /\.\.[\/\\]/, /%2e%2e/i, /%252e/i, /%c0%ae/i,
+    /\.\.[/\\]/, /%2e%2e/i, /%252e/i, /%c0%ae/i,
     /\/etc\/(?:passwd|shadow|hosts)/i, /[a-z]:[\\/]/i
   ] },
   { id: 'sqli', field: 'url', res: [
@@ -65,6 +78,77 @@ var RULES = [
     /sqlmap|nikto|nmap|masscan|hydra|medusa|metasploit|zgrab|shodan|nessus|openvas|wpscan|dirbuster|gobuster|ffuf|burp|acunetix|netsparker|appscan|censys|streetsurf/i
   ] }
 ];
+
+/* N-28 — قوانینِ بدنه: کپیِ همان الگوهای url (sqli/xss/traversal) با
+   پسوندِ _body. url-only بودنِ WAF یعنی یک تزریق درِ بدنهٔ POST به‌سادگی
+   از کنارش رد می‌شد. الگوها ازِ RULES بازیافت می‌شوند تا با تکاملِ
+   قوانینِ url، بدنه هم هم‌گام بماند (یک منبع، دو میدان). */
+var BODY_RULES = (function () {
+  var src = { sqli: true, xss: true, traversal: true };
+  var out = [];
+  for (var i = 0; i < RULES.length; i++) {
+    var r = RULES[i];
+    if (src[r.id]) out.push({ id: r.id + '_body', res: r.res });
+  }
+  return out;
+})();
+
+function evaluateBody(text) {
+  try {
+    var hay = String(text || '');
+    if (!hay) return null;
+    for (var i = 0; i < BODY_RULES.length; i++) {
+      var rule = BODY_RULES[i];
+      for (var j = 0; j < rule.res.length; j++) {
+        if (rule.res[j].test(hay)) return { rule: rule.id, field: 'body' };
+      }
+    }
+  } catch (e) {}
+  return null;
+}
+
+/* N-28 — نگاهی کوتاه به بدنهٔ درخواست. wafMiddleware قبل از readBodyِ
+   مسیر اجرا می‌شود، پس جریان را کامل می‌خوانیم و بافر را روی req نگه
+   می‌داریم تا readBody از آن بازپخش کند (unshift بعد از رویدادِ end در Node
+   مجاز نیست؛ بازپخشِ بافر قطعی و بدونِ خطرِ بریدنِ جریان است). کران‌دار و
+   fail-open در هر خطا. */
+var BODY_PEEK_CAP = 2 * 1024 * 1024;
+function peekBody(req) {
+  return new Promise(function (resolve) {
+    try {
+      if (!req || typeof req.on !== 'function') return resolve(null);
+      var chunks = [];
+      var size = 0;
+      var done = false;
+      var finish = function (txt) {
+        if (done) return;
+        done = true;
+        try { req.removeListener('data', onData); } catch (e) {}
+        try { req.removeListener('end', onEnd); } catch (e) {}
+        try { req.removeListener('error', onError); } catch (e) {}
+        resolve(txt);
+      };
+      var onData = function (c) {
+        try {
+          size += c.length;
+          if (size > BODY_PEEK_CAP) { req._wafBodyTooLarge = true; finish(null); return; }
+          chunks.push(c);
+        } catch (e) { finish(null); }
+      };
+      var onEnd = function () {
+        try {
+          var buf = Buffer.concat(chunks, size);
+          req._wafBodyBuffer = buf;
+          finish(buf.toString('utf8'));
+        } catch (e) { finish(null); }
+      };
+      var onError = function () { finish(null); };
+      req.on('data', onData);
+      req.on('end', onEnd);
+      req.on('error', onError);
+    } catch (e) { resolve(null); }
+  });
+}
 
 /* ورودیِ یک درخواست (خالص، تست‌پذیر) → { rule, field } یا null. */
 function evaluateInput(input) {
@@ -116,6 +200,19 @@ async function wafMiddleware(req, res) {
     var ua = (req && req.headers && req.headers['user-agent']) || '';
     var verdict = null;
     try { verdict = evaluateInput({ url: url, ua: ua }); } catch (e) { verdict = null; }
+    /* N-28 — بدنه: فقط برای متدهایی که بدنه دارند و فقط اگر url تمیز است
+       (یک verdictِ url همینجا برنده است؛ بدنه خوانده نمی‌شود). */
+    if (!verdict && req && req.method) {
+      var m = String(req.method).toUpperCase();
+      if (m === 'POST' || m === 'PUT' || m === 'PATCH') {
+        try {
+          var bodyTxt = await peekBody(req);
+          if (bodyTxt) {
+            try { verdict = evaluateBody(bodyTxt); } catch (e) { verdict = null; }
+          }
+        } catch (e) { verdict = null; }
+      }
+    }
     req.context = req.context || {};
     var w = { v: WAF_VERSION, verdict: verdict ? verdict.rule : 'clean' };
     var ip = '';
@@ -175,7 +272,11 @@ module.exports = {
   RATE_LIMIT: RATE_LIMIT,
   RATE_WINDOW: RATE_WINDOW,
   RULES: RULES,
+  BODY_RULES: BODY_RULES,
   evaluateInput: evaluateInput,
+  evaluateBody: evaluateBody,
+  peekBody: peekBody,
+  detectWafMode: detectWafMode,
   wafMiddleware: wafMiddleware,
   withTimeout: withTimeout
 };

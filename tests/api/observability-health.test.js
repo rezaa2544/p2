@@ -24,6 +24,10 @@ process.env.PAYESH_STORE = T_STORE;
 process.env.PAYESH_AUDIT = T_AUDIT;
 process.env.PAYESH_KEY   = T_KEY;
 process.env.PAYESH_DEMO_CODE = '1';
+/* the tenant-policy authority gate requires either a live PostgreSQL authority
+   or an explicit dev override; without this the endpoints return 503 in the
+   in-memory test environment. */
+process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY = '1';
 
 const { server, store } = require(path.join(ROOT, 'server', 'index.js'));
 
@@ -97,10 +101,14 @@ async function run() {
     assert.strictEqual(mgrOwnRes.json.school_id, 1);
     assert.ok(mgrOwnRes.json.observability_health);
     assert.strictEqual(mgrOwnRes.json.observability_health.phase, 'PHASE_4');
-    assert.strictEqual(mgrOwnRes.json.observability_health.status, 'healthy');
-    assert.strictEqual(mgrOwnRes.json.observability_health.services.database, 'healthy');
-    assert.strictEqual(mgrOwnRes.json.observability_health.services.redis, 'healthy');
-    assert.strictEqual(mgrOwnRes.json.observability_health.services.event_queue, 'healthy');
+    /* N-11: the route supplies no live DB/queue/cache measurements, so those
+       collectors must report UNKNOWN rather than invented healthy literals.
+       Asserting 'healthy' here used to make a completely down database look
+       identical to a live one. */
+    assert.strictEqual(mgrOwnRes.json.observability_health.status, 'unknown');
+    assert.strictEqual(mgrOwnRes.json.observability_health.services.database, 'unknown');
+    assert.strictEqual(mgrOwnRes.json.observability_health.services.redis, 'unknown');
+    assert.strictEqual(mgrOwnRes.json.observability_health.services.event_queue, 'unknown');
     assert.ok(mgrOwnRes.json.observability_health.capacity);
     assert.strictEqual(mgrOwnRes.json.observability_health.governance_and_invariants.human_decision_sovereignty.enforced, true);
     assert.strictEqual(mgrOwnRes.json.observability_health.governance_and_invariants.zero_ranking_guarantee.enforced, true);
@@ -130,7 +138,7 @@ async function run() {
     assert.strictEqual(regRes.status, 200, 'Admin accessing regional observability health must return 200');
     assert.strictEqual(regRes.json.ok, true);
     assert.strictEqual(regRes.json.regional_observability_health.zero_ranking, true);
-    assert.strictEqual(regRes.json.regional_observability_health.status, 'healthy');
+    assert.strictEqual(regRes.json.regional_observability_health.status, 'unknown');
     console.log('  ✅ OBS6: Regional observability overview strictly enforces zero-ranking policy');
     pass++;
 

@@ -100,7 +100,7 @@ async function flood(port, n, pth, headers) {
   let i = 0;
   const conc = 40;
   async function worker() {
-    while (true) {
+    for (;;) {
       const k = i++;
       if (k >= n) return;
       out[k] = await req(port, 'GET', pth, null, null, headers);

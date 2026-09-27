@@ -1,15 +1,51 @@
 {
   "env": {
-    "es6": true,
+    "es2022": true,
     "node": true,
     "browser": true
   },
   "extends": [
     "eslint:recommended"
   ],
+  /* N-23: `gc` is injected by `node --expose-gc` (tests/smoke.js); without a
+     global declaration eslint's no-undef fires on it. es2022 resolves BigInt
+     and globalThis, which the tooling uses on Node >= 22. */
+  "globals": {
+    "gc": "readonly"
+  },
   "parserOptions": {
     "ecmaVersion": "latest",
     "sourceType": "script"
   },
-  "rules": {}
+  "rules": {
+    /* N-23: the two high-volume rules are demoted to WARN and their count is
+       frozen by --max-warnings in the lint script, so the baseline is
+       reported and can only shrink — never silently grow — without holding
+       every merge hostage to 1368 pre-existing findings.
+         - no-empty: 870 empty catch blocks (a real fail-open smell, but each
+           needs a decision about the right failure mode).
+         - no-unused-vars: 498, largely defensive catch bindings and
+           intentionally-ignored arguments.
+       Everything else in eslint:recommended stays an ERROR and must pass. */
+    "no-empty": "warn",
+    "no-unused-vars": "warn"
+  },
+  "overrides": [
+    {
+      /* tests/performance is authored as ESM (import/export) and runs under
+         k6, which injects __ENV/__VU/__ITER as globals; the default
+         sourceType:script made eslint report 13 parse errors instead of
+         linting them, and script mode hid the k6 globals. */
+      "files": ["tests/performance/**/*.js"],
+      "parserOptions": {
+        "ecmaVersion": "latest",
+        "sourceType": "module"
+      },
+      "globals": {
+        "__ENV": "readonly",
+        "__VU": "readonly",
+        "__ITER": "readonly"
+      }
+    }
+  ]
 }

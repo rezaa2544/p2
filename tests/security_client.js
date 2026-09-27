@@ -41,7 +41,7 @@ function main() {
   chk('K1-B بدونِ عنصرِ غیرمنتظره (فقط یک div)', lerr().children.length === 1 && lerr().firstElementChild.tagName === 'DIV', lerr().innerHTML);
 
   /* K2: payload شیطانی (موتانتِ innerHTML را می‌کُشد) */
-  const payload = '<img src=x onerror="window.__pwned=1"><script>window.__pwned=2<\/script>';
+  const payload = '<img src=x onerror="window.__pwned=1"><script>window.__pwned=2</script>';
   w.eval('loginErr(' + JSON.stringify(payload) + ')');
   chk('K2 img ساخته نشد', lerr().querySelector('img') === null, lerr().innerHTML);
   chk('K2-B کدِ جاوااسکریپت اجرا نشد', w.__pwned === undefined, String(w.__pwned));

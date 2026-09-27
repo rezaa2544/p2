@@ -112,6 +112,12 @@ function enforceGovernanceDashboardAccessGuard(requester, targetEntity, options 
     if (targetSchoolId != null && targetSchoolId !== userSchoolId) {
       throw new Error(`GOVERNANCE_TENANT_ISOLATION_VIOLATION: unauthorized access to school ${targetSchoolId} by staff of school ${userSchoolId}`);
     }
+    /* F4: a school manager/counselor holds no regional tenant grant — a
+       region-scoped target (region_id without school_id) must never fall
+       through the own-school check. */
+    if (targetRegionId != null && targetSchoolId == null) {
+      throw new Error(`GOVERNANCE_TENANT_ISOLATION_VIOLATION: staff of school ${userSchoolId} cannot access regional scope ${targetRegionId}`);
+    }
     return true;
   }
 

@@ -18,6 +18,21 @@ const { buildUsersList, executePagedList } = require('../dbquery'); /* Wave 3 (c
 
 const ROLE_LEVEL = { student: 0, parent: 1, driver: 1, counselor: 3, teacher: 3, edu_office: 3, manager: 4, superadmin: 5 };
 
+/* N-25 — ROLE_LEVEL یک سلسله‌مراتبِ *مدرسه‌محور* است، ولی دو نقش دامنه‌ای
+   فراتر از یک مدرسه دارند: edu_office (ناظرِ منطقه‌ای/استانی — قدرتش از
+   office_id و هندسهٔ officeCoversSchool می‌آید، نه school_id) و superadmin
+   (ملی). مقایسهٔ عددیِ سطح به این تفاوتِ *دامنه* نابیناست: manager (۴)
+   عددش بالاتر از edu_office (۳) است، پس دروازهٔ قدیمی اجازه می‌داد یک
+   مدیرِ تک‌مدرسه‌ای یک حسابِ ناظرِ منطقه‌ای بسازد — و policy.inScope برایِ
+   edu_office رویِ مجموعه‌هایِ غیرِ دروازه‌شده «true» برمی‌گرداند، یعنی
+   حسابِ تازه، اختیارِ بین‌مدرسه‌ایِ بی‌مهار می‌گرفت. این یک ارتقایِ دامنه
+   است که هیچ عددی نمی‌تواند آن را بیان کند؛ پس ایجاد/ارتقایِ این نقش‌ها
+   فقط به superadmin است. */
+const SCOPE_PRIVILEGED_ROLES = { edu_office: true, superadmin: true };
+function scopePrivilegeViolation(actorRole, targetRole) {
+  return !!SCOPE_PRIVILEGED_ROLES[targetRole] && actorRole !== 'superadmin';
+}
+
 function createUserRoutes(ctx) {
   const store = ctx.store;
   const db = ctx.db;
@@ -125,6 +140,11 @@ function createUserRoutes(ctx) {
     if (user.role !== 'superadmin' && targetLvl > ROLE_LEVEL[user.role]) {
       return { status: 403, body: { ok: false, code: 'role_escalation', message: 'ثبت کاربر با نقش بالاتر از سطح خود مجاز نیست' } };
     }
+    /* N-25 — نقش‌هایِ ممتازِ دامنه (ناظرِ منطقه‌ای/ملی) حتی اگر عددشان پایین‌تر
+       باشد، فقط توسطِ superadmin ساخته می‌شوند. */
+    if (scopePrivilegeViolation(user.role, body.role)) {
+      return { status: 403, body: { ok: false, code: 'role_escalation', message: 'ایجاد نقش ناظرِ منطقه‌ای/ملی فقط برای سوپرادمین مجاز است' } };
+    }
 
     const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.school_id) : user.school_id;
     /* P0-16: شناسهٔ بدون‌برخورد (دنباله/قفل) به‌جای مکس+۱ ناهمزمان */
@@ -211,7 +231,7 @@ function createUserRoutes(ctx) {
         return { status: 403, body: { ok: false, code: 'forbidden', message: 'تغییر نقش فقط توسط مدیریت مجاز است' } };
       }
       const targetLvl = ROLE_LEVEL[body.role];
-      if (user.role !== 'superadmin' && (targetLvl == null || targetLvl > ROLE_LEVEL[user.role])) {
+      if (user.role !== 'superadmin' && (targetLvl == null || targetLvl > ROLE_LEVEL[user.role] || scopePrivilegeViolation(user.role, body.role))) {
         return { status: 403, body: { ok: false, code: 'role_escalation', message: 'ارتقای نقش به سطحی بالاتر از خود مجاز نیست' } };
       }
       next.role = body.role;
@@ -279,6 +299,7 @@ function createUserRoutes(ctx) {
       audit: () => audit('user_deleted', { user_id: user.id, target_user_id: Number(id) })
     });
     if (!del.ok) {
+      if (del.status === 409) return { status: 409, body: { ok: false, code: del.code || 'occ_conflict', message: del.message } };  /* N-19 */
       if (del.status === 503) return pgDown();
       return { status: 404, body: { ok: false, code: 'not_found', message: 'کاربر یافت نشد' } };
     }

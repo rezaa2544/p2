@@ -125,7 +125,7 @@ async function main() {
     const outUser = seed.users.find(u => u.school_id === outSchool.id && u.role === 'manager');
     const inUser = seed.users.find(u => u.school_id === inSchool.id && u.role === 'manager');
 
-    async function login(u) {
+    const login = async (u) => {
       const phone = String(u.phone).replace(/[\s\-()]/g, '');
       const sc = await httpReq('POST', '/api/auth/send-code', { phone });
       const lg = await httpReq('POST', '/api/auth/login', { phone, code: sc.json && sc.json.demo_code, national_id: u.national_id });
@@ -238,7 +238,7 @@ async function main() {
          keyset را با cursor روی id می‌زند (میراثِ Wave-3)؛ برایِ فهرست‌هایِ
          بزرگ «برش‌هایِ cursor» دقیقاً چند‌صفحه‌ای نیستند — ولی دامنه
          (total/عضویت) باید دقیقاً بخواند. فهرست‌هایِ زیرِ سقف صفحه: برابریِ کامل. */
-      async function fetchPage1(ck, base) {
+      const fetchPage1 = async (ck, base) => {
         const r = await httpReq('GET', base + '?limit=200', null, ck);
         if (r.status !== 200 || !r.json || !r.json.ok) return null;
         return {

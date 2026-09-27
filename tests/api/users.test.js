@@ -110,6 +110,16 @@ async function main() {
     assert.strictEqual(rEscalate.status, 403);
     assert.strictEqual(rEscalate.json.code, 'role_escalation');
 
+    // N-25: nor a regional regulator — ROLE_LEVEL is school-scoped and blind to
+    // edu_office's cross-school authority (policy.inScope returns true for it on
+    // non-gated collections). Only superadmin may mint scope-privileged roles.
+    const rEo = await req('POST', '/api/v1/users', {
+      body: { full_name: 'کارشناس جعلی اداره', role: 'edu_office', office_id: 1 },
+      cookie: cookieMgr1
+    });
+    assert.strictEqual(rEo.status, 403);
+    assert.strictEqual(rEo.json.code, 'role_escalation');
+
     // Manager creates teacher
     const rOk = await req('POST', '/api/v1/users', {
       body: { full_name: 'دبیر ریاضی جدید', role: 'teacher', phone: '09129998877', national_id: '0019998877' },

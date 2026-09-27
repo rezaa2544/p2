@@ -28,10 +28,13 @@ const collections = model.collections || {};
 const VERSION_TRACKED = { grades: 1, attendance: 1, discipline: 1, schools: 1, classes: 1, subjects: 1, users: 1, enrollments: 1, schedule: 1 };
 function managedFields(col, fields) {
   const out = (fields || []).slice();
-  if (VERSION_TRACKED[col]) {
-    if (!out.includes('version')) out.push('version');
-    if (!out.includes('version_vector')) out.push('version_vector');
-  }
+  /* N-21: the fresh-DB DDL used to add `version` only to the 9 VERSION_TRACKED
+     collections, while migration 013 adds it to EVERY application table — so a
+     database built from this DDL alone silently lacked the OCC column on ~67
+     tables (the parity ALTERs further down patched it only on the --execute
+     path). Parity with the chain means every app collection declares it here. */
+  if (!out.includes('version')) out.push('version');
+  if (VERSION_TRACKED[col] && !out.includes('version_vector')) out.push('version_vector');
   return out;
 }
 
@@ -164,6 +167,19 @@ function escapeSqlVal(val, type) {
 
 /* Generate full DDL Schema for all 80 tables */
 function generateDDL() {
+  /* N-21: the DDL reference must be deterministic whether it is produced by
+     the CLI's full path or called directly (e.g. by the drift-guard test).
+     Column types are inferred from real store samples (P0-BUG-03), which the
+     CLI populated indirectly by running generateMigrationSQL first — so
+     populate them here too when the store is available and nothing has
+     snapshotted it yet. Without this the same generator produced two
+     different schema.sql files depending on the call site. */
+  if (Object.keys(COLUMN_SAMPLES).length === 0 && fs.existsSync(STORE_FILE)) {
+    let s;
+    try { s = JSON.parse(fs.readFileSync(STORE_FILE, 'utf8')); } catch (e) { s = null; }
+    if (s && typeof s === 'object') snapshotColumnSamples(s);
+  }
+
   const ddl = [];
   ddl.push('-- ═══════════════════════════════════════════════════════════════════');
   ddl.push('-- Payesh PostgreSQL Relational Schema (80 Collections)');
@@ -208,9 +224,16 @@ CREATE TABLE IF NOT EXISTS server_outbox (
   last_error TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   processed_at TIMESTAMPTZ,
-  processing_at TIMESTAMPTZ
+  processing_at TIMESTAMPTZ,
+  processing_token TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_server_outbox_status ON server_outbox (status);
+/* Migration 021 parity: processing lease / crash recovery. A worker claims a
+   row by stamping processing_at + processing_token; the partial index below is
+   the lease queue it scans, and the unique index dedupes DLQ reroutes. */
+CREATE INDEX IF NOT EXISTS idx_server_outbox_processing_lease
+  ON server_outbox (status, processing_at, id)
+  WHERE status = 'processing';
 
 -- Dead-letter queue (wave 27 / migration 014 parity) — the worker routes
 -- poison pills here; without this table moveToDlq fails (reproduced live).
@@ -229,6 +252,8 @@ CREATE TABLE IF NOT EXISTS server_outbox_dlq (
 );
 CREATE INDEX IF NOT EXISTS idx_server_outbox_dlq_time ON server_outbox_dlq (failed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_server_outbox_dlq_type ON server_outbox_dlq (type, collection);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_server_outbox_dlq_outbox_id
+  ON server_outbox_dlq (outbox_id);
 `);
 
   const colNames = Object.keys(collections);
@@ -251,7 +276,18 @@ CREATE INDEX IF NOT EXISTS idx_server_outbox_dlq_type ON server_outbox_dlq (type
     const colDefs = [];
     for (const f of allFields) {
       const type = getColumnType(col, f);
-      colDefs.push(`  "${f}" ${type}`);
+      /* N-21: migration 013's OCC contract is `version INTEGER NOT NULL
+         DEFAULT 1` on every app table. Emitting a bare INTEGER here left the
+         column nullable with no default, so a database built from schema.sql
+         alone gave every new row version = NULL — and every conditional OCC
+         UPDATE (WHERE id=$1 AND version=$base) then matched nothing, failing
+         with occ_conflict forever. The default + NOT NULL must be part of the
+         DDL itself, not only of the post-insert parity backfill. */
+      if (f === 'version') {
+        colDefs.push('  "version" INTEGER NOT NULL DEFAULT 1');
+      } else {
+        colDefs.push(`  "${f}" ${type}`);
+      }
     }
 
     // Foreign keys are DEFERRED to phase 2 (see fkStatements) — never inline.
@@ -327,6 +363,62 @@ CREATE TABLE IF NOT EXISTS sync_conflicts (
   CONSTRAINT chk_sync_conflicts_status CHECK (status IN ('open', 'resolved')),
   CONSTRAINT chk_sync_conflicts_winner CHECK (winner IS NULL OR winner IN ('incoming', 'server'))
 );
+`);
+
+  /* ── N-21: chain-parity section. The fresh-DB DDL used to cover only the
+     tables/columns reachable from authz/model.json, so every column the
+     migration chain adds SERVER-SIDE was silently absent from the tracked
+     schema.sql — the file drifted until it no longer described a database the
+     chain can actually produce, and server_tombstones had to be hand-patched
+     back in after a regeneration dropped it. Each block below mirrors one
+     migration exactly; a drift-guard test compares this output to the
+     committed schema.sql so the file cannot go stale silently again. */
+
+  // Migration 011 parity — delta change-ID (see the migration header for the
+  // full rationale). chg_id is deliberately NOT a model field: it is minted by
+  // the bump trigger, stripped by stripInternalColumns before any row leaves
+  // the DB layer, and never carried in an op payload, so putting it in
+  // managedFields would corrupt the generated INSERTs. DDL-only, exactly like
+  // the migration itself.
+  const CHG_ID_TABLES = [
+    'users', 'classes', 'subjects', 'schedule', 'enrollments',
+    'attendance', 'grades', 'discipline', 'leaves', 'notifications',
+    'announcements', 'hw_submissions', 'counselor_refs', 'counselor_msgs'
+  ];
+  const chgStmts = [];
+  chgStmts.push('CREATE SEQUENCE IF NOT EXISTS payesh_chg_seq;');
+  chgStmts.push(`CREATE OR REPLACE FUNCTION payesh_chg_bump() RETURNS trigger AS $$
+BEGIN
+  NEW.chg_id := nextval('payesh_chg_seq');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;`);
+  for (const t of CHG_ID_TABLES) {
+    chgStmts.push(`ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS chg_id BIGINT;`);
+    chgStmts.push(`DROP TRIGGER IF EXISTS trg_${t}_chg ON ${t};`);
+    chgStmts.push(`CREATE TRIGGER trg_${t}_chg BEFORE INSERT OR UPDATE ON ${t}
+                    FOR EACH ROW EXECUTE FUNCTION payesh_chg_bump();`);
+    chgStmts.push(`CREATE INDEX IF NOT EXISTS idx_${t}_chg_id ON ${t} (chg_id);`);
+  }
+  ddl.push(`-- Migration 011 parity: delta change-ID (chg_id) — monotonic, clock-free delta feed
+${chgStmts.join('\n')}
+`);
+
+  // Migration 023 parity — durable delta tombstones. server/syncdelta.js and
+  // server/pull.js both depend on this table; a regeneration without this
+  // block silently reverts deletes to in-memory-only (N-17).
+  ddl.push(`-- Migration 023 parity: durable delta tombstones (N-17) — deletes must survive a restart
+CREATE TABLE IF NOT EXISTS server_tombstones (
+  id BIGSERIAL PRIMARY KEY,
+  "collection" VARCHAR(64) NOT NULL,
+  record_id INTEGER NOT NULL,
+  school_id INTEGER,
+  deleted_by INTEGER,
+  deleted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  reason VARCHAR(255)
+);
+CREATE INDEX IF NOT EXISTS idx_server_tombstones_deleted_at ON server_tombstones (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_server_tombstones_school_deleted_at ON server_tombstones (school_id, deleted_at);
 `);
 
   // Composite indexes & GIN indexes
@@ -418,6 +510,34 @@ function generateMigrationSQL(store) {
   }
 
   statements.push('COMMIT;\n');
+  /* N-16 (CRITICAL): the INSERTs above load EXPLICIT id values into
+     GENERATED BY DEFAULT AS IDENTITY columns. A GENERATED BY DEFAULT insert
+     never advances the identity sequence, so after migration every
+     sequence still sits at its initial value. The application allocates new
+     ids with ids.nextId → nextval(pg_get_serial_sequence(col,'id'))
+     (server/ids.js:66-70), which returns 1 for the first create; the row
+     then lands on the seeded id=1 row and ON CONFLICT (id) DO UPDATE
+     silently OVERWRITES it while the API answers 201. Advance every loaded
+     table's sequence past its seeded MAX(id) — the same idiom as migration
+     012 and the F1 bootstrap in server/index.js:279. Tables with no loaded
+     rows are skipped: an empty table has nothing to collide with. Runs in
+     its own transaction after the data COMMIT because pg_get_serial_sequence
+     must see the finished rows. */
+  statements.push('BEGIN;\n');
+  statements.push('-- N-16: advance identity sequences past the seeded ids (explicit-ID loads do not advance them)');
+  let seqAdvanced = 0;
+  for (const col of orderedCols) {
+    const rows = Array.isArray(store[col]) ? store[col] : [];
+    if (rows.length === 0) continue;
+    statements.push(
+      `SELECT setval(pg_get_serial_sequence('${col}', 'id'),\n` +
+      `              COALESCE((SELECT MAX(id) FROM ${col}), 0) + 1, false);`
+    );
+    seqAdvanced++;
+  }
+  statements.push(`-- ${seqAdvanced} sequence(s) advanced`);
+  statements.push('COMMIT;\n');
+  statements.push('');
   /* Universal-OCC backfill (Phase-2 remediation, live finding): the migration
      chain's 013 gives every app table `version INTEGER NOT NULL DEFAULT 1` —
      a store-migrated database must satisfy the SAME contract, or every
@@ -527,8 +647,17 @@ async function main() {
      now explicit: pass --write-schema (or have no schema.sql at all). */
   const wantSchemaWrite = args.includes('--write-schema') || !fs.existsSync(SCHEMA_FILE);
   if (wantSchemaWrite) {
-    fs.writeFileSync(SCHEMA_FILE, sql, 'utf8');
-    console.log(`[OK] PostgreSQL Schema and Migration DDL written to ${SCHEMA_FILE} (${sql.length} bytes)`);
+    /* N-21: the tracked server/schema.sql is the DDL REFERENCE for the schema
+       a fully-migrated database ends up with — it is NOT the migration script.
+       Writing generateMigrationSQL() here instead dumped 33k data INSERTs and
+       the parity ALTERs into the tracked file (5 MB), which is not what the
+       file is and made the drift invisible. generateDDL() is the same
+       generator's DDL-only path, now carrying the migration-chain parity
+       blocks, so a regeneration reproduces the chain rather than diverging
+       from it. */
+    const ddl = generateDDL();
+    fs.writeFileSync(SCHEMA_FILE, ddl, 'utf8');
+    console.log(`[OK] PostgreSQL schema DDL written to ${SCHEMA_FILE} (${ddl.length} bytes, DDL-only — the migration script with data is emitted by --sql/--execute)`);
   } else {
     console.log(`[skip] ${SCHEMA_FILE} left untouched (tracked file) — pass --write-schema to regenerate it`);
   }

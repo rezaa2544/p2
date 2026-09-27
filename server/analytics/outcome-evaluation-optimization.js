@@ -97,12 +97,21 @@ function enforceOutcomeEvaluationAccessGuard(user, target = {}) {
     return true;
   }
 
+  const targetRegionId = target.region_id != null ? Number(target.region_id) : null;
+
   // کارشناس اداره منطقه
   if (role === 'edu_office') {
-    const userRegion = Number(user.region_id || user.district_id);
-    const targetRegion = target.region_id != null ? Number(target.region_id) : null;
-    if (targetRegion && userRegion !== targetRegion) {
-      throw new Error(`OUTCOME_EVALUATION_TENANT_ISOLATION_VIOLATION: دسترسی به منطقه ${targetRegion} برای منطقه ${userRegion} مسدود است`);
+    /* N-04: Number(region_id || district_id) silently collapses an unassigned
+       officer to region 0, and the truthiness test then skips on a falsy
+       target. Resolve the assignment explicitly and fail closed. */
+    const userRegionId = user.region_id != null
+      ? Number(user.region_id)
+      : (user.district_id != null ? Number(user.district_id) : null);
+    if (userRegionId == null) {
+      throw new Error('OUTCOME_EVALUATION_TENANT_ISOLATION_VIOLATION: edu_office lacks region_id assignment');
+    }
+    if (targetRegionId != null && targetRegionId !== userRegionId) {
+      throw new Error(`OUTCOME_EVALUATION_TENANT_ISOLATION_VIOLATION: دسترسی به منطقه ${targetRegionId} برای منطقه ${userRegionId} مسدود است`);
     }
     return true;
   }
@@ -111,8 +120,14 @@ function enforceOutcomeEvaluationAccessGuard(user, target = {}) {
   const userSchool = Number(user.school_id);
   const targetSchool = target.school_id != null ? Number(target.school_id) : null;
 
-  if (targetSchool && userSchool !== targetSchool) {
+  if (targetSchool != null && userSchool !== targetSchool) {
     throw new Error(`OUTCOME_EVALUATION_TENANT_ISOLATION_VIOLATION: دسترسی به مدرسه ${targetSchool} برای کاربر مدرسه ${userSchool} مسدود است`);
+  }
+  /* F4: school-resident roles hold no regional tenant grant — a region-scoped
+     target (region_id without school_id) must never fall through the
+     own-school check. */
+  if (targetRegionId != null && targetSchool == null) {
+    throw new Error(`OUTCOME_EVALUATION_TENANT_ISOLATION_VIOLATION: staff of school ${userSchool} cannot access regional scope ${targetRegionId}`);
   }
 
   return true;
@@ -440,40 +455,12 @@ function buildOutcomeEvaluationSnapshot(params = {}) {
     enforceOutcomeEvaluationAccessGuard(options.requester, { school_id: schoolId, region_id: regionId });
   }
 
-  let evaluations = params.evaluations;
-  if (!Array.isArray(evaluations) || evaluations.length === 0) {
-    // نمونه استاندارد پیش‌فرض
-    evaluations = [
-      evaluateOperationalOutcome({
-        task: {
-          task_id: `TASK-SCH${schoolId}-01`,
-          decision_id: `DEC-SCH${schoolId}-01`,
-          title: 'طرح تقویت انگیزش تحصیلی پایه نهم',
-          domain: 'ACADEMIC'
-        },
-        baselineMetrics: { attendance_pct: 88.0, gpa: 14.2, engagement_pct: 65.0, wellbeing_pct: 60.0 },
-        postMetrics: { attendance_pct: 93.5, gpa: 15.6, engagement_pct: 80.0, wellbeing_pct: 75.0 },
-        goalAchievementPct: 92.0,
-        sustainabilityScore: 88.0,
-        evidenceConfidence: 90.0,
-        options
-      }),
-      evaluateOperationalOutcome({
-        task: {
-          task_id: `TASK-SCH${schoolId}-02`,
-          decision_id: `DEC-SCH${schoolId}-02`,
-          title: 'مداخله کاهش غیبت مکرر روزهای دوشنبه',
-          domain: 'ATTENDANCE'
-        },
-        baselineMetrics: { attendance_pct: 82.0, gpa: 13.0, engagement_pct: 60.0, wellbeing_pct: 55.0 },
-        postMetrics: { attendance_pct: 87.0, gpa: 13.4, engagement_pct: 68.0, wellbeing_pct: 62.0 },
-        goalAchievementPct: 80.0,
-        sustainabilityScore: 72.0,
-        evidenceConfidence: 85.0,
-        options
-      })
-    ];
-  }
+  /* N-03: previously two full interventions with evidenceConfidence 90/85
+     were invented from constants when the caller passed no evaluations, and
+     reported as if they had been observed. An empty input now yields an
+     honest empty evaluation set. */
+  const callerEvaluations = Array.isArray(params.evaluations) ? params.evaluations : null;
+  const evaluations = callerEvaluations || [];
 
   const totalEvaluations = evaluations.length;
   let sumImpact = 0;
@@ -515,6 +502,14 @@ function buildOutcomeEvaluationSnapshot(params = {}) {
     region_id: regionId,
     academic_year: academicYear,
     total_interventions_evaluated: totalEvaluations,
+    data_availability: deepFreeze({
+      evaluations_supplied: totalEvaluations,
+      derived_from_store: totalEvaluations > 0,
+      fabricated_defaults: false,
+      note: totalEvaluations > 0
+        ? 'evaluations supplied by caller'
+        : 'no evaluations supplied — impact metrics are empty, not inferred'
+    }),
     average_impact_score: avgImpactScore,
     impact_distribution: distribution,
     overall_delta_summary: {

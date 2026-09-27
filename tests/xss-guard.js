@@ -43,7 +43,7 @@ async function main() {
   console.log('\n— X1: واحدِ esc/escAttr —');
   const payloads = [
     ['<img src=x onerror=window.__x1=1>', 'img onerror'],
-    ['<script>window.__x1=1<\/script>', 'script'],
+    ['<script>window.__x1=1</script>', 'script'],
     ['" onmouseover="alert(1)', 'quote-breakout'],
     ["' onfocus='alert(1)", "single-quote"],
     ['`onload=alert(1)', 'backtick'],

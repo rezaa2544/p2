@@ -57,7 +57,7 @@ function generateP8(){
 
   // ولی با فرزندان در سه مدرسه مختلف
   const multiNid=makeNid();
-  const dad=add('users',{school_id:db.schools[0].id,role:'parent',full_name:'کاظم رستمی',username:'parent_multi',password:'123456',
+  const dad=add('users',{school_id:db.schools[0].id,role:'parent',full_name:'کاظم رستمی',username:'parent_multi',
     national_id:multiNid,phone:'09990001234',active:1,created_at:daysAgoISO(300)});
   db.schools.slice(0,3).forEach(sc=>{
     const st=db.users.find(u=>u.role==='student'&&u.school_id===sc.id);

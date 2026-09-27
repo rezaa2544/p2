@@ -55,7 +55,7 @@ const JS_UNSAFE_CHAR_MAP = {
   '\u2028': '\\u2028',
   '\u2029': '\\u2029',
 };
-const escapeUnsafeChars = (str) => str.replace(/[<>\/\\\b\f\n\r\t\0\u2028\u2029]/g, (ch) => JS_UNSAFE_CHAR_MAP[ch] || ch);
+const escapeUnsafeChars = (str) => str.replace(/[<>/\\\b\f\n\r\t\0\u2028\u2029]/g, (ch) => JS_UNSAFE_CHAR_MAP[ch] || ch);
 const safeJsLiteral = (value) => escapeUnsafeChars(JSON.stringify(value));
 const mgrLogin = (u) => W(`S.user=db.users.find(function(x){return x.username==='${u || 'manager1'}';});S.persona=null;S.boss=null;S.filters={};`);
 const go = (route) => W(`S.route='${route}';render();`);

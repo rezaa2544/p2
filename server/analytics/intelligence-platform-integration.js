@@ -188,11 +188,20 @@ function enforcePlatformAccessGuard(user, target = {}) {
     return true;
   }
 
+  const targetRegionId = target.region_id != null ? Number(target.region_id) : null;
+
   if (role === 'edu_office') {
-    const userRegion = Number(user.region_id || user.district_id);
-    const targetRegion = target.region_id != null ? Number(target.region_id) : null;
-    if (targetRegion && userRegion !== targetRegion) {
-      throw new Error(`INTELLIGENCE_PLATFORM_TENANT_ISOLATION_VIOLATION: دسترسی به منطقه ${targetRegion} برای منطقه ${userRegion} مسدود است`);
+    /* N-04: Number(region_id || district_id) silently collapses an unassigned
+       officer to region 0, and the truthiness test then skips on a falsy
+       target. Resolve the assignment explicitly and fail closed. */
+    const userRegionId = user.region_id != null
+      ? Number(user.region_id)
+      : (user.district_id != null ? Number(user.district_id) : null);
+    if (userRegionId == null) {
+      throw new Error('INTELLIGENCE_PLATFORM_TENANT_ISOLATION_VIOLATION: edu_office lacks region_id assignment');
+    }
+    if (targetRegionId != null && targetRegionId !== userRegionId) {
+      throw new Error(`INTELLIGENCE_PLATFORM_TENANT_ISOLATION_VIOLATION: دسترسی به منطقه ${targetRegionId} برای منطقه ${userRegionId} مسدود است`);
     }
     return true;
   }
@@ -200,8 +209,14 @@ function enforcePlatformAccessGuard(user, target = {}) {
   const userSchool = Number(user.school_id);
   const targetSchool = target.school_id != null ? Number(target.school_id) : null;
 
-  if (targetSchool && userSchool !== targetSchool) {
+  if (targetSchool != null && userSchool !== targetSchool) {
     throw new Error(`INTELLIGENCE_PLATFORM_TENANT_ISOLATION_VIOLATION: دسترسی به مدرسه ${targetSchool} برای کاربر مدرسه ${userSchool} مسدود است`);
+  }
+  /* F4: school-resident roles hold no regional tenant grant — a region-scoped
+     target (region_id without school_id) must never fall through the
+     own-school check. */
+  if (targetRegionId != null && targetSchool == null) {
+    throw new Error(`INTELLIGENCE_PLATFORM_TENANT_ISOLATION_VIOLATION: staff of school ${userSchool} cannot access regional scope ${targetRegionId}`);
   }
 
   return true;

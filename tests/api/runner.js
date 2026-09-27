@@ -22,6 +22,9 @@ if (!fs.existsSync(REAL_STORE)) {
 }
 
 const API_TESTS = [
+  /* N-01 gate first: the entry point must parse before anything else runs.
+     If this fails, every other suite cannot even boot the server. */
+  'n01-server-entry.test.js',
   'bootstrap.test.js',
   'students.test.js',
   'classes.test.js',

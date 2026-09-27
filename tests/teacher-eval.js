@@ -50,7 +50,7 @@ function ensureForm(tid, fb) {
   W(`(function(){
     var t=document.getElementById('ev_teacher')||document.createElement('select');
     t.id='ev_teacher';
-    if(!t.querySelector('option[value=\"${tid}\"]')){var o=document.createElement('option');o.value='${tid}';o.textContent='t';t.appendChild(o);}
+    if(!t.querySelector('option[value="${tid}"]')){var o=document.createElement('option');o.value='${tid}';o.textContent='t';t.appendChild(o);}
     t.value='${tid}';if(!t.parentNode)document.body.appendChild(t);
     var b=document.getElementById('ev_feedback')||document.createElement('textarea');
     b.id='ev_feedback';b.value=${JSON.stringify(fb || '')};if(!b.parentNode)document.body.appendChild(b);else b.value=${JSON.stringify(fb || '')};

@@ -162,10 +162,17 @@ function enforceEventProcessingTenantIsolation(user, target = {}) {
   }
 
   if (role === 'edu_office') {
-    const userRegion = Number(user.region_id || user.district_id);
-    const targetRegion = target.region_id != null ? Number(target.region_id) : null;
-    if (targetRegion && userRegion !== targetRegion) {
-      throw new Error(`EVENT_PROCESSING_TENANT_ISOLATION_VIOLATION: دسترسی به رویدادهای منطقه ${targetRegion} برای منطقه ${userRegion} مسدود است`);
+    /* N-04: Number(region_id || district_id) collapses an unassigned officer to
+       region 0 and the truthiness test skips on a falsy target. Fail closed. */
+    const userRegionId = user.region_id != null
+      ? Number(user.region_id)
+      : (user.district_id != null ? Number(user.district_id) : null);
+    const targetRegionId = target.region_id != null ? Number(target.region_id) : null;
+    if (userRegionId == null) {
+      throw new Error('EVENT_PROCESSING_TENANT_ISOLATION_VIOLATION: edu_office lacks region_id assignment');
+    }
+    if (targetRegionId != null && targetRegionId !== userRegionId) {
+      throw new Error(`EVENT_PROCESSING_TENANT_ISOLATION_VIOLATION: دسترسی به رویدادهای منطقه ${targetRegionId} برای منطقه ${userRegionId} مسدود است`);
     }
     return true;
   }

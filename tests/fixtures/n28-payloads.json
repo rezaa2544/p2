@@ -1,0 +1,7 @@
+{
+  "sqli_or": "1' OR '1'='1",
+  "sqli_union": "x UNION SELECT password FROM users",
+  "xss_script": "<script>alert(1)</script>",
+  "benign_title": "تستِ عنوانِ عادی",
+  "benign_note": "یادداشتِ دبیر دربارهٔ دانش‌آموز — شاملِ اعداد و علائم ۱۰٪"
+}

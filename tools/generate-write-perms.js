@@ -37,6 +37,16 @@ const SCOPED = { teacher: { users: true } };
 /* ترتیبِ پایدارِ نقش‌ها برایِ خروجیِ قطعی */
 const ROLE_ORDER = ['manager', 'teacher', 'parent', 'student', 'driver', 'counselor', 'edu_office'];
 
+/* N-13/N-02 family: compare on normalized line endings. The generator always
+   emits LF, but a Windows checkout (core.autocrlf=true) materializes the
+   committed blob as CRLF — a byte-exact comparison then reports a false drift
+   on every checkout and pressures contributors into re-committing the whole
+   file for EOLs only. Normalize both sides so the gate fails on real
+   staleness, never on platform. */
+function normalizeForCompare(s){
+  return String(s).replace(/\r\n/g, '\n');
+}
+
 function generate(){
   const model = JSON.parse(fs.readFileSync(MODEL_PATH, 'utf8'));
   const collections = model.collections || {};
@@ -119,6 +129,7 @@ function generate(){
 }
 
 function main(){
+  if (require.main !== module) return;   /* required as a module — do not write */
   const check = process.argv.includes('--check');
   const out = JSON.stringify(generate(), null, 2) + '\n';
   if (check){
@@ -127,7 +138,7 @@ function main(){
       process.exit(1);
     }
     const cur = fs.readFileSync(OUT_PATH, 'utf8');
-    if (cur !== out){
+    if (normalizeForCompare(cur) !== normalizeForCompare(out)){
       console.error(`❌ generate-write-perms --check: ${path.relative(ROOT, OUT_PATH)} با خروجیِ مولد یکسان نیست (کهنه است).`);
       console.error('   node tools/generate-write-perms.js را اجرا کنید و نتیجه را commit کنید.');
       process.exit(1);
@@ -141,3 +152,8 @@ function main(){
 }
 
 main();
+
+/* N-13: expose the generator and its comparison rule so the gate can be
+   verified without forking the process — and so `require`ing this module for
+   tests no longer rewrites the file. CLI behaviour is unchanged. */
+module.exports = { generate, normalizeForCompare, ROOT, MODEL_PATH, OUT_PATH };

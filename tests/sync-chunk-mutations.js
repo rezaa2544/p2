@@ -68,7 +68,7 @@ for (const m of MUTS) {
 let backGreen = false, finalOut = '';
 try {
   finalOut = execSync('node --max-old-space-size=1500 ' + SUITE, { stdio: 'pipe' }).toString();
-  backGreen = /sync-chunk: \d+\/\d+  ✅/.test(finalOut);
+  backGreen = /sync-chunk: \d+\/\d+ {2}✅/.test(finalOut);
 } catch (e) { finalOut = String(e.stdout || '') + String(e.stderr || ''); }
 console.log(`\nجهش: ${killed}/${MUTS.length} کشته · خطِ پایه: ${backGreen ? 'سبز ✅' : 'قرمز ❌'} · خطایِ محیطی: ${envFails}`);
 if (!backGreen || killed !== MUTS.length) {

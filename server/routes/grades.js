@@ -151,7 +151,12 @@ const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.scho
       school_id: schoolId,
       score: scoreNum,
       term: body.term || 'term1',
-      type: body.type || 'quiz',
+      /* N-15: the grades table has no "type" column — its real column is
+         "exam_type" (migration 001, authz/model.json, and the client's
+         g_type select all use exam_type). Writing "type" made every REST
+         create fail with 42703 in PostgreSQL mode while memory mode
+         silently stored a field nothing ever reads back. */
+      exam_type: body.exam_type || body.type || 'quiz',
       date: body.date || new Date().toISOString().slice(0, 10),
       version: 1,
       created_at: new Date().toISOString()
@@ -233,7 +238,12 @@ async function updateGrade(req, id, body) {
       next.score = s;
     }
 
-    if (body.type !== undefined) next.type = body.type;
+    /* N-15: persist the real exam_type column; body.type is accepted as a
+       legacy alias only. A legacy in-memory row may still carry a phantom
+       top-level "type" — never re-persist it (42703 in PostgreSQL mode). */
+    if (body.exam_type !== undefined) next.exam_type = body.exam_type;
+    else if (body.type !== undefined) next.exam_type = body.type;
+    delete next.type;
     if (body.term !== undefined) next.term = body.term;
     bump(next); /* P0-18 */
 
@@ -261,7 +271,7 @@ async function updateGrade(req, id, body) {
             client_uid: null,
             base_version: base != null ? Number(base) : null,
             server_version: grade.version != null ? Number(grade.version) : null,
-            client_data: { score: next.score, type: next.type, term: next.term },
+            client_data: { score: next.score, exam_type: next.exam_type, term: next.term },
             server_state: Object.assign({}, grade),
             incoming: { data: { score: next.score }, by: user.id, at: nowIso },
             status: 'open',
@@ -315,6 +325,7 @@ async function deleteGrade(req, id) {
       audit: () => audit('grade_deleted', { user_id: user.id, grade_id: Number(id) })
     });
     if (!del.ok) {
+      if (del.status === 409) return { status: 409, body: { ok: false, code: del.code || 'occ_conflict', message: del.message } };  /* N-19 */
       if (del.status === 503) return pgDown();
       return { status: 404, body: { ok: false, code: 'not_found', message: 'نمره یافت نشد' } };
     }

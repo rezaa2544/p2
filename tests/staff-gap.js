@@ -251,7 +251,7 @@ async function serverPart() {
     const inSubj = seed.subjects.find(x => x.school_id === inSchool.id);
     const outSubj = seed.subjects.find(x => x.school_id === outSchool.id);
 
-    async function login(u) {
+    const login = async (u) => {
       const phone = String(u.phone).replace(/[\s\-()]/g, '');
       const sc = await httpReq('POST', '/api/auth/send-code', { phone });
       const lg = await httpReq('POST', '/api/auth/login', { phone, code: sc.json && sc.json.demo_code, national_id: u.national_id });
