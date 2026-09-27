@@ -127,6 +127,9 @@ const users = [
   /* ══ DEV OTP — موقت: 0000 فقط خارج از production ══ */
   {
     const auth = createAuth(mkCtx({ users: JSON.parse(JSON.stringify(users)) }, null));
+    const sc = await sendCode(auth, '09123456789');
+    chk('DEV OTP 0000: send-code کد ثابت 0000 را در dev برمی‌گرداند',
+        sc.statusCode === 200 && sc.body && sc.body.demo_code === '0000');
     const l = await login(auth, '09123456789', '0000', '0011111111');
     chk('DEV OTP 0000: ورود بدون send-code در محیط غیرproduction',
         l.statusCode === 200 && l.body.ok === true && l.body.user && l.body.user.id === 3,
