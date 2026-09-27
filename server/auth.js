@@ -296,7 +296,8 @@ function createAuth(ctx){
        touches disk, audit or responses — demo echo is test-mode only).
        R101: 6 digits; stored in otp.json (distributed). */
     const devId = getDeviceId(req);
-    const code = String(crypto.randomInt(100000, 1000000));
+    /* In development bypass mode, keep the demo OTP deterministic so the UI and API agree. */
+    const code = DEV_OTP_BYPASS ? '0000' : String(crypto.randomInt(100000, 1000000));
     otp.data.codes[phone] = { h: hashCode(code, phone), at: now, user_id: user.id, tries: 0, origin_ip: ip, origin_dev: devId, attacker_tries: {} };
     await otp.save();
     audit('send_code', { user_id: user.id, role: user.role, school_id: user.school_id, ip, summary: 'ارسال کد ورود برای کاربر ' + user.id });
