@@ -183,6 +183,9 @@ function createAuth(ctx){
   const IP_LOGIN_MAX = _lim(process.env.PAYESH_LOGIN_IP_LIMIT, 10); /* logins / window per IP */
   const PHONE_LOGIN_MAX = _lim(process.env.PAYESH_LOGIN_PHONE_LIMIT, 50); /* logins / window per phone (P0 #6) */
   const LOGIN_TRIES_MAX = _lim(process.env.PAYESH_LOGIN_TRIES, 5);  /* wrong codes before code dies */
+  /* TEMP DEV ACCESS: 0000 bypasses OTP only outside production. Set PAYESH_DEV_OTP_BYPASS=0 to disable. */
+  const IS_PROD = process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production';
+  const DEV_OTP_BYPASS = !IS_PROD && process.env.PAYESH_DEV_OTP_BYPASS !== '0';
   
   const { clientIp: auditClientIp } = require('./audit');
   function clientIp(req){
@@ -293,7 +296,8 @@ function createAuth(ctx){
        touches disk, audit or responses — demo echo is test-mode only).
        R101: 6 digits; stored in otp.json (distributed). */
     const devId = getDeviceId(req);
-    const code = String(crypto.randomInt(100000, 1000000));
+    /* In development bypass mode, keep the demo OTP deterministic so the UI and API agree. */
+    const code = DEV_OTP_BYPASS ? '0000' : String(crypto.randomInt(100000, 1000000));
     otp.data.codes[phone] = { h: hashCode(code, phone), at: now, user_id: user.id, tries: 0, origin_ip: ip, origin_dev: devId, attacker_tries: {} };
     await otp.save();
     audit('send_code', { user_id: user.id, role: user.role, school_id: user.school_id, ip, summary: 'ارسال کد ورود برای کاربر ' + user.id });
@@ -317,6 +321,8 @@ function createAuth(ctx){
     const phone = canonicalPhone(phoneRaw); /* A-35: canonical key for all auth buckets */
     const code  = String(body.code).trim();
     const nid   = String(body.national_id).trim();
+    /* Temporary development-only OTP bypass: never active in production. */
+    const devOtpBypass = DEV_OTP_BYPASS && code === '0000';
 
     /* R96: IP-level login limit (brute-force across phones) — persisted,
        so it survives restarts and is shared across instances of one store. */
@@ -325,16 +331,18 @@ function createAuth(ctx){
     await otp.reloadIfChanged();
     /* R dist: شمارندهٔ login در Redis (اتمیک)؛ login_fail (تأخیرِ تصاعدی) در حالتِ فروشگاه می‌ماند. */
 let rLi, rLp;
-    try {
-      rLi = await rateLimit.checkRateLimit({ prefix: 'otp:login:ip', identifier: ip, limit: IP_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });
-      rLp = await rateLimit.checkRateLimit({ prefix: 'otp:login:phone', identifier: phone, limit: PHONE_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });
-    } catch (rlErr) {
-      /* B5: fail-closed on Redis outage (REDIS_URL configured) */
-      if (rlErr && (rlErr.code === 'REDIS_REQUIRED' || rlErr.code === 'REDIS_UNAVAILABLE')) return sendJson(res, 503, { ok: false, code: 'redis_required', error_code: 'REDIS_UNAVAILABLE' });
-      throw rlErr;
+    if(!devOtpBypass){
+      try {
+        rLi = await rateLimit.checkRateLimit({ prefix: 'otp:login:ip', identifier: ip, limit: IP_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });
+        rLp = await rateLimit.checkRateLimit({ prefix: 'otp:login:phone', identifier: phone, limit: PHONE_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });
+      } catch (rlErr) {
+        /* B5: fail-closed on Redis outage (REDIS_URL configured) */
+        if (rlErr && (rlErr.code === 'REDIS_REQUIRED' || rlErr.code === 'REDIS_UNAVAILABLE')) return sendJson(res, 503, { ok: false, code: 'redis_required', error_code: 'REDIS_UNAVAILABLE' });
+        throw rlErr;
+      }
+      if(!rLi.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
+      if(!rLp.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
     }
-    if(!rLi.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
-    if(!rLp.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });
 
     const user = await userByPhone(phone);
     const devId = getDeviceId(req);
@@ -366,7 +374,7 @@ let rLi, rLp;
         return fail('bad_code');
       }
     }
-    const okCode = codeRecOk(rec, code, phone, Date.now());
+    const okCode = devOtpBypass || codeRecOk(rec, code, phone, Date.now());
     if(!okCode){
       /* R96: تلاشِ نادرست هم شمارنده را بالا می‌برد — وگرنه کد
          هرگز «کِلی» نمی‌شد و brute-force فقط با سقفِ IP می‌خورد. */
@@ -383,7 +391,7 @@ let rLi, rLp;
       return fail('bad_code');
     }
     if(isOrigin) rec.tries = (rec.tries || 0) + 1;
-    if(!user || rec.user_id !== user.id) return fail('bad_code');
+    if(!user || (!devOtpBypass && (!rec || rec.user_id !== user.id))) return fail('bad_code');
 
     /* 2) identity match — the national id must belong to THIS phone.
        S-73-5: constant-time compare (no length/prefix timing oracle). */
