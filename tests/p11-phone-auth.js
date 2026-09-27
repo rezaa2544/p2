@@ -124,6 +124,20 @@ const users = [
 (async function main(){
   console.log('P1-1 phone-auth — unit (file-mode / fake-PG / pg-mem)\n');
 
+  /* ══ DEV OTP — موقت: 0000 فقط خارج از production ══ */
+  {
+    const auth = createAuth(mkCtx({ users: JSON.parse(JSON.stringify(users)) }, null));
+    const l = await login(auth, '09123456789', '0000', '0011111111');
+    chk('DEV OTP 0000: ورود بدون send-code در محیط غیرproduction',
+        l.statusCode === 200 && l.body.ok === true && l.body.user && l.body.user.id === 3,
+        JSON.stringify(l.body).slice(0, 100));
+    const src = fs.readFileSync(AUTH_SRC_PATH, 'utf8');
+    chk('DEV OTP 0000: گارد production و کلید خاموش‌سازی وجود دارد',
+        src.indexOf('const IS_PROD = process.env.NODE_ENV === \'production\' || process.env.PAYESH_ENV === \'production\';') !== -1 &&
+        src.indexOf('process.env.PAYESH_DEV_OTP_BYPASS !== \'0\'') !== -1 &&
+        src.indexOf("code === '0000'") !== -1);
+  }
+
   /* ══ P1: مسیر فایل (db = null) ══ */
   {
     const auth = createAuth(mkCtx({ users: JSON.parse(JSON.stringify(users)) }, null));
