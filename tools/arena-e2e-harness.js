@@ -12,6 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { execFileSync } = require('child_process');
 process.env.NODE_PATH = ['/tmp/repo-node_modules','/home/user/repo/node_modules'].filter(fs.existsSync).join(':');
 require('module').Module._initPaths();
 const CHILD_NODE_PATH = fs.existsSync('/tmp/repo-node_modules') ? '/tmp/repo-node_modules' : '/home/user/repo/node_modules';
@@ -376,8 +377,8 @@ function auditGrep(infra, needle) {
 });
 
 function finish() {
-  const head = (() => { try { return require('child_process').execSync('git -C /home/user/repo rev-parse --short HEAD').toString().trim() +
-      ' | ' + require('child_process').execSync('git -C /home/user/repo log -1 --format=%ci').toString().trim(); } catch (e) { return 'n/a'; } })();
+  const head = (() => { try { return execFileSync('git', ['-C', '/home/user/repo', 'rev-parse', '--short', 'HEAD']).toString().trim() +
+      ' | ' + execFileSync('git', ['-C', '/home/user/repo', 'log', '-1', '--format=%ci']).toString().trim(); } catch (e) { return 'n/a'; } })();
   const summary = { runner: 'arena-e2e-recovery', time: now(), head, verdicts, total: rows.length, checks: rows };
   fs.writeFileSync('/home/user/arena-e2e-evidence.json', JSON.stringify(summary, null, 2));
   console.log('\n' + '─'.repeat(72));

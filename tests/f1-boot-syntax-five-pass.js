@@ -11,7 +11,7 @@
  */
 
 const assert = require('assert');
-const { spawn, execSync } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
@@ -47,7 +47,7 @@ async function runPass1_Functional() {
   log(1, 'Executing Functional Verification Pass...');
   
   // 1.1 Node syntax check
-  execSync(`"${NODE_BIN}" --check server/index.js`, { cwd: ROOT, stdio: 'pipe' });
+  execFileSync(NODE_BIN, ['--check', 'server/index.js'], { cwd: ROOT, stdio: 'pipe' });
   log(1, 'Assertion 1.1 PASSED: node --check server/index.js completed with 0 errors.');
 
   // 1.2 Boot server in child process and test standard health/readiness/liveness
@@ -115,7 +115,7 @@ async function runPass3_NegativeFailure() {
   // 3.1 Production mode without DATABASE_URL must exit non-zero (fail-closed gate)
   let failedFast = false;
   try {
-    execSync(`"${NODE_BIN}" server/index.js`, {
+    execFileSync(NODE_BIN, ['server/index.js'], {
       cwd: ROOT,
       env: Object.assign({}, process.env, {
         NODE_ENV: 'production',
@@ -189,7 +189,7 @@ async function runPass5_IndependentRegression() {
 
   // 5.1 Run backend API test runner
   try {
-    const apiOut = execSync(`"${NODE_BIN}" tests/api/runner.js`, { cwd: ROOT, encoding: 'utf-8' });
+    const apiOut = execFileSync(NODE_BIN, ['tests/api/runner.js'], { cwd: ROOT, encoding: 'utf-8' });
     assert(apiOut.includes('30/30 سوئیت موفق'), 'API runner should pass all suites');
     log(5, 'Assertion 5.1 PASSED: tests/api/runner.js (30/30 suites) passed cleanly.');
   } catch (err) {

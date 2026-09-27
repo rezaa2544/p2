@@ -81,19 +81,26 @@ function codeOnly(s) {
 
   /* ── N23-4: the four runtime defects lint surfaced must stay fixed ──── */
   await check('N23-4 the four real defects eslint surfaced remain fixed', () => {
-    /* (a) index.js: maxSeedId must be declared per-collection OUTSIDE the
-       chunk loop and accumulated INSIDE it — the old code read cleanRows
-       after the loop had closed. */
+    /* (a) index.js: the identity-sequence realignment must run once per
+       collection AFTER the chunk loop and must not reference cleanRows, which
+       is scoped to the chunk body and is gone once the loop closes (the
+       original N-23 defect: every seeded collection with explicit ids threw
+       "cleanRows is not defined" and the sequence was never advanced). The
+       realignment now reads MAX(id) from the table itself, so no
+       loop-relative binding can go out of scope. */
     const idx = norm(fs.readFileSync(path.join(ROOT, 'server', 'index.js'), 'utf8'));
-    const declAt = idx.indexOf('let maxSeedId = 0;');
     const chunkLoop = idx.indexOf('for (let i = 0; i < arr.length; i += CHUNK) {');
-    const acc = idx.indexOf('if (Number.isFinite(rid) && rid > maxSeedId) maxSeedId = rid;', chunkLoop);
-    assert.ok(declAt > -1 && declAt < chunkLoop, 'maxSeedId must be declared before the chunk loop');
-    assert.ok(acc > chunkLoop, 'maxSeedId must be accumulated inside the chunk loop where cleanRows is in scope');
-    /* the sequence-advance block must read the accumulated value, not a
-       re-scanned cleanRows */
-    const seqBlock = idx.indexOf('if (maxSeedId > 0) {', acc);
-    assert.ok(seqBlock > -1, 'the sequence-advance block must follow the accumulation');
+    const loopClose = idx.indexOf('/* F1: every table gets its sequence realigned after bootstrap writes.', chunkLoop);
+    assert.ok(chunkLoop > -1, 'the chunk loop must be present');
+    assert.ok(loopClose > chunkLoop, 'the sequence realignment must follow the chunk loop');
+    /* the realignment must read the table's own MAX(id), fully parameterized */
+    const seqCall = idx.indexOf("SELECT pg_get_serial_sequence($1, $2) AS seq", loopClose);
+    const setvalCall = idx.indexOf('SELECT setval($1::regclass, COALESCE((SELECT MAX(id) FROM ' , loopClose);
+    assert.ok(seqCall > -1, 'the sequence name must be resolved with a parameterized call');
+    assert.ok(setvalCall > -1, 'the sequence must be advanced from the table\'s own MAX(id)');
+    /* and nothing may resurrect the out-of-scope cleanRows scan */
+    assert.ok(!/for \(const row of cleanRows\) \{[^}]*maxSeedId/s.test(idx),
+      'index.js still scans an out-of-scope cleanRows for maxSeedId');
     assert.ok(!/\}\s*let maxSeedId = 0;\s*for \(const row of cleanRows\)/.test(idx),
       'index.js still scans an out-of-scope cleanRows for maxSeedId');
 

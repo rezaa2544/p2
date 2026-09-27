@@ -3,6 +3,7 @@
 /* Redis FREEZE: healthy connection, then SIGSTOP redis-server (socket stays
  * open, replies stop). Does any endpoint hang (no commandTimeout)? */
 const fs = require('fs');
+const { execFileSync } = require('child_process');
 process.env.NODE_PATH = '/tmp/repo-node_modules';
 require('module').Module._initPaths();
 const L = require('/home/user/repo/tests/chaos-drill-lib');
@@ -26,8 +27,9 @@ async function untilReady(port, ms) {
   console.log('baseline readiness =', (await L.readiness(rd)).status);
 
   // find redis-server pid via INFO (authoritative process_id)
-  const info = require('child_process').execSync('redis-cli -p ' + infra.redisPort + ' INFO server | grep process_id', { encoding: 'utf8' });
-  const rpid = Number(info.split(':')[1].trim());
+  const info = execFileSync('redis-cli', ['-p', String(infra.redisPort), 'INFO', 'server'], { encoding: 'utf8' });
+  const pidLine = String(info).split('\n').find((l) => /process_id/.test(l)) || '';
+  const rpid = Number(pidLine.split(':')[1].trim());
   console.log('resolved redis process_id =', rpid);
   process.kill(rpid, 'SIGSTOP');
   await sleep(500);

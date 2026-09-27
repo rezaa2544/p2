@@ -1,7 +1,9 @@
-import urllib.request,json,pathlib,subprocess,gzip,os,datetime
+import urllib.request,urllib.parse,json,pathlib,subprocess,gzip,os,datetime
 ROOT=pathlib.Path('/home/user/arena-publication');REPO='/home/user/p2';token=pathlib.Path('/var/tmp/arena-publication-auth/token').read_text().strip()
 plan=json.loads((ROOT/'PUSH_PLAN.json').read_text());sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=REPO,text=True).strip()
 request=urllib.request.Request('https://api.github.com/repos/rezaa2544/p2/git/trees/'+sha+'?recursive=1',headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','User-Agent':'Arena-publication-verification'})
+_up=urllib.parse.urlparse(request.get_full_url())
+if _up.scheme not in ('http','https') or _up.netloc not in ('api.github.com',):raise ValueError(f'URL scheme/host not allowed: {_up.scheme} {_up.netloc}')
 with urllib.request.urlopen(request,timeout=60) as response:tree=json.load(response)
 if tree.get('truncated'):raise RuntimeError('GitHub tree truncated; cannot confirm complete push')
 remote={x['path']:(x['mode'],x['sha']) for x in tree['tree'] if x['type']!='tree'}

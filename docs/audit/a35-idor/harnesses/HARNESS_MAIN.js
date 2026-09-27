@@ -6,15 +6,15 @@
 'use strict';
 const crypto = require('crypto');
 const fs = require('fs');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const Redis = require('/home/user/p2/node_modules/ioredis');
 const redis = new Redis('redis://127.0.0.1:6379');
 const BASE = 'http://127.0.0.1:3000';
 const CODE = '424242';
 const RUN = String(Date.now());
 const u = (n) => n + '-' + RUN;
-const PGQ = (s) => execSync('psql "postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor" -t -A -c ' + JSON.stringify(s)).toString().trim();
-const PGC2 = (s) => execSync('psql "postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor" -c ' + JSON.stringify(s));
+const PGQ = (s) => execFileSync('psql', ['-t', '-A', '-c', s, 'postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor']).toString().trim();
+const PGC2 = (s) => execFileSync('psql', ['-c', s, 'postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor']);
 const OUT = '/home/user/idor-evidence-a35-main.jsonl';
 fs.writeFileSync(OUT, '');
 let n = 0, bad = 0;
@@ -95,7 +95,7 @@ async function rec(id, actor, method, url, body, expect, note, contentCheck) {
     await rec('A35-16', 'T1', 'POST', '/api/sync', sync('T1', [{ uid: u('a35-16'), c: 'hw_assignments', t: 'ins', data: { class_id: 3, school_id: 2, subject_id: 1, title: 'A35-hw', due_date: '2026-10-01' } }]), [403], 'T1 sync hw assignment on S2 class 3');
     await rec('A35-17', 'T1', 'POST', '/api/sync', sync('T1', [{ uid: u('a35-17'), c: 'attendance', t: 'ins', data: { student_id: 11, class_id: 3, school_id: 2, status: 'present', date: '2026-03-01' } }]), [403], 'T1 sync attendance ins on S2 student 11');
     // cleanup foreign schedule row
-    execSync('psql "postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor" -c "DELETE FROM schedule WHERE teacher_id=4 AND class_id=3;"');
+    execFileSync('psql', ['-c', 'DELETE FROM schedule WHERE teacher_id=4 AND class_id=3;', 'postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor']);
     console.log('  (foreign schedule row removed)');
   }
 
@@ -104,7 +104,7 @@ async function rec(id, actor, method, url, body, expect, note, contentCheck) {
   await rec('A35-21', 'M1', 'POST', '/api/sync', sync('M1', [{ uid: u('a35-21'), c: 'grades', t: 'ins', data: { student_id: 20, class_id: 3, school_id: 1, subject_id: 1, score: 10, max_score: 20 } }]), [403], 'M1 grade ins: S1 student 20 with S2 class 3 (foreign class ref)');
   await rec('A35-22', 'M2', 'POST', '/api/sync', sync('M2', [{ uid: u('a35-22'), c: 'schedule', t: 'ins', data: { teacher_id: 5, class_id: 3, school_id: 2, subject_id: 1, day: '6', period: '1' } }]), [200], 'control: M2 assigns OWN-school teacher 5 to S2 class 3');
   await rec('A35-23', 'M1', 'POST', '/api/sync', sync('M1', [{ uid: u('a35-23'), c: 'schedule', t: 'ins', data: { teacher_id: 5, class_id: 1, school_id: 1, subject_id: 1, day: '2', period: '2' } }]), [403], 'M1 assigns S2 TEACHER (5) to S1 class 1 (foreign teacher, reverse)');
-  execSync(`psql "postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor" -c "DELETE FROM schedule WHERE teacher_id=5 AND class_id=3 AND day='6';" -c "DELETE FROM schedule WHERE teacher_id=5 AND class_id=1;"`);
+  execFileSync('psql', ['-c', "DELETE FROM schedule WHERE teacher_id=5 AND class_id=3 AND day='6';", '-c', 'DELETE FROM schedule WHERE teacher_id=5 AND class_id=1;', 'postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor']);
 
   console.log('\n════ D. parent A → student B (exploit chains 2/3)');
   await rec('A35-30', 'PA', 'GET', '/api/v1/students/8', null, [404], 'control: PA→non-child student 8');
@@ -125,11 +125,11 @@ async function rec(id, actor, method, url, body, expect, note, contentCheck) {
     if (String(reassigned) === '19') {
       console.log('  !! link REASSIGNED to parent 19 — PC read chain:');
       await rec('A35-36b', 'PC', 'GET', '/api/students/6', null, [404], 'PC(S2) legacy read student 6 after reassignment (secure: 404)');
-      execSync(`psql "postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor" -c "UPDATE parent_links SET parent_id=17, version=version+1, updated_at=now() WHERE id=${linkId};"`);
+      execFileSync('psql', ['-c', `UPDATE parent_links SET parent_id=17, version=version+1, updated_at=now() WHERE id=${linkId};`, 'postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor']);
       console.log('  (link restored to 17)');
     }
     await rec('A35-37', 'PA', 'POST', '/api/sync', sync('PA', [{ uid: u('a35-37'), c: 'parent_links', t: 'upd', id: linkId, data: { relation: 'mother' } }]), [200], 'control: PA edits own link field (relation)');
-    if (PGQ("SELECT relation FROM parent_links WHERE id=" + linkId) !== 'father') execSync(`psql "postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor" -c "UPDATE parent_links SET relation='father', version=version+1, updated_at=now() WHERE id=${linkId};"`);
+    if (PGQ("SELECT relation FROM parent_links WHERE id=" + linkId) !== 'father') execFileSync('psql', ['-c', `UPDATE parent_links SET relation='father', version=version+1, updated_at=now() WHERE id=${linkId};`, 'postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor']);
   }
   await rec('A35-39', 'PC', 'GET', '/api/v1/students/11', null, [200], 'control: PC→own child 11');
 

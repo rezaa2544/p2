@@ -7,7 +7,7 @@
 'use strict';
 
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 console.log('═══════════════════════════════════════════════════════════════════');
 console.log('🏛️  اجرای آزمون‌های یکپارچه API پایلوت ملی و فدراسیون (P2-PL-01)');
@@ -15,7 +15,7 @@ console.log('══════════════════════�
 
 try {
   const runner = path.join(__dirname, '..', 'phase5-pilot.test.js');
-  const out = execSync(`node ${runner}`, { encoding: 'utf8' });
+  const out = execFileSync('node', [runner], { encoding: 'utf8' });
   console.log(out.trim());
 } catch (err) {
   console.error('❌ Phase 5 Pilot API Suite Failed');

@@ -27,7 +27,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
-const { execFileSync, spawnSync } = require('child_process');
+const { spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -110,14 +110,33 @@ function psql(sql, opts = {}) {
 }
 // sudo با env_reset متغیرها را دور می‌ریزد؛ برایِ ابزارهایِ PG که باید به
 // سوکتِ درست برسند، متغیرها را صریح در خودِ خطِ فرمان می‌آوریم.
-function sudoPgEnv() {
-  return ['PGHOST=' + CFG.sockDir, 'PGPORT=' + String(CFG.port),
-          'PGUSER=' + CFG.user, 'PGDATABASE=postgres'];
-}
-function sudoPgBin(args, timeout) {
-  return spawnSync('sudo', ['-n', 'PGHOST=' + CFG.sockDir, 'PGPORT=' + String(CFG.port),
-    'PGUSER=' + CFG.user, 'PGDATABASE=postgres'].concat(args),
-    { encoding: 'utf8', timeout: timeout || 180000 });
+/* 🔴 مرزِ واحد: تمام فراخوانیِ sudo+pg از همین تابع می‌گذرند. مسیرِ ابزار
+   توسطِ pgBin از لیستِ سفیدِ PG_TOOLS حل می‌شود، مقادیرِ env از پیکربندیِ
+   محلیِ این مانورند (نه ورودیِ بیرونی)، و هر آرگومان باید با شکلِ مجاز
+   همخوانی کند. تجمیعِ مسیرها در یک دروازه، مرز را برایِ تحلیلگر و بازبین
+   قابلِ پیگیری می‌کند. hostPort اختیاری برایِ نمونهٔ replica است.
+   asUser پرچمِ sudo -u را پیش از مسیرِ ابزار می‌گذارد (یعنی اجرایِ ابزار
+   به‌جایِ کاربرِ root، به‌عنوانِ آن کاربر — برایِ pg_ctl که باید مالکِ
+   PGDATA باشد، لازم است). pgEnv лож می‌شود وقتی ابزار به متغیرهایِ PG
+   نیاز ندارد (pg_ctl). */
+const SUDO_ARG_RE = /^(-[A-Za-z]+|--[a-z-]+|[A-Za-z_][A-Za-z0-9_.]*=.*|\/[A-Za-z0-9_./-]+|[0-9]+|'.*')$/;
+function sudoPg(tool, args, opts, hostPort) {
+  if (!PG_TOOLS.has(tool)) throw new Error('wal-disk-full: disallowed pg tool: ' + tool);
+  if (!Array.isArray(args) || args.some((a) => typeof a !== 'string' || !SUDO_ARG_RE.test(a)))
+    throw new Error('wal-disk-full: refusing to pass a non-literal sudo pg argument');
+  const o = opts || {};
+  const hp = hostPort || {};
+  const argv = ['-n'];
+  if (o.asUser) { argv.push('-u', String(o.asUser)); }
+  if (o.pgEnv !== false) {
+    const pgHost = hp.host != null ? String(hp.host) : CFG.sockDir;
+    const pgPort = hp.port != null ? String(hp.port) : String(CFG.port);
+    argv.push('PGHOST=' + pgHost, 'PGPORT=' + pgPort,
+      'PGUSER=' + CFG.user, 'PGDATABASE=postgres');
+  }
+  argv.push(pgBin(tool));
+  return spawnSync('sudo', argv.concat(args),
+    Object.assign({ encoding: 'utf8' }, (o.spawnOpts || {})));
 }
 function pgIsReady() {
   const r = sh(pgBin('pg_isready'),
@@ -295,11 +314,26 @@ function dataChecksum() {
 }
 
 /* ── راه‌اندازیِ replica برای W4 ─────────────────────────────────── */
+/* 🔴 chownِ شاخه‌هایِ مانور: مسیر باید داخلِ شاخهٔ دادهٔ مانور یا os.tmpdir
+   حل شود؛ هر مسیرِ دیگر قبل از رسیدن به sudo رد می‌شود. */
+function sudoChown(target, recursive) {
+  const t = path.resolve(String(target || ''));
+  const base = path.resolve(CFG.pgdata);
+  const tmpBase = path.resolve(os.tmpdir());
+  const inside = t === base || t.indexOf(base + path.sep) === 0
+    || t === tmpBase || t.indexOf(tmpBase + path.sep) === 0;
+  if (!inside) throw new Error('wal-disk-full: refusing to chown outside the drill dirs: ' + t);
+  const args = ['-n', 'chown'];
+  if (recursive) args.push('-R');
+  args.push('postgres:postgres', t);
+  spawnSync('sudo', args);
+}
 function setupReplica(dir) {
   fs.rmSync(dir, { recursive: true, force: true });
   psql(`select pg_create_physical_replication_slot('drill_slot', true)`);
-  const bb = sudoPgBin(['-u', 'postgres', pgBin('pg_basebackup'),
-    '-D', dir, '-R', '-S', 'drill_slot', '-X', 'stream', '-P']);
+  const bb = sudoPg('pg_basebackup',
+    ['-D', dir, '-R', '-S', 'drill_slot', '-X', 'stream', '-P'],
+    { asUser: 'postgres', spawnOpts: { timeout: 180000 } });
   if (bb.status !== 0) {
     return { ok: false, why: 'pg_basebackup: ' + (bb.stderr || '').trim().split('\n').filter(Boolean).pop() };
   }
@@ -308,21 +342,30 @@ function setupReplica(dir) {
   const port = CFG.port + 1;
   const sock = dir + '-sock';
   fs.mkdirSync(sock, { recursive: true });
-  spawnSync('sudo', ['-n', 'chown', 'postgres:postgres', sock]);
+  sudoChown(sock, false);
   fs.appendFileSync(path.join(dir, 'postgresql.auto.conf'),
     `\nport = ${port}\nunix_socket_directories = '${sock}'\nprimary_slot_name = 'drill_slot'\n`);
-  spawnSync('sudo', ['-n', 'chown', '-R', 'postgres:postgres', dir]);
-  const st = spawnSync('sudo', ['-n', '-u', 'postgres', pgBin('pg_ctl'),
-    '-D', dir, '-l', path.join(dir, 'startup.log'), '-w', '-t', '40', 'start'], { encoding: 'utf8' });
+  sudoChown(dir, true);
+  const st = sudoPg('pg_ctl',
+    ['-D', dir, '-l', path.join(dir, 'startup.log'), '-w', '-t', '40', 'start'],
+    { asUser: 'postgres', pgEnv: false });
   return { ok: st.status === 0, port, sock,
            why: st.status === 0 ? null : ((st.stderr || '').trim() || 'pg_ctl start failed') };
 }
+/* 🔴 LSN همیشه خروجیِ خودِ PG است (pg_current_wal_lsn)، ولی چون در متنِ
+   SQL جای می‌گیرد و psql از stdin نمی‌خواند، با الگویِ دقیقِ LSN اعتبارسنجی
+   می‌شود: «HEX/HEX». هر چیزِ دیگر هرگز به psql نمی‌رسد. */
+const LSN_RE = /^[0-9A-F]+\/[0-9A-F]+$/i;
+function assertLsn(lsn) {
+  const s = String(lsn || '').trim();
+  if (!LSN_RE.test(s)) throw new Error('wal-disk-full: refusing to interpolate a non-LSN value into SQL: ' + s);
+  return s;
+}
 function replicaCatchUp(sock, port, targetLsn) {
+  const lsn = assertLsn(targetLsn);
   for (let i = 0; i < 40; i++) {
-    const r = spawnSync('sudo', ['-n', 'PGHOST=' + sock, 'PGPORT=' + String(port),
-      'PGUSER=' + CFG.user, 'PGDATABASE=postgres', '-u', 'postgres',
-      pgBin('psql'), '-tAq', '-c',
-      `select pg_last_wal_replay_lsn() >= '${targetLsn}'::pg_lsn`], { encoding: 'utf8', timeout: 10000 });
+    const r = sudoPg('psql', ['-tAq', '-c', 'select pg_last_wal_replay_lsn() >= \'' + lsn + '\'::pg_lsn'],
+      { asUser: 'postgres', spawnOpts: { timeout: 10000 } }, { host: sock, port: port });
     if (r.status === 0 && /t/.test(r.stdout || '')) return true;
     spawnSync('sleep', ['0.5']);
   }
@@ -573,10 +616,8 @@ function liveAvailable() {
       console.log('      [' + elapsed() + '] replica catch-up: ' + caught);
       chk('W4a replica به LSNِ primary رسید', caught, 'target=' + lsn);
 
-      const rc = spawnSync('sudo', ['-n', 'PGHOST=' + rp.sock, 'PGPORT=' + String(rp.port),
-        'PGUSER=' + CFG.user, 'PGDATABASE=postgres', '-u', 'postgres',
-        pgBin('psql'), '-tAq', '-c', 'select count(*) from attendance'],
-        { encoding: 'utf8', timeout: 30000 });
+      const rc = sudoPg('psql', ['-tAq', '-c', 'select count(*) from attendance'],
+        { asUser: 'postgres', spawnOpts: { timeout: 30000 } }, { host: rp.sock, port: rp.port });
       const replicaRows = Number((rc.stdout || '').trim());
       const pr = psql('select count(*) from attendance');
       const primaryRows = Number((pr.stdout || '').trim());
@@ -585,8 +626,8 @@ function liveAvailable() {
       chk('W4b replica همهٔ دادهٔ commit‌شده را دارد (RPO=0 نسبت به replica)',
         replicaRows === primaryRows && replicaRows > 0,
         'primary=' + primaryRows + ' replica=' + replicaRows);
-      spawnSync('sudo', ['-n', '-u', 'postgres', pgBin('pg_ctl'),
-        '-D', dir, '-m', 'fast', '-w', '-t', '60', 'stop'], { encoding: 'utf8' });
+      sudoPg('pg_ctl', ['-D', dir, '-m', 'fast', '-w', '-t', '60', 'stop'],
+        { asUser: 'postgres', pgEnv: false });
       mark('W4', { primaryRows, replicaRows, caught });
     }
   }

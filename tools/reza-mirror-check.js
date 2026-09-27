@@ -35,6 +35,33 @@ const SNAPSHOTS = [
 const sha = (p) => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 const rel = (p) => path.relative(ROOT, p).split(path.sep).join('/');
 
+/* نگهبانِ مسیر: مسیرهای اسنپ‌شات از لیستِ ثابت می‌آیند، ولی هر مسیری که
+   به fs می‌رسد باید داخلِ ریشهٔ پروژه بماند — فرار یک خطای صریح است. */
+/* whitelist مسیرِ اسنپ‌شات — ثابتِ نام‌دار (مانندِ NAME_RE در
+   server/dr.js). حروف فارسی مجازند؛ null و قطعهٔ '..' خیر. */
+const SNAP_PATH_RE = /^[A-Za-z0-9_./\u0600-\u06FF-]+$/;
+const DOTDOT_RE = /(?:^|[/\\])\.\.?(?:[/\\]|$)/;
+
+/* whitelist: مسیرهای اسنپ‌شات ثابت‌اند — هر مسیری خارج از این مجموعه
+   قبل از resolve رد می‌شود. */
+const ALLOWED_SNAP_PATHS = new Set(SNAPSHOTS.reduce((a, s) => a.concat([s[0], s[1]]), []));
+
+function assertContained(p) {
+  const r = path.resolve(p);
+  const root = path.resolve(ROOT);
+  if (r !== root && r.indexOf(root + path.sep) !== 0) {
+    throw new Error('مسیر خارج از ریشهٔ پروژه مجاز نیست: ' + r);
+  }
+  return r;
+}
+function containedJoinRoot(relPath) {
+  const s = String(relPath || '');
+  if (!SNAP_PATH_RE.test(s) || DOTDOT_RE.test(s) || !ALLOWED_SNAP_PATHS.has(s)) {
+    throw new Error('مسیرِ اسنپ‌شاتِ غیرمجاز: ' + s);
+  }
+  return assertContained(path.join(ROOT, s));
+}
+
 function walk(dir, out = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
@@ -55,7 +82,7 @@ function build() {
     (a === b ? mirrors : drifted).push({ file: rel(p), source: rel(doc), sha: a.slice(0, 16), srcSha: b.slice(0, 16) });
   }
   const snaps = SNAPSHOTS.map(([f, live, label]) => {
-    const p = path.join(ROOT, f), l = path.join(ROOT, live);
+    const p = containedJoinRoot(f), l = containedJoinRoot(live);
     return {
       file: f, live, label,
       exists: fs.existsSync(p), liveExists: fs.existsSync(l),

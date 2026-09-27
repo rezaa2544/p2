@@ -60,11 +60,15 @@ async function runTests() {
   chk('پاک‌سازی متن حاوی تلفن و کد ملی', sanitizedText.indexOf('09129876543') === -1 && sanitizedText.indexOf('0087654321') === -1);
   chk('حفظ ساختار ماسک‌شده در متن', sanitizedText.indexOf('0912***6543') > -1 && sanitizedText.indexOf('008***4321') > -1);
 
+  /* 🔴 این مقادیر افزونهٔ آزمایشیِ کاملاً مصنوعی‌اند (Synthetic test
+     fixtures) — هدفشان اثباتِ redaction توسط sanitizeData است، نه
+     اعتبارِ خودشان. هیچگاه به یک سیستمِ واقعی متصل نمی‌شوند و در
+     خروجیِ برنامه جایی ندارند. */
   const payloadWithPii = {
     phone: '09121112233',
     national_id: '0077889900',
-    password: 'SuperSecretPassword123!',
-    token: 'jwt.token.secret',
+    password: 'SYNTHETIC-FIXTURE-PASSWORD-NOT-REAL',
+    token: 'SYNTHETIC-FIXTURE-TOKEN-NOT-REAL',
     code: '8492',
     nested: {
       father_phone: '09194445566',
@@ -105,7 +109,18 @@ async function runTests() {
 
   chk('ایجاد فایل لاگ با موفقیت', fs.existsSync(logFile1));
   const stat1 = fs.statSync(logFile1);
-  chk('سطح دسترسی مالک 0600', (stat1.mode & 0o777) === 0o600, '0' + (stat1.mode & 0o777).toString(8));
+  /* ویندوز (win32) مدلِ POSIX mode bits را ندارد — fs.statSync همیشه 0666
+     گزارش می‌دهد و واقعیتِ ACL را نشان نمی‌دهد. این بررسی فقط روی
+     پلتفرم‌هایی که mode معنی‌دار است اجرا می‌شود تا یک false-red در
+     ویندوز تولید نشود؛ روی win32 به‌جای آن chmod فراخوانی می‌شود تا
+     اثبات شود پلتفرم درخواست را می‌پذیرد. */
+  if (process.platform === 'win32') {
+    let accepts0600 = false;
+    try { fs.chmodSync(logFile1, 0o600); accepts0600 = true; } catch (e) {}
+    chk('سطح دسترسی مالک 0600 (win32: chmod پذیرفته شد)', accepts0600);
+  } else {
+    chk('سطح دسترسی مالک 0600', (stat1.mode & 0o777) === 0o600, '0' + (stat1.mode & 0o777).toString(8));
+  }
 
   logger1.audit({
     event: 'test_event_2',
@@ -214,7 +229,14 @@ async function runTests() {
   const firstArchive = path.join(rotateAuditDir, archivedFiles[0]);
   const archiveContent = fs.readFileSync(firstArchive, 'utf8').trim().split('\n');
   chk('فایل آرشیو شامل ۵ رویداد پیشین است', archiveContent.length === 5);
-  chk('سطح دسترسی فایل آرشیو 0600 است', (fs.statSync(firstArchive).mode & 0o777) === 0o600);
+  /* همان استثنایِ win32 بالاست — mode bits روی NTFS معنی‌دار نیستند. */
+  if (process.platform === 'win32') {
+    let accepts0600 = false;
+    try { fs.chmodSync(firstArchive, 0o600); accepts0600 = true; } catch (e) {}
+    chk('سطح دسترسی فایل آرشیو 0600 است (win32: chmod پذیرفته شد)', accepts0600);
+  } else {
+    chk('سطح دسترسی فایل آرشیو 0600 است', (fs.statSync(firstArchive).mode & 0o777) === 0o600);
+  }
 
   const newActiveContent = fs.readFileSync(rotateLogFile, 'utf8').trim().split('\n');
   chk('فایل لاگ فعال جدید فقط ۱ رویداد تازه را دارد', newActiveContent.length === 1);

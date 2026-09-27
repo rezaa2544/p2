@@ -37,14 +37,22 @@ async function runStep08Tests() {
   // 3. ADR-013 Runtime OCC enforcement in server/db.js
   const dbJsPath = path.join(ROOT, 'server/db.js');
   const dbJsContent = fs.readFileSync(dbJsPath, 'utf8');
-  assert(dbJsContent.includes('ADR-013: Universal Runtime OCC & Zero Naked Update Invariant'), 'server/db.js must enforce ADR-013');
+  /* ADR-013 enforcement in db.js is the comment marker plus the atomic
+     compare-and-write. The marker wording drifted from the suite's title
+     string; pin the marker that actually guards the invariant rather than
+     a title, so this catches a real removal instead of a rewording. */
+  assert(dbJsContent.includes('ADR-013 hardening: version is server-owned'), 'server/db.js must enforce ADR-013 (server-owned version)');
   assert(dbJsContent.includes('version = COALESCE(version, 1) + 1'), 'server/db.js must atomically bump version on persistent updates');
   console.log('  ✅ 8.3 Runtime OCC Enforcement & Zero Naked Updates verified in db.js');
 
   // 4. Health & Readiness Fail-Closed in server/index.js (V-01)
   const indexJsPath = path.join(ROOT, 'server/index.js');
   const indexJsContent = fs.readFileSync(indexJsPath, 'utf8');
-  assert(indexJsContent.includes('const isHealthy = rdy && dbAlive;'), 'server/index.js must verify both redis and db');
+  /* The health predicate was strengthened to also require a healthy worker
+     (rdy && dbAlive && workerHealthy). Pin the conjuncts that carry the
+     fail-closed invariant — readiness AND db-aliveness — so a removal of
+     either is still caught; the exact conjunction shape may evolve. */
+  assert(/isHealthy\s*=\s*rdy\s*&&\s*dbAlive/.test(indexJsContent), 'server/index.js must verify both redis and db');
   assert(indexJsContent.includes('sendJson(res, isHealthy ? 200 : 503, body)'), 'server/index.js must return 503 when either DB or Redis is dead');
   console.log('  ✅ 8.4 Health Probe strict Fail-Closed behavior verified');
 }
@@ -97,7 +105,7 @@ async function runStep11Tests() {
 
   const trafficFabricPath = path.join(ROOT, 'server/infrastructure/national-traffic-fabric.js');
   assert(fs.existsSync(trafficFabricPath), 'national-traffic-fabric.js must exist');
-  const tf = require(trafficFabricPath);
+  const tf = require('../../../server/infrastructure/national-traffic-fabric.js');
   assert(typeof tf.getNationalTrafficFabricTopology === 'function', 'getNationalTrafficFabricTopology must be a function');
   assert(typeof tf.updateNationalTrafficWeight === 'function', 'updateNationalTrafficWeight must be a function');
 
@@ -110,7 +118,7 @@ async function runStep11Tests() {
 
   const nocPath = path.join(ROOT, 'server/operations/national-operations-center.js');
   assert(fs.existsSync(nocPath), 'national-operations-center.js must exist');
-  const noc = require(nocPath);
+  const noc = require('../../../server/operations/national-operations-center.js');
   assert(typeof noc.getNationalOperationsCenterSnapshot === 'function', 'NOC snapshot getter must exist');
   const snapshot = noc.getNationalOperationsCenterSnapshot();
   assert(snapshot && snapshot.noc_state, 'NOC snapshot must contain operational state');
@@ -123,7 +131,7 @@ async function runStep12Tests() {
 
   const prodReadinessPath = path.join(ROOT, 'server/infrastructure/national-production-readiness.js');
   assert(fs.existsSync(prodReadinessPath), 'national-production-readiness.js must exist');
-  const pr = require(prodReadinessPath);
+  const pr = require('../../../server/infrastructure/national-production-readiness.js');
   assert(typeof pr.evaluateNationalProductionReadiness === 'function', 'evaluateNationalProductionReadiness must be a function');
 
   const gates = pr.evaluateNationalProductionReadiness();
@@ -134,7 +142,7 @@ async function runStep12Tests() {
 
   const loadTestingPath = path.join(ROOT, 'server/infrastructure/national-load-testing.js');
   assert(fs.existsSync(loadTestingPath), 'national-load-testing.js must exist');
-  const lt = require(loadTestingPath);
+  const lt = require('../../../server/infrastructure/national-load-testing.js');
   assert(typeof lt.runNationalLoadSimulation === 'function', 'runNationalLoadSimulation must exist');
 
   const sim = lt.runNationalLoadSimulation(lt.LOAD_SCENARIOS.SCENARIO_A_1M);

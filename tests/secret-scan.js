@@ -16,6 +16,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'coverage', 'build', '.venv']);
@@ -178,7 +179,7 @@ chk('فایلِ data/jwt.key در repository track نشده', !gitTracked('serve
 
 function gitTracked(rel) {
   try {
-    const out = require('child_process').execSync('git ls-files -- ' + JSON.stringify(rel), { cwd: ROOT }).toString().trim();
+    const out = execFileSync('git', ['ls-files', '--', rel], { cwd: ROOT }).toString().trim();
     return out.length > 0;
   } catch (e) { return false; }
 }

@@ -41,6 +41,15 @@ const PORT = 3196;
 const ROOT = path.join(__dirname, '..');
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
+/* 🔴 globalsِ مرورگرِ برنامه: توابعِ واقعیِ سناریوها در scopeِ صفحه
+   اجرا می‌شوند و به این متغیرها دسترسی دارند (آن‌ها constهای سراسریِ
+   برنامه‌اند، نه رویِ window). تعریفِ صریح، مرز را برایِ تحلیلگر روشن
+   می‌کند. */
+/* global db, S, render, finishLogin, closeModal, userModal, classModal,
+   subjectModal, calModal, ticketModal, confirmModal, askConfirm,
+   syncPanelModal, storageQuotaModal, gradeModal, schoolModal, toast,
+   invalid */
+
 function startStaticServer() {
   const html = fs.readFileSync(path.join(ROOT, 'index.html'));
   return new Promise((resolve) => {
@@ -55,63 +64,73 @@ function startStaticServer() {
 /* هر سناریو: نام + کدِ درون‌صفحه (با eval اجرا می‌شود) که حالت را می‌سازد.
    کد باید بعدِ login اجرا شود؛ اگر نقشِ خاص لازم است، loginAs مشخص می‌کند. */
 const SCENARIOS = [
-  /* ── مودال‌هایِ CRUD (نقش manager) ── */
+  /* ── مودال‌هایِ CRUD (نقش manager) ──
+     🔴 هر سناریو یک تابعِ واقعی است که در scopeِ صفحه اجرا می‌شود
+     (به globalsِ برنامه دسترسی دارد)؛ دیگر هیچ رشته‌ای eval نمی‌شود. */
   { name: 'modal:user-new (افزودن کاربر)', loginAs: 'manager1',
-    js: `S.route='users'; render(); userModal(null);` },
+    js: () => { S.route = 'users'; render(); userModal(null); } },
   { name: 'modal:user-edit (ویرایش کاربر)', loginAs: 'manager1',
-    js: `S.route='users'; render(); userModal(db.users.find(u=>u.role==='student'&&u.school_id===S.user.school_id));` },
+    js: () => { S.route = 'users'; render(); userModal(db.users.find((u) => u.role === 'student' && u.school_id === S.user.school_id)); } },
   { name: 'modal:class (کلاس)', loginAs: 'manager1',
-    js: `S.route='classes'; render(); classModal(null);` },
+    js: () => { S.route = 'classes'; render(); classModal(null); } },
   { name: 'modal:subject (درس/کتاب)', loginAs: 'manager1',
-    js: `S.route='subjects'; render(); subjectModal(null);` },
+    js: () => { S.route = 'subjects'; render(); subjectModal(null); } },
   { name: 'modal:calendar (رویداد تقویم)', loginAs: 'manager1',
-    js: `S.route='calendar'; render(); calModal(null);` },
+    js: () => { S.route = 'calendar'; render(); calModal(null); } },
   { name: 'modal:ticket (تیکت پشتیبانی)', loginAs: 'manager1',
-    js: `S.route='dashboard'; render(); ticketModal();` },
+    js: () => { S.route = 'dashboard'; render(); ticketModal(); } },
   { name: 'modal:school (مدرسه — superadmin)', loginAs: 'superadmin',
-    js: `S.route='schools'; render(); schoolModal(null);` },
+    js: () => { S.route = 'schools'; render(); schoolModal(null); } },
   { name: 'modal:grade (ثبت نمره — teacher)', loginAs: 'teacher1_1',
-    js: `S.route='grades'; render(); gradeModal(null);` },
+    js: () => { S.route = 'grades'; render(); gradeModal(null); } },
 
   /* ── مودال‌هایِ تأیید ── */
   { name: 'modal:confirm-delete (تأیید حذف)', loginAs: 'manager1',
-    js: `S.route='users'; render(); confirmModal('آیا از حذف این کاربر مطمئن هستید؟','user-del-ok',1);` },
+    js: () => { S.route = 'users'; render(); confirmModal('آیا از حذف این کاربر مطمئن هستید؟', 'user-del-ok', 1); } },
   { name: 'modal:ask-confirm (تأیید عمومی)', loginAs: 'manager1',
-    js: `S.route='dashboard'; render(); askConfirm('این عملیات ارسال پیامک دارد. ادامه می‌دهید؟',function(){},{title:'تأیید ارسال',ok:'ادامه',danger:false});` },
+    js: () => { S.route = 'dashboard'; render(); askConfirm('این عملیات ارسال پیامک دارد. ادامه می‌دهید؟', function () {}, { title: 'تأیید ارسال', ok: 'ادامه', danger: false }); } },
 
   /* ── مودال‌هایِ گزارش/پنل ── */
   { name: 'modal:sync-panel (پنل همگام‌سازی)', loginAs: 'manager1',
-    js: `S.route='dashboard'; render(); syncPanelModal();` },
+    js: () => { S.route = 'dashboard'; render(); syncPanelModal(); } },
   { name: 'modal:storage-quota (حافظهٔ دستگاه)', loginAs: 'manager1',
-    js: `S.route='dashboard'; render(); storageQuotaModal();`, waitMs: 600 },
+    js: () => { S.route = 'dashboard'; render(); storageQuotaModal(); }, waitMs: 600 },
 
   /* ── حالتِ خطایِ فرم (validation error) ── */
   { name: 'state:form-error (فرم کاربر با خطای ولیدیشن)', loginAs: 'manager1',
-    js: `S.route='users'; render(); userModal(null);
-         document.getElementById('u_name').value='';
-         invalid('u_name', true, 'نام و نام خانوادگی الزامی است');` },
+    js: () => {
+      S.route = 'users'; render(); userModal(null);
+      document.getElementById('u_name').value = '';
+      invalid('u_name', true, 'نام و نام خانوادگی الزامی است');
+    } },
   { name: 'state:form-error-nid (کد ملی نامعتبر)', loginAs: 'manager1',
-    js: `S.route='users'; render(); userModal(null);
-         document.getElementById('u_nid').value='123';
-         invalid('u_nid', true, 'کد ملی معتبر نیست');` },
+    js: () => {
+      S.route = 'users'; render(); userModal(null);
+      document.getElementById('u_nid').value = '123';
+      invalid('u_nid', true, 'کد ملی معتبر نیست');
+    } },
 
   /* ── toastها ── */
   { name: 'state:toasts (ok + err + warn هم‌زمان)', loginAs: 'manager1',
-    js: `S.route='dashboard'; render();
-         toast('ذخیره شد','ok'); toast('خطا در ارسال','err'); toast('اتصال ناپایدار است','warn');` },
+    js: () => {
+      S.route = 'dashboard'; render();
+      toast('ذخیره شد', 'ok'); toast('خطا در ارسال', 'err'); toast('اتصال ناپایدار است', 'warn');
+    } },
 
   /* ── سایدبارِ بازِ موبایل + scrim ── */
   { name: 'state:sidebar-open (سایدبار موبایل باز)', loginAs: 'manager1',
-    js: `S.route='dashboard'; S.sidebar=true; render();`, viewport: { width: 420, height: 900 } },
+    js: () => { S.route = 'dashboard'; S.sidebar = true; render(); }, viewport: { width: 420, height: 900 } },
 
   /* ── منویِ بازِ پوسته (dropdown) ── */
   { name: 'state:theme-menu-open (منوی پوسته باز)', loginAs: 'manager1',
-    js: `S.route='dashboard'; render();
-         var m=document.querySelector('[data-tpopmenu]'); if(m) m.hidden=false;` },
+    js: () => {
+      S.route = 'dashboard'; render();
+      const m = document.querySelector('[data-tpopmenu]'); if (m) m.hidden = false;
+    } },
 
   /* ── مودالِ انتخابِ پنل بعدِ ورود ── */
   { name: 'modal:panel-picker (انتخاب پنل بعد از ورود)', loginAs: 'manager1', keepPicker: true,
-    js: `` },
+    js: () => {} },
 ];
 
 const out = { when: new Date().toISOString(), tags: TAGS, results: [] };
@@ -127,7 +146,7 @@ const ruleAgg = new Map();
     page.setDefaultTimeout(30000);
     await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => {
-      try { return eval(`typeof db === 'object' && db && Array.isArray(db.users) && db.users.length > 0`); }
+      try { return typeof db === 'object' && !!db && Array.isArray(db.users) && db.users.length > 0; }
       catch (e) { return false; }
     }, null, { timeout: 60000 });
     return page;
@@ -145,28 +164,31 @@ const ruleAgg = new Map();
     try {
       page = await freshPage(context);
 
-      /* ورود با نقشِ لازم */
-      const okLogin = await page.evaluate(([uname, keepPicker]) => {
-        return eval(`(function(){
-          const u = ${uname === 'superadmin'
-            ? `db.users.find(x=>x.role==='superadmin')`
-            : `db.users.find(x=>x.username===${JSON.stringify(uname)})`};
-          if (!u) return null;
-          finishLogin(u);
-          if (!${keepPicker ? 'true' : 'false'}) { S.showPicker = false; if (typeof closeModal==='function') closeModal(); }
-          render();
-          return u.username;
-        })()`);
-      }, [sc.loginAs, !!sc.keepPicker]);
+      /* ورود با نقشِ لازم
+         🔴 بدونِ eval: db/S/finishLogin/closeModal/render متغیرهایِ lexicalِ
+         سراسریِ برنامه‌اند؛ توابعِ واقعی به صفحه فرستاده می‌شوند تا در
+         همان scope اجرا شوند. هیچ متنی ساخته یا الحاق نمی‌شود. */
+      const okLogin = await page.evaluate(([uname, keepPicker, isSuper]) => {
+        const u = isSuper
+          ? db.users.find((x) => x.role === 'superadmin')
+          : db.users.find((x) => x.username === uname);
+        if (!u) return null;
+        finishLogin(u);
+        if (!keepPicker) { S.showPicker = false; if (typeof closeModal === 'function') closeModal(); }
+        render();
+        return u.username;
+      }, [sc.loginAs, !!sc.keepPicker, sc.loginAs === 'superadmin']);
       if (!okLogin) {
         console.log(`  ⚠️ ${sc.name}: کاربرِ «${sc.loginAs}» پیدا نشد — رد شد`);
         await context.close();
         continue;
       }
 
-      /* ساختِ حالت */
-      if (sc.js && sc.js.trim()) {
-        await page.evaluate((code) => { eval(code); }, sc.js);
+      /* ساختِ حالت
+         🔴 بدنهٔ سناریو به‌جای رشته، یک تابعِ واقعی است که در scopeِ صفحه
+         اجرا می‌شود (db/S/render/… globals). هیچ evalی در کار نیست. */
+      if (sc.js && typeof sc.js === 'function') {
+        await page.evaluate(sc.js);
       }
       await page.waitForTimeout(sc.waitMs || 200);
 

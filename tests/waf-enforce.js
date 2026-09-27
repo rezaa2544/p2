@@ -14,7 +14,7 @@
               node tests/waf-enforce.js && node tests/waf-mutations.js
    ───────────────────────────────────────────────────────────── */
 'use strict';
-const { spawn, spawnSync } = require('child_process');
+const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const http = require('http');

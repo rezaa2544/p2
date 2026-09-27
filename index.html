@@ -17743,9 +17743,28 @@ check: function(){
 var need = ['render','renderRoute','insert','update','remove','byId',
 'batchWrites','saveLog','applyOp','canRoute','canAction',
 'idxById','idxReset','esc','fa','toast','openModal','closeModal'];
-var miss = need.filter(function(n){
-try{ return typeof eval(n) !== 'function'; }catch(e){ return true; }
-}).map(function(n){ return { تابع:n }; });
+var fnDefined = {
+render:       function(){ try{ return typeof render === 'function'; }catch(e){ return false; } },
+renderRoute:  function(){ try{ return typeof renderRoute === 'function'; }catch(e){ return false; } },
+insert:       function(){ try{ return typeof insert === 'function'; }catch(e){ return false; } },
+update:       function(){ try{ return typeof update === 'function'; }catch(e){ return false; } },
+remove:       function(){ try{ return typeof remove === 'function'; }catch(e){ return false; } },
+byId:         function(){ try{ return typeof byId === 'function'; }catch(e){ return false; } },
+batchWrites:  function(){ try{ return typeof batchWrites === 'function'; }catch(e){ return false; } },
+saveLog:      function(){ try{ return typeof saveLog === 'function'; }catch(e){ return false; } },
+applyOp:      function(){ try{ return typeof applyOp === 'function'; }catch(e){ return false; } },
+canRoute:     function(){ try{ return typeof canRoute === 'function'; }catch(e){ return false; } },
+canAction:    function(){ try{ return typeof canAction === 'function'; }catch(e){ return false; } },
+idxById:      function(){ try{ return typeof idxById === 'function'; }catch(e){ return false; } },
+idxReset:     function(){ try{ return typeof idxReset === 'function'; }catch(e){ return false; } },
+esc:          function(){ try{ return typeof esc === 'function'; }catch(e){ return false; } },
+fa:           function(){ try{ return typeof fa === 'function'; }catch(e){ return false; } },
+toast:        function(){ try{ return typeof toast === 'function'; }catch(e){ return false; } },
+openModal:    function(){ try{ return typeof openModal === 'function'; }catch(e){ return false; } },
+closeModal:   function(){ try{ return typeof closeModal === 'function'; }catch(e){ return false; } }
+};
+var miss = need.filter(function(n){ return !fnDefined[n](); })
+.map(function(n){ return { تابع:n }; });
 return miss.length
 ? { ok:false, count:miss.length, items:miss,
 msg: miss.length + ' تابع حیاتی در دسترس نیست' }
@@ -17767,9 +17786,19 @@ safe: false,
 check: function(){
 var need = ['BRANCHES','GRADES_OF_LEVEL','LEVELS','NAV','TITLES',
 'ROLE_FA','DIAG_CHECKS','BELL_PRESETS','FIELD_ALIASES'];
-var miss = need.filter(function(n){
-try{ return eval(n) === undefined; }catch(e){ return true; }
-}).map(function(n){ return { جدول:n }; });
+var tableDefined = {
+BRANCHES:      function(){ try{ return typeof BRANCHES !== 'undefined'; }catch(e){ return false; } },
+GRADES_OF_LEVEL: function(){ try{ return typeof GRADES_OF_LEVEL !== 'undefined'; }catch(e){ return false; } },
+LEVELS:        function(){ try{ return typeof LEVELS !== 'undefined'; }catch(e){ return false; } },
+NAV:           function(){ try{ return typeof NAV !== 'undefined'; }catch(e){ return false; } },
+TITLES:        function(){ try{ return typeof TITLES !== 'undefined'; }catch(e){ return false; } },
+ROLE_FA:       function(){ try{ return typeof ROLE_FA !== 'undefined'; }catch(e){ return false; } },
+DIAG_CHECKS:   function(){ try{ return typeof DIAG_CHECKS !== 'undefined'; }catch(e){ return false; } },
+BELL_PRESETS:  function(){ try{ return typeof BELL_PRESETS !== 'undefined'; }catch(e){ return false; } },
+FIELD_ALIASES: function(){ try{ return typeof FIELD_ALIASES !== 'undefined'; }catch(e){ return false; } }
+};
+var miss = need.filter(function(n){ return !tableDefined[n](); })
+.map(function(n){ return { جدول:n }; });
 return miss.length
 ? { ok:false, count:miss.length, items:miss,
 msg: miss.length + ' جدول پایه بارگذاری نشده' }

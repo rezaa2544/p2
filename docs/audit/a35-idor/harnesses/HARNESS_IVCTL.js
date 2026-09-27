@@ -3,12 +3,12 @@
 'use strict';
 const crypto = require('crypto');
 const fs = require('fs');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const Redis = require('/home/user/p2/node_modules/ioredis');
 const redis = new Redis('redis://127.0.0.1:6379');
 const BASE = 'http://127.0.0.1:3000';
 const CODE = '424242';
-const PG = 'psql "postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor"';
+const PGURL = 'postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor';
 const OUT = '/home/user/idor-evidence-ivctl.jsonl';
 fs.writeFileSync(OUT, '');
 const row = (o) => { fs.appendFileSync(OUT, JSON.stringify(o) + '\n'); console.log(o.id + ' [' + o.actor + '] actual=' + o.actual + (o.op ? ' (' + o.op + ')' : '') + ' // ' + o.note); };
@@ -40,7 +40,7 @@ async function login(phone, nid) {
   const r = await api('/api/sync', { method: 'POST', cookie: T1, body: { ops: [{ uid: 'ivctl-2', c: 'discipline', t: 'ins', data: { student_id: 6, school_id: 1, kind: 'praise', title: 'audit-ctl-' + Date.now(), points: 0, date: '2026-01-01' }, by: 4 }] } });
   const op = r.json && r.json.results && r.json.results[0];
   row({ id: 'IVCTL-1', actor: 'T1', expect: [200], actual: r.status, op: op && (op.code || (op.ok ? 'ok' : '?')), note: 'control: teacher discipline ins on TAUGHT student 6, valid fields only (defect if not ok)', evidence: r.text.slice(0, 220), t: new Date().toISOString() });
-  const pgRow = execSync(PG + ' -t -A -c "SELECT id FROM discipline WHERE title LIKE \'audit-ctl-%\' ORDER BY id DESC LIMIT 1;"').toString().trim();
+  const pgRow = execFileSync('psql', ['-t', '-A', '-c', "SELECT id FROM discipline WHERE title LIKE 'audit-ctl-%' ORDER BY id DESC LIMIT 1;", PGURL]).toString().trim();
   row({ id: 'IVCTL-1-pg', actor: 'psql', expect: [true], actual: pgRow || '(none)', note: 'PG row created?', t: new Date().toISOString() });
   // owner M1 deletes it (del = manager/SA)
   if (pgRow) {

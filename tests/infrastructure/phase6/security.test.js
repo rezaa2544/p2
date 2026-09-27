@@ -14,12 +14,12 @@
 
 const assert = require('assert');
 const path = require('path');
-const { Phase6CanaryEngine } = require(path.join(__dirname, '../../../server/infrastructure/phase6-canary-engine'));
+const { Phase6CanaryEngine } = require('../../../server/infrastructure/phase6-canary-engine');
 const {
   assertTenantBoundary,
   sanitizePayload,
   HARDENING_ERRORS
-} = require(path.join(__dirname, '../../../server/infrastructure/phase6-production-hardening'));
+} = require('../../../server/infrastructure/phase6-production-hardening');
 
 async function testOperatorGovernanceSecurity() {
   console.log('▸ Test 1: Operator Governance Security & Role Authorization (B3)');

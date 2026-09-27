@@ -216,9 +216,12 @@ async function seedPgFromBootstrap(store, db) {
        it used to reference `cleanRows`, which is scoped to the chunk body and
        is gone by then, so every seeded collection with explicit ids threw
        "cleanRows is not defined" and the sequence was never advanced. The
-       largest explicit id must be accumulated across all chunks here, then
-       applied after the loop. */
-    let maxSeedId = 0;
+       largest explicit id is discovered from the table itself by the
+       realignment block below (SELECT MAX(id)), which runs once per
+       collection AFTER the chunk loop has closed. Reading MAX(id) from the
+       table instead of accumulating a binding here means the realignment can
+       never reference an out-of-scope variable and also covers rows the
+       bootstrap did not write. */
     for (let i = 0; i < arr.length; i += CHUNK) {
       const cleanRows = [];
       const fieldSet = new Set();
@@ -235,12 +238,6 @@ async function seedPgFromBootstrap(store, db) {
           }
         }
         if (data.id != null) cleanRows.push(data);
-      }
-      /* N-23: track the largest explicit id across every chunk so the sequence
-         can be advanced once, after the loop (see the block below). */
-      for (const row of cleanRows) {
-        const rid = Number(row.id);
-        if (Number.isFinite(rid) && rid > maxSeedId) maxSeedId = rid;
       }
       if (!cleanRows.length) continue;
 

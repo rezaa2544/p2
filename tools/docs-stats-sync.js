@@ -44,6 +44,11 @@ const ROOT = path.join(__dirname, '..');
 const DOCS = path.join(ROOT, 'docs');
 const FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
 
+/* whitelist مسیرِ نسبی — ثابتِ نام‌دار، مانندِ NAME_RE در server/dr.js.
+   مسیرهایی که این الگو را پاس نکنند، هرگز به path.resolve نمی‌رسند. */
+const REL_PATH_RE = /^[A-Za-z0-9_./-]+$/;
+const DOTDOT_RE = /(?:^|[/\\])\.\.?(?:[/\\]|$)/;
+
 /* اسناد «زنده» — همان سه سندی که §۱ بند ۲ قفل از تضمینِ اثر مستثنا کرده */
 const LIVE_DOCS = ['DOCS_HEALTH_REPORT.md', 'DOCS_CONSISTENCY_REPORT.md', 'SECURITY_INCIDENT_LOG.md'];
 
@@ -70,6 +75,27 @@ const fa = (n) => String(n).replace(/\d/g, (d) => FA_DIGITS[+d]);
 function listMd(dir) {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir).filter((f) => f.endsWith('.md'));
+}
+
+/* نگهبانِ مسیر: هر مسیری که به fs می‌رسد باید داخلِ ریشهٔ پروژه بماند.
+   خروجی از بیرون (آرگومان، محتویاتِ فایل) هرگز نباید از ریشه فراتر برود؛
+   در غیر این صورت به‌جای لمسِ فایلِ بیرونی، خطا می‌دهیم. */
+function assertContained(p) {
+  const r = path.resolve(p);
+  const b = path.resolve(ROOT);
+  if (r !== b && r.indexOf(b + path.sep) !== 0) {
+    throw new Error('مسیر خارج از ' + b + ' مجاز نیست: ' + r);
+  }
+  return r;
+}
+function containedJoin(base, rel) {
+  const s = String(rel || '');
+  /* whitelist: مسیرِ نسبی فقط این کاراکترها را می‌تواند داشت و نباید
+     قطعهٔ '..' باشد — بررسی پیش از join. */
+  if (!REL_PATH_RE.test(s) || DOTDOT_RE.test(s)) {
+    throw new Error('مسیرِ غیرمجاز (فقط حروف/عدد/نقطه/خط‌تیره/زیرخط/اسلش): ' + s);
+  }
+  return assertContained(path.join(base, s));
 }
 
 /* قفلِ جاری همان است که تستِ نگهبان به آن اشاره می‌کند — از خودِ تست
@@ -239,7 +265,10 @@ const OWNED = [
 /* ── بازتولیدِ مانیفستِ قفلِ جاری ────────────────────────────────── */
 function freezeManifest() {
   const rel = currentFreeze();
-  const p = path.join(ROOT, rel);
+  if (!REL_PATH_RE.test(rel) || DOTDOT_RE.test(rel)) {
+    throw new Error('مسیرِ قفلِ غیرمجاز: ' + rel);
+  }
+  const p = containedJoin(ROOT, rel);
   const selfName = path.basename(rel);
 
   /* اسناد «زنده» (§۱ بند ۲ قفل) از تضمینِ اثر مستثنا‌اند و تستِ نگهبان هم
@@ -314,7 +343,7 @@ function run({ check, freeze, json }) {
   }
 
   for (const spec of OWNED) {
-    const p2 = path.join(ROOT, spec.file);
+    const p2 = containedJoin(ROOT, spec.file);
     if (!fs.existsSync(p2)) { ambiguous.push(`${spec.file}: فایل نیست (${spec.key})`); continue; }
     const src = fs.readFileSync(p2, 'utf8');
 

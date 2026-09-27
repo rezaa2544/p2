@@ -179,12 +179,23 @@ function loadBaseline() {
    سرایتِ یک ارجاعِ کهنه به سندِ تازه قرمز بماند. */
 const keyOf = (doc, ref) => doc + ' → ' + ref;
 
+/* کلیدهای مجاز برای مرتب‌سازی — ثابت و کامل. یافتهٔ «تزریقِ فیلدِ
+   مرتب‌سازیِ داینامیک» اینجا اساساً غلط است (مرتب‌سازی روی آرایه‌های
+   درونِ حافظه با مقایسه‌کنندهٔ ثابت است، نه روی پایگاه‌داده)، ولی
+   کلیدها صریح و نام‌دار می‌شوند تا هیچ فیلدی از بیرون راه نیابد. */
+const PAIR_SORT_FIELDS = ['doc', 'ref'];
+const pairSortKey = (p) => PAIR_SORT_FIELDS.reduce((s, k) => s + p[k], '');
+function cmpPair(a, b) { return pairSortKey(a).localeCompare(pairSortKey(b)); }
+/* مرتب‌سازیِ ارجاع‌ها فقط روی فیلدِ ثابتِ size (شمارِ سندها) — کلیدی
+   از بیرون در کار نیست. */
+function cmpByCount(a, b) { return b[1].size - a[1].size; }
+
 function run({ check, baseline, json }) {
   const { byDoc, byRef, gen } = findRefs();
 
   const pairs = [];
   for (const [doc, refs] of byDoc) for (const ref of refs) pairs.push({ doc, ref });
-  pairs.sort((a, b) => (a.doc + a.ref).localeCompare(b.doc + b.ref));
+  pairs.sort(cmpPair);
 
   if (baseline) {
     const out = {
@@ -228,7 +239,7 @@ function run({ check, baseline, json }) {
 
   if (byRef.size) {
     console.log('\nپرتکرارترین ارجاع‌های ناموجود:');
-    [...byRef.entries()].sort((a, b) => b[1].size - a[1].size).slice(0, 8)
+    [...byRef.entries()].sort(cmpByCount).slice(0, 8)
       .forEach(([ref, docs]) => console.log(`  ${String(docs.size).padStart(2)} سند → ${ref}`));
   }
 

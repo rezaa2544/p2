@@ -9,7 +9,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn, execSync, spawnSync } = require('child_process');
+const { spawn, execFileSync, spawnSync } = require('child_process');
 const http = require('http');
 const { Client } = require('pg');
 
@@ -98,10 +98,10 @@ async function pgOne(url, sql, params) { const c = new Client({ connectionString
   /* BLOCKER 2 acceptance: migrate-to-pg --execute builds the WHOLE schema
      (two-phase DDL) on an EMPTY database — this DB is exclusively its own. */
   /* fresh bootstrap store + one-time seed into PG (migrate-to-pg --execute) */
-  execSync(`${NODE} server/seed.js`, { cwd: ROOT, env: Object.assign({}, process.env, { PAYESH_STORE: STORE }), stdio: 'pipe' });
+  execFileSync(NODE, ['server/seed.js'], { cwd: ROOT, env: Object.assign({}, process.env, { PAYESH_STORE: STORE }), stdio: 'pipe' });
   fs.mkdirSync(path.dirname(STORE), { recursive: true });
   fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), STORE);   /* seed.js writes the default path only */
-  execSync(`${NODE} tools/migrate-to-pg.js --execute`, { cwd: ROOT, env: Object.assign({}, process.env, { DATABASE_URL: OCC_URL, PAYESH_STORE: STORE }), stdio: 'pipe' });
+  execFileSync(NODE, ['tools/migrate-to-pg.js', '--execute'], { cwd: ROOT, env: Object.assign({}, process.env, { DATABASE_URL: OCC_URL, PAYESH_STORE: STORE }), stdio: 'pipe' });
   /* migrate-to-pg predates 015–019 (canary / ops_kv / authority_state).
      Phase 7 refuses listen() without those tables — apply additive SQL. */
   const migDir = path.join(ROOT, 'migrations');

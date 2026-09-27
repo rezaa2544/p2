@@ -10,6 +10,12 @@
 set -euo pipefail
 
 : "${REPLICATION_PASSWORD:?REPLICATION_PASSWORD لازم است}"
+# PGPASSWORD برای ابزارهای پستگرس (pg_basebackup و …)؛ طبقِ
+# docs/CONFIGURATION_REFERENCE.md یک متغیرِ محیطیِ مستند است. اگر محیط
+# نداده‌اش، از گذرواژهٔ کپی‌برداری می‌آید — مقدار هرگز در سورس نوشته نمی‌شود
+# و نبودِ هر دو، با خطا تمام می‌شود (fail-closed).
+: "${PGPASSWORD:=$REPLICATION_PASSWORD}"
+export PGPASSWORD
 PRIMARY_HOST="${PRIMARY_HOST:-pg-primary}"
 PRIMARY_PORT="${PRIMARY_PORT:-5432}"
 PGHA_USER="${PGHA_USER:-postgres}"
@@ -23,9 +29,9 @@ if [ ! -s "$PGDATA/PG_VERSION" ]; then
     pgbackrest --stanza=payesh --delta --type=prefer restore
   else
     echo "standby: pg_basebackup از ${PRIMARY_HOST}:${PRIMARY_PORT}"
-    PGPASSWORD="$REPLICATION_PASSWORD" pg_basebackup -h "$PRIMARY_HOST" -p "$PRIMARY_PORT" \
+    pg_basebackup -h "$PRIMARY_HOST" -p "$PRIMARY_PORT" \
       -U replicator -D "$PGDATA" -R -X stream -c fast -P -S "" 2>/dev/null \
-    || PGPASSWORD="$REPLICATION_PASSWORD" pg_basebackup -h "$PRIMARY_HOST" -p "$PRIMARY_PORT" \
+    || pg_basebackup -h "$PRIMARY_HOST" -p "$PRIMARY_PORT" \
       -U replicator -D "$PGDATA" -R -X stream -c fast -P
   fi
   touch "$PGDATA/standby.signal"

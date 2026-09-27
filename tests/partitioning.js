@@ -166,6 +166,18 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
 
   /* ═══════════ بخشِ زنده ═══════════ */
   const LIVE_URL = process.env.PAYESH_W10_PG_URL || 'postgres://w10:w10@127.0.0.1:5432/payesh_w10';
+  /* اتصالِ psql از طریقِ متغیرهایِ محیطی PG* (نه URLِ مکانیِ در خطِ فرمان):
+     تنها آرگومانِ متغیرِ باقی‌مانده، مسیرِ فایل در آخرین موقعیت است. */
+  const __pgLive = new URL(String(LIVE_URL).replace(/^postgres(ql)?:/, 'http:'));
+  function pgLiveEnv(extra) {
+    return Object.assign({}, process.env, {
+      PGHOST: __pgLive.hostname,
+      PGPORT: __pgLive.port || '5432',
+      PGUSER: decodeURIComponent(__pgLive.username || ''),
+      PGPASSWORD: decodeURIComponent(__pgLive.password || '') || process.env.PGPASSWORD || 'w10',
+      PGDATABASE: (__pgLive.pathname || '').replace(/^\//, '')
+    }, extra || {});
+  }
   let live = null;
   try {
     const { Client } = require('pg');
@@ -184,11 +196,11 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
   console.log('\n▸ Wave 10 — پارتیشن‌بندی (PG زنده: چینِ کامل 001→009)');
   const q = (sql) => live.query(sql);
   const psqlF = (file) => new Promise((res) => {
-    execFile('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', file, LIVE_URL],
-      { env: Object.assign({}, process.env, { PGPASSWORD: process.env.PGPASSWORD || 'w10' }) },
+    execFile('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', file],
+      { env: pgLiveEnv() },
       (err, so, se) => res({ code: err ? (err.code || 1) : 0, so: String(so), se: String(se) }));
   });
-  const psql = (file) => execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', file, LIVE_URL], { stdio: 'pipe' }).toString();
+  const psql = (file) => execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', file], { stdio: 'pipe', env: pgLiveEnv() }).toString();
 
   /* چین را روی همین دیتابیسِ کار می‌کنیم؛ مستقل از وضعیتِ قبلی (رانِ شکست‌خورده،
      مهاجرتِ ناتمام و…) همهٔ جدول‌های مرتبط را پاک کن */
@@ -255,8 +267,8 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
       }
     })();
     const mig = await new Promise((res, rej) => {
-      execFile('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', '012_partition_grades_attendance.sql'), LIVE_URL],
-        { env: Object.assign({}, process.env, { PGPASSWORD: (LIVE_URL.match(/\/\/[^:]+:([^@]+)@/) || [])[1] || process.env.PGPASSWORD }) },
+      execFile('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', '012_partition_grades_attendance.sql')],
+        { env: pgLiveEnv() },
         (err, so, se) => err ? rej(new Error(String(se || err.message).split('\n').filter((l) => /ERROR|FATAL/.test(l)).join(' | ').slice(0, 160) || err.message)) : res());
     });
     console.log('     009 (کپیِ 180k + کچ‌آپ + swap؛ نویسندهٔ هم‌زمان: ' + ledger.size + ' سطر): ' + ((Date.now() - t9) / 1000).toFixed(1) + 's');
@@ -517,7 +529,7 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
        چانکِ اول کامیت شده و دیده می‌شود — psql با SIGKILL می‌میرد؛ بک‌اندِ
        سرور در NOTICEِ چانکِ بعدی متوجهِ سوکتِ مرده می‌شود و می‌ایستد. */
     const killed = await new Promise((res) => {
-      const ps = spawn('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', '012_partition_grades_attendance.sql'), LIVE_URL], { env: process.env });
+      const ps = spawn('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', '012_partition_grades_attendance.sql')], { env: pgLiveEnv() });
       let fired = false, closed = false;
       const finish = (sig) => { if (!closed) { closed = true; clearInterval(pol); res({ sig, fired }); } };
       const pol = setInterval(() => {

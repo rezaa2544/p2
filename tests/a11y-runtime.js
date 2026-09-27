@@ -27,18 +27,26 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
+/* 🔴 بدونِ eval: db/S/NAV/finishLogin/closeModal/render متغیرهایِ lexicalِ
+   سراسریِ برنامهٔ مرورگر هستند و رویِ window نیستند، ولی توابعِ واقعی را
+   مستقیماً به page.evaluate می‌فرستیم — مرورگر آن‌ها را در scopeِ صفحه
+   اجرا می‌کند و نیازی به ساختنِ متنِ کد نیست. */
+/* global db, S, NAV, finishLogin, closeModal, render */
+
 const ROOT = path.join(__dirname, '..');
 const OUT_DIR = path.join(ROOT, 'out');
 const PORT = Number(process.env.A11Y_PORT || 3199);
 
-/* نقش‌ها و کاربرِ دمو هر کدام (username از 02-demo-data.js) */
+/* 🔴 نقش‌ها و کاربرِ دمو هر کدام (username از 02-demo-data.js).
+   pickUser یک تابعِ انتخاب‌گر است که در scopeِ صفحه اجرا می‌شود؛
+   هیچ متنِ کدی ساخته یا الحاق نمی‌شود. */
 const ROLES = [
-  { role: 'manager',   pickJs: `db.users.find(u=>u.username==='manager1')` },
-  { role: 'teacher',   pickJs: `db.users.find(u=>u.username==='teacher1_1')` },
-  { role: 'parent',    pickJs: `db.users.find(u=>u.username==='parent_multi')||db.users.find(u=>u.role==='parent')` },
-  { role: 'student',   pickJs: `db.users.find(u=>u.role==='student')` },
+  { role: 'manager',   pickUser: (db) => db.users.find((u) => u.username === 'manager1') },
+  { role: 'teacher',   pickUser: (db) => db.users.find((u) => u.username === 'teacher1_1') },
+  { role: 'parent',    pickUser: (db) => db.users.find((u) => u.username === 'parent_multi') || db.users.find((u) => u.role === 'parent') },
+  { role: 'student',   pickUser: (db) => db.users.find((u) => u.role === 'student') },
   /* brief گفته staff؛ نقشِ staff در مخزن نیست — counselor جایگزینِ صادقانه */
-  { role: 'counselor', pickJs: `db.users.find(u=>u.username==='counselor1')||db.users.find(u=>u.role==='counselor')` },
+  { role: 'counselor', pickUser: (db) => db.users.find((u) => u.username === 'counselor1') || db.users.find((u) => u.role === 'counselor') },
 ];
 const MAX_VIEWS_PER_ROLE = 10;
 
@@ -89,9 +97,10 @@ function startStaticServer() {
 
   await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'domcontentloaded' });
   /* صبر تا دادهٔ دمو ساخته شود و صفحهٔ ورود رندر شود.
-     ⚠️ db با const تعریف شده و رویِ window نیست — eval درونِ صفحه لازم است. */
+     db یک متغیرِ lexicalِ سراسری است؛ predicate مستقیماً در scopeِ صفحه
+     اجرا می‌شود (بدونِ ساختنِ متنِ کد). */
   await page.waitForFunction(() => {
-    try { return eval(`typeof db === 'object' && db && Array.isArray(db.users) && db.users.length > 0`); }
+    try { return typeof db === 'object' && !!db && Array.isArray(db.users) && db.users.length > 0; }
     catch (e) { return false; }
   }, null, { timeout: 60000 });
 
@@ -118,37 +127,33 @@ function startStaticServer() {
 
   /* ۲) پنج نقش × تا ۱۰ نمایِ اصلی — نمای هر نقش از PANELS خودِ برنامه */
   for (const R of ROLES) {
-    /* توجه: db/S/NAV با const تعریف شده‌اند و رویِ window نیستند —
-       دسترسی از راهِ eval درونِ صفحه انجام می‌شود. */
-    const ok = await page.evaluate((pickJs) => {
-      /* eslint-disable no-eval */
-      return eval(`(function(){
-        const u = ${pickJs};
-        if (!u) return null;
-        finishLogin(u);
-        S.showPicker = false;
-        if (typeof closeModal === 'function') closeModal();
-        render();
-        return { username: u.username, role: u.role };
-      })()`);
-    }, R.pickJs);
+    /* db/S/NAV/finishLogin/closeModal/render همگی متغیرهایِ lexicalِ سراسریِ
+       صفحه‌اند؛ تابعِ انتخاب‌گر را مستقیماً می‌فرستیم تا در همان scope
+       اجرا شود. هیچ متنی ساخته یا الحاق نمی‌شود. */
+    const ok = await page.evaluate((pick) => {
+      const u = pick(db);
+      if (!u) return null;
+      finishLogin(u);
+      S.showPicker = false;
+      if (typeof closeModal === 'function') closeModal();
+      render();
+      return { username: u.username, role: u.role };
+    }, R.pickUser);
     if (!ok) { console.log(`  ⚠️ ${R.role}: کاربرِ دمو پیدا نشد — رد شد`); continue; }
 
     const routes = await page.evaluate((max) => {
-      return eval(`(function(){
-        const u = S.user;
-        const groups = NAV[u.role] || [];
-        const out = [];
-        for (const g of groups) for (const it of g[1]) { if (out.length < ${max}) out.push(it[0]); }
-        return out;
-      })()`);
+      const u = S.user;
+      const groups = NAV[u.role] || [];
+      const out = [];
+      for (const g of groups) for (const it of g[1]) { if (out.length < max) out.push(it[0]); }
+      return out;
     }, MAX_VIEWS_PER_ROLE);
 
     for (const route of routes) {
       await page.evaluate((r) => {
-        eval(`S.route = ${JSON.stringify(r)}; S.filters = {}; S.page = 1; S.stack = [];
-          if (typeof closeModal === 'function') closeModal();
-          render();`);
+        S.route = r; S.filters = {}; S.page = 1; S.stack = [];
+        if (typeof closeModal === 'function') closeModal();
+        render();
       }, route);
       await page.waitForTimeout(120); /* بگذار paint تمام شود */
       await scan(R.role, route);

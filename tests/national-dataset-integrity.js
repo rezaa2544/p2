@@ -27,7 +27,7 @@
    جهش‌سنجی: tests/national-dataset-mutations.js
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
-const cp = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -48,7 +48,8 @@ function cleanup() { for (const d of [OUT_A, OUT_B, OUT_C]) try { fs.rmSync(d, {
 process.on('exit', cleanup);
 
 function gen(out, seed) {
-  cp.execSync(process.execPath + ' ' + GEN + ' --scale 0.001 --fast --quiet --seed ' + seed + ' --out ' + out,
+  execFileSync(process.execPath,
+    [GEN, '--scale', '0.001', '--fast', '--quiet', '--seed', String(seed), '--out', out],
     { stdio: 'pipe', timeout: 120000 });
 }
 function rows(dir, f) { return fs.readFileSync(path.join(dir, f), 'utf8').trim().split('\n').slice(1); }

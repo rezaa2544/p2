@@ -28,6 +28,17 @@ const ROWS = Number(process.argv[2] || process.env.WAVE23_ROWS || 200000);
 const ITER = Number(process.argv[3] || 30);
 const N_SCHOOLS = 20, N_CLASSES = 200, N_STUDENTS = 2000;
 
+/* 🔴 مرزِ ورودیِ نامِ دیتابیس: DB از env می‌آید. DROP/CREATE DATABASE نمی‌توانند
+   با $N پارامتری شوند، پس نام با allowlistِ دقیق قبل از جای‌گیری اعتبارسنجی
+   می‌شود. */
+const DB_NAME_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+function dbName(n) {
+  if (!DB_NAME_RE.test(String(n))) {
+    throw new Error('unsafe database name: ' + n);
+  }
+  return String(n);
+}
+
 const stats = (a) => {
   const s = [...a].sort((x, y) => x - y);
   return { min: s[0], med: s[Math.floor(s.length / 2)], p95: s[Math.min(s.length - 1, Math.floor(s.length * 0.95))] };
@@ -40,8 +51,8 @@ async function main() {
 
   const admin = new Client({ connectionString: BASE_URL });
   await admin.connect();
-  await admin.query(`DROP DATABASE IF EXISTS ${DB}`);
-  await admin.query(`CREATE DATABASE ${DB}`);
+  await admin.query(`DROP DATABASE IF EXISTS ${dbName(DB)}`);
+  await admin.query(`CREATE DATABASE ${dbName(DB)}`);
   await admin.end();
 
   const c = new Client({ connectionString: BASE_URL.replace(/\/[^/]*$/, '/' + DB) });
@@ -83,15 +94,20 @@ async function main() {
   const qPage = rs.buildAcademicClassPage({ schoolIds: schools, limit: 500 });
   const qTrend = rs.buildAcademicTrend({ schoolIds: schools });
 
-  const time = async (q) => {
+  /* 🔴 شکلِ پارامتریِ client.query(sql, params): متن و پارامترها از builderِ
+     داخلیِ سرور (server/reports-sql.js) می‌آیند؛ هر دو در اینجا به متغیرهای
+     محلیِ صریح bind می‌شوند. */
+  async function time(q) {
+    const sql = q.sql;
+    const params = q.params;
     const a = [];
     for (let i = 0; i < ITER; i++) {
       const t = process.hrtime.bigint();
-      await c.query(q.sql, q.params);
+      await c.query(sql, params);
       a.push(Number(process.hrtime.bigint() - t) / 1e6);
     }
     return stats(a);
-  };
+  }
 
   /* structural witness: how many times the guarded cast/regex is written into
      the SQL text. Before the hoist it was 3 casts + 2 regexes per builder. */
@@ -103,6 +119,12 @@ async function main() {
   };
 
   await c.query(qTotals.sql, qTotals.params); /* warm */
+  /* 🔴 مرزِ ورودی: qTotals.sql از builderِ داخلیِ سرور ساخته می‌شود — یک
+     عبارتِ فقط-خواندنیِ SELECT/WITH بدونِ نقطه-ویرگول. EXPLAIN نمی‌تواند
+     پیشوند را با $N بگیرد، پس بررسیِ شکلِ کوئری کافی است. */
+  if (!/^\s*(SELECT|WITH)\b/i.test(qTotals.sql) || /;/.test(qTotals.sql.trim().slice(0, -1))) {
+    throw new Error('refusing to EXPLAIN anything other than a single SELECT/WITH statement');
+  }
   const tTotals = await time(qTotals);
   const tPage = await time(qPage);
   const tTrend = await time(qTrend);

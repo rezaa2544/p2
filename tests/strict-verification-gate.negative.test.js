@@ -16,7 +16,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
-const cp = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 
 const REPO = path.join(__dirname, '..');
 const GATE_SRC = path.join(REPO, 'tools', 'strict-verification-gate.js');
@@ -28,7 +28,7 @@ const CANONICAL_STATUSES = ['UNKNOWN', 'TESTED', 'RUNTIME_VERIFIED', 'ADVERSARIA
 const TRIO = ['chatgpt', 'arena', 'atria'];
 
 const sha256 = (p) => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
-const git = (dir, args) => cp.execSync('git ' + args, { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+const git = (dir, args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -150,10 +150,10 @@ function mkFixture(name) {
     items: ['assert(true', 'process.exit(0)', '|| true', '0/0 checks'].map(mk)
   };
   fs.writeFileSync(path.join(dir, 'docs', 'verification', 'FALSE_GREEN_ALLOWLIST.json'), JSON.stringify(allow, null, 2));
-  git(dir, 'init -q');
-  git(dir, 'config user.email a30@test.local');
-  git(dir, 'config user.name a30-negative');
-  git(dir, 'commit -qm "init" --allow-empty'); /* parent commit so V-06 can point origin/main at HEAD~1 */
+  git(dir, ['init', '-q']);
+  git(dir, ['config', 'user.email', 'a30@test.local']);
+  git(dir, ['config', 'user.name', 'a30-negative']);
+  git(dir, ['commit', '-qm', 'init', '--allow-empty']); /* parent commit so V-06 can point origin/main at HEAD~1 */
   return dir;
 }
 
@@ -173,9 +173,9 @@ function finishFixture(dir, reg) {
      (V-01's emptied registry then fails G14a as well — fail-closed stays red). */
   reg.expected_ids = Array.isArray(reg.items) ? reg.items.map((x) => String((x && x.id) || '')) : [];
   fs.writeFileSync(path.join(dir, 'docs', 'verification', 'VERIFICATION_REGISTRY.json'), JSON.stringify(reg, null, 2));
-  git(dir, 'add -A');
-  git(dir, 'commit -qm "a30 fixture"');
-  const head = git(dir, 'rev-parse HEAD');
+  git(dir, ['add', '-A']);
+  git(dir, ['commit', '-qm', 'a30 fixture']);
+  const head = git(dir, ['rev-parse', 'HEAD']);
   /* default: origin/main == HEAD (same line). rewrite PLACEHOLDER head fields
      in the WORKING TREE (no new commit → HEAD stable); forged heads stay forged. */
   if (reg.head_bound === PLACEHOLDER) reg.head_bound = head;
@@ -187,12 +187,12 @@ function finishFixture(dir, reg) {
     for (const r of TRIO) if (it[r] && Array.isArray(it[r].evidence)) it[r].evidence = it[r].evidence.map(fix);
   }
   fs.writeFileSync(path.join(dir, 'docs', 'verification', 'VERIFICATION_REGISTRY.json'), JSON.stringify(reg, null, 2));
-  git(dir, 'update-ref refs/remotes/origin/main ' + head);
+  git(dir, ['update-ref', 'refs/remotes/origin/main', head]);
   return head;
 }
 
 function runGate(dir) {
-  const r = cp.spawnSync(process.execPath, ['tools/strict-verification-gate.js'], { cwd: dir, encoding: 'utf8', timeout: 60000 });
+  const r = spawnSync(process.execPath, ['tools/strict-verification-gate.js'], { cwd: dir, encoding: 'utf8', timeout: 60000 });
   return { code: r.status, out: (r.stdout || '') + (r.stderr || '') };
 }
 
@@ -308,10 +308,10 @@ for (const c of cases) {
     if (c.extra && c.extra.divergentOrigin) {
       /* local-only line: origin/main stays on the PARENT commit while HEAD is the
          crafted child — original gate never consults origin/main (V-06). */
-      git(dir, 'update-ref refs/remotes/origin/main HEAD~1');
+      git(dir, ['update-ref', 'refs/remotes/origin/main', 'HEAD~1']);
     }
     if (c.extra && c.extra.noOrigin) {
-      git(dir, 'update-ref -d refs/remotes/origin/main');
+      git(dir, ['update-ref', '-d', 'refs/remotes/origin/main']);
     }
     if (c.extra && c.extra.tamperSchema) {
       const sp = path.join(dir, 'docs', 'verification', 'VERIFICATION_EVIDENCE_SCHEMA.json');

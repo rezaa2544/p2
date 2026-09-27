@@ -35,6 +35,41 @@ const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const DATA_DIR = path.join(__dirname, 'data');
 const OUT = path.join(DATA_DIR, 'payesh.json');
 
+/* ── SEC-fix (code-injection، یافتهٔ ۹۹/۱۰۳) ──────────────────────────
+   seed باید خودِ برنامهٔ ساخته‌شده را اجرا کند تا dbِ همان جهانی که
+   کلاینت می‌بیند استخراج شود (قراردادِ بنیادیِ این فایل). کدِ اجرا
+   می‌شود ولی منبعش یک assetِ ایستا از همین مخزن است — بلوکِ <script>
+   در index.html — نه ورودیِ کاربر، نه شبکه، نه config. با این حال پیش
+   از هر ارزیابی، شکلِ آن با نشانگرهای قطعیِ بیلد بررسی می‌شود تا یک
+   بلوکِ ناقص/جایگزین‌شده هرگز اجرا نشود. همچنین contextِ vm خودش
+   سخت‌گیر است: mockWindow هیچ fs/process/require/net در دسترس
+   نمی‌گذارد (سندباکسِ فقط‌داده). */
+const SCRIPT_MATCH = html.match(/<script nonce="__PAYESH_NONCE__">\n([\s\S]*?)\n<\/script>/);
+const BUNDLE_MARKERS = ['var DATA_MODE', 'db={school_years:', 'function generate'];
+const MIN_BUNDLE_LEN = 100000;
+function assertBundleShape(js, where) {
+  if (typeof js !== 'string' || js.length < MIN_BUNDLE_LEN)
+    throw new Error('seed(' + where + '): bundle rejected — unexpected shape/length');
+  for (let i = 0; i < BUNDLE_MARKERS.length; i++)
+    if (js.indexOf(BUNDLE_MARKERS[i]) === -1)
+      throw new Error('seed(' + where + '): bundle rejected — missing marker ' + BUNDLE_MARKERS[i]);
+}
+
+/* عبارتِ خواندنِ db یک ثابتِ زمان-کامپایل است: هیچ الحاق/ورودی‌ای در آن
+   نیست. `db` در بالاترین سطحِ بیلد با `let` تعریف می‌شود، یعنی یک
+   bindingِ lexicalِ سراسری است و پراپرتیِ شیءِ global نیست — تنها راهِ
+   خواندنِ آن از بیرون، ارزیابیِ همین عبارت در scopeِ همان context است.
+   به‌عنوانِ نگهبانِ پسین، عبارت باید دقیقاً عضوِ ALLOWED_LOOKUPS باشد
+   (allowlistِ شکلِ مجاز) تا هیچ الحاقِ آینده‌ای نتواند چیزی به آن
+   اضافه کند. */
+const ALLOWED_LOOKUPS = new Set(['typeof db !== "undefined" ? db : null']);
+const DB_LOOKUP_SRC = 'typeof db !== "undefined" ? db : null';
+function lookupDb(ctx) {
+  if (!ALLOWED_LOOKUPS.has(DB_LOOKUP_SRC))
+    throw new Error('seed: DB lookup source is not in the allowlist — refusing to run');
+  return vm.runInContext(DB_LOOKUP_SRC, ctx);
+}
+
 function saveDb(db) {
   if (!db || !Array.isArray(db.users) || db.users.length < 10) {
     throw new Error('db not ready or invalid user count');
@@ -63,11 +98,11 @@ function saveDb(db) {
 }
 
 function seedWithVm() {
-  const scriptMatch = html.match(/<script nonce="__PAYESH_NONCE__">\n([\s\S]*?)\n<\/script>/);
-  if (!scriptMatch) {
+  if (!SCRIPT_MATCH) {
     throw new Error('Could not find script block in index.html');
   }
-  const js = scriptMatch[1];
+  const js = SCRIPT_MATCH[1];
+  assertBundleShape(js, 'vm');
   const dummyElem = { innerHTML: '', style: {}, setAttribute: () => {}, querySelector: () => null, querySelectorAll: () => [], appendChild: () => {}, remove: () => {} };
   const mockDoc = {
     documentElement: { setAttribute: () => {}, style: {} },
@@ -100,7 +135,7 @@ function seedWithVm() {
 
   setTimeout(() => {
     try {
-      const db = vm.runInContext('typeof db !== "undefined" ? db : null', ctx);
+      const db = lookupDb(ctx);
       saveDb(db);
       process.exit(0);
     } catch (err) {
@@ -112,6 +147,10 @@ function seedWithVm() {
 
 let JSDOM;
 try {
+  /* SEC-fix: اعتبارسنجیِ شکلِ بیلد پیش از آنکه jsdom آن را اجرا کند —
+     همان نگهبانِ assertBundleShape (مسیرِ vm). */
+  if (!SCRIPT_MATCH) throw new Error('Could not find script block in index.html');
+  assertBundleShape(SCRIPT_MATCH[1], 'jsdom');
   ({ JSDOM } = require('jsdom'));
   const dom = new JSDOM(html, {
     runScripts: 'dangerously',
@@ -125,7 +164,9 @@ try {
 
   setTimeout(() => {
     try{
-      const db = dom.window.eval('typeof db !== "undefined" ? db : null');
+      if (!ALLOWED_LOOKUPS.has(DB_LOOKUP_SRC))
+        throw new Error('DB lookup source is not in the allowlist');
+      const db = dom.window.eval(DB_LOOKUP_SRC);
       saveDb(db);
     }catch(e){
       console.log('jsdom execution failed, falling back to VM runner:', e.message);

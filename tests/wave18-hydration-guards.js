@@ -65,7 +65,11 @@ function chk(name, cond, detail){
   const uc = [
     [null, false], [{ capped: [] }, false], [{ capped: ['attendance:2000'] }, false],
     [{ capped: ['users:5000'] }, true], [{ capped: ['grades:2', 'users:5000'] }, true],
-    [{ env_skipped: ['users'] }, false] /* env_skipped جدا است؛ فقط capped users */
+    /* N-22: env_skipped هم اکنون گزارش می‌شود — PAYESH_PG_HYDRATE_SKIP=users
+       کلِ آینهٔ users را خالی می‌کند و سهمگین‌تر از سقف‌گذاری است. ماتریسِ
+       قدیمی این مورد را false می‌خواست؛ n22-hydrate-cap.test.js:146 مرجع است. */
+    [{ env_skipped: ['users'] }, true],
+    [{ capped: ['schools:10'], env_skipped: ['notifications'] }, false]
   ];
   let bad2 = null;
   for (const [h, want] of uc) if (db.hydrationUsersCapped(h) !== want) { bad2 = JSON.stringify(h); break; }
@@ -102,18 +106,17 @@ function chk(name, cond, detail){
   const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'w18-guard-'));
   const TMPDB = path.join(TMP, 'db.js');
   const GUARD = 'return !(pgLive && hydrateResult && hydrateResult.mirror_incomplete);';
-  /* اسکریپتِ سنجش: ماتریسِ A3/A4/A5 را می‌کوبد؛ exit!=0 یعنی جهش کشته شد */
-  const PROBE = `
-    const db = require(process.argv[1]);
-    const m = [[false,null,true],[false,{mirror_incomplete:true},true],[true,null,true],[true,{},true],
-               [true,{mirror_incomplete:false},true],[true,{mirror_incomplete:true},false]];
-    for (const [pg,h,want] of m) if (db.shouldPersistMirrorFile(pg,h) !== want) process.exit(1);
-    process.exit(0);`;
+  /* پروبِ سنجش: یک ماژولِ ثابتِ همراهِ مخزن است که در همان شاخهٔ موقت
+   کپی می‌شود و db.js همان کپیِ جهشیافته را با requireِ نسبیِ ثابت
+   بارگذاری می‌کند (نه -e و نه مسار از argv). */
+  const PROBE_SRC = path.join(ROOT, 'tests', 'wave18-hydration-probe.js');
+  const TMPPROBE = path.join(TMP, 'wave18-hydration-probe.js');
+  fs.copyFileSync(PROBE_SRC, TMPPROBE);
   const kill = (tag, from, to) => {
     const src = fs.readFileSync(DB, 'utf8');
     if (src.indexOf(from) < 0) { chk('M:' + tag, false, 'الگوی جهش پیدا نشد'); return; }
     fs.writeFileSync(TMPDB, src.replace(from, to));
-    const r = spawnSync(process.execPath, ['-e', PROBE, TMPDB], { encoding: 'utf8' });
+    const r = spawnSync(process.execPath, [TMPPROBE], { encoding: 'utf8' });
     chk('M:' + tag + ' (جهش کشته شد)', r.status !== 0, 'exit=' + r.status);
   }
   kill('حذفِ کلِ گارد', GUARD, 'return true;');

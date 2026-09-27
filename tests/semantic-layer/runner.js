@@ -6,7 +6,7 @@
 'use strict';
 
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const SUITES = [
   'attendance-rate.test.js',
@@ -57,7 +57,7 @@ for (let i = 0; i < SUITES.length; i++) {
   const suitePath = path.join(__dirname, suiteFile);
   console.log(`[${i + 1}/${totalSuites}] اجرای سوئیت: ${suiteFile}`);
   try {
-    const stdout = execSync(`node "${suitePath}"`, { stdio: 'pipe', encoding: 'utf-8' });
+    const stdout = execFileSync('node', [suitePath], { stdio: 'pipe', encoding: 'utf-8' });
     process.stdout.write(stdout);
     passedSuites++;
   } catch (err) {

@@ -13,7 +13,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const ROOT_DIR = path.join(__dirname, '..');
 const DIST_DIR = path.join(ROOT_DIR, 'dist');
@@ -27,7 +27,7 @@ console.log('══════════════════════�
 /* 1. Step 1: Compile Web Application */
 console.log('۱. کامپایل اپلیکیشن تک‌فایلی وب (PWA)...');
 try {
-  execSync('node build.js', { cwd: ROOT_DIR, stdio: 'inherit' });
+  execFileSync('node', ['build.js'], { cwd: ROOT_DIR, stdio: 'inherit' });
 } catch (err) {
   console.error('❌ خطا در کامپایل build.js');
   process.exit(1);

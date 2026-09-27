@@ -24,6 +24,20 @@ const MIME = {
   '.ico': 'image/x-icon',
 };
 
+/* whitelist مسیرِ درخواست — مانندِ NAME_RE در server/dr.js، یک ثابتِ
+   نام‌دار است که پیش از رسیدنِ ورودی به path بررسی می‌شود. */
+const URL_PATH_RE = /^\/[A-Za-z0-9_./@:~-]*$/;
+const DOTDOT_RE = /(?:^|[/\\])\.\.?(?:[/\\]|$)/;
+
+/* نگهبانِ مسیرِ سروشده: مسیرِ resolve‌شده باید داخلِ ریشهٔ پروژه بماند.
+   یک startsWith(ROOT) ساده کافی نیست («/a/b» مسیرِ «/a/bc» را می‌بخشد)،
+   پس لنگر با جداکنندهٔ ریشه چک می‌شود. */
+function assertServed(p) {
+  const root = path.resolve(ROOT);
+  if (p !== root && p.indexOf(root + path.sep) !== 0) throw new Error('escape: ' + p);
+  return p;
+}
+
 let building = false;
 function rebuild(reason) {
   if (building) return;
@@ -52,8 +66,17 @@ const server = http.createServer((req, res) => {
   let urlPath = decodeURIComponent(req.url.split('?')[0]);
   if (urlPath === '/' || urlPath === '/index.html') urlPath = '/index.html';
 
-  const filePath = path.join(ROOT, urlPath);
-  if (!filePath.startsWith(ROOT)) {
+  /* whitelist + containment: مسیرِ درخواست ابتدا شکل‌سنجی می‌شود (بدون
+     null، بدون قطعهٔ '..'، فقط کاراکترهای مجاز) و سپس resolve‌شده توسطِ
+     assertServed داخلِ ریشهٔ پروژه نگه داشته می‌شود. */
+  if (!URL_PATH_RE.test(urlPath) || DOTDOT_RE.test(urlPath) || urlPath.indexOf('\0') !== -1) {
+    res.writeHead(403).end('Forbidden');
+    return;
+  }
+  let filePath;
+  try {
+    filePath = assertServed(path.resolve(path.resolve(ROOT), '.' + urlPath.replace(/\//g, path.sep)));
+  } catch (e) {
     res.writeHead(403).end('Forbidden');
     return;
   }

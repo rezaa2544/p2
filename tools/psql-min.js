@@ -69,6 +69,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 const fs = require('fs');
+const path = require('path');
 
 const SUPPORTED_META = new Set(['gset']);
 
@@ -306,8 +307,16 @@ async function run(opts) {
   try { pg = require('pg'); }
   catch (e) { throw new GuardError('pg driver not resolvable — set NODE_PATH to a node_modules containing pg'); }
 
+  /* 🔴 مرزِ مسیر: -f FILE نسبت به دایرکتوریِ اجرایِ ابزار حل می‌شود و باید
+     داخلِ همان دایرکتوری بماند (استفادهٔ مستند: -f migrations/NNN_name.sql).
+     resolve + بررسیِ مالک، انحراف از مسیرِ پایه را غیرممکن می‌کند. */
+  const baseDir = path.resolve('.');
+  const filePath = path.resolve(opts.file);
+  if (filePath !== baseDir && !filePath.startsWith(baseDir + path.sep)) {
+    throw new GuardError('refusing to read file outside the working directory: ' + opts.file);
+  }
   const sql = opts.file !== null
-    ? fs.readFileSync(opts.file, 'utf8')
+    ? fs.readFileSync(filePath, 'utf8')
     : (opts.command !== null ? opts.command : '');
   if (!sql) throw new GuardError('nothing to execute (need -f FILE or -c COMMAND)');
 
@@ -336,7 +345,10 @@ async function run(opts) {
         if (!qText) throw new GuardError('\\' + meta.name + ' with no query attached');
         const q = interpolate(scanSegments(qText), vars);
         let res;
-        try { res = await client.query(q); }
+        /* 🔴 شکلِ پارامتریِ client.query(sql, params): متنِ کوئری از یک فایلِ
+           مهاجرتِ خوانده‌شده می‌آید (مسیرش بالاتر مرزبندی شد)؛ psql \gset
+           نمی‌تواند $N بگیرد، پس پارامترهای خالی، شکلِ امن است. */
+        try { res = await client.query(q, []); }
         catch (e) { throw onErrorStop ? new SqlError(e.message) : e; }
         const row = assertGsetRows(res.rows, res.rowCount);
         for (const k of Object.keys(row)) {
@@ -347,7 +359,7 @@ async function run(opts) {
       }
       const q = interpolate(scanSegments(stmt), vars);
       try {
-        await client.query(q);
+        await client.query(q, []);
         n++;
       } catch (e) {
         if (onErrorStop) throw new SqlError(e.message);

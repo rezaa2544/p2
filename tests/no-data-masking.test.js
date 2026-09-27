@@ -21,10 +21,10 @@ function check(name, fn) {
 const {
   buildSchoolIntelligenceSnapshot,
   calculateSchoolHealthIndex
-} = require(path.join(__dirname, '..', 'server', 'analytics', 'school-intelligence-center'));
-const { evaluateQualityPillars, QUALITY_STATUS } = require(path.join(__dirname, '..', 'server', 'analytics', 'quality-governance'));
-const { evaluateEarlyWarningRules } = require(path.join(__dirname, '..', 'server', 'analytics', 'intervention-case-management'));
-const { buildRegionalSnapshot } = require(path.join(__dirname, '..', 'server', 'analytics', 'regional-intelligence-network'));
+} = require('../server/analytics/school-intelligence-center');
+const { evaluateQualityPillars, QUALITY_STATUS } = require('../server/analytics/quality-governance');
+const { evaluateEarlyWarningRules } = require('../server/analytics/intervention-case-management');
+const { buildRegionalSnapshot } = require('../server/analytics/regional-intelligence-network');
 
 console.log('\n🛡️  گیت عدم پنهان‌سازی داده (D1 No-Masking Gate)\n');
 

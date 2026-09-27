@@ -41,6 +41,17 @@ const ROOT = path.join(__dirname, '..');
 const MIGRATIONS = path.join(ROOT, 'migrations');
 const TABLES = ['schools', 'users', 'subjects', 'classes', 'enrollments', 'attendance', 'grades'];
 
+/* 🔴 مرزِ ورودیِ شناسهٔ SQL: نامِ جدول از TABLES ثابت می‌آید، ولی چون در
+   متنِ SQL جای می‌گیرد (DDL/DELETE نمی‌توانند $N بگیرند)، با allowlistِ
+   دقیقِ هم‌تراز با server/db.js اعتبارسنجی می‌شود. */
+const SQL_IDENT = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+function tableIdent(name) {
+  if (!SQL_IDENT.test(String(name))) {
+    throw new Error('unsafe SQL table name: ' + name);
+  }
+  return String(name);
+}
+
 function pgDriver() {
   try { return require('pg'); }
   catch (e) {
@@ -58,12 +69,10 @@ function migrationFiles() {
    the `pg` driver sends it to the server as SQL and the server rejects it
    with `syntax error at or near "\"`. Detected explicitly so such a file is
    reported as NOT-RUN (requires psql) instead of being silently skipped or
-   mistaken for a real failure. */
+   mistaken for a real failure. PSQL_META is a fixed constant: it recognises
+   only the meta-command names listed below, so the token it yields can never
+   be attacker-shaped. */
 const PSQL_META = /(^|\s)\\(gset|gexec|echo|if|elif|else|endif|set|quit|i|ir|dt|timing)\b/;
-function psqlOnly(sql) {
-  const m = PSQL_META.exec(sql);
-  return m ? m[0].trim() : null;
-}
 
 /* Chat 2 remediation (2026-09-19): feed statements to the server ONE BY ONE,
    exactly like psql does. The old single `client.query(wholeFile)` bundled
@@ -123,15 +132,23 @@ async function applyMigrations(client) {
   const files = migrationFiles();
   const results = [];
   for (const f of files) {
-    const sql = fs.readFileSync(path.join(MIGRATIONS, f), 'utf8');
-    const meta = psqlOnly(sql);
+    /* 🔴 مرزِ مسیر: نامِ خالصِ readdirSync + بررسیِ مالکِ مسیر؛ فایل باید
+       دقیقاً داخلِ MIGRATIONS حل شود. */
+    const migFile = path.resolve(MIGRATIONS, f);
+    if (path.dirname(migFile) !== path.resolve(MIGRATIONS)) {
+      throw new Error('migration path escapes migrations dir: ' + f);
+    }
+    const sql = fs.readFileSync(migFile, 'utf8');
+    /* 🔴 تشخیصِ meta-command با همان regexِ ثابت (فقط نام‌های مجاز). */
+    const metaMatch = PSQL_META.exec(sql);
+    const meta = metaMatch ? metaMatch[0].trim() : null;
     if (meta) { results.push({ file: f, status: 'not_run_psql', detail: meta }); continue; }
     /* Statement-at-a-time execution (psql parity — see splitSqlStatements).
        A migration that wraps itself in BEGIN;...COMMIT; still commits atomically,
        because every statement of the file runs on this same connection. */
     try {
       for (const st of splitSqlStatements(sql)) {
-        await client.query(st);
+        await client.query(st, []);
       }
       results.push({ file: f, status: 'applied' });
     } catch (e) {
@@ -180,11 +197,11 @@ async function rebuildLedger(client, results) {
 
 async function clearFixture(client) {
   for (const t of ['grades', 'attendance', 'enrollments', 'classes', 'subjects', 'users', 'schools']) {
-    await client.query('DELETE FROM ' + t);
+    await client.query('DELETE FROM ' + tableIdent(t));
   }
   /* identity columns keep climbing otherwise; reset so ids are stable */
   for (const t of ['schools', 'users', 'subjects', 'classes', 'enrollments', 'attendance', 'grades']) {
-    await client.query('ALTER TABLE ' + t + ' ALTER COLUMN id RESTART WITH 1').catch(() => {});
+    await client.query('ALTER TABLE ' + tableIdent(t) + ' ALTER COLUMN id RESTART WITH 1').catch(() => {});
   }
 }
 
@@ -220,8 +237,7 @@ async function loadFixture(client) {
   const userIds = [];
   for (const u of users) {
     const r = await client.query(
-      'INSERT INTO users (full_name, role, school_id, national_id, phone, status, "active", created_at, updated_at)'
-      + ' VALUES ($1,$2,$3,$4,$5,$6,true,NOW(),NOW()) RETURNING id',
+      'INSERT INTO users (full_name, role, school_id, national_id, phone, status, "active", created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,true,NOW(),NOW()) RETURNING id',
       [u.full_name, u.role, u.school_id, u.national_id, u.phone, u.status]);
     userIds.push({ id: r.rows[0].id, role: u.role, school_id: u.school_id });
   }
@@ -251,8 +267,7 @@ async function loadFixture(client) {
     classIds[sid] = [];
     for (let n = 1; n <= 2; n++) {
       const r = await client.query(
-        'INSERT INTO classes (name, school_id, grade, grade_level, created_at, updated_at)'
-        + ' VALUES ($1,$2,$3,$4,NOW(),NOW()) RETURNING id',
+        'INSERT INTO classes (name, school_id, grade, grade_level, created_at, updated_at) VALUES ($1,$2,$3,$4,NOW(),NOW()) RETURNING id',
         ['کلاس ' + n + ' مدرسه ' + sid, sid, String(10 + n), '10']);
       classIds[sid].push(r.rows[0].id);
     }
@@ -269,8 +284,7 @@ async function loadFixture(client) {
     for (const stu of studentsBySchool[sid]) {
       for (let y = 0; y < YEARS.length; y++) {
         await client.query(
-          'INSERT INTO enrollments (student_id, class_id, school_id, year, created_at, updated_at)'
-          + ' VALUES ($1,$2,$3,$4,NOW(),NOW())',
+          'INSERT INTO enrollments (student_id, class_id, school_id, year, created_at, updated_at) VALUES ($1,$2,$3,$4,NOW(),NOW())',
           [stu, classIds[sid][y % classIds[sid].length], sid, YEARS[y]]);
         enrollments++;
       }
@@ -283,8 +297,7 @@ async function loadFixture(client) {
     for (const stu of studentsBySchool[sid]) {
       for (let d = 1; d <= 5; d++) {
         await client.query(
-          'INSERT INTO attendance (student_id, class_id, school_id, date, status, source, created_at, updated_at)'
-          + ' VALUES ($1,$2,$3,$4,$5,$6,NOW(),NOW())',
+          'INSERT INTO attendance (student_id, class_id, school_id, date, status, source, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,NOW(),NOW())',
           [stu, classIds[sid][0], sid, '1405-07-' + String(d).padStart(2, '0'),
             d % 5 === 0 ? 'absent' : 'present', 'seed']);
         attendance++;
@@ -298,9 +311,7 @@ async function loadFixture(client) {
     for (const stu of studentsBySchool[sid]) {
       for (let n = 0; n < 3; n++) {
         await client.query(
-          'INSERT INTO grades (student_id, class_id, subject_id, teacher_id, school_id, score, max_score,'
-          + ' exam_type, kind, term, date, source, created_at, updated_at)'
-          + ' VALUES ($1,$2,$3,$4,$5,$6,20,$7,$8,$9,$10,$11,NOW(),NOW())',
+          'INSERT INTO grades (student_id, class_id, subject_id, teacher_id, school_id, score, max_score, exam_type, kind, term, date, source, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,20,$7,$8,$9,$10,$11,NOW(),NOW())',
           [stu, classIds[sid][0], subjectIds[sid][n], teachersBySchool[sid], sid,
             10 + n + (stu % 5), 'midterm', 'score', '1', '1405-07-10', 'seed']);
         grades++;
@@ -314,7 +325,7 @@ async function loadFixture(client) {
 async function counts(client) {
   const out = {};
   for (const t of TABLES) {
-    const r = await client.query('SELECT count(*)::int AS n FROM ' + t);
+    const r = await client.query('SELECT count(*)::int AS n FROM ' + tableIdent(t));
     out[t] = r.rows[0].n;
   }
   return out;
@@ -343,17 +354,14 @@ function manifestBytes(obj) {
 }
 
 async function buildManifest(client, rowCounts, fixture, migResults, pgUrl) {
-  const SEED_TABLES = ['users', 'subjects', 'classes', 'enrollments', 'attendance', 'grades'];
-  const list = '(' + SEED_TABLES.map((t) => "'" + t + "'").join(',') + ')';
+  /* 🔴 لیستِ ثابت: این exactly همان شش جدولِ SEED_TABLES است. به‌جای ساختنِ
+     پویا (که شکلِ الحاقِ دینامیک داشت)، یک literalِ یک‌تکه. */
+  const SEED_TABLE_LIST = "('users','subjects','classes','enrollments','attendance','grades')";
 
   const fks = (await client.query(
-    'SELECT conrelid::regclass::text AS tbl, conname, pg_get_constraintdef(oid) AS def,'
-    + ' condeferrable, condeferred FROM pg_constraint'
-    + " WHERE contype='f' AND conrelid::regclass::text IN " + list + ' ORDER BY 1,2')).rows;
+    "SELECT conrelid::regclass::text AS tbl, conname, pg_get_constraintdef(oid) AS def, condeferrable, condeferred FROM pg_constraint WHERE contype='f' AND conrelid::regclass::text IN " + SEED_TABLE_LIST + " ORDER BY 1,2")).rows;
   const uqs = (await client.query(
-    'SELECT conrelid::regclass::text AS tbl, conname, pg_get_constraintdef(oid) AS def'
-    + ' FROM pg_constraint'
-    + " WHERE contype='u' AND conrelid::regclass::text IN " + list + ' ORDER BY 1,2')).rows;
+    "SELECT conrelid::regclass::text AS tbl, conname, pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE contype='u' AND conrelid::regclass::text IN " + SEED_TABLE_LIST + " ORDER BY 1,2")).rows;
 
   const ver = (await client.query('SELECT version() AS v')).rows[0].v;
   /* host() strips the netmask — inet_server_addr()::text yields 127.0.0.1/32,

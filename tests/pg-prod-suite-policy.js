@@ -53,11 +53,24 @@ const EXPECTS_REFUSAL = /status\s*(!==|===)\s*0|\[FATAL\]|FATAL|503|readiness|pr
 
 console.log(NAME + ' — production boots in the suite must be DB-backed or refusal-asserting\n');
 
+/* 🔴 مرزِ مسیر: نامِ خالصِ readdirSync است، ولی حل کردن و بررسیِ مالکِ مسیر
+   انحراف از tests/ را غیرممکن می‌کند. */
+const TEST_FILE_RE = /^[A-Za-z0-9._-]+\.js$/;
+function testFilePath(name) {
+  if (!TEST_FILE_RE.test(String(name)))
+    throw new Error('refusing to read a test path that is not a plain .js name: ' + name);
+  const p = path.resolve(TESTS, name);
+  if (path.dirname(p) !== path.resolve(TESTS))
+    throw new Error('refusing to read a test path outside tests/: ' + name);
+  return p;
+}
+
 const files = fs.readdirSync(TESTS).filter((f) => f.endsWith('.js')).sort();
 const booters = [];
 const prodBooters = [];
 for (const f of files) {
-  const p = path.join(TESTS, f);
+  let p;
+  try { p = testFilePath(f); } catch (e) { continue; }
   let src;
   try { src = fs.readFileSync(p, 'utf8'); } catch (e) { continue; }
   if (!BOOTS_SERVER.test(src)) continue;
@@ -120,29 +133,28 @@ chk('1c arena5-recovery is now DB-backed (the round-2 finding is settled)',
   }
 }
 
-/* ── 2. the flag's real (limited) job: silence the dev/test warning ── */
-const rNo = spawnSync(process.execPath, ['-e',
-  "process.env.NODE_ENV='development';delete process.env.DATABASE_URL;delete process.env.ALLOW_MEMORY_FALLBACK;"
-  + "require('./server/db.js').init({}).then(i=>console.log('DRIVER '+i.driver));"
-], { cwd: ROOT, encoding: 'utf8', timeout: 60000, stdio: ['ignore', 'pipe', 'pipe'] });
+/* ── 2. the flag's real (limited) job: silence the dev/test warning ──
+   🔴 هر سه پروب به‌جای -e (که متنِ اسکریپت را به‌عنوانِ ورودیِ مفسر
+   می‌فرستاد) یک ماژولِ ثابتِ همراهِ مخزن را اجرا می‌کنند. مسیرِ فایل
+   و نامِ حالت، هر دو literal هستند؛ هیچ ورودیِ بیرونی به مفسر
+   نمی‌رسد. شکلِ فایل، مرزِ روشن‌تری نسبت به -e است. */
+const PROBE_PATH = path.join(TESTS, 'pg-prod-fallback-probe.js');
+function runProbe(mode) {
+  return spawnSync(process.execPath, [PROBE_PATH, mode], { cwd: ROOT, encoding: 'utf8', timeout: 60000, stdio: ['ignore', 'pipe', 'pipe'] });
+}
+
+const rNo = runProbe('dev-noflag');
 const outNo = String(rNo.stdout || '') + String(rNo.stderr || '');
 chk('2a dev/test without the flag warns that the JSON store is dev-only',
   /Dev\/test only/.test(outNo) && /DRIVER memory/.test(outNo), outNo.slice(0, 300));
 
-const rYes = spawnSync(process.execPath, ['-e',
-  "process.env.NODE_ENV='development';delete process.env.DATABASE_URL;process.env.ALLOW_MEMORY_FALLBACK='1';"
-  + "require('./server/db.js').init({}).then(i=>console.log('DRIVER '+i.driver));"
-], { cwd: ROOT, encoding: 'utf8', timeout: 60000, stdio: ['ignore', 'pipe', 'pipe'] });
+const rYes = runProbe('dev-flag');
 const outYes = String(rYes.stdout || '') + String(rYes.stderr || '');
 chk('2b the flag silences that warning (and nothing else changes)',
   !/Dev\/test only/.test(outYes) && /DRIVER memory/.test(outYes), outYes.slice(0, 300));
 
 /* ── 3. the flag must still be powerless in production ── */
-const rProd = spawnSync(process.execPath, ['-e',
-  "process.env.NODE_ENV='production';process.env.ALLOW_MEMORY_FALLBACK='1';delete process.env.DATABASE_URL;"
-  + "const p=require('./server/db.js').backingStorePolicy();"
-  + "console.log('ALLOW '+p.allow_memory_fallback);"
-], { cwd: ROOT, encoding: 'utf8', timeout: 60000, stdio: ['ignore', 'pipe', 'pipe'] });
+const rProd = runProbe('prod-flag');
 const outProd = String(rProd.stdout || '') + String(rProd.stderr || '');
 chk('3a ALLOW_MEMORY_FALLBACK=1 cannot re-open the fallback in production',
   /ALLOW false/.test(outProd), outProd.slice(0, 300));

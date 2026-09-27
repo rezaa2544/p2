@@ -125,7 +125,11 @@ async function testPersistentConflictStorageAndMultiPod() {
         pgConflictTable.push(row);
         return { rows: [row], rowCount: 1 };
       }
-      if (sql.includes('SELECT * FROM sync_conflicts')) {
+      /* apiList selects an explicit column list (not SELECT *), so match the
+         clause that is actually stable: a SELECT whose FROM targets this table.
+         NB: the column list contains updated_at, so a naive /UPDATE/i exclusion
+         would false-negative — key on the leading verb instead. */
+      if (/^\s*SELECT\b/i.test(sql) && /FROM\s+sync_conflicts\b/i.test(sql)) {
         return { rows: pgConflictTable.map(r => Object.assign({}, r)) };
       }
       if (sql.includes('UPDATE sync_conflicts SET status = \'resolved\'')) {
@@ -277,8 +281,10 @@ async function testRealOutboxWorkerAndDlq() {
   await workerInstance.tick();
   assert.strictEqual(poisonEvt.retry_count, 2, 'Poison pill retry count must reach 2');
 
-  // Poison pill has reached maxRetries -> Should be routed to DLQ
-  assert.strictEqual(poisonEvt.status, 'failed', 'Status must be marked failed');
+  // Poison pill has reached maxRetries -> Should be routed to DLQ.
+  // Production marks the source row 'dead_letter' (a distinct terminal state
+  // from 'failed', which counts non-poison exhaustion) — pin the real state.
+  assert.strictEqual(poisonEvt.status, 'dead_letter', 'Status must be marked dead_letter when routed to the DLQ');
   assert.strictEqual(fakeStore.outbox_dlq.length, 1, 'Poison pill must be isolated into outbox_dlq');
   assert.strictEqual(fakeStore.outbox_dlq[0].outbox_id || fakeStore.outbox_dlq[0].id, poisonEvt.id);
   assert.strictEqual(fakeStore.outbox_dlq[0].error_message, 'Fatal payload schema corruption error');
@@ -300,10 +306,23 @@ async function testMigrationIntegrity() {
   assert(!mig013Down.includes('DROP TABLE IF EXISTS sync_conflicts;'), 'Migration 013 down script must not drop sync_conflicts table');
   assert(mig013Down.includes('ALTER TABLE sync_conflicts DROP COLUMN IF EXISTS user_id;'), 'Migration 013 down script must cleanly remove added columns');
 
-  // Validate 013 forward script includes all required extended columns
-  assert(mig013.includes('ALTER TABLE sync_conflicts ADD COLUMN IF NOT EXISTS user_id INTEGER;'));
-  assert(mig013.includes('ALTER TABLE sync_conflicts ADD COLUMN IF NOT EXISTS client_uid VARCHAR(128);'));
-  assert(mig013.includes('ALTER TABLE sync_conflicts ADD COLUMN IF NOT EXISTS server_version INTEGER;'));
+  // Validate 013 forward script declares every arbitration column. The exact
+  // DDL form moved (some columns are now in the CREATE TABLE, others are
+  // additive ALTERs) and user_id widened INTEGER -> BIGINT, so pin the
+  // declaration itself rather than the statement shape it happens to use.
+  const declared = new Map();
+  for (const m of mig013.matchAll(/(?:^|\n)\s*(?:"([a-z_]+)"|([a-z_]+))\s+(BIGINT|INTEGER|JSONB|VARCHAR\(\d+\)|TIMESTAMPTZ|TEXT)/g)) {
+    declared.set(m[1] || m[2], m[3]);
+  }
+  for (const m of mig013.matchAll(/ADD COLUMN IF NOT EXISTS\s+([a-z_]+)\s+(BIGINT|INTEGER|JSONB|VARCHAR\(\d+\)|TIMESTAMPTZ|TEXT)/g)) {
+    declared.set(m[1], m[2]);
+  }
+  for (const [col, type] of [['user_id', 'BIGINT'], ['client_uid', 'VARCHAR(128)'],
+    ['client_data', 'JSONB'], ['server_data', 'JSONB'], ['incoming_version', 'INTEGER'],
+    ['current_version', 'INTEGER'], ['server_version', 'INTEGER'], ['updated_at', 'TIMESTAMPTZ']]) {
+    assert(declared.has(col), 'migration 013 must declare the arbitration column: ' + col);
+    assert.strictEqual(declared.get(col), type, 'migration 013 must declare ' + col + ' as ' + type + ' (not ' + declared.get(col) + ')');
+  }
 
   // Validate 014 creates server_outbox_dlq
   assert(mig014.includes('CREATE TABLE IF NOT EXISTS server_outbox_dlq'));

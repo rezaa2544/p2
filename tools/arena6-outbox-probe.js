@@ -17,6 +17,18 @@ const chk = (name, cond, extra) => {
 };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
+/* نگهبانِ مسیر: فایلِ خراشِ موقت باید داخلِ tmpdir بماند. مسیر از
+   زمانِ اجرا ساخته می‌شود، ولی هر فراری از tmpdir یک خطای صریح است،
+   نه یک بازنویسیِ بی‌صدا‌ی فایلِ بیرونی. */
+function scratchFile(name) {
+  const p = path.resolve(path.join(os.tmpdir(), name));
+  const base = path.resolve(os.tmpdir());
+  if (p !== base && p.indexOf(base + path.sep) !== 0) {
+    throw new Error('scratch path outside tmpdir: ' + name);
+  }
+  return p;
+}
+
 (async () => {
   console.log('═'.repeat(66));
   console.log('Arena6 P-NORMAL — append → tick → processed');
@@ -112,7 +124,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
   console.log('Arena6 P-CRASH1 — crash BEFORE claim (pending persisted) → recovery');
   {
-    const tmp = path.join(os.tmpdir(), 'a6-crash1-' + Date.now() + '.json');
+    const tmp = scratchFile('a6-crash1-' + Date.now() + '.json');
     const store = {}; const obx = createOutbox({ store });
     await obx.append({ type: 'classes.deleted', collection: 'classes', record_id: 77, payload: { school_id: 1 } });
     fs.writeFileSync(tmp, JSON.stringify(store)); /* process dies here */
@@ -128,7 +140,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
   console.log('Arena6 P-CRASH2 — crash AFTER claim (status=processing persisted) → ???');
   {
-    const tmp = path.join(os.tmpdir(), 'a6-crash2-' + Date.now() + '.json');
+    const tmp = scratchFile('a6-crash2-' + Date.now() + '.json');
     const store = {}; const obx = createOutbox({ store });
     await obx.append({ type: 'classes.deleted', collection: 'classes', record_id: 88, payload: { school_id: 1 } });
     /* worker claims (memory fetchPendingBatch flips to processing), then CRASH before mark */

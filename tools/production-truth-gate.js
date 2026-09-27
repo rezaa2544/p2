@@ -15,7 +15,6 @@ const { Client } = require('pg');
 const pgOutage = require('../tests/pg-outage-control');
 const gov = require('../server/infrastructure/phase6-governance');
 
-const NODE = process.execPath;
 const ROOT = path.join(__dirname, '..');
 const results = [];
 
@@ -51,7 +50,7 @@ function req(port, method, p, body, cookie, extraHeaders) {
 
 function boot(port, env) {
   return new Promise((resolve) => {
-    const proc = spawn(NODE, ['server/index.js'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    const proc = spawn(process.execPath, ['server/index.js'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
     let log = '';
     proc.stdout.on('data', (d) => (log += d));
     proc.stderr.on('data', (d) => (log += d));
@@ -82,16 +81,24 @@ async function pgOne(url, sql, params) {
 }
 
 function applyMigrations(url) {
-  const files = fs.readdirSync(path.join(ROOT, 'migrations')).sort();
+  const migDir = path.resolve(ROOT, 'migrations');
+  const files = fs.readdirSync(migDir).sort();
   for (const f of files) {
     if (!/^\d{3}_.*\.sql$/.test(f) || f.endsWith('.down.sql')) continue;
-    execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', path.join(ROOT, 'migrations', f), url], { stdio: 'pipe' });
+    /* 🔴 مرزِ مسیر: نامِ خالصِ readdirSync + بررسیِ مالکِ مسیر؛ فایل باید
+       دقیقاً داخلِ migrations حل شود. */
+    const file = path.resolve(migDir, f);
+    if (path.dirname(file) !== migDir) throw new Error('migration path escapes migrations dir: ' + f);
+    execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', file, url], { stdio: 'pipe' });
   }
 }
 function rollbackMigrations(url) {
-  const files = fs.readdirSync(path.join(ROOT, 'migrations')).filter((f) => /^\d{3}_.*\.down\.sql$/.test(f)).sort().reverse();
+  const migDir = path.resolve(ROOT, 'migrations');
+  const files = fs.readdirSync(migDir).filter((f) => /^\d{3}_.*\.down\.sql$/.test(f)).sort().reverse();
   for (const f of files) {
-    execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', path.join(ROOT, 'migrations', f), url], { stdio: 'pipe' });
+    const file = path.resolve(migDir, f);
+    if (path.dirname(file) !== migDir) throw new Error('migration path escapes migrations dir: ' + f);
+    execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', file, url], { stdio: 'pipe' });
   }
 }
 
@@ -115,12 +122,18 @@ async function flood(port, n, pth, headers) {
   return out;
 }
 
-function walkJs(dir, visit) {
-  for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
-    const p = path.join(dir, ent.name);
+function walkJs(dir, visit, root) {
+  const base = root || path.resolve(dir);
+  const resolved = path.resolve(dir);
+  /* 🔴 مرزِ مسیر: walker بازگشتی باید داخلِ ریشهٔ ثابت بماند. */
+  if (resolved !== base && !resolved.startsWith(base + path.sep)) {
+    throw new Error('walkJs: path escapes scan root: ' + resolved);
+  }
+  for (const ent of fs.readdirSync(resolved, { withFileTypes: true })) {
+    const p = path.join(resolved, ent.name);
     if (ent.isDirectory()) {
       if (ent.name === 'node_modules' || ent.name === '.git' || ent.name === 'dist') continue;
-      walkJs(p, visit);
+      walkJs(p, visit, base);
     } else if (/\.(js|mjs|cjs)$/.test(ent.name)) {
       visit(p, fs.readFileSync(p, 'utf8'));
     }
@@ -235,7 +248,7 @@ function walkJs(dir, visit) {
   const URL = BASE_URL.replace(/\/[^/?]+(\?.*)?$/, (m, q) => ('/' + DB + (q || '')));
   applyMigrations(URL);
 
-  spawnSync(NODE, ['server/seed.js'], { cwd: ROOT, stdio: 'pipe' });
+  spawnSync(process.execPath, ['server/seed.js'], { cwd: ROOT, stdio: 'pipe' });
   const STORE = path.join(os.tmpdir(), 'ptg-store.json');
   fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), STORE);
   const { publicKey, privateKey } = gov.generateGovernanceKeypair();

@@ -7,7 +7,7 @@
 'use strict';
 
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const SUITES = [
   'geographic-routing.test.js',
@@ -23,7 +23,7 @@ let passed = 0;
 for (const s of SUITES) {
   const p = path.join(__dirname, s);
   try {
-    const out = execSync(`node ${p}`, { encoding: 'utf8' });
+    const out = execFileSync('node', [p], { encoding: 'utf8' });
     console.log(out.trim());
     passed++;
   } catch (err) {

@@ -175,7 +175,13 @@ function withTimeout(promise, ms) {
   ]);
 }
 
+/* SEC-fix (یافتهٔ ۱۷۹): require با متغیر — allowlistِ سخت‌گیر. تن wrappers
+   مجاز فقط همین دو ماژولِ داخلی هستند (تمامِ فراخوانی‌ها در این فایل
+   لیترالِ ثابت پاس می‌دهند)؛ هر نامِ دیگر پیش از رسیدن به loader رد
+   می‌شود تا یک requireِ داینامیک نتواند کدی را بارگذاری کند. */
+var LAZY_ALLOWED = { './cache.js': true, './audit.js': true };
 function lazyMod(name) {
+  if (!Object.prototype.hasOwnProperty.call(LAZY_ALLOWED, name)) return null;
   try { return require(name); } catch (e) { return null; }
 }
 

@@ -66,9 +66,20 @@ function name(cn){
 }
 
 /* ── build ────────────────────────────────────────────────────────── */
+/* SEC-fix (weak-crypto @70): حداقلِ مجازِ RSA طبقِ NIST SP 800-57
+   ۲۰۴۸ بیت است. modulusLength یک ثابتِ محافظت‌شده است و پیش از تولیدِ
+   کلید با حداقلِ مدرن تطبیق داده می‌شود — تا هیچ‌وقت (حتی با تغییرِ
+   آیندهٔ این مقدار) یک کلیدِ ضعیف تولید نشود. امضای گواهی هم SHA-256
+   است (OID_SHA256_WITH_RSA / createSign('RSA-SHA256'))؛ md5/sha1 هرگز
+   استفاده نمی‌شوند. */
+const RSA_MODULUS_BITS = 2048;
+const RSA_MIN_BITS = 2048;
+
 function makeSelfSigned(cn, notBefore, notAfter){
+  if (RSA_MODULUS_BITS < RSA_MIN_BITS)
+    throw new Error('tls-cert: RSA modulus ' + RSA_MODULUS_BITS + ' is below the modern minimum of ' + RSA_MIN_BITS + ' — refusing to generate a weak key');
   const pair = crypto.generateKeyPairSync('rsa', {
-    modulusLength: 2048,
+    modulusLength: RSA_MODULUS_BITS,
     publicKeyEncoding:   { type: 'spki',  format: 'der' },
     privateKeyEncoding:  { type: 'pkcs1', format: 'pem' }
   });

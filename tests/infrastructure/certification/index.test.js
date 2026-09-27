@@ -7,7 +7,7 @@
 'use strict';
 
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const SUITES = [
   'layer-completeness.test.js',
@@ -31,7 +31,7 @@ let total = SUITES.length;
 for (const suite of SUITES) {
   const fullPath = path.join(__dirname, suite);
   try {
-    const out = execSync(`node ${fullPath}`, { encoding: 'utf8' });
+    const out = execFileSync('node', [fullPath], { encoding: 'utf8' });
     console.log(out.trim());
     passed++;
   } catch (err) {

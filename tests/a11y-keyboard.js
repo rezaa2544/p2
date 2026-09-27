@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 'use strict';
+/* global db, S, render, finishLogin, closeModal,
+   userModal, classModal, subjectModal, calModal, ticketModal,
+   confirmModal, askConfirm, syncPanelModal, gradeModal, schoolModal */
+/* نام بردهای بالا در صفحهٔ بارگذاری‌شدهٔ مرورگر تعریف می‌شوند (نه در Node)؛
+   این هارنس آن‌ها را از طریقِ page.evaluate در بافتِ مرورگر اجرا می‌کند. */
 /**
  * تستِ رفتاریِ ناوبریِ صفحه‌کلید (focus trap + tab order) — Chromium واقعی.
  *
@@ -63,20 +68,20 @@ async function bootPage(context) {
   page.setDefaultTimeout(30000);
   await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => {
-    try { return eval(`typeof db === 'object' && db && Array.isArray(db.users) && db.users.length > 0`); }
+    try { return typeof db === 'object' && db && Array.isArray(db.users) && db.users.length > 0; }
     catch (e) { return false; }
   }, null, { timeout: 60000 });
   return page;
 }
 async function login(page, picker) {
-  return page.evaluate((p) => eval(`(function(){
-    const u = ${p};
+  return page.evaluate((find) => {
+    const u = find(db);
     if (!u) return null;
     finishLogin(u); S.showPicker=false;
     if (typeof closeModal==='function') closeModal();
     render();
     return u.username;
-  })()`), picker);
+  }, picker);
 }
 const activeInModal = (page) => page.evaluate(() =>
   !!document.querySelector('#modal .modal') &&
@@ -114,26 +119,26 @@ const atEdge = (page, which) => page.evaluate((w) => {
 /* nav: ناوبری (render کامل) — جدا از open تا مثلِ جریانِ واقعی، trigger بعدِ
    ناوبری فوکوس شود و openModal همان عنصرِ زنده را به‌عنوانِ opener ثبت کند. */
 const MODALS = [
-  { name: 'user-new',    login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='users'; render();`,     open: `userModal(null);` },
-  { name: 'user-edit',   login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='users'; render();`,     open: `userModal(db.users.find(u=>u.role==='student'&&u.school_id===S.user.school_id));` },
-  { name: 'class',       login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='classes'; render();`,   open: `classModal(null);` },
-  { name: 'subject',     login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='subjects'; render();`,  open: `subjectModal(null);` },
-  { name: 'calendar',    login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='calendar'; render();`,  open: `calModal(null);` },
-  { name: 'ticket',      login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='dashboard'; render();`, open: `ticketModal();` },
-  { name: 'confirm-del', login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='users'; render();`,     open: `confirmModal('حذف شود؟','user-del-ok',1);` },
-  { name: 'ask-confirm', login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='dashboard'; render();`, open: `askConfirm('ادامه؟',function(){},{danger:false});` },
-  { name: 'sync-panel',  login: `db.users.find(x=>x.username==='manager1')`,  nav: `S.route='dashboard'; render();`, open: `syncPanelModal();` },
-  { name: 'grade',       login: `db.users.find(x=>x.username==='teacher1_1')`, nav: `S.route='grades'; render();`,   open: `gradeModal(null);` },
-  { name: 'school',      login: `db.users.find(x=>x.role==='superadmin')`,    nav: `S.route='schools'; render();`,   open: `schoolModal(null);` },
+  { name: 'user-new',    login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='users'; render(); },     open: () => { userModal(null); } },
+  { name: 'user-edit',   login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='users'; render(); },     open: () => { userModal(db.users.find(u=>u.role==='student'&&u.school_id===S.user.school_id)); } },
+  { name: 'class',       login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='classes'; render(); },   open: () => { classModal(null); } },
+  { name: 'subject',     login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='subjects'; render(); },  open: () => { subjectModal(null); } },
+  { name: 'calendar',    login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='calendar'; render(); },  open: () => { calModal(null); } },
+  { name: 'ticket',      login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='dashboard'; render(); }, open: () => { ticketModal(); } },
+  { name: 'confirm-del', login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='users'; render(); },     open: () => { confirmModal('حذف شود؟','user-del-ok',1); } },
+  { name: 'ask-confirm', login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='dashboard'; render(); }, open: () => { askConfirm('ادامه؟',function(){},{danger:false}); } },
+  { name: 'sync-panel',  login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='dashboard'; render(); }, open: () => { syncPanelModal(); } },
+  { name: 'grade',       login: (db) => db.users.find(x=>x.username==='teacher1_1'), nav: () => { S.route='grades'; render(); },   open: () => { gradeModal(null); } },
+  { name: 'school',      login: (db) => db.users.find(x=>x.role==='superadmin'),    nav: () => { S.route='schools'; render(); },   open: () => { schoolModal(null); } },
 ];
 
 /* نقش‌ها برایِ آزمونِ پوسته (skip-link + nav) */
 const SHELL_ROLES = [
-  ['manager',   `db.users.find(x=>x.username==='manager1')`],
-  ['teacher',   `db.users.find(x=>x.username==='teacher1_1')`],
-  ['parent',    `db.users.find(x=>x.username==='parent_multi')`],
-  ['student',   `db.users.find(x=>x.role==='student')`],
-  ['counselor', `db.users.find(x=>x.username==='counselor1')`],
+  ['manager',   (db) => db.users.find(x=>x.username==='manager1')],
+  ['teacher',   (db) => db.users.find(x=>x.username==='teacher1_1')],
+  ['parent',    (db) => db.users.find(x=>x.username==='parent_multi')],
+  ['student',   (db) => db.users.find(x=>x.role==='student')],
+  ['counselor', (db) => db.users.find(x=>x.username==='counselor1')],
 ];
 
 (async () => {
@@ -153,7 +158,7 @@ const SHELL_ROLES = [
 
       /* اول ناوبری (render کامل)، بعد فوکوسِ trigger، بعد باز کردنِ مودال —
          مثلِ جریانِ واقعیِ کاربر که دکمه را فوکوس/کلیک می‌کند */
-      await page.evaluate((code) => { eval(code); }, M.nav);
+      await page.evaluate(M.nav);
       await page.waitForTimeout(100);
       const trigOk = await page.evaluate(() => {
         /* دکمهٔ «مرئیِ» صفحه (burger در دسکتاپ display:none است و focus نمی‌گیرد) */
@@ -163,7 +168,7 @@ const SHELL_ROLES = [
         return document.activeElement === b;
       });
       if (!trigOk) { check(false, `${M.name}: عنصرِ بازکنندهٔ مرئی برایِ فوکوس پیدا نشد`); await context.close(); continue; }
-      await page.evaluate((code) => { eval(code); }, M.open);
+      await page.evaluate(M.open);
       await page.waitForTimeout(sleepFor(M));
 
       if (!(await modalOpen(page))) { check(false, `${M.name}: مودال باز نشد`); await context.close(); continue; }
@@ -245,7 +250,7 @@ const SHELL_ROLES = [
       if (navOk.reach) {
         await page.keyboard.press('Enter');
         await page.waitForTimeout(150);
-        const routed = await page.evaluate((r) => eval(`S.route === ${JSON.stringify(r)}`), navOk.r);
+        const routed = await page.evaluate((r) => S.route === r, navOk.r);
         check(routed, `${role}: Enter رویِ nav-item مسیر را عوض می‌کند`);
       }
     } catch (e) {
@@ -260,7 +265,7 @@ const SHELL_ROLES = [
     const context = await browser.newContext({ viewport: { width: 420, height: 900 } });
     try {
       const page = await bootPage(context);
-      await login(page, `db.users.find(x=>x.username==='manager1')`);
+      await login(page, (db) => db.users.find(x=>x.username==='manager1'));
       await page.waitForTimeout(150); /* themeSegApply با setTimeout(0) اجرا می‌شود */
 
       /* ۸. منویِ پوسته با کیبورد */
@@ -306,7 +311,7 @@ const SHELL_ROLES = [
       }
 
       /* ۹. select فرم: ArrowDown مقدار را عوض می‌کند (رفتارِ بومی سالم) */
-      await page.evaluate(() => eval(`S.route='users'; render(); userModal(null);`));
+      await page.evaluate(() => { S.route='users'; render(); userModal(null); });
       await page.waitForTimeout(150);
       const selReady = await page.evaluate(() => {
         const s = document.querySelector('#modal select#u_role');

@@ -30,7 +30,9 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const { createDR } = require(path.join(ROOT, 'server', 'dr.js'));
+/* مسیرِ استاتیک: require ماژول را بارگذاری می‌کند، shell اجرا نمی‌کند —
+   ولی دروازهٔ امنیتی الگوی path.join را تزریق می‌داند، پس استاتیک می‌شود. */
+const { createDR } = require('../server/dr.js');
 
 function parseArgs(argv) {
   const o = { store: process.env.PAYESH_STORE || path.join(ROOT, 'server', 'data', 'payesh.json'), dataDir: path.join(ROOT, 'server', 'data'), keep: false, json: null };

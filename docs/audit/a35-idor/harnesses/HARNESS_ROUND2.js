@@ -4,15 +4,15 @@
 'use strict';
 const crypto = require('crypto');
 const fs = require('fs');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const Redis = require('/home/user/p2/node_modules/ioredis');
 const redis = new Redis('redis://127.0.0.1:6379');
 const BASE = 'http://127.0.0.1:3000';
 const CODE = '424242';
 const RUN = String(Date.now());
 const u = (n) => n + '-' + RUN;
-const PGQ = (s) => execSync('psql "postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor" -t -A -c ' + JSON.stringify(s)).toString().trim();
-const PGC = (s) => execSync('psql "postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor" -c ' + JSON.stringify(s));
+const PGQ = (s) => execFileSync('psql', ['-t', '-A', '-c', s, 'postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor']).toString().trim();
+const PGC = (s) => execFileSync('psql', ['-c', s, 'postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor']);
 const OUT = '/home/user/idor-evidence-a35-round2.jsonl';
 fs.writeFileSync(OUT, '');
 let n = 0, bad = 0;

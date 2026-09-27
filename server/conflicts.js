@@ -16,7 +16,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
-function sendJson(res, statusCode, data) {
+function defaultSendJson(res, statusCode, data) {
   res.statusCode = statusCode;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -38,6 +38,13 @@ function createConflicts(ctx) {
   const db = ctx.db;
   const sessionFrom = ctx.sessionFrom;
   const audit = ctx.audit || (() => {});
+  /* 🔴 DI: ctx.sendJson مسئولِ نوشتنِ پاسخ است (در تولید، sendJsonCounting
+     است که شمارشِ ردِ R97 و تله‌متریِ حملات را می‌چسباند و سپس به sendJsonِ
+     اصلی وکالت می‌دهد). هرجا ctx.sendJson داده نشد، همان sendJsonِ سطحِ
+     ماژول (پاسخِ واقعیِ HTTP با هدرهای سختِ امنیتی) استفاده می‌شود.
+     بدونِ این خواندن، تزریقِ تولید و پروب‌هایِ تستِ مستقل نادیده گرفته
+     می‌شدند — هم شمارشِ رد غیرفعال می‌شد و هم resِ ماک با setHeader نمی‌ساخت. */
+  const sendJson = ctx.sendJson || defaultSendJson;
 
   async function apiList(req, res) {
     const s = await sessionFrom(req);

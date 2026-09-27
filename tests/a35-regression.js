@@ -7,7 +7,7 @@
    No fake green: SKIP is counted and printed, never as PASS. */
 'use strict';
 const crypto = require('crypto');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const Redis = require('/home/user/p2/node_modules/ioredis');
 const redis = new Redis('redis://127.0.0.1:6379');
 const BASE = 'http://127.0.0.1:3000';

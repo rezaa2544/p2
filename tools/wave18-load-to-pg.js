@@ -22,14 +22,75 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { Client } = require('pg');
 
+const ROOT = path.join(__dirname, '..');
+
+/* ترتیب مهم است: والد پیش از فرزند (FK). parent_links آخر از همه.
+   🔴 این ثابت باید پیش از ALLOWED_TABLES مقدار بگیرد؛ در غیر این صورت
+   مرزِ شناسه (پایین) در زمانِ بارگذاریِ ماژول با خطایِ TDZ می‌میرد و
+   هیچ‌یک از گاردها اجرا نمی‌شوند. */
+const TABLES = ['schools', 'classes', 'users', 'attendance', 'grades', 'parent_links'];
+
+/* 🔴 مرزِ ورودیِ شناسهٔ SQL: نامِ جدول/ستون یا از TABLES ثابت می‌آید یا از
+   information_schema؛ چون در متنِ SQL جای می‌گیرند (DDL/\copy نمی‌توانند $N
+   بگیرند)، با allowlistِ دقیق و یک الگویِ شناسه اعتبارسنجی می‌شوند.
+   tableIdent (پایین) فقط همان شش جدولِ ثابتِ TABLES را می‌پذیرد. */
+const SQL_IDENT = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
 // pg@8.23 هیچ streamِ ورودی برایِ COPY از stdin در اختیار نمی‌گذارد
 // (client.query با callback مقدارِ undefined برمی‌گرداند و خطایِ
 // «No source stream defined» می‌دهد). به‌جای افزودنِ وابستگیِ
 // pg-copy-streams، از `psql \copy` استفاده می‌کنیم: همان COPY واقعیِ
 // PostgreSQL، با تجزیهٔ CSV در سمتِ کلاینت.
-function psqlCopy(url, sql) {
-  return execFileSync('psql', [url, '-v', 'ON_ERROR_STOP=1', '-q', '-c', sql],
+/* 🔴 مرزِ ورودی: URL باید آخرین آرگومانِ موقعیتی باشد. اگر اول بیاید،
+   یک رشتهٔ آغازشونده با «-» به‌جای URL، گزینهٔ دستور تفسیر می‌شود. */
+function psqlCopy(sql, url) {
+  if (!/^postgres(ql)?:\/\//.test(String(url))) {
+    throw new Error('refusing to pass non-postgres URL to psql');
+  }
+  return execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-c', sql, url],
     { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+}
+
+/* 🔴 مرزِ شناسه: نامِ جدول/ستون از TABLES ثابت یا از headerِ CSV می‌آید
+   و در متنِ SQL (DDL/TRUNCATE/\\copy که $N نمی‌پذیرند) جای می‌گیرد.
+   لیستِ سفیدِ دقیقِ نامِ جدول، مرزِ امن است: فقط همان شش جدولِ ثابتِ
+   بالا مجازند و هر چیزِ دیگر قبل از رسیدن به SQL رد می‌شود.
+   🔴 TRUNCATE و \\copy نمی‌توانند پارامتر بگیرند، پس به‌جای الحاق،
+   نامِ جدول به‌صورتِ کلیدِ یک جدولِ ثابتِ statements خوانده می‌شود —
+   هیچ رشته‌ای از بیرون به SQL نمی‌رسد. */
+const ALLOWED_TABLES = new Set(TABLES);
+function tableIdent(name) {
+  const s = String(name || '');
+  if (!ALLOWED_TABLES.has(s)) throw new Error('unsafe SQL table name (not in allowlist): ' + JSON.stringify(name));
+  return s;
+}
+function colIdent(name) {
+  const s = String(name || '');
+  if (!SQL_IDENT.test(s)) throw new Error('unsafe SQL column name: ' + JSON.stringify(name));
+  return s;
+}
+/* معادلِ پارامتریِ ناممکن: statementsِ ثابتِ هر جدول، یک‌بار نوشته شده. */
+const TRUNCATE_SQL = Object.freeze({
+  schools: 'truncate table schools cascade',
+  classes: 'truncate table classes cascade',
+  users: 'truncate table users cascade',
+  attendance: 'truncate table attendance cascade',
+  grades: 'truncate table grades cascade',
+  parent_links: 'truncate table parent_links cascade',
+});
+const COUNT_SQL = Object.freeze({
+  schools: 'select count(*) from schools',
+  classes: 'select count(*) from classes',
+  users: 'select count(*) from users',
+  attendance: 'select count(*) from attendance',
+  grades: 'select count(*) from grades',
+  parent_links: 'select count(*) from parent_links',
+});
+function csvPath(dir, table) {
+  const p = path.resolve(dir, tableIdent(table) + '.csv');
+  if (path.dirname(p) !== path.resolve(dir))
+    throw new Error('CSV path escapes the dataset dir: ' + table);
+  return p;
 }
 
 function arg(name, dflt) {
@@ -38,11 +99,14 @@ function arg(name, dflt) {
 }
 const has = (n) => process.argv.includes('--' + n);
 
-const DIR = arg('dir', 'data/national/scale-0.001');
+const DIR_RAW = arg('dir', 'data/national/scale-0.001');
+/* 🔴 مرزِ مسیر: DIR نسبت به ریشهٔ مخزن حل می‌شود و باید داخلِ آن بماند. */
+const DIR = path.resolve(ROOT, DIR_RAW);
+if (DIR !== path.resolve(ROOT) && !DIR.startsWith(path.resolve(ROOT) + path.sep)) {
+  console.error('دایرکتوریِ دیتاست خارج از ریشهٔ مخزن است: ' + DIR_RAW);
+  process.exit(2);
+}
 const TRUNCATE = has('truncate');
-
-/* ترتیب مهم است: والد پیش از فرزند (FK). parent_links آخر از همه. */
-const TABLES = ['schools', 'classes', 'users', 'attendance', 'grades', 'parent_links'];
 
 /* واگراییِ شناخته‌شدهٔ مولد ↔ schema (قلمِ بازِ ۲ در
    docs/DOCS_CONSISTENCY_REPORT.md: «هم‌ترازسازی مولد … پیش‌نیازِ اجرای رسمی
@@ -124,18 +188,24 @@ async function main() {
       if (t === 'grades') await seedSubjects(client, DIR);
       if (t === 'parent_links') await deriveEnrollments(client);
 
-      const csv = path.join(DIR, t + '.csv');
+      const csv = csvPath(DIR, t);
       if (!fs.existsSync(csv)) { console.log(`  skip  ${t} (فایل نیست)`); continue; }
 
       const header = fs.readFileSync(csv, 'utf8').split('\n', 1)[0].trim();
       const cols = header.split(',').map(s => s.trim()).filter(Boolean);
 
-      // 'restart identity' مالکیتِ sequence می‌خواهد؛ 'cascade' کافی است
-      if (TRUNCATE) await client.query(`truncate table ${t} cascade`);
+      // 'restart identity' مالکیتِ sequence می‌خواهد؛ 'cascade' کافی است.
+      // TRUNCATE نمی‌تواند پارامتر بگیرد، ولی نامِ جدول از TABLES ثابت
+      // می‌آید و statement نهایی از TRUNCATE_SQL خوانده می‌شود (هرگز الحاق نمی‌شود).
+      if (TRUNCATE) await client.query(TRUNCATE_SQL[t]);
 
       // ستون‌هایِ NOT NULLِ بی‌مقدار (مثل version) باید DEFAULT داشته باشند.
       // ستون‌های identity/serial را عمداً رد می‌کنیم: ALTER روی آن‌ها مالکیتِ
       // sequence را می‌خواهد و کاربرِ برنامه معمولاً مالک نیست.
+      // 🔴 شناسه‌ها قبل از ورود به متنِ DDL اعتبارسنجی می‌شوند: نامِ جدول
+      // باید عضوِ LISTِ ثابتِ TABLES باشد و نامِ ستون باید ⊂ [A-Za-z_][A-Za-z0-9_]*
+      // (هر دو از information_schema می‌آیند، نه از ورودیِ کاربر).
+      const tbl = tableIdent(t);
       const { rows: notNull } = await client.query(
         `select column_name from information_schema.columns
           where table_schema='public' and table_name=$1 and is_nullable='NO'
@@ -143,12 +213,13 @@ async function main() {
             and is_identity = 'NO'
             and column_name <> all($2::text[])`, [t, cols]);
       for (const r of notNull) {
+        const col = colIdent(r.column_name);
         const ty = (await client.query(
           `select data_type from information_schema.columns
             where table_schema='public' and table_name=$1 and column_name=$2`,
           [t, r.column_name])).rows[0].data_type;
         const dflt = /int|numeric|real|double/.test(ty) ? '1' : "'w18'";
-        await client.query(`alter table ${t} alter column "${r.column_name}" set default ${dflt}`);
+        await client.query(`alter table ${tbl} alter column "${col}" set default ${dflt}`);
       }
 
       // ستون‌هایِ واقعیِ جدول را بگیر و با CSV تقاطع بده
@@ -167,10 +238,15 @@ async function main() {
 
       // psql \copy نمی‌تواند ستون‌ها را جابه‌جا کند، پس اگر ترتیبِ نگاشت
       // همان ترتیبِ CSV نبود، یک فایلِ موقتِ هم‌تراز می‌سازیم.
-      let src = csv, list = keep.map(k => k.db).join(',');
+      // 🔴 هر سه قطعه‌ای که به \copy می‌رسد اعتبارسنجی می‌شود: tbl ∈ TABLES
+      // (ثابت)، هر ستون ⊂ [A-Za-z_][A-Za-z0-9_]*، و src باید داخلِ DIR بماند.
+      let src = csv, list = keep.map(k => colIdent(k.db)).join(',');
       const aligned = keep.every((k, n) => k.idx === n);
       if (!aligned) {
-        src = path.join(DIR, `.${t}.aligned.csv`);
+        src = path.resolve(DIR, '.' + tableIdent(t) + '.aligned.csv');
+        if (path.dirname(src) !== path.resolve(DIR)) {
+          throw new Error('aligned CSV path escapes the dataset dir: ' + t);
+        }
         const lines = fs.readFileSync(csv, 'utf8').split('\n');
         const out = lines.map(line => {
           if (!line.trim()) return line;
@@ -180,10 +256,10 @@ async function main() {
         fs.writeFileSync(src, out.join('\n'));
       }
 
-      const before = Number((await client.query(`select count(*) from ${t}`)).rows[0].count);
-      psqlCopy(url, `\\copy ${t} (${list}) from '${src}' with (format csv, header true)`);
+      const before = Number((await client.query(COUNT_SQL[t])).rows[0].count);
+      psqlCopy(`\\copy ${tbl} (${list}) from '${src}' with (format csv, header true)`, url);
       if (!aligned) fs.rmSync(src, { force: true });
-      const after = Number((await client.query(`select count(*) from ${t}`)).rows[0].count);
+      const after = Number((await client.query(COUNT_SQL[t])).rows[0].count);
       summary[t] = after - before;
       console.log(`  ok    ${t.padEnd(14)} +${after - before}  (now ${after})`);
     }

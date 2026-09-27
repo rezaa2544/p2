@@ -3,6 +3,10 @@ ROOT=pathlib.Path('/home/user/p2'); OUT=pathlib.Path('/home/user/arena8-dr-closu
 PG=sorted(glob.glob('/usr/lib/postgresql/*/bin'))[-1]
 ENV={'PATH':PG+':/usr/bin:/bin','HOME':'/home/user','USER':'user','LANG':'C.UTF-8'}
 ledger=[]
+def _safe_path(path,root):
+ p=pathlib.Path(path).resolve();r=pathlib.Path(root).resolve()
+ if p!=r and r not in p.parents:raise ValueError(f'path escapes allowed base {r}: {p}')
+ return p
 def run(tag,args,env=None,check=False,timeout=90):
  e=ENV| (env or {}); start=datetime.datetime.now(datetime.timezone.utc).isoformat(); t=time.monotonic_ns()
  try:
@@ -17,7 +21,7 @@ def redis_suite(n):
  base=pathlib.Path(tempfile.mkdtemp(prefix='a8dr-redis-')); procs=[]
  def boot(name,port,aof=False):
   d=base/name;d.mkdir(exist_ok=True)
-  log=open(d/'server.log','w');p=sp.Popen(['redis-server','--bind','127.0.0.1','--port',str(port),'--dir',str(d),'--appendonly','yes' if aof else 'no','--save',''],env=ENV,stdout=log,stderr=sp.STDOUT);procs.append((p,log))
+  _safe_path(d/'server.log',base);log=open(d/'server.log','w');p=sp.Popen(['redis-server','--bind','127.0.0.1','--port',str(port),'--dir',str(d),'--appendonly','yes' if aof else 'no','--save',''],env=ENV,stdout=log,stderr=sp.STDOUT);procs.append((p,log))
   for _ in range(100):
    q=sp.run(['redis-cli','-p',str(port),'PING'],env=ENV,capture_output=True)
    if q.returncode==0: return d
@@ -41,6 +45,7 @@ def redis_suite(n):
   (OUT/f'r{n}-aof-boot.log').write_text((aof/'server.log').read_text())
   bad=base/'corrupt.rdb';bad.write_bytes(rdb.read_bytes()[:20]);run(f'r{n}-corrupt-rdb',['redis-check-rdb',bad])
   # lock contention must not be success
+  _safe_path(base/'lock',base)
   with open(base/'lock','w') as lock:
    fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB);run(f'r{n}-lock-busy',['bash','tools/redis-backup.sh'],env)
   # healthy source, WRONG local directory: valid unrelated RDB falsely attributed to source endpoint

@@ -167,19 +167,41 @@ async function waitReady(inst, ms){
   }
   return false;
 }
+/* 🔴 برنامه‌هایِ اجرایی یک‌بار در سطحِ ماژول با لیستِ سفید حل می‌شوند و
+   به‌صورتِ ثابت به spawn می‌رسند (نه فراخوانیِ تابع در محلِ برنامه). */
+const REDIS_CLI_BIN = redisBin('redis-cli');
+const REDIS_SERVER_BIN = redisBin('redis-server');
 function redisCli(...args){
   return new Promise((resolve) => {
-    const p = spawn(redisBin('redis-cli'), args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const p = spawn(REDIS_CLI_BIN, args, { stdio: ['ignore', 'pipe', 'pipe'] });
     let o = ''; p.stdout.on('data', (d) => o += d);
     p.on('exit', (code) => resolve({ code, out: o.trim() }));
     setTimeout(() => { try { p.kill('SIGKILL'); } catch (e) {} }, 10000);
   });
 }
+/* 🔴 مرزِ پورت: REDIS_URL از env می‌آید. port فقط عدد می‌تواند باشد
+   (ابتدا normalize، سپس بررسیِ دامنه)؛ هر چیزِ دیگر قبل از رسیدن به
+   redis-server رد می‌شود. REDIS_DATA هم مسیرِ شاخهٔ داده است و با
+   اعتبارسنجیِ دامنه (no traversal) همراه است. */
+function redisPortFromUrl(url) {
+  const raw = String(url || '').split(':')[2] || '';
+  const digits = raw.replace(/\D.*$/, '');
+  const n = Number(digits);
+  if (!Number.isInteger(n) || n < 1 || n > 65535)
+    throw new Error('multinode-live: refusing to pass a non-numeric/invalid redis port to redis-server: ' + JSON.stringify(raw));
+  return String(n);
+}
+function assertDataDir(dir) {
+  const d = String(dir || '');
+  if (!d || d.indexOf('..') !== -1 || !path.isAbsolute(d))
+    throw new Error('multinode-live: redis data dir must be an absolute path without traversal: ' + JSON.stringify(d));
+  return d;
+}
 function redisServer(){
-  const args = ['--port', REDIS_URL.split(':')[2].replace(/\D.*$/, ''), '--bind', '127.0.0.1',
-    '--dir', REDIS_DATA, '--appendonly', 'yes', '--appendfsync', 'everysec', '--save', ''];
+  const args = ['--port', redisPortFromUrl(REDIS_URL), '--bind', '127.0.0.1',
+    '--dir', assertDataDir(REDIS_DATA), '--appendonly', 'yes', '--appendfsync', 'everysec', '--save', ''];
   const logF = fs.openSync(path.join(OUT, 'redis.log'), 'a');
-  const p = spawn(redisBin('redis-server'), args, { stdio: ['ignore', logF, logF] });
+  const p = spawn(REDIS_SERVER_BIN, args, { stdio: ['ignore', logF, logF] });
   p.unref();
   return p;
 }
@@ -206,7 +228,7 @@ async function main(){
   /* ── Phase 0 — زیرساخت ───────────────────────────────────────────── */
   console.log('\n▸ Phase 0 — چکِ زیرساخت');
   {
-    const ping = await redisCli('-p', REDIS_URL.split(':')[2].replace(/\D.*$/, ''), 'PING');
+    const ping = await redisCli('-p', redisPortFromUrl(REDIS_URL), 'PING');
     if(ping.out !== 'PONG') throw new Error('redis زنده نیست: ' + ping.out);
     console.log('  redis PONG (AOF، ' + REDIS_DATA + ')');
     const seed = path.join(ROOT, 'server', 'data', 'payesh.json');
@@ -482,11 +504,15 @@ async function main(){
   /* ── H10 + خاتمه ─────────────────────────────────────────────────── */
   {
     let fatal = '';
-    /* 🔴 مرزِ مسیر: نامِ فایل فقط از جدولِ ثابت برمی‌آید تا مسیرِ نسبی
-       در آن قابلِ تزریق نباشد. */
+    /* 🔴 مرزِ مسیر: نامِ فایل فقط از جدولِ ثابت برمی‌آید و مسیرِ نهایی
+       باید دقیقاً داخلِ OUT حل شود. */
     const CHILD_LOG = { A: 'childA.log', B: 'childB.log' };
+    const OUT_RESOLVED = path.resolve(OUT);
     for(const n of ['A', 'B']){
-      const p = path.join(OUT, CHILD_LOG[n]);
+      const name = CHILD_LOG[n];
+      if (!/^[A-Za-z0-9_.-]+\.log$/.test(name)) continue;
+      const p = path.resolve(OUT_RESOLVED, name);
+      if (p.indexOf(OUT_RESOLVED + path.sep) !== 0) continue;
       if(fs.existsSync(p)){
         const t = fs.readFileSync(p, 'utf8');
         if(/\[FATAL\]|uncaught|UnhandledPromise/i.test(t)) fatal += n + ' ';

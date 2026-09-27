@@ -26,6 +26,17 @@ const N_SCHOOLS = 20, N_CLASSES = 200, N_STUDENTS = 2000;
 const CONC = Number(process.env.WAVE23_CONC || 50);
 const JY = 1404, JM = 6;
 
+/* 🔴 مرزِ ورودیِ نامِ دیتابیس: TEST_DB از env می‌آید. DROP/CREATE DATABASE
+   نمی‌توانند با $N پارامتری شوند، پس نام با allowlistِ دقیق قبل از
+   جای‌گیری در متنِ SQL اعتبارسنجی می‌شود. */
+const DB_NAME_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+function dbName(n) {
+  if (!DB_NAME_RE.test(String(n))) {
+    throw new Error('unsafe database name: ' + n);
+  }
+  return String(n);
+}
+
 const quant = (arr, q) => {
   const s = [...arr].sort((a, b) => a - b);
   return s[Math.min(s.length - 1, Math.floor(q * s.length))];
@@ -37,8 +48,8 @@ async function main() {
 
   const admin = new Client({ connectionString: BASE_URL });
   await admin.connect();
-  await admin.query(`DROP DATABASE IF EXISTS ${TEST_DB}`);
-  await admin.query(`CREATE DATABASE ${TEST_DB}`);
+  await admin.query(`DROP DATABASE IF EXISTS ${dbName(TEST_DB)}`);
+  await admin.query(`CREATE DATABASE ${dbName(TEST_DB)}`);
   await admin.end();
 
   const dbUrl = BASE_URL.replace(/\/[^/]*$/, '/' + TEST_DB);
@@ -160,7 +171,7 @@ async function main() {
   await c.end();
   const adminEnd = new Client({ connectionString: BASE_URL });
   await adminEnd.connect();
-  await adminEnd.query(`DROP DATABASE IF EXISTS ${TEST_DB}`);
+  await adminEnd.query(`DROP DATABASE IF EXISTS ${dbName(TEST_DB)}`);
   await adminEnd.end();
 }
 

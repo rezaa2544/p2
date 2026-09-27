@@ -133,7 +133,16 @@ function createAdmin(ctx){
     const name = (wanted && NAME_RE.test(wanted) && all.indexOf(wanted) > -1)
       ? wanted
       : all[all.length - 1];
-    const fp = path.join(dir, name);
+    /* SEC-fix (path-traversal): نگهبانِ نهاییِ fail-closed — مسیرِ
+       نهایی باید دقیقاً درونِ dir باشد (dirname باید با base برابر
+       باشد). NAME_RE و فهرستِ backups از قبل نام را محدود می‌کنند، اما
+       اگر روزی آن اعتبارسنجی ضعیف شود، این بررسی مستقل مانعِ خروج از
+       دایرکتوری می‌شود. مسیرِ عادی هرگز این شاخه را لمس نمی‌کند. */
+    const fp = path.resolve(dir, name);
+    if (path.dirname(fp) !== path.resolve(dir)) {
+      audit('restore_failed', { user_id: g.user.id, role: g.user.role, school_id: g.user.school_id, file: name, reason: 'path_escape', summary: 'ردِ تلاش برای خروج از دایرکتوریِ پشتیبان: ' + name });
+      return sendJson(res, 404, { ok: false, code: 'no_backup' });
+    }
     let data = null;
     try{ data = JSON.parse(fs.readFileSync(fp, 'utf8')); }catch(e){}
     if(!data || typeof data !== 'object' || !Array.isArray(data.users)){

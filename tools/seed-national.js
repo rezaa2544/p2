@@ -28,6 +28,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 /* ── the stated ratios ──────────────────────────────────────────────
    Every number below is a ratio, not a guess about an absolute. The
@@ -211,6 +212,19 @@ function counts(store) {
 }
 
 /* ── CLI ─────────────────────────────────────────────────────────── */
+/* نگهبانِ مسیرِ خروجی: مسیرِ resolve‌شده باید داخلِ یکی از ریشه‌های مجاز
+   باشد (پیش‌فرضِ tmpdir؛ برایِ مسیرِ دیگر PAYESH_SEED_OUT_ROOT را با «:»
+   جدا شده تنظیم کنید). فرار از ریشه‌های مجاز یک خطای صریح است. */
+function assertOutputRoot(p) {
+  const roots = (process.env.PAYESH_SEED_OUT_ROOT || os.tmpdir())
+    .split(path.delimiter).filter(Boolean).map((r) => path.resolve(r));
+  if (!roots.some((b) => p === b || p.indexOf(b + path.sep) === 0)) {
+    throw new Error('خارج از ریشه‌های مجازِ خروجی: ' + p
+      + ' (مجاز: ' + roots.join(', ') + '؛ با PAYESH_SEED_OUT_ROOT گسترش دهید)');
+  }
+  return p;
+}
+
 function main(argv) {
   const get = (f) => { const i = argv.indexOf(f); return i === -1 ? null : argv[i + 1]; };
   const asJson = argv.indexOf('--json') !== -1;
@@ -228,13 +242,23 @@ function main(argv) {
   const out = get('--out');
   if (!(scale > 0) || scale > 1) { console.error('--scale must be a number in (0, 1]'); return 2; }
   if (!out) { console.error('--out <path> is required'); return 2; }
-  const abs = path.resolve(out);
-  /* refuse to write inside the repository: a generated dataset is not source */
-  const repo = path.resolve(path.join(__dirname, '..'));
-  if (abs === repo || abs.indexOf(repo + path.sep) === 0) {
-    console.error('refusing to write inside the repository: ' + abs);
+  /* whitelist ساختاری: مسیر باید غیرخالی و بدون null باشد و قطعهٔ '..'
+     نداشته باشد — بررسی پیش از resolve. سپس مرزِ ریشه‌های مجاز چک می‌شود. */
+  if (!/^[^\0]+$/.test(out) || /(?:^|[/\\])\.\.?(?:[/\\]|$)/.test(out)) {
+    console.error('--out must be a simple path without .. segments or null bytes');
     return 2;
   }
+  const resolved = path.resolve(out);
+  /* refuse to write inside the repository: a generated dataset is not source */
+  const repo = path.resolve(path.join(__dirname, '..'));
+  if (resolved === repo || resolved.indexOf(repo + path.sep) === 0) {
+    console.error('refusing to write inside the repository: ' + resolved);
+    return 2;
+  }
+  /* containment: the write target must stay inside an allowed output root */
+  let abs;
+  try { abs = assertOutputRoot(resolved); }
+  catch (e) { console.error('refusing to write: ' + e.message); return 2; }
   fs.mkdirSync(path.dirname(abs), { recursive: true });
   const store = generate(scale);
   fs.writeFileSync(abs, JSON.stringify(store), { encoding: 'utf8', mode: 0o600 });

@@ -11,14 +11,14 @@ process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY = '1';
 // CI service credentials must not silently redirect them to PostgreSQL and 503.
 for (const key of ['DATABASE_URL', 'PGURL', 'READ_DATABASE_URL', 'REDIS_URL']) delete process.env[key];
 
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
 const REAL_STORE = path.join(__dirname, '..', '..', 'server', 'data', 'payesh.json');
 if (!fs.existsSync(REAL_STORE)) {
   console.log('ℹ️ API test fixture missing; generating deterministic server/data/payesh.json via server/seed.js');
-  execSync(`node ${JSON.stringify(path.join(__dirname, '..', '..', 'server', 'seed.js'))}`, { stdio: 'inherit' });
+  execFileSync('node', [path.join(__dirname, '..', '..', 'server', 'seed.js')], { stdio: 'inherit' });
 }
 
 const API_TESTS = [
@@ -67,7 +67,7 @@ let passedSuites = 0;
 for (const testFile of API_TESTS) {
   const fullPath = path.join(__dirname, testFile);
   try {
-    const output = execSync(`node ${fullPath}`, { encoding: 'utf8' });
+    const output = execFileSync('node', [fullPath], { encoding: 'utf8' });
     console.log(output.trim());
     passedSuites++;
   } catch (err) {

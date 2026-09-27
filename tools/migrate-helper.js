@@ -24,6 +24,29 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const MIG = path.join(ROOT, 'migrations');
 
+/* whitelist نامِ مهاجرت و فایل — ثابتِ نام‌دار، مانندِ NAME_RE در
+   server/dr.js. هر چیزی بیرونِ این الگوها هرگز به path نمی‌رسد. */
+const MIG_NAME_RE = /^[a-z0-9_]+$/;
+const MIG_FILE_RE = /^\d+_[a-z0-9_]+(?:\.down)?\.sql$/;
+
+/* نگهبانِ مسیر: نامِ مهاجرت از خطِ فرمان می‌آید؛ هر مسیری که به fs
+   می‌رسد باید داخلِ migrations/ بماند، وگرنه به‌جای نوشتنِ بیرون، خطا. */
+function migAssert(p) {
+  const r = path.resolve(p);
+  const base = path.resolve(MIG);
+  if (r !== base && r.indexOf(base + path.sep) !== 0) {
+    throw new Error('مسیر خارج از migrations/ مجاز نیست: ' + r);
+  }
+  return r;
+}
+function migJoin(name) {
+  const s = String(name || '');
+  if (!MIG_FILE_RE.test(s)) {
+    throw new Error('نامِ مهاجرتِ غیرمجاز (الگوی NNN_name.sql): ' + s);
+  }
+  return migAssert(path.resolve(path.join(MIG, s)));
+}
+
 let fail = 0;
 const ok = (m) => console.log('  ✅ ' + m);
 const bad = (m) => { fail++; console.log('  ❌ ' + m); };
@@ -98,10 +121,11 @@ function check() {
 function scaffold(rawName) {
   const name = String(rawName || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^_+|_+$/g, '');
   if (!name) { console.error('نامِ معتبر بدهید (فقط a-z0-9_). مثال: --new wave4_audit_index'); return 2; }
+  if (!MIG_NAME_RE.test(name)) { console.error('نامِ معتبر بدهید (فقط a-z0-9_). مثال: --new wave4_audit_index'); return 2; }
   const n = nextNumber();
   const base = n + '_' + name;
-  const fwd = path.join(MIG, base + '.sql');
-  const dwn = path.join(MIG, base + '.down.sql');
+  const fwd = migJoin(base + '.sql');
+  const dwn = migJoin(base + '.down.sql');
   if (fs.existsSync(fwd) || fs.existsSync(dwn)) { console.error('فایل از پیش وجود دارد: ' + base); return 2; }
 
   const today = new Date().toISOString().slice(0, 10);

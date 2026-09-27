@@ -29,6 +29,17 @@ const ITER = Number(process.argv[3] || 30);
 const N_SCHOOLS = 20, N_CLASSES = 200, N_STUDENTS = 2000;
 const JY = 1404, JM = 6;
 
+/* 🔴 مرزِ ورودیِ نامِ دیتابیس: DB از env می‌آید. DROP/CREATE DATABASE نمی‌توانند
+   با $N پارامتری شوند، پس نام با allowlistِ دقیق قبل از جای‌گیری اعتبارسنجی
+   می‌شود. */
+const DB_NAME_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+function dbName(n) {
+  if (!DB_NAME_RE.test(String(n))) {
+    throw new Error('unsafe database name: ' + n);
+  }
+  return String(n);
+}
+
 const stats = (a) => {
   const s = [...a].sort((x, y) => x - y);
   return { min: s[0], med: s[Math.floor(s.length / 2)], p95: s[Math.min(s.length - 1, Math.floor(s.length * 0.95))] };
@@ -42,8 +53,8 @@ async function main() {
 
   const admin = new Client({ connectionString: BASE_URL });
   await admin.connect();
-  await admin.query(`DROP DATABASE IF EXISTS ${DB}`);
-  await admin.query(`CREATE DATABASE ${DB}`);
+  await admin.query(`DROP DATABASE IF EXISTS ${dbName(DB)}`);
+  await admin.query(`CREATE DATABASE ${dbName(DB)}`);
   await admin.end();
 
   const c = new Client({ connectionString: BASE_URL.replace(/\/[^/]*$/, '/' + DB) });
@@ -114,6 +125,12 @@ async function main() {
 
   /* EXPLAIN ANALYZE کوئریِ صفحه */
   const built = rs.buildAttendanceClassPage({ schoolIds: [1, 2, 3], ...rs.jalaliMonthRange(JY, JM), limit: 500 });
+  /* 🔴 مرزِ ورودی: built.sql از builderِ داخلیِ سرور ساخته می‌شود — یک
+     عبارتِ فقط-خواندنیِ SELECT/WITH بدونِ نقطه-ویرگول. EXPLAIN نمی‌تواند
+     پیشوند را با $N بگیرد، پس بررسیِ شکلِ کوئری کافی است. */
+  if (!/^\s*(SELECT|WITH)\b/i.test(built.sql) || /;/.test(built.sql.trim().slice(0, -1))) {
+    throw new Error('refusing to EXPLAIN anything other than a single SELECT/WITH statement');
+  }
   const ex = await c.query('EXPLAIN (ANALYZE, BUFFERS) ' + built.sql, built.params);
   const plan = ex.rows.map((r) => r['QUERY PLAN']).join('\n');
 

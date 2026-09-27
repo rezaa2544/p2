@@ -35,7 +35,7 @@ function isDate(v) { return isStr(v) && !Number.isNaN(Date.parse(v)); }
 const norm = (v) => JSON.stringify(v);
 
 let head = '';
-try { head = cp.execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim(); } catch (e) { }
+try { head = cp.execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT }).toString().trim(); } catch (e) { }
 console.log('==== PAYESH STRICT VERIFICATION GATE ====');
 chk('G1 current HEAD known', /^[0-9a-f]{40}$/.test(head), head);
 chk('G2 mandatory policy exists', fs.existsSync(path.join(ROOT, 'docs', 'STRICT_VERIFICATION_GATE.md')));

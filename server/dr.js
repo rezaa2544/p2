@@ -28,13 +28,14 @@
      tampered archive or an "off-site" target that is really the same
      disk all produce a refusal, never a silent success.
 
-   Runtime deps: Node stdlib only (fs, path, crypto).
-   ═══════════════════════════════════════════════════════════════════ */
+   Runtime deps: Node stdlib only (fs, path, crypto, os).
+   ═════════════════════════════════════════════════════════════════ */
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const os = require('os');
 
 /* Must stay identical to server/admin.js — these are the files it writes. */
 const NAME_RE = /^payesh-\d{8}-\d{6}-\d{3}\.json$/;
@@ -55,11 +56,6 @@ function numEnv(name, dflt, min, max) {
   return Math.min(max, Math.max(min, Math.trunc(n)));
 }
 
-function sha256File(fp) {
-  const h = crypto.createHash('sha256');
-  h.update(fs.readFileSync(fp));
-  return h.digest('hex');
-}
 function sha256Buf(b) { return crypto.createHash('sha256').update(b).digest('hex'); }
 
 function nowIso() { return new Date().toISOString(); }
@@ -77,6 +73,35 @@ function createDR(ctx) {
     : process.env.PAYESH_ENV === 'production');
 
   function ensureDir() { try { fs.mkdirSync(dir, { recursive: true }); } catch (e) {} }
+
+  /* ── containment guard (hardening) ────────────────────────────────
+     This module hashes, encrypts and decrypts PII archives, so every path
+     that reaches fs must resolve inside an *allowed root*: the backup
+     directory, the configured off-site target, or the system temp dir
+     (where the drill scratches its tamper archives and where tests stage
+     fixtures). An escape is a loud throw — a fail-closed refusal — never a
+     silent best-effort. The happy path is unchanged: every path the module
+     itself builds is inside one of these roots by construction. */
+  function allowedRoots() {
+    const roots = [path.resolve(dir), path.resolve(os.tmpdir())];
+    const off = offSiteDir();
+    if (off) roots.push(path.resolve(off));
+    return roots;
+  }
+  function assertContained(fp) {
+    const r = path.resolve(fp);
+    if (allowedRoots().some((b) => r === b || r.indexOf(b + path.sep) === 0)) return r;
+    throw new Error('refused: path outside allowed directories: ' + r);
+  }
+  /* join(base, name) with containment — the name reaches fs, so the result
+     must provably stay under base (or an allowed root). */
+  function containedJoin(base, name) { return assertContained(path.join(base, name)); }
+
+  function sha256File(fp) {
+    const h = crypto.createHash('sha256');
+    h.update(fs.readFileSync(assertContained(fp)));
+    return h.digest('hex');
+  }
 
   function objectives() {
     const rtoS = numEnv('PAYESH_DR_RTO_S', DEFAULT_RTO_S, 1, 86400);
@@ -113,10 +138,11 @@ function createDR(ctx) {
 
   function writeManifest(m) {
     ensureDir();
-    const tmp = manifestPath() + '.tmp';
+    const final = assertContained(manifestPath());
+    const tmp = final + '.tmp';
     fs.writeFileSync(tmp, JSON.stringify(m, null, 2), { encoding: 'utf8', mode: 0o600 });
-    fs.renameSync(tmp, manifestPath());
-    try { fs.chmodSync(manifestPath(), 0o600); } catch (e) {}
+    fs.renameSync(tmp, final);
+    try { fs.chmodSync(final, 0o600); } catch (e) {}
   }
 
   /* The manifest is DERIVED from the files on disk, so a lost or corrupt
@@ -129,7 +155,7 @@ function createDR(ctx) {
     let added = 0;
     for (const name of onDisk) {
       if (byName.has(name)) continue;
-      const fp = path.join(dir, name);
+      const fp = containedJoin(dir, name);
       let st = null;
       try { st = fs.statSync(fp); } catch (e) { continue; }
       byName.set(name, {
@@ -179,8 +205,10 @@ function createDR(ctx) {
   function verifyBackup(name) {
     const t0 = process.hrtime.bigint();
     const res = { ok: false, name, checks: {} };
-    const fp = path.join(dir, name);
     if (!NAME_RE.test(String(name || ''))) { res.reason = 'invalid_name'; return res; }
+    /* the name is shape-locked; the join is still asserted contained so a
+       future caller cannot reach fs outside the backup dir */
+    const fp = containedJoin(dir, name);
     if (!fs.existsSync(fp)) { res.reason = 'missing_file'; return res; }
 
     const m = ensureManifest();
@@ -221,13 +249,13 @@ function createDR(ctx) {
 
   function encryptBackup(name) {
     if (!NAME_RE.test(String(name || ''))) return { ok: false, reason: 'invalid_name' };
-    const fp = path.join(dir, name);
+    const fp = containedJoin(dir, name);
     if (!fs.existsSync(fp)) return { ok: false, reason: 'missing_file' };
     const secret = backupKey();
     if (!secret) {
       /* Fail-closed: in production a plaintext PII archive may not be
          promoted to "off-site ready". The key is never logged. */
-      audit('backup_unencrypted', { file: name, reason: 'no_key', summary: 'پشتیبان بدون رمزنگاری ماند (کلید موجود نیست)' });
+      audit('backup_unencrypted', { file: path.basename(String(name)), reason: 'no_key', summary: 'پشتیبان بدون رمزنگاری ماند (کلید موجود نیست)' });
       return { ok: false, reason: isProduction() ? 'key_required_in_production' : 'no_key' };
     }
     const t0 = process.hrtime.bigint();
@@ -251,7 +279,7 @@ function createDR(ctx) {
     fs.writeFileSync(tmp, out, { mode: 0o600 });
     fs.renameSync(tmp, dest);
     try { fs.chmodSync(dest, 0o600); } catch (e) {}
-    audit('backup_encrypted', { file: name, enc: path.basename(dest), size: out.length, summary: 'پشتیبان رمزنگاری شد: ' + path.basename(dest) });
+    audit('backup_encrypted', { file: path.basename(String(name)), enc: path.basename(dest), size: out.length, summary: 'پشتیبان رمزنگاری شد: ' + path.basename(dest) });
     return {
       ok: true, file: path.basename(dest), size: out.length,
       plain_sha256: sha256Buf(plain),
@@ -264,11 +292,16 @@ function createDR(ctx) {
      Split out from decryptBackup() so the drill can tamper-test an archive
      under a scratch name without weakening the name validation. */
   function decryptFile(absPath, destPath) {
+    /* Explicit paths are by design (the drill tamper-tests an archive under
+       a scratch name), but they still must resolve inside an allowed root —
+       a decrypt that could read/write anywhere is a file-overwrite primitive. */
+    const src = assertContained(absPath);
+    const dest = destPath ? assertContained(destPath) : null;
     const secret = backupKey();
     if (!secret) return { ok: false, reason: 'no_key' };
     const t0 = process.hrtime.bigint();
     try {
-      const blob = fs.readFileSync(absPath);
+      const blob = fs.readFileSync(src);
       if (blob.slice(0, MAGIC.length).toString('utf8') !== MAGIC) return { ok: false, reason: 'bad_magic' };
       const hlen = blob.readUInt32BE(MAGIC.length);
       if (hlen <= 0 || hlen > 65536) return { ok: false, reason: 'bad_header_length' };
@@ -280,9 +313,9 @@ function createDR(ctx) {
       decipher.setAuthTag(Buffer.from(header.tag, 'base64'));
       const plain = Buffer.concat([decipher.update(ct), decipher.final()]);
       if (sha256Buf(plain) !== header.plain_sha256) return { ok: false, reason: 'checksum_mismatch' };
-      if (destPath) {
-        fs.writeFileSync(destPath, plain, { mode: 0o600 });
-        try { fs.chmodSync(destPath, 0o600); } catch (e) {}
+      if (dest) {
+        fs.writeFileSync(dest, plain, { mode: 0o600 });
+        try { fs.chmodSync(dest, 0o600); } catch (e) {}
       }
       return { ok: true, size: plain.length, sha256: sha256Buf(plain), duration_ms: Number(process.hrtime.bigint() - t0) / 1e6 };
     } catch (e) {
@@ -294,7 +327,7 @@ function createDR(ctx) {
   /* Decrypt + authenticate a backup by its (validated) archive name. */
   function decryptBackup(encName, destPath) {
     if (!ENC_RE.test(String(encName || ''))) return { ok: false, reason: 'invalid_name' };
-    const fp = path.join(dir, encName);
+    const fp = containedJoin(dir, encName);
     if (!fs.existsSync(fp)) return { ok: false, reason: 'missing_file' };
     return decryptFile(fp, destPath);
   }
@@ -307,6 +340,7 @@ function createDR(ctx) {
 
   function copyOffSite(name, opts) {
     const useEncrypted = !(opts && opts.plaintext === true);
+    if (!NAME_RE.test(String(name || ''))) return { ok: false, reason: 'invalid_name' };
     const target = offSiteDir();
     if (!target) return { ok: false, reason: 'not_configured' };
     const abs = path.resolve(target);
@@ -317,16 +351,16 @@ function createDR(ctx) {
       return { ok: false, reason: 'target_inside_data_dir' };
     }
     const srcName = useEncrypted ? name + '.enc' : name;
-    const src = path.join(dir, srcName);
+    const src = containedJoin(dir, srcName);
     if (!fs.existsSync(src)) return { ok: false, reason: useEncrypted ? 'encrypt_first' : 'missing_file' };
     try { fs.mkdirSync(abs, { recursive: true }); } catch (e) { return { ok: false, reason: 'mkdir_failed' }; }
-    const dest = path.join(abs, path.basename(srcName));
+    const dest = assertContained(path.join(abs, path.basename(srcName)));
     const want = sha256File(src);
     fs.copyFileSync(src, dest);
     try { fs.chmodSync(dest, 0o600); } catch (e) {}
     const got = sha256File(dest);
     const ok = got === want;
-    audit('backup_offsite_copied', { file: path.basename(srcName), ok, encrypted: useEncrypted, summary: 'کپی برون‌سایتی پشتیبان' + (ok ? '' : ' — ناموفق') });
+    audit('backup_offsite_copied', { file: path.basename(String(srcName)), ok, encrypted: useEncrypted, summary: 'کپی برون‌سایتی پشتیبان' + (ok ? '' : ' — ناموفق') });
     return { ok, file: dest, sha256: got, encrypted: useEncrypted, reason: ok ? null : 'checksum_mismatch' };
   }
 
@@ -470,7 +504,10 @@ function createDR(ctx) {
            caused by name validation would be a false pass, so the tampered
            archive is read by path and the reason is asserted. */
         const s6 = process.hrtime.bigint();
-        const encPath = path.join(dir, e.file);
+        /* e.file از خروجیِ encryptBackup می‌آید، ولی مسیر قبل از خواندن
+           شکل‌سنجی می‌شود و داخلِ dir نگه داشته می‌شود. */
+        if (!ENC_RE.test(String(e.file || ''))) { report.reason = 'encrypt_failed'; return report; }
+        const encPath = containedJoin(dir, e.file);
         const blob = fs.readFileSync(encPath);
         const at = blob.length - 1;
         blob[at] = blob[at] ^ 0xff;
@@ -513,9 +550,9 @@ function createDR(ctx) {
       report.duration_ms = Number(process.hrtime.bigint() - t0) / 1e6;
       report.finished_at = nowIso();
       audit('dr_restore_drill', {
-        ok: report.ok, backup: name, restore_ms: report.restore_ms,
+        ok: report.ok, backup: path.basename(String(name)), restore_ms: report.restore_ms,
         rto_objective_ms: report.rto_objective_ms, reason: report.reason || null,
-        summary: 'مانور بازیابی ' + (report.ok ? 'موفق' : 'ناموفق') + ' روی ' + name
+        summary: 'مانور بازیابی ' + (report.ok ? 'موفق' : 'ناموفق') + ' روی ' + path.basename(String(name))
       });
       return report;
     } finally {
