@@ -318,7 +318,7 @@ function fakeRedis(){
     for (const k of ['DATABASE_URL', 'A5_PG_URL', 'NODE_ENV', 'PAYESH_ENV', 'REDIS_URL',
       'PAYESH_BEHIND_PROXY', 'PAYESH_SHUTDOWN_TIMEOUT_MS', 'PAYESH_TEST_SLOW_MS']) delete process.env[k];
 
-    const mod = require(path.join(ROOT, 'server', 'index.js'));
+    const mod = require('../server/index.js');
     await new Promise((res) => mod.server.listen(0, res));
     const BASE = 'http://127.0.0.1:' + mod.server.address().port;
 

@@ -46,7 +46,7 @@ const { execFileSync, spawn } = require('child_process');
 const { execFile } = require('child_process');
 const ROOT = path.join(__dirname, '..');
 
-const db = require(path.join(ROOT, 'server', 'db'));
+const db = require('../server/db');
 
 let okc = 0, failc = 0;
 const fails = [];
@@ -376,7 +376,7 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
     process.env.PAYESH_PARTITIONED_TABLES = 'grades,attendance';
     process.env.DATABASE_URL = LIVE_URL;
     delete require.cache[require.resolve(path.join(ROOT, 'server', 'db'))];
-    const liveDb = require(path.join(ROOT, 'server', 'db'));
+    const liveDb = require('../server/db');
     await liveDb.init();
     /* درجِ جدید با id صریح */
     await liveDb.persistOpsBatch([{ t: 'ins', c: 'grades', uid: 'w10-a', data: { id: 900001, school_id: 1, student_id: 100, class_id: 10, subject_id: 20, teacher_id: 200, score: 20, created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-01T00:00:00Z' } }]);
@@ -423,11 +423,11 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
   /* L7: دلتای chg از طریقِ pull.js */
   try {
     delete require.cache[require.resolve(path.join(ROOT, 'server', 'db'))];
-    const liveDb2 = require(path.join(ROOT, 'server', 'db'));
+    const liveDb2 = require('../server/db');
     process.env.DATABASE_URL = LIVE_URL;
     await liveDb2.init();
-    const { createPull } = require(path.join(ROOT, 'server', 'pull'));
-    const { createCursor } = require(path.join(ROOT, 'server', 'cursor'));
+    const { createPull } = require('../server/pull');
+    const { createCursor } = require('../server/cursor');
     const cursor = createCursor({ secret: 'w'.repeat(64) });
     /* فول‌پول: نشانگرِ آب را بگیر */
     let cap = { _cap: null };

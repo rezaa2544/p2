@@ -12,8 +12,8 @@ const Redis = require('/home/user/p2/node_modules/ioredis');
 const redis = new Redis('redis://127.0.0.1:6379');
 const BASE = 'http://127.0.0.1:3000';
 const CODE = '424242';
-const PGQ = (s) => execSync('psql "postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor" -t -A -c ' + JSON.stringify(s)).toString().trim();
-const PGC = (s) => execSync('psql "postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor" -c ' + JSON.stringify(s));
+const PGQ = (s) => execFileSync('psql', ['postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor', '-t', '-A', '-c', s]).toString().trim();
+const PGC = (s) => execFileSync('psql', ['postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor', '-c', s]);
 let nPass = 0, nFail = 0, nSkip = 0;
 const results = [];
 function report(id, status, detail) {

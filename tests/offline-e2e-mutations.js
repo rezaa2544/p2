@@ -10,7 +10,7 @@
    M7 حذفِ گاردِ ادغامِ پیش-از-load (رگرسیونِ باگِ بازنویسیِ بوت) ← E4
    اجرا: node tests/offline-e2e-mutations.js */
 'use strict';
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 /* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛ سورس اصلی و
    index.html هرگز بازنویسی نمی‌شوند — restore/بازگردانی و rebuildِ پایانی حذف
@@ -98,9 +98,9 @@ for (const m of MUTS) {
     const mcopy = kit.mutant(abs, byFile.get(f)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
     try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {}
   }
-  try { execSync('node build.js', { stdio: 'pipe', cwd: ROOT, env: kit.env() }); } catch (e) {}
+  try { execFileSync('node', ['build.js'], { stdio: 'pipe', cwd: ROOT, env: kit.env() }); } catch (e) {}
   let out = '', crashed = false;
-  try { execSync('node ' + SUITE, { stdio: 'pipe', timeout: 180000, cwd: ROOT, env: kit.env() }); out = 'PASSED'; }
+  try { execFileSync('node', [SUITE], { stdio: 'pipe', timeout: 180000, cwd: ROOT, env: kit.env() }); out = 'PASSED'; }
   catch (e) {
     out = String((e.stdout || '') + String(e.stderr || ''));
     if (out.trim() === '' || /FATAL(?!.*❌)/.test(out) && !/❌/.test(out)) crashed = /❌/.test(out) ? false : true;
@@ -119,7 +119,7 @@ for (const m of MUTS) {
   else console.log('  SURVIVED! ' + m.name);
 }
 let backGreen = false;
-try { execSync('node ' + SUITE, { stdio: 'pipe', timeout: 180000 }); backGreen = true; } catch (e) {}
+  try { execFileSync('node', [SUITE], { stdio: 'pipe', timeout: 180000 }); backGreen = true; } catch (e) {}
 console.log('offline-e2e-mutations: ' + killed + '/' + MUTS.length + ' killed'
   + (envFails ? ' (+' + envFails + ' crashed)' : '') + ', baseline-green=' + backGreen);
 process.exit((killed + envFails) === MUTS.length && backGreen ? 0 : 1);

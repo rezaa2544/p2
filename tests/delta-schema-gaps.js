@@ -44,11 +44,11 @@ const path = require('path');
 const fs = require('fs');
 
 const ROOT = path.join(__dirname, '..');
-const { createPull } = require(path.join(ROOT, 'server', 'pull'));
-const { createCursor } = require(path.join(ROOT, 'server', 'cursor'));
-const { createSync, attach } = require(path.join(ROOT, 'server', 'sync'));
-const { createConflicts } = require(path.join(ROOT, 'server', 'conflicts'));
-const { tableName, deltaRowsSql } = require(path.join(ROOT, 'server', 'syncdelta'));
+const { createPull } = require('../server/pull');
+const { createCursor } = require('../server/cursor');
+const { createSync, attach } = require('../server/sync');
+const { createConflicts } = require('../server/conflicts');
+const { tableName, deltaRowsSql } = require('../server/syncdelta');
 const { opX } = require('./helpers/opx');
 
 let pass = 0, fail = 0;

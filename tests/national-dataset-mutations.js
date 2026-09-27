@@ -10,7 +10,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const { session } = require('./helpers/mutant-kit');
 const kit = session('nds-mut-');
 const ROOT = path.join(__dirname, '..');
@@ -56,7 +56,7 @@ const mutations = [
 
 const run = (env, timeout) => {
   try {
-    const o = execSync(process.execPath + ' ' + SUITE, { stdio: 'pipe', timeout: timeout || 300000, cwd: ROOT, env });
+    const o = execFileSync('node', [SUITE], { stdio: 'pipe', timeout: timeout || 300000, cwd: ROOT, env });
     return { code: 0, out: String(o) };
   } catch (e) {
     return { code: e.status === null ? 1 : e.status, out: String((e.stdout || '') + (e.stderr || '')) };

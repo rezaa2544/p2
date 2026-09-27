@@ -8,7 +8,7 @@
    اجرا (با نودِ ۲۲ در PATH): node tests/sync-queue-caps-mutations.js
    نکته: برخلافِ entry-gpa، این سوئیت ❌ چاپ می‌کند نه FAIL. */
 'use strict';
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 /* BH-mut (الگوی امن p06/p11): جهش در کپیِ جدا + خروجی‌های build در سایه؛
@@ -43,10 +43,10 @@ for (const m of MUTS) {
   const src0 = fs.readFileSync(m.file, 'utf8');
   if (src0.indexOf(m.bad) < 0) { console.log('  NO-PATTERN ' + m.name + ' در ' + m.file); continue; }
   kit.mutant(path.join(ROOT, m.file), src0.replace(m.bad, m.mut)); /* کپی هم‌جوار */
-  execSync('node build.js', { stdio: 'pipe', env: kit.env() }); /* build به سایه */
+  execFileSync('node', ['build.js'], { stdio: 'pipe', env: kit.env() }); /* build به سایه */
   let out = '', crashed = false;
-  const cmd = 'node --max-old-space-size=1500 ' + SUITE;
-  try { execSync(cmd, { stdio: 'pipe', timeout: 120000, env: kit.env() }); out = 'PASSED (no failure)'; }
+  const args = ['--max-old-space-size=1500', SUITE];
+  try { execFileSync('node', args, { stdio: 'pipe', timeout: 120000, env: kit.env() }); out = 'PASSED (no failure)'; }
   catch (e) {
     out = String((e.stdout || '') + String(e.stderr || ''));
     if (/JavaScript heap out of memory|FATAL|aborting/.test(out) || out.trim() === '') crashed = true;
@@ -63,7 +63,7 @@ for (const m of MUTS) {
 }
 kit.cleanup(); /* درخت از ابتدا بکر بود؛ rebuildِ پایانی حذف شد */
 let backGreen = false;
-try { execSync('node --max-old-space-size=1500 ' + SUITE, { stdio: 'pipe', timeout: 120000 }); backGreen = true; } /* بدونِ env → اصلی */
+try { execFileSync('node', ['--max-old-space-size=1500', SUITE], { stdio: 'pipe', timeout: 120000 }); backGreen = true; } /* بدونِ env → اصلی */
 catch (e) { backGreen = false; }
 console.log('sync-queue-caps-mutations: ' + killed + '/' + MUTS.length + ' killed, baseline-green=' + backGreen + ', env-fail=' + envFails);
 process.exit(killed === MUTS.length && backGreen && envFails === 0 ? 0 : 1);

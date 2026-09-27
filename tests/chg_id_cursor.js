@@ -37,9 +37,9 @@ const crypto = require('crypto');
 const path = require('path');
 const ROOT = path.join(__dirname, '..');
 
-const { createCursor, regionName } = require(path.join(ROOT, 'server', 'cursor'));
-const { createPull } = require(path.join(ROOT, 'server', 'pull'));
-const { CHG_TABLES } = require(path.join(ROOT, 'server', 'syncdelta'));
+const { createCursor, regionName } = require('../server/cursor');
+const { createPull } = require('../server/pull');
+const { CHG_TABLES } = require('../server/syncdelta');
 
 let okc = 0, failc = 0;
 const fails = [];

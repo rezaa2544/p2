@@ -7,8 +7,8 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const ROOT = '/home/user/p2';
-const { createOutbox } = require(path.join(ROOT, 'server/outbox.js'));
-const { createWorker } = require(path.join(ROOT, 'server/worker.js'));
+const { createOutbox } = require('../server/outbox.js');
+const { createWorker } = require('../server/worker.js');
 
 let pass = 0, fail = 0;
 const chk = (name, cond, extra) => {

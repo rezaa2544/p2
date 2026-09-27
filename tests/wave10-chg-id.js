@@ -21,9 +21,9 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '..');
 
-const db = require(path.join(ROOT, 'server', 'db'));
-const syncdelta = require(path.join(ROOT, 'server', 'syncdelta'));
-const { createPull } = require(path.join(ROOT, 'server', 'pull'));
+const db = require('../server/db');
+const syncdelta = require('../server/syncdelta');
+const { createPull } = require('../server/pull');
 
 let okc = 0, failc = 0;
 const fails = [];

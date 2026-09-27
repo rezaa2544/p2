@@ -19,7 +19,7 @@ const kit = session('voc-mut-');
 kit.remapBuildOutputs();
 
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const FILES = {
@@ -82,7 +82,7 @@ for (const m of MUTS) {
   }
   kit.mutant(mabs, src[m.file].replace(m.bad, m.mut)); /* کپی جدا؛ سورس اصلی دست‌نخورده */
   try {
-    execSync('node build.js', { stdio: 'pipe', env: kit.env(), cwd: ROOT });
+    execFileSync('node', ['build.js'], { stdio: 'pipe', env: kit.env(), cwd: ROOT });
   } catch (e) {
     console.log(`  ✅ ${m.name} (build شکست — کشته شد)`);
     killed++;
@@ -90,7 +90,7 @@ for (const m of MUTS) {
   }
   let out;
   try {
-    out = execSync('node tests/vocational-grades.js', { stdio: 'pipe', encoding: 'utf8', env: kit.env(), cwd: ROOT });
+    out = execFileSync('node', ['tests/vocational-grades.js'], { stdio: 'pipe', encoding: 'utf8', env: kit.env(), cwd: ROOT });
     console.log(`  ❌ ${m.name}: جهش زنده ماند!`);
   } catch (e) {
     out = (e.stdout || '') + String(e.message);
@@ -105,7 +105,7 @@ for (const m of MUTS) {
 
 /* بازبینیِ خطِ پایه (بدون جهش) */
 try {
-  execSync('node tests/vocational-grades.js', { stdio: 'pipe' });
+  execFileSync('node', ['tests/vocational-grades.js'], { stdio: 'pipe' });
   console.log('  ✅ خطِ پایه (بدون جهش) سبز است');
 } catch (e) {
   console.log('  ❌ خطِ پایه شکست — جهش‌ها را دوباره بررسی کنید');

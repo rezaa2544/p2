@@ -3,7 +3,7 @@
    تستِ جهش‌مندی — دور ۱۰۲ (به‌روزرسانیِ جزئیِ ثبت حضور)
    هر جهش باید tests/attpartial.js را بشکاند؛ وگرنه تست بی‌اثر است.
    ═══════════════════════════════════════════════════════════════════ */
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 /* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و
@@ -58,14 +58,14 @@ for (const m of MUTS) {
   const src = FILES[m.file];
   if (src.indexOf(m.bad) < 0) { console.log(`  ❌ ${m.name}: الگو پیدا نشد`); continue; }
   kit.mutant(abs, src.replace(m.bad, m.mut)); /* کپی جدا؛ سورس اصلی دست‌نخورده */
-  execSync('node build.js', { stdio: 'pipe', env: kit.env(), cwd: ROOT });
+  execFileSync('node', ['build.js'], { stdio: 'pipe', env: kit.env(), cwd: ROOT });
   let out = '', crashed = false;
-  const __cmd = 'node tests/attpartial.js';
-  try { execSync(__cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
+  const __args = ['tests/attpartial.js'];
+  try { execFileSync('node', __args, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
   catch (e) {
     out = String(e.stdout || '') + String(e.stderr || '');
     if (out.trim() === '') { /* خروجی خالی = فرایند کشته شد (محیط) — یک‌بار تلاشِ دوباره */
-      try { execSync(__cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
+      try { execFileSync('node', __args, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
       catch (e2) { out = String(e2.stdout || '') + String(e2.stderr || ''); }
     }
     if (/JavaScript heap out of memory|FATAL|aborting/.test(out) || out.trim() === '') crashed = true;
@@ -75,7 +75,7 @@ for (const m of MUTS) {
   if (killedThis) killed++;
 }
 let finalOut = '', backGreen = false;
-try { finalOut = execSync('node tests/attpartial.js', { stdio: 'pipe' }).toString(); backGreen = finalOut.includes('بدون خطا'); }
+try { finalOut = execFileSync('node', ['tests/attpartial.js'], { stdio: 'pipe' }).toString(); backGreen = finalOut.includes('بدون خطا'); }
 catch (e) { finalOut = String(e.stdout || ''); }
 console.log(`\nجهش: ${killed}/${MUTS.length} کشته` + (killed === MUTS.length && backGreen ? ' ✅ (سبزِ پایانی)' : ' ⚠️'));
 if (killed !== MUTS.length || !backGreen) {

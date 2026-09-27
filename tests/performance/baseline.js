@@ -89,7 +89,7 @@ async function measureApi(){
   process.env.PAYESH_KEY = path.join(tmp, 'key');
   process.env.PAYESH_DEMO_CODE = '1';
 
-  const mod = require(path.join(ROOT, 'server', 'index.js'));
+  const mod = require('../../server/index.js');
   const server = mod.server || mod;
   await new Promise((res) => server.listen(0, '127.0.0.1', res));
   const port = server.address().port;

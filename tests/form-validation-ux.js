@@ -22,7 +22,7 @@ function chk(name, ok, extra) {
 }
 
 const ROOT = path.join(__dirname, '..');
-const valModule = require(path.join(ROOT, 'src', 'js', '40-form-validation.js'));
+const valModule = require('../src/js/40-form-validation.js');
 
 console.log('■ ۱) آزمون‌های اعتبارسنجی شماره تلفن همراه (validatePhone)');
 chk('شماره ۱۱ رقمی معتبر با پیش‌شماره ۰۹', valModule.validatePhone('09123456789') === true);

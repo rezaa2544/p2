@@ -14,7 +14,7 @@ const cp = require('child_process');
 
 function hasRedis() {
   if (process.env.REDIS_LIVE_URL) return true;
-  try { return !!cp.execSync('which redis-server', { stdio: 'pipe' }).toString().trim(); }
+  try { return !!cp.execFileSync('which', ['redis-server'], { stdio: 'pipe' }).toString().trim(); }
   catch (e) { return false; }
 }
 if (!hasRedis()) {

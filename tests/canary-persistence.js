@@ -16,7 +16,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn, execSync } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 const http = require('http');
 const { Client } = require('pg');
 const gov = require('../server/infrastructure/phase6-governance');
@@ -69,13 +69,13 @@ let URL;
   let migFail = 0;
   for (const f of fs.readdirSync(path.join(ROOT, 'migrations')).sort()) {
     if (!/^\d{3}_.*\.sql$/.test(f) || f.endsWith('.down.sql')) continue;
-    try { execSync(`psql "${URL}" -v ON_ERROR_STOP=1 -q -f "${path.join(ROOT, 'migrations', f)}"`, { stdio: 'pipe' }); }
+    try { execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', path.join(ROOT, 'migrations', f), URL], { stdio: 'pipe' }); }
     catch (e) { console.error('MIG FAIL', f, String(e.stderr).slice(0, 200)); migFail = 1; break; }
   }
   chk('زنجیرهٔ migration (شامل جدول‌های canary)', migFail === 0);
   if (migFail) process.exit(1);
 
-  execSync(`${NODE} server/seed.js`, { cwd: ROOT, stdio: 'pipe' });
+  execFileSync('node', ['server/seed.js'], { cwd: ROOT, stdio: 'pipe' });
   const STORE = path.join(os.tmpdir(), 'canary-store.json');
   fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), STORE);
   const { publicKey, privateKey } = gov.generateGovernanceKeypair();

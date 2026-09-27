@@ -9,7 +9,7 @@ const assert = require('assert');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '../../../');
-const { Phase6CanaryEngine, CANARY_STATES, CANARY_ERRORS } = require(path.join(ROOT, 'server/infrastructure/phase6-canary-engine'));
+const { Phase6CanaryEngine, CANARY_STATES, CANARY_ERRORS } = require('../../../server/infrastructure/phase6-canary-engine');
 
 async function testCanaryLifecycle() {
   console.log('▸ Phase 6 Test 1: Canary Cluster Registration & Weight Lifecycle');

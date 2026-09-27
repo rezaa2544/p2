@@ -5,7 +5,7 @@
    الگو: tests/wave12-network-mutations.js (backup/restore + expectFail + خط‌پایه)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 
 /* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛ سورس اصلی
@@ -17,7 +17,7 @@ const { session } = require('./helpers/mutant-kit');
 const kit = session('ha-mut-');
 const ROOT = path.join(__dirname, '..');
 
-const SUITES = { ha: 'node tests/ha-config.js', dr: 'node tests/dr-runbook.js' };
+const SUITES = { ha: ['tests/ha-config.js'], dr: ['tests/dr-runbook.js'] };
 const WATCH = ['infra/postgres/docker-compose.ha.yml', 'infra/redis/docker-compose.sentinel.yml',
   'infra/redis/sentinel.conf.template', 'tools/pitr-restore.sh', 'docs/DR_RUNBOOK.md'];
 const FILES = {}; WATCH.forEach((f) => { FILES[f] = fs.readFileSync(f, 'utf8'); });
@@ -75,7 +75,7 @@ MUTS.forEach((m) => {
     try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {} /* حفظِ مود (بیتِ اجرایی) */
     prevAbs = abs;
     let out = '', code = 0;
-    try { out = execSync(SUITES[m.suite], { stdio: 'pipe', timeout: 120000, cwd: ROOT, env: kit.env() }).toString(); }
+    try { out = execFileSync('node', SUITES[m.suite], { stdio: 'pipe', timeout: 120000, cwd: ROOT, env: kit.env() }).toString(); }
     catch (e) { code = (e.status === null ? 1 : e.status); out = ((e.stdout || '') + (e.stderr || '')).toString(); }
     const ok = code !== 0 && out.indexOf('❌ ' + m.expectFail) >= 0;
     if (ok) { killed++; console.log('  ✅ ' + m.name + ' کشته شد'); }
@@ -84,7 +84,7 @@ MUTS.forEach((m) => {
 if (prevAbs) kit.clear(prevAbs); /* نقشهٔ خالی برای شفافیت؛ پاک‌سازیِ واقعی در exit */
 
 let baseOk = true;
-try { execSync(SUITES.ha, { stdio: 'pipe', timeout: 120000 }); execSync(SUITES.dr, { stdio: 'pipe', timeout: 120000 }); }
+  try { execFileSync('node', SUITES.ha, { stdio: 'pipe', timeout: 120000 }); execFileSync('node', SUITES.dr, { stdio: 'pipe', timeout: 120000 }); }
 catch (e) { baseOk = false; }
 if (baseOk) console.log('  ✅ پس از بازگردانی، هر دو خطِّ پایه سبز است');
 else console.log('  ❌ خطِّ پایه پس از بازگردانی سبز نشد');

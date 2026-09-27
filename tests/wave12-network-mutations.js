@@ -5,7 +5,7 @@
    اجرا (از ریشهٔ ریپو): node tests/wave12-network-mutations.js
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 
 /* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛ سورس اصلی
@@ -24,7 +24,7 @@ const FILES = {
   '.github/workflows/security.yml': fs.readFileSync('.github/workflows/security.yml', 'utf8')
 };
 
-const SUITE = 'node tests/wave12-network.js';
+const SUITE = ['tests/wave12-network.js'];
 
 const MUTS = [
   {
@@ -84,7 +84,7 @@ MUTS.forEach((m) => {
     try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {} /* حفظِ مود (بیتِ اجرایی) */
     prevAbs = abs;
     let out = '', code = 0;
-    try { out = execSync(SUITE, { stdio: 'pipe', timeout: 120000, cwd: ROOT, env: kit.env() }).toString(); }
+    try { out = execFileSync('node', SUITE, { stdio: 'pipe', timeout: 120000, cwd: ROOT, env: kit.env() }).toString(); }
     catch (e) { code = (e.status === null ? 1 : e.status); out = ((e.stdout || '') + (e.stderr || '')).toString(); }
     const sawFail = out.indexOf('❌ ' + m.expectFail) >= 0;
     const ok = code !== 0 && sawFail;
@@ -99,7 +99,7 @@ if (prevAbs) kit.clear(prevAbs); /* نقشهٔ خالی برای شفافیت؛ 
 
 /* خطِّ پایه باید پس از بازگردانی دوباره سبز باشد */
 let baseOk = false;
-try { execSync(SUITE, { stdio: 'pipe', timeout: 120000 }); baseOk = true; } catch (e) { baseOk = false; }
+  try { execFileSync('node', SUITE, { stdio: 'pipe', timeout: 120000 }); baseOk = true; } catch (e) { baseOk = false; }
 if (baseOk) console.log('  ✅ پس از بازگردانی، خطِّ پایه دوباره سبز است');
 else { console.log('  ❌ خطِّ پایه پس از بازگردانی سبز نشد'); }
 

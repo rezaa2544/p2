@@ -17,9 +17,9 @@
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const { createOutbox } = require(path.join(ROOT, 'server', 'outbox.js'));
-const { createWorker } = require(path.join(ROOT, 'server', 'worker.js'));
-const { createDeleteService } = require(path.join(ROOT, 'server', 'delete-service.js'));
+const { createOutbox } = require('../server/outbox.js');
+const { createWorker } = require('../server/worker.js');
+const { createDeleteService } = require('../server/delete-service.js');
 
 let pass = 0, fail = 0;
 const errors = [];

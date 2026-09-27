@@ -14,7 +14,7 @@ const {
   sanitizePayload,
   assertTenantBoundary,
   HARDENING_ERRORS
-} = require(path.join(ROOT, 'server/infrastructure/phase6-production-hardening'));
+} = require('../../../server/infrastructure/phase6-production-hardening');
 
 async function testTenantAndProvincialIsolation() {
   console.log('▸ Phase 6 Test 6: Zero-Trust Tenant & Provincial Isolation');

@@ -16,7 +16,7 @@ const fs = require('fs');
 const cp = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
-const redis = require(path.join(ROOT, 'server', 'redis.js'));
+const redis = require('../server/redis.js');
 
 let pass = 0, fail = 0, skipped = 0;
 
@@ -198,7 +198,7 @@ async function main() {
         sentinelConf(26400); sentinelConf(26401); sentinelConf(26402);
         await sleep(1200);
 
-        const Redis = require(path.join(ROOT, 'node_modules', 'ioredis'));
+        const Redis = require('../node_modules/ioredis');
         const cc = redis.buildRedisConfig({ REDIS_SENTINELS: '127.0.0.1:26400,127.0.0.1:26401,127.0.0.1:26402', REDIS_SENTINEL_NAME: 'mymaster' });
         const c = Object.assign({ sentinels: cc.sentinels, name: cc.name }, cc.options || {});
         const app = new Redis(Object.assign({}, c, { connectTimeout: 2000, maxRetriesPerRequest: 3 }));

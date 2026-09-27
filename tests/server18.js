@@ -20,7 +20,7 @@ const { spawn } = require('child_process');
 const http = require('http');
 
 const ROOT = path.join(__dirname, '..');
-const V = require(path.join(ROOT, 'server', 'validate.js'));
+const V = require('../server/validate.js');
 
 let pass = 0, fail = 0;
 const errors = [];

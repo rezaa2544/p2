@@ -9,8 +9,8 @@ const assert = require('assert');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '../../../');
-const { Phase6CanaryEngine } = require(path.join(ROOT, 'server/infrastructure/phase6-canary-engine'));
-const { checkMemoryHealth } = require(path.join(ROOT, 'server/infrastructure/phase6-production-hardening'));
+const { Phase6CanaryEngine } = require('../../../server/infrastructure/phase6-canary-engine');
+const { checkMemoryHealth } = require('../../../server/infrastructure/phase6-production-hardening');
 
 async function testHighConcurrencyRouting() {
   console.log('▸ Phase 6 Test 5: High Concurrency Routing & Memory Stability');

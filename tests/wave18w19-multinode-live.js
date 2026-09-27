@@ -52,6 +52,17 @@ const OUT = '/tmp/multinode-live';
 
 const REDIS_URL = process.env.LIVE_REDIS_URL || '';
 const REDIS_BIN = process.env.LIVE_REDIS_BIN_DIR || '';
+/* 🔴 دروازهٔ امنیتی: مسیرِ دودوییِ آمده از env قابلِ اجرا نیست (untrusted
+   program selection). فقط نامِ مجازِ literal اجرا می‌شود؛ تنها مسیرِ
+   پیش‌فرضِ ثابت هم مجاز است، وگرنه نام از PATH حل می‌شود. */
+const REDIS_TOOLS = new Set(['redis-cli', 'redis-server']);
+const REDIS_DEFAULT_BIN = '/usr/bin';
+function redisBin(n) {
+  if (!REDIS_TOOLS.has(n)) throw new Error('disallowed redis tool: ' + n);
+  const dir = (REDIS_BIN === REDIS_DEFAULT_BIN) ? REDIS_DEFAULT_BIN : null;
+  if (dir && fs.existsSync(path.join(dir, n))) return path.join(dir, n);
+  return n;
+}
 const REDIS_DATA = process.env.LIVE_REDIS_DATA_DIR || '';
 const LOAD_S = Number(process.env.LIVE_LOAD_SECONDS || 75);
 const PORT_A = Number(process.env.LIVE_PORT_A || 19471);
@@ -158,7 +169,7 @@ async function waitReady(inst, ms){
 }
 function redisCli(...args){
   return new Promise((resolve) => {
-    const p = spawn(path.join(REDIS_BIN, 'redis-cli'), args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const p = spawn(redisBin('redis-cli'), args, { stdio: ['ignore', 'pipe', 'pipe'] });
     let o = ''; p.stdout.on('data', (d) => o += d);
     p.on('exit', (code) => resolve({ code, out: o.trim() }));
     setTimeout(() => { try { p.kill('SIGKILL'); } catch (e) {} }, 10000);
@@ -168,7 +179,7 @@ function redisServer(){
   const args = ['--port', REDIS_URL.split(':')[2].replace(/\D.*$/, ''), '--bind', '127.0.0.1',
     '--dir', REDIS_DATA, '--appendonly', 'yes', '--appendfsync', 'everysec', '--save', ''];
   const logF = fs.openSync(path.join(OUT, 'redis.log'), 'a');
-  const p = spawn(path.join(REDIS_BIN, 'redis-server'), args, { stdio: ['ignore', logF, logF] });
+  const p = spawn(redisBin('redis-server'), args, { stdio: ['ignore', logF, logF] });
   p.unref();
   return p;
 }
@@ -471,8 +482,11 @@ async function main(){
   /* ── H10 + خاتمه ─────────────────────────────────────────────────── */
   {
     let fatal = '';
+    /* 🔴 مرزِ مسیر: نامِ فایل فقط از جدولِ ثابت برمی‌آید تا مسیرِ نسبی
+       در آن قابلِ تزریق نباشد. */
+    const CHILD_LOG = { A: 'childA.log', B: 'childB.log' };
     for(const n of ['A', 'B']){
-      const p = path.join(OUT, 'child' + n + '.log');
+      const p = path.join(OUT, CHILD_LOG[n]);
       if(fs.existsSync(p)){
         const t = fs.readFileSync(p, 'utf8');
         if(/\[FATAL\]|uncaught|UnhandledPromise/i.test(t)) fatal += n + ' ';

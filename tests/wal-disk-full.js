@@ -44,6 +44,17 @@ const CFG = {
   schools: Number(process.env.WAL_DRILL_SCHOOLS || 12),
   rowsPerSchool: Number(process.env.WAL_DRILL_ROWS || 1500),
 };
+/* 🔴 دروازهٔ امنیتی: مسیرِ کاملِ آمده از env قابل اجرا نیست (untrusted program
+   selection). فقط نامِ مجازِ literal اجرا می‌شود. مسیرِ مطلقِ پیش‌فرض مجاز
+   است؛ در غیرِ آن صورت نامِ ساده از PATH حل می‌شود. */
+const PG_TOOLS = new Set(['initdb', 'pg_ctl', 'createdb', 'psql', 'pg_dump', 'pg_isready', 'pg_basebackup', 'postgres']);
+const PG_DEFAULT_BIN = '/usr/lib/postgresql/17/bin';
+function pgBin(n) {
+  if (!PG_TOOLS.has(n)) throw new Error('disallowed pg tool: ' + n);
+  const dir = (CFG.bin === PG_DEFAULT_BIN) ? PG_DEFAULT_BIN : null;
+  if (dir && fs.existsSync(path.join(dir, n))) return path.join(dir, n);
+  return n;
+}
 const SKIP_LIVE = process.argv.includes('--skip-live');
 // بودجهٔ زمانیِ کلِ مانور. بدونِ این، حلقهٔ restart با WALِ پُر می‌تواند
 // دقیقه‌ها بلوکه بماند (هر pg_ctl تا -t ثانیه منتظر می‌ماند).
@@ -89,7 +100,7 @@ function sh(cmd, args, opts = {}) {
   return spawnSync(cmd, args, Object.assign({ encoding: 'utf8' }, opts));
 }
 function psql(sql, opts = {}) {
-  return spawnSync(path.join(CFG.bin, 'psql'), ['-tAq', '-c', sql], {
+  return spawnSync(pgBin('psql'), ['-tAq', '-c', sql], {
     encoding: 'utf8',
     env: Object.assign({}, process.env, {
       PGHOST: CFG.sockDir, PGPORT: String(CFG.port), PGUSER: CFG.user, PGDATABASE: 'postgres',
@@ -109,7 +120,7 @@ function sudoPgBin(args, timeout) {
     { encoding: 'utf8', timeout: timeout || 180000 });
 }
 function pgIsReady() {
-  const r = sh(path.join(CFG.bin, 'pg_isready'),
+  const r = sh(pgBin('pg_isready'),
     ['-h', CFG.sockDir, '-p', String(CFG.port), '-U', CFG.user, '-q'], { encoding: 'utf8', timeout: 5000 });
   return r.status === 0;
 }
@@ -117,12 +128,12 @@ function pgCtl(mode, extra = []) {
   // timeoutِ صریح الزامی است: sh() بدونِ timeout منتظرِ همیشگی است، و وقتی
   // postmaster زنده است ولی startup process مدام شکست می‌خورد، pg_ctl -t
   // به‌تنهایی برنمی‌گردد (مانورِ run 5 دقیقاً ۴۱۷ ثانیه همین‌جا گیر کرد).
-  return sh('sudo', ['-n', '-u', 'postgres', path.join(CFG.bin, 'pg_ctl'),
+  return sh('sudo', ['-n', '-u', 'postgres', pgBin('pg_ctl'),
     '-D', CFG.pgdata, '-m', mode, '-w', '-t', '15'].concat(extra, ['start']),
     { encoding: 'utf8', timeout: 30000 });
 }
 function pgStop(mode = 'immediate') {
-  return sh('sudo', ['-n', '-u', 'postgres', path.join(CFG.bin, 'pg_ctl'),
+  return sh('sudo', ['-n', '-u', 'postgres', pgBin('pg_ctl'),
     '-D', CFG.pgdata, '-m', mode, '-w', '-t', '15', 'stop'],
     { encoding: 'utf8', timeout: 30000 });
 }
@@ -287,7 +298,7 @@ function dataChecksum() {
 function setupReplica(dir) {
   fs.rmSync(dir, { recursive: true, force: true });
   psql(`select pg_create_physical_replication_slot('drill_slot', true)`);
-  const bb = sudoPgBin(['-u', 'postgres', path.join(CFG.bin, 'pg_basebackup'),
+  const bb = sudoPgBin(['-u', 'postgres', pgBin('pg_basebackup'),
     '-D', dir, '-R', '-S', 'drill_slot', '-X', 'stream', '-P']);
   if (bb.status !== 0) {
     return { ok: false, why: 'pg_basebackup: ' + (bb.stderr || '').trim().split('\n').filter(Boolean).pop() };
@@ -301,7 +312,7 @@ function setupReplica(dir) {
   fs.appendFileSync(path.join(dir, 'postgresql.auto.conf'),
     `\nport = ${port}\nunix_socket_directories = '${sock}'\nprimary_slot_name = 'drill_slot'\n`);
   spawnSync('sudo', ['-n', 'chown', '-R', 'postgres:postgres', dir]);
-  const st = spawnSync('sudo', ['-n', '-u', 'postgres', path.join(CFG.bin, 'pg_ctl'),
+  const st = spawnSync('sudo', ['-n', '-u', 'postgres', pgBin('pg_ctl'),
     '-D', dir, '-l', path.join(dir, 'startup.log'), '-w', '-t', '40', 'start'], { encoding: 'utf8' });
   return { ok: st.status === 0, port, sock,
            why: st.status === 0 ? null : ((st.stderr || '').trim() || 'pg_ctl start failed') };
@@ -310,7 +321,7 @@ function replicaCatchUp(sock, port, targetLsn) {
   for (let i = 0; i < 40; i++) {
     const r = spawnSync('sudo', ['-n', 'PGHOST=' + sock, 'PGPORT=' + String(port),
       'PGUSER=' + CFG.user, 'PGDATABASE=postgres', '-u', 'postgres',
-      path.join(CFG.bin, 'psql'), '-tAq', '-c',
+      pgBin('psql'), '-tAq', '-c',
       `select pg_last_wal_replay_lsn() >= '${targetLsn}'::pg_lsn`], { encoding: 'utf8', timeout: 10000 });
     if (r.status === 0 && /t/.test(r.stdout || '')) return true;
     spawnSync('sleep', ['0.5']);
@@ -564,7 +575,7 @@ function liveAvailable() {
 
       const rc = spawnSync('sudo', ['-n', 'PGHOST=' + rp.sock, 'PGPORT=' + String(rp.port),
         'PGUSER=' + CFG.user, 'PGDATABASE=postgres', '-u', 'postgres',
-        path.join(CFG.bin, 'psql'), '-tAq', '-c', 'select count(*) from attendance'],
+        pgBin('psql'), '-tAq', '-c', 'select count(*) from attendance'],
         { encoding: 'utf8', timeout: 30000 });
       const replicaRows = Number((rc.stdout || '').trim());
       const pr = psql('select count(*) from attendance');
@@ -574,7 +585,7 @@ function liveAvailable() {
       chk('W4b replica همهٔ دادهٔ commit‌شده را دارد (RPO=0 نسبت به replica)',
         replicaRows === primaryRows && replicaRows > 0,
         'primary=' + primaryRows + ' replica=' + replicaRows);
-      spawnSync('sudo', ['-n', '-u', 'postgres', path.join(CFG.bin, 'pg_ctl'),
+      spawnSync('sudo', ['-n', '-u', 'postgres', pgBin('pg_ctl'),
         '-D', dir, '-m', 'fast', '-w', '-t', '60', 'stop'], { encoding: 'utf8' });
       mark('W4', { primaryRows, replicaRows, caught });
     }
@@ -590,7 +601,7 @@ function finish(liveWhy) {
     fs.mkdirSync(OUT_DIR, { recursive: true });
     fs.writeFileSync(OUT_JSON, JSON.stringify({
       generatedAt: new Date().toISOString(),
-      pgVersion: sh(path.join(CFG.bin, 'postgres'), ['--version']).stdout.trim(),
+      pgVersion: sh(pgBin('postgres'), ['--version']).stdout.trim(),
       walCapMB: CFG.walMb, walMnt: CFG.walMnt, port: CFG.port,
       live: !liveWhy, liveSkipReason: liveWhy || null,
       summary: { pass, fail, notRun },

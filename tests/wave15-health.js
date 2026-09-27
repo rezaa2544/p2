@@ -43,7 +43,7 @@ delete process.env.NODE_ENV;
 delete process.env.REDIS_URL;
 delete process.env.PAYESH_TEST_SLOW_MS;
 
-const mod = require(path.join(ROOT, 'server', 'index.js'));
+const mod = require('../server/index.js');
 const server = mod.server;
 const redis = mod.redis;
 

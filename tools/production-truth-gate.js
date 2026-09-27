@@ -10,7 +10,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const http = require('http');
-const { spawn, execSync } = require('child_process');
+const { spawn, spawnSync, execFileSync } = require('child_process');
 const { Client } = require('pg');
 const pgOutage = require('../tests/pg-outage-control');
 const gov = require('../server/infrastructure/phase6-governance');
@@ -85,13 +85,13 @@ function applyMigrations(url) {
   const files = fs.readdirSync(path.join(ROOT, 'migrations')).sort();
   for (const f of files) {
     if (!/^\d{3}_.*\.sql$/.test(f) || f.endsWith('.down.sql')) continue;
-    execSync(`psql "${url}" -v ON_ERROR_STOP=1 -q -f "${path.join(ROOT, 'migrations', f)}"`, { stdio: 'pipe' });
+    execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', path.join(ROOT, 'migrations', f), url], { stdio: 'pipe' });
   }
 }
 function rollbackMigrations(url) {
   const files = fs.readdirSync(path.join(ROOT, 'migrations')).filter((f) => /^\d{3}_.*\.down\.sql$/.test(f)).sort().reverse();
   for (const f of files) {
-    execSync(`psql "${url}" -v ON_ERROR_STOP=1 -q -f "${path.join(ROOT, 'migrations', f)}"`, { stdio: 'pipe' });
+    execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', path.join(ROOT, 'migrations', f), url], { stdio: 'pipe' });
   }
 }
 
@@ -138,13 +138,13 @@ function walkJs(dir, visit) {
   console.log('\n════ GATE 1 — Git');
   let head = '';
   try {
-    head = execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim();
+    head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
     chk('G1', 'HEAD وجود دارد', /^[0-9a-f]{40}$/.test(head), head);
   } catch (e) {
     chk('G1', 'HEAD وجود دارد', false, e.message);
   }
   let dirty = '';
-  try { dirty = execSync('git status --porcelain', { cwd: ROOT }).toString(); } catch (e) { dirty = 'STATUS_FAILED'; }
+  try { dirty = execFileSync('git', ['status', '--porcelain'], { cwd: ROOT, encoding: 'utf8' }); } catch (e) { dirty = 'STATUS_FAILED'; }
   if (process.env.GATE_REQUIRE_CLEAN === '1') {
     chk('G1', 'working tree تمیز است', dirty.trim() === '', dirty.trim().slice(0, 120) || 'clean');
   } else {
@@ -153,13 +153,13 @@ function walkJs(dir, visit) {
   }
   let remoteHead = '';
   try {
-    const remotes = execSync('git remote', { cwd: ROOT }).toString().trim();
+    const remotes = execFileSync('git', ['remote'], { cwd: ROOT, encoding: 'utf8' }).trim();
     if (remotes) {
-      execSync('git fetch --end-of-options origin 2>/dev/null || true', { cwd: ROOT, stdio: 'pipe' });
+      execFileSync('git', ['fetch', '--end-of-options', 'origin'], { cwd: ROOT, stdio: 'pipe' });
     }
   } catch (e) {}
   try {
-    remoteHead = execSync('git rev-parse origin/main', { cwd: ROOT }).toString().trim();
+    remoteHead = execFileSync('git', ['rev-parse', 'origin/main'], { cwd: ROOT, encoding: 'utf8' }).trim();
   } catch (e) { remoteHead = ''; }
   if (process.env.GATE_REQUIRE_REMOTE_MATCH === '1') {
     chk('G1', 'HEAD محلی == origin/main', !!remoteHead && remoteHead === head, 'local=' + head + ' remote=' + remoteHead);
@@ -235,7 +235,7 @@ function walkJs(dir, visit) {
   const URL = BASE_URL.replace(/\/[^/?]+(\?.*)?$/, (m, q) => ('/' + DB + (q || '')));
   applyMigrations(URL);
 
-  execSync(`${NODE} server/seed.js`, { cwd: ROOT, stdio: 'pipe' });
+  spawnSync(NODE, ['server/seed.js'], { cwd: ROOT, stdio: 'pipe' });
   const STORE = path.join(os.tmpdir(), 'ptg-store.json');
   fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), STORE);
   const { publicKey, privateKey } = gov.generateGovernanceKeypair();
@@ -500,8 +500,15 @@ function walkJs(dir, visit) {
   process.exit(fail.length ? 1 : 0);
 })().catch((e) => {
   console.error('NOT VERIFIED — FATAL', e && e.stack || e);
-  try { execSync('sudo pg_ctlcluster 17 main start', { stdio: 'pipe' }); } catch (e2) {}
-  try { execSync('sudo pg_ctlcluster 16 main start', { stdio: 'pipe' }); } catch (e2) {}
-  try { execSync('docker ps -aq --filter ancestor=postgres:17 | xargs -r docker start', { stdio: 'pipe' }); } catch (e2) {}
+  try { spawnSync('sudo', ['pg_ctlcluster', '17', 'main', 'start'], { stdio: 'pipe' }); } catch (e2) {}
+  try { spawnSync('sudo', ['pg_ctlcluster', '16', 'main', 'start'], { stdio: 'pipe' }); } catch (e2) {}
+  /* docker ps … | xargs docker start — بدون پوسته: فهرستِ کانتینرها را خودمان می‌گیریم */
+  try {
+    const ps = spawnSync('docker', ['ps', '-aq', '--filter', 'ancestor=postgres:17'], { encoding: 'utf8', stdio: 'pipe' });
+    if (ps.status === 0) {
+      const ids = String(ps.stdout).split('\n').map((s) => s.trim()).filter(Boolean);
+      for (const id of ids) { try { spawnSync('docker', ['start', id], { stdio: 'pipe' }); } catch (e3) {} }
+    }
+  } catch (e2) {}
   process.exit(1);
 });

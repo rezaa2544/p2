@@ -4,7 +4,7 @@
    هر جهش باید سوئیتِ مربوط را بشکاند؛ وگرنه تست بی‌اثر است.
    اجرا (از ریشهٔ ریپو): node tests/tracing-mutations.js
    ═══════════════════════════════════════════════════════════════════ */
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 
 /* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛ سورس اصلی
@@ -22,48 +22,48 @@ const FILES = {
   'server/index.js': fs.readFileSync('server/index.js', 'utf8'),
 };
 
-const SAMPLING = 'node tests/tracing-sampling.js';
+const SAMPLING = ['tests/tracing-sampling.js'];
 /* TRACING_MUTS=1 یعنی بخشِ B (Jaeger) پرش شود: جهش‌ها باید بدونِ Jaeger بمیرند. */
-const INTEGRATION = 'node tests/tracing-integration.js';
+const INTEGRATION = ['tests/tracing-integration.js'];
 
 const MUTS = [
   {
-    file: 'server/tracing.js', cmd: SAMPLING,
+    file: 'server/tracing.js', args: SAMPLING,
     name: 'M1 پیش‌فرضِ توسعه (always_on) خاموش شود',
     bad: "if(env.NODE_ENV === 'production') return { name: 'parentbased_ratio', arg: 0.1 };\n  return { name: 'always_on', arg: 1 };",
     mut: "if(env.NODE_ENV === 'production') return { name: 'parentbased_ratio', arg: 0.1 };\n  return { name: 'always_off', arg: 0 }; /* MUT */",
     expectFail: 'SMP-sel پیش‌فرضِ توسعه',
   },
   {
-    file: 'server/tracing.js', cmd: SAMPLING,
+    file: 'server/tracing.js', args: SAMPLING,
     name: 'M2 پاک‌سازیِ کوئری (redactQuery) بی‌اثر شود',
     bad: "function redactQuery(qs) {\n  return String(qs || '').split('&').map(function(p){\n    const i = p.indexOf('=');\n    const k = (i < 0 ? p : p.slice(0, i)).trim();\n    if(URL_DROP_KEYS.test(k)) return k + '=[REDACTED]';\n    return p;\n  }).join('&');\n}",
     mut: "function redactQuery(qs) {\n  return String(qs || ''); /* MUT */\n}",
     expectFail: 'RED-v',
   },
   {
-    file: 'server/audit.js', cmd: INTEGRATION,
+    file: 'server/audit.js', args: INTEGRATION,
     name: 'M3 تزریقِ trace_id به ممیزی حذف شود',
     bad: 'if(__tid) entry.trace_id = __tid;',
     mut: 'if(false) entry.trace_id = __tid; /* MUT */',
     expectFail: 'A4b',
   },
   {
-    file: 'server/index.js', cmd: INTEGRATION,
+    file: 'server/index.js', args: INTEGRATION,
     name: 'M4 سرآیندِ X-Trace-Id ثابتِ none شود',
     bad: "res.setHeader('X-Trace-Id', __tid);",
     mut: "res.setHeader('X-Trace-Id', 'none'); /* MUT */",
     expectFail: 'A1 مسیر',
   },
   {
-    file: 'server/tracing.js', cmd: SAMPLING,
+    file: 'server/tracing.js', args: SAMPLING,
     name: 'M6 تشخیص تولید با PAYESH_ENV حذف شود (BUG-5)',
     bad: "if(env.PAYESH_ENV === 'production') return { name: 'parentbased_ratio', arg: 0.1 };",
     mut: "/* MUT: PAYESH_ENV production check removed */",
     expectFail: 'SMP-sel پروداکشنِ PAYESH_ENV',
   },
   {
-    file: 'server/tracing.js', cmd: INTEGRATION,
+    file: 'server/tracing.js', args: INTEGRATION,
     name: 'M5 حالتِ خاموش (TRACING_ENABLED=false) نادیده گرفته شود',
     bad: 'if(!cfg.enabled){ state = disabled; return state; }',
     mut: 'if(false){ state = disabled; return state; } /* MUT */',
@@ -89,7 +89,7 @@ MUTS.forEach((m, i) => {
   let out = '';
   let crashed = false;
   try {
-    out = execSync(m.cmd, {
+    out = execFileSync('node', m.args, {
       stdio: 'pipe',
       timeout: 240000,
       cwd: ROOT,
@@ -111,7 +111,11 @@ MUTS.forEach((m, i) => {
 if (prevAbs) kit.clear(prevAbs); /* نقشهٔ خالی برای شفافیت؛ پاک‌سازیِ واقعی در exit */
 let backGreen = false, finalOut = '';
 try {
-  finalOut = execSync(SAMPLING + ' && ' + INTEGRATION, {
+  finalOut = execFileSync('node', SAMPLING, {
+    stdio: 'pipe', timeout: 420000,
+    env: Object.assign({}, process.env, { TRACING_MUTS: '1' }),
+  }).toString() +
+  execFileSync('node', INTEGRATION, {
     stdio: 'pipe', timeout: 420000,
     env: Object.assign({}, process.env, { TRACING_MUTS: '1' }),
   }).toString();

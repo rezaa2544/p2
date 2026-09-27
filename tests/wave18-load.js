@@ -47,7 +47,7 @@ const http = require('http');
 const { spawn } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
-const { NATIONAL_MODEL, RATIOS, buildModel, generate, counts } = require(path.join(ROOT, 'tools', 'seed-national.js'));
+const { NATIONAL_MODEL, RATIOS, buildModel, generate, counts } = require('../tools/seed-national.js');
 
 const PORT = Number(process.env.PAYESH_TEST_PORT || 9061);
 const PORT_ALT = PORT + 1;

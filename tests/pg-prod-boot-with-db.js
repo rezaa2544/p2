@@ -74,7 +74,7 @@ if (!pg) {
   process.env.DATABASE_URL = PGURL;
   delete process.env.ALLOW_MEMORY_FALLBACK;
 
-  const db = require(path.join(ROOT, 'server', 'db.js'));
+  const db = require('../server/db.js');
   chk('1a policy says production refuses the memory fallback',
     db.backingStorePolicy().production === true && db.backingStorePolicy().allow_memory_fallback === false,
     JSON.stringify(db.backingStorePolicy()));

@@ -16,11 +16,11 @@ const path = require('path');
 const fs = require('fs');
 
 const ROOT = path.resolve(__dirname, '../../../');
-const { createOutbox } = require(path.join(ROOT, 'server/outbox'));
-const { createWorker } = require(path.join(ROOT, 'server/worker'));
-const { createGradeRoutes } = require(path.join(ROOT, 'server/routes/grades'));
-const { createConflicts } = require(path.join(ROOT, 'server/conflicts'));
-const { createSync } = require(path.join(ROOT, 'server/sync'));
+const { createOutbox } = require('../../../server/outbox');
+const { createWorker } = require('../../../server/worker');
+const { createGradeRoutes } = require('../../../server/routes/grades');
+const { createConflicts } = require('../../../server/conflicts');
+const { createSync } = require('../../../server/sync');
 
 /**
  * 1. REAL OCC CONCURRENCY TEST

@@ -32,7 +32,7 @@ process.env.PAYESH_SMS_PROVIDER = 'mock';
 delete process.env.PAYESH_SMS_DRY_RUN;
 delete process.env.PAYESH_SMS_MOCK_FAIL;
 
-const { server, store } = require(path.join(ROOT, 'server', 'index.js'));
+const { server, store } = require('../server/index.js');
 let BASE = null;
 
 async function req(p, m = 'GET', body = null, cookie = null){

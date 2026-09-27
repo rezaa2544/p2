@@ -3,7 +3,7 @@
    تستِ جهش‌مندی — GCِ وضعیتِ داخلیِ سرور (AD 85.2)
    هر جهش باید tests/server14-gc.js را بشکاند؛ وگرنه تست بی‌اثر است.
    ═══════════════════════════════════════════════════════════════════ */
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 
 /* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛ سورس اصلی
@@ -65,12 +65,12 @@ for (const m of MUTS) {
   try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {} /* حفظِ مود (بیتِ اجرایی) */
   prevAbs = abs;
   let out = '', crashed = false;
-  const __r89cmd = 'node tests/server14-gc.js';
-  try { execSync(__r89cmd, { stdio: 'pipe', cwd: ROOT, env: kit.env() }); out = 'PASSED (no failure)'; }
+  const __r89args = ['tests/server14-gc.js'];
+  try { execFileSync('node', __r89args, { stdio: 'pipe', cwd: ROOT, env: kit.env() }); out = 'PASSED (no failure)'; }
   catch (e) {
     out = String(e.stdout || '') + String(e.stderr || '');
     if (out.trim() === '') { /* R89: empty output = process killed (env/memory) — retry once */
-      try { execSync(__r89cmd, { stdio: 'pipe', cwd: ROOT, env: kit.env() }); out = 'PASSED (no failure)'; }
+      try { execFileSync('node', __r89args, { stdio: 'pipe', cwd: ROOT, env: kit.env() }); out = 'PASSED (no failure)'; }
       catch (e2) { out = String(e2.stdout || '') + String(e2.stderr || ''); }
     }
     if (/JavaScript heap out of memory|FATAL|aborting/.test(out) || out.trim() === '') crashed = true;
@@ -83,7 +83,7 @@ for (const m of MUTS) {
 if (prevAbs) kit.clear(prevAbs); /* نقشهٔ خالی برای شفافیت؛ پاک‌سازیِ واقعی در exit */
 let finalOut = '', backGreen = false;
 try {
-  finalOut = execSync('node tests/server14-gc.js', { stdio: 'pipe' }).toString();
+  finalOut = execFileSync('node', ['tests/server14-gc.js'], { stdio: 'pipe' }).toString();
   backGreen = finalOut.includes('همه سبز');
 } catch (e) {
   finalOut = String(e.stdout || '');
@@ -93,7 +93,7 @@ try {
    یک‌بار retry. باگِ واقعیِ GC هر دو بار می‌شکست. */
 if (!backGreen) {
   try {
-    finalOut = execSync('node tests/server14-gc.js', { stdio: 'pipe' }).toString();
+    finalOut = execFileSync('node', ['tests/server14-gc.js'], { stdio: 'pipe' }).toString();
     backGreen = finalOut.includes('همه سبز');
   } catch (e) {
     finalOut = String(e.stdout || '');

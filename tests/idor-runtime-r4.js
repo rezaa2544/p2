@@ -38,7 +38,7 @@ process.env.PAYESH_AUDIT = path.join(TMP, 'audit.log');
 process.env.PAYESH_DEMO_CODE = '1';
 process.env.PAYESH_JWT_SECRET = 'idor-r4-test-secret-0123456789abcdef0123456789';
 
-const { server } = require(path.join(ROOT, 'server', 'index.js'));
+const { server } = require('../server/index.js');
 
 let BASE = '';
 let pass = 0, fail = 0;
@@ -74,7 +74,7 @@ async function login(phone, nationalId) {
 }
 
 /* direct PG (fixture ensure + pin internals) */
-const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
+const { Client } = require('../node_modules/pg');
 async function pg(sql, params) {
   const c = new Client({ connectionString: process.env.DATABASE_URL });
   await c.connect();

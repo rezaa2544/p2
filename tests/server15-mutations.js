@@ -22,7 +22,7 @@
      announcements/LWW) روی versionedMismatch.
    ─────────────────────────────────────────────────────────── */
 'use strict';
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const { session } = require('./helpers/mutant-kit');
@@ -93,11 +93,11 @@ for (const m of MUTS) {
   if (n < 0) { console.log(`  ❌ ${m.name}: الگوی اصلی پیدا نشد در ${m.file}`); continue; }
   kit.mutant(abs, src0.replace(m.bad, m.mut, 1)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
   prevAbs = abs;
-  execSync('node build.js', { stdio: 'pipe', cwd: ROOT, env: kit.env() }); /* build در سایه */
+  execFileSync('node', ['build.js'], { stdio: 'pipe', cwd: ROOT, env: kit.env() }); /* build در سایه */
   let out = '', crashed = false;
-  const __r89cmd = `node --max-old-space-size=${m.heap} ${m.suite}`;
+  const __r89args = ['--max-old-space-size=' + m.heap, m.suite];
   const __run = () => {
-    try { execSync(__r89cmd, { stdio: 'pipe', cwd: ROOT, env: kit.env() }); return 'PASSED (no failure)'; }
+    try { execFileSync('node', __r89args, { stdio: 'pipe', cwd: ROOT, env: kit.env() }); return 'PASSED (no failure)'; }
     catch (e) { return String(e.stdout || '') + String(e.stderr || ''); }
   };
   out = __run();
@@ -132,12 +132,12 @@ console.log('\nبازبینیِ خطِ پایه (بدون جهش و بدون env
 /* R97 — اجرایِ پایانه (بدونِ جهش) تحتِ بار گاهی می‌مرد و استیسهٔ execSync
    کلِ سویت را می‌انداخت (کلاسِ R89): try + یک‌بار retry. baseline هیچ env
    جهش نمی‌گیرد (درسِ baseline تورفته در try — دستهٔ ۳). */
-const runBase = (cmd) => {
-  try { return execSync(cmd, { stdio: 'pipe', cwd: ROOT }).toString(); }
+const runBase = (args) => {
+  try { return execFileSync('node', args, { stdio: 'pipe', cwd: ROOT }).toString(); }
   catch (e) { return String(e.stdout || '') + String(e.stderr || ''); }
 };
-let o1 = runBase('node --max-old-space-size=1500 tests/server15.js');
-if (o1.indexOf('بدون خطا') < 0 && o1.indexOf('✅ 40') < 0) o1 = runBase('node --max-old-space-size=1500 tests/server15.js');
+let o1 = runBase(['--max-old-space-size=1500', 'tests/server15.js']);
+if (o1.indexOf('بدون خطا') < 0 && o1.indexOf('✅ 40') < 0) o1 = runBase(['--max-old-space-size=1500', 'tests/server15.js']);
 console.log('  server15: ' + (o1.split('\n').find(l => l.includes('server15')) || o1.slice(-140)).trim());
 console.log(killed === MUTS.length && envFails === 0 ? `همهٔ ${MUTS.length} جهش کشته شدند ✅` : `فقط ${killed}/${MUTS.length} جهش کشته شد${envFails ? ` + ${envFails} خطای محیطی` : ''} ❌`);
 process.exit(killed === MUTS.length && envFails === 0 ? 0 : 1);

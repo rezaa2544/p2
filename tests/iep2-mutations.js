@@ -3,7 +3,7 @@
    تستِ جهش‌مندی — IEP (بند ۲.۲)
    هر جهش باید tests/iep2.js را بشکاند؛ وگرنه تست بی‌اثر است.
    ═══════════════════════════════════════════════════════════════════ */
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 /* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و
@@ -51,14 +51,14 @@ for (const m of MUTS) {
   const src = FILES[m.file];
   if (src.indexOf(m.bad) < 0) { console.log(`  ❌ ${m.name}: الگو پیدا نشد`); continue; }
   kit.mutant(abs, src.replace(m.bad, m.mut)); /* کپی جدا؛ سورس اصلی دست‌نخورده */
-  execSync('node build.js', { stdio: 'pipe', env: kit.env(), cwd: ROOT });
+  execFileSync('node', ['build.js'], { stdio: 'pipe', env: kit.env(), cwd: ROOT });
   let out = '', crashed = false;
-  const __r89cmd = 'node tests/iep2.js';
-  try { execSync(__r89cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
+  const __r89args = ['tests/iep2.js'];
+  try { execFileSync('node', __r89args, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
   catch (e) {
     out = String(e.stdout || '') + String(e.stderr || '');
     if (out.trim() === '') { /* R89: empty output = process killed (env/memory) — retry once */
-      try { execSync(__r89cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
+      try { execFileSync('node', __r89args, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
       catch (e2) { out = String(e2.stdout || '') + String(e2.stderr || ''); }
     }
     if (/JavaScript heap out of memory|FATAL|aborting/.test(out) || out.trim() === '') crashed = true;
@@ -70,7 +70,7 @@ for (const m of MUTS) {
 }
 
 try {
-  execSync('node tests/iep2.js', { stdio: 'pipe' });
+  execFileSync('node', ['tests/iep2.js'], { stdio: 'pipe' });
   console.log('  ✅ خطِ پایه (بدون جهش) سبز است');
 } catch (e) {
   console.log('  ❌ خطِ پایه شکست — جهش‌ها را دوباره بررسی کنید');

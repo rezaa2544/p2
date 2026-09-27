@@ -49,7 +49,7 @@ main().catch((e) => { console.error(e); process.exit(1); });
 
 async function main() {
   console.log('\n▸ فاز ۲.۱ — ردیس: پیکربندی و اتصال');
-  const { buildRedisConfig } = require(path.join(ROOT, 'server', 'redis.js'));
+  const { buildRedisConfig } = require('../server/redis.js');
 
   /* ── بخش آ: پیکربندی ── */
   console.log('— پیکربندی از محیط —');
@@ -111,7 +111,7 @@ async function main() {
     console.log('    docs/REDIS_CLUSTER_SETUP.md توضیح داده شده است.)');
   } else {
     console.log('\n— اتصال زنده —');
-    const redis = require(path.join(ROOT, 'server', 'redis.js'));
+    const redis = require('../server/redis.js');
     try {
       const initRes = await withDeadline(redis.init(), 8000, 'init');
       chk('L1 init انجام شد', initRes && initRes.ok, JSON.stringify(initRes));
@@ -153,7 +153,7 @@ async function main() {
       await redis.close();
     } catch (e) {
       chk('L1/L2 بدون خطا', false, e.message);
-      try { await require(path.join(ROOT, 'server', 'redis.js')).close(); } catch (e2) {}
+      try { await require('../server/redis.js').close(); } catch (e2) {}
     }
   }
 

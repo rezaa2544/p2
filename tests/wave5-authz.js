@@ -162,7 +162,7 @@ async function main() {
     {
       /* لایهٔ دوم دفاع به‌صورت واحد: حتی اگر مجوزِ نقش دور زده شود،
          inScope دفاتر را برای اداره می‌بندد. */
-      const { inScope, attach } = require(path.join(ROOT, 'server', 'sync.js'));
+      const { inScope, attach } = require('../server/sync.js');
       attach(seed);
       const eoSession = { id: EO.id, role: 'edu_office', school_id: null, office_id: EO.office_id };
       chk('T5b دروازهٔ درونی: دفاتر برای اداره بسته است', inScope(eoSession, 'offices', null, { name: 'x' }) === false);
@@ -231,7 +231,7 @@ async function main() {
 
     console.log('\n— یکپارچگی REST↔مدلِ یکتا (ویو ۵ بخش دوم) —');
     {
-      const policy = require(path.join(ROOT, 'server', 'policy.js'));
+      const policy = require('../server/policy.js');
       const sameSet = (a, b) => a.size === b.size && Array.from(a).every((x) => b.has(x));
       /* صفحهٔ اول + total — کلیدِ مقایسه: total پس از فیلترِ دامنه در REST،
          و عضویتِ کاملِ صفحهٔ اول در مدل. مسیر حافظه روی مرتب‌سازیِ date-DESC
@@ -345,7 +345,7 @@ async function main() {
 
     console.log('\n— builderهایِ PG هم‌قرارداد با مدل (آفلاین) —');
     {
-      const { buildStudentsList, buildUsersList, buildAttendanceList, buildGradesList, buildClassesList } = require(path.join(ROOT, 'server', 'dbquery.js'));
+      const { buildStudentsList, buildUsersList, buildAttendanceList, buildGradesList, buildClassesList } = require('../server/dbquery.js');
       const eoSession = { id: EO.id, role: 'edu_office', school_id: null, office_id: EO.office_id };
       const mgrSession = { id: M1.id, role: 'manager', school_id: M1.school_id };
       const tchSession = { id: T1.id, role: 'teacher', school_id: T1.school_id };

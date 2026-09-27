@@ -13,7 +13,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { execSync, spawnSync } = require('child_process');
+const { spawnSync, execFileSync } = require('child_process');
 const { session } = require('./helpers/mutant-kit');
 const kit = session('preapp2-mut-');
 const ROOT = path.join(__dirname, '..');
@@ -22,7 +22,7 @@ kit.remapBuildOutputs();
 let pass = 0, fail = 0, envFails = 0;
 function chk(c, m) { if (c) { pass++; console.log('  ✅ ' + m); } else { fail++; console.log('  ❌ ' + m); } }
 function buildShadow() {
-  try { execSync(process.execPath + ' build.js', { stdio: 'pipe', cwd: ROOT, env: kit.env(), timeout: 240000 }); return true; }
+  try { execFileSync('node', ['build.js'], { stdio: 'pipe', cwd: ROOT, env: kit.env(), timeout: 240000 }); return true; }
   catch (e) { return false; }
 }
 const runOnce = (suite) => spawnSync(process.execPath, [suite], { cwd: ROOT, encoding: 'utf8', stdio: 'pipe', timeout: 300000, env: kit.env() });

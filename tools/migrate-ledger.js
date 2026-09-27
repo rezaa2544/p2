@@ -119,7 +119,12 @@ function discoverMigrationFiles() {
     }
     seenVersions.set(version, file);
 
-    const fullPath = path.join(MIGRATIONS_DIR, file);
+    /* 🔴 مرزِ مسیر: نامِ فایل باید دقیقاً داخلِ MIGRATIONS_DIR حل شود
+       (regex بالا به‌تنهایی مسیرهای نسبی شامل «..» را رد نمی‌کند). */
+    const fullPath = path.resolve(MIGRATIONS_DIR, file);
+    if (path.dirname(fullPath) !== path.resolve(MIGRATIONS_DIR)) {
+      throw new Error(`Invalid migration file name (escapes migrations dir): ${file}`);
+    }
     const content = fs.readFileSync(fullPath, 'utf8');
     const checksum = computeChecksum(content);
     return {
@@ -139,6 +144,16 @@ function canRunPsql() {
   } catch (_) {
     return false;
   }
+}
+
+/* 🔴 مرزِ ورودی: psql به‌عنوانِ آرگومانِ موقعیتیِ نخست URL را می‌گیرد،
+   پس باید حتماً با اسکیمایِ postgres شروع شود؛ در غیرِ این صورت یک
+   رشتهٔ شروعشونده با «-» به‌جای URL، گزینهٔ دستور تفسیر می‌شود. */
+function psqlUrlArg(url) {
+  if (!/^postgres(ql)?:\/\//.test(String(url))) {
+    throw new Error('refusing to pass non-postgres URL to psql');
+  }
+  return url;
 }
 
 /**
@@ -199,7 +214,7 @@ async function migrateUp(client, options = {}) {
         const scriptSql = hasInternalTx
           ? `${cleanedContent}\n${ledgerSql}`
           : `BEGIN;\n${cleanedContent}\n${ledgerSql}COMMIT;\n`;
-        execFileSync('psql', [pgUrl, '-v', 'ON_ERROR_STOP=1', '-q'], { input: scriptSql, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' });
+        execFileSync('psql', [psqlUrlArg(pgUrl), '-v', 'ON_ERROR_STOP=1', '-q'], { input: scriptSql, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' });
       } else {
         await client.query('BEGIN');
         await client.query(prepareMigrationSql(file.content));
@@ -229,7 +244,7 @@ VALUES ('${file.version.replace(/'/g, "''")}', '${file.name.replace(/'/g, "''")}
 ON CONFLICT (version) DO NOTHING;
 COMMIT;
 `;
-          execFileSync('psql', [pgUrl, '-v', 'ON_ERROR_STOP=1', '-q'], {
+          execFileSync('psql', [psqlUrlArg(pgUrl), '-v', 'ON_ERROR_STOP=1', '-q'], {
             input: recoverySql, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8'
           });
           lastAppliedIndex = i;
@@ -295,7 +310,7 @@ async function migrateDown(client, targetVersion = null, options = {}) {
       const scriptSql = hasInternalTx
         ? `${cleanedDown}\n${ledgerSql}`
         : `BEGIN;\n${cleanedDown}\n${ledgerSql}COMMIT;\n`;
-      execFileSync('psql', [pgUrl, '-v', 'ON_ERROR_STOP=1', '-q'], { input: scriptSql, stdio: ['pipe', 'inherit', 'inherit'] });
+      execFileSync('psql', [psqlUrlArg(pgUrl), '-v', 'ON_ERROR_STOP=1', '-q'], { input: scriptSql, stdio: ['pipe', 'inherit', 'inherit'] });
     } else {
       await client.query('BEGIN');
       await client.query(prepareMigrationSql(downContent));

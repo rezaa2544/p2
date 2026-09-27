@@ -17,7 +17,7 @@ const { spawn } = require('child_process');
 const http = require('http');
 
 const ROOT = path.join(__dirname, '..');
-const { checkOcc, bump } = require(path.join(ROOT, 'server', 'occ.js'));
+const { checkOcc, bump } = require('../server/occ.js');
 
 let pass = 0, fail = 0;
 function chk(name, ok, detail) {

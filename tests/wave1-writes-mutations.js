@@ -12,7 +12,7 @@
    بدون build (سوئیت مستقیماً ماژول‌هایِ server را require می‌کند).
    ───────────────────────────────────────────────────────────── */
 'use strict';
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 /* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و
@@ -21,7 +21,7 @@ const { session } = require('./helpers/mutant-kit');
 const kit = session('w1w-mut-');
 const ROOT = path.join(__dirname, '..');
 
-const SUITE = 'node tests/wave1-writes.js';
+const SUITE = ['tests/wave1-writes.js'];
 const MUTS = [
   {
     file: 'server/sms.js',
@@ -97,7 +97,7 @@ for (const m of MUTS) {
   }
   kit.mutant(p, orig.replace(m.bad, m.mut)); /* کپی جدا؛ سورس اصلی دست‌نخورده */
   let out = '', code = 0;
-  try { out = execSync(SUITE, { stdio: 'pipe', env: kit.env(), cwd: ROOT }).toString(); }
+  try { out = execFileSync('node', SUITE, { stdio: 'pipe', env: kit.env(), cwd: ROOT }).toString(); }
   catch (e) { out = ((e.stdout || '') + '\n' + (e.stderr || '')).toString(); code = e.status; }
   const failed = code !== 0;
   const sawFail = out.indexOf('❌') >= 0 && out.indexOf(m.expectFail) >= 0;

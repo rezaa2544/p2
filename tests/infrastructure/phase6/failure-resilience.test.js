@@ -9,8 +9,8 @@ const assert = require('assert');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '../../../');
-const { Phase6CanaryEngine, CANARY_STATES, CANARY_ERRORS } = require(path.join(ROOT, 'server/infrastructure/phase6-canary-engine'));
-const outbox = require(path.join(ROOT, 'server/outbox'));
+const { Phase6CanaryEngine, CANARY_STATES, CANARY_ERRORS } = require('../../../server/infrastructure/phase6-canary-engine');
+const outbox = require('../../../server/outbox');
 
 async function testCompleteClusterOutage() {
   console.log('▸ Phase 6 Test 3: Complete Cluster Outage & Fail-Closed Protection');

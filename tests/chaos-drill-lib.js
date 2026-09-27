@@ -3,9 +3,9 @@
    chaos-drill-lib.js — هارنسِ مشترکِ drillهای آشوب (چت ۵، P0-5)
 
    زیرساختِ واقعی را بالا می‌آورد:
-     • PostgreSQL 17 واقعی (initdb + pg_ctl؛ دیتابیسِ تازه در هر drill)
-     • Redis واقعی (redis-server با پورتِ آزاد)
-     • یک نمونهٔ API (node server/index.js) با PG/Redis وصل
+     • پایگاه‌دادهٔ PostgreSQL 17 واقعی (دیتابیسِ تازه در هر drill)
+     • حافظهٔ Redis واقعی روی پورتِ آزاد
+     • یک نمونهٔ API سرور روی پورتِ آزاد با PG/Redis وصل
    و ابزارهای سنجش می‌دهد: http با jar، login، ack-write، readiness/liveness،
    متریک‌های Prometheus، sha256، سنجشِ زمان.
 
@@ -25,7 +25,19 @@ const { spawn, execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const PG_BIN = process.env.CHAOS_PG_BIN || '/usr/lib/postgresql/17/bin';
-const pgBin = (n) => path.join(PG_BIN, n);
+/* 🔴 دروازهٔ امنیتی: مسیرِ کاملِ آمده از env قابل اجرا نیست (untrusted program
+   selection). فقط نامِ مجازِ literal اجرا می‌شود. در محیطِ CI لینوکس،
+   ابزارها در PG_BIN هستند و مسیرِ مطلقِ پیش‌فرض مجاز است؛ در غیرِ آن صورت
+   نامِ ساده از PATH حل می‌شود. */
+const PG_TOOLS = new Set(['initdb', 'pg_ctl', 'createdb', 'psql', 'pg_dump', 'pg_isready']);
+const PG_DEFAULT_BIN = '/usr/lib/postgresql/17/bin';
+function pgBin(n) {
+  if (!PG_TOOLS.has(n)) throw new Error('disallowed pg tool: ' + n);
+  const dir = (PG_BIN === PG_DEFAULT_BIN) ? PG_DEFAULT_BIN : null;
+  if (dir && fs.existsSync(path.join(dir, n))) return path.join(dir, n);
+  return n;
+}
+const pgBinPath = (n) => path.join(PG_BIN, n);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const sha256 = (b) => crypto.createHash('sha256').update(b).digest('hex');
 const sha256File = (p) => sha256(fs.readFileSync(p));
@@ -37,10 +49,12 @@ const CHAOS_JWT_SECRET = crypto.randomBytes(32).toString('hex');
 const CHAOS_METRICS_TOKEN = crypto.randomBytes(24).toString('hex');
 
 function have(bin) {
-  try { execFileSync('sh', ['-c', 'command -v ' + bin], { stdio: 'ignore' }); return true; } catch (e) { return false; }
+  /* command -v مستقیم — فقط نامِ دودوییِ مجاز، بدون ارسالِ رشته به sh -c */
+  if (!PG_TOOLS.has(bin) && bin !== 'redis-server' && bin !== 'redis-cli') return false;
+  try { execFileSync('command', ['-v', bin], { stdio: 'ignore' }); return true; } catch (e) { return false; }
 }
 function infraAvailable() {
-  return { postgres: fs.existsSync(pgBin('initdb')), redis: have('redis-server'), redisCli: have('redis-cli') };
+  return { postgres: fs.existsSync(pgBinPath('initdb')), redis: have('redis-server'), redisCli: have('redis-cli') };
 }
 /** آیا این محیط tmpfs نصب می‌کند؟ (فشارِ دیسک به آن نیاز دارد) */
 function canMountTmpfs() {
@@ -283,8 +297,13 @@ class Infra {
     // اسکیما + مهاجرت‌ها (مسیر رسمی)
     const log = [];
     const runSql = (file) => {
-      const r = execFileSync('sh', ['-c', 'psql -h 127.0.0.1 -p ' + it.pgPort + ' -U postgres -d payesh -v ON_ERROR_STOP=0 -f ' + JSON.stringify(file) + ' 2>&1 || true'],
-        { encoding: 'utf8', timeout: 60000 });
+      /* 🔴 بردارِ آرگومان به‌جای sh -c: psql مستقیم با آرگومان‌های جدا فراخوانی
+         می‌شود — دیگر رشته‌ای به shell سپرده نمی‌شود. خطاها از stdout/catch. */
+      let r = '';
+      try {
+        r = execFileSync(pgBin('psql'), ['-h', '127.0.0.1', '-p', String(it.pgPort), '-U', 'postgres', '-d', 'payesh', '-v', 'ON_ERROR_STOP=0', '-f', file],
+          { encoding: 'utf8', timeout: 60000 });
+      } catch (e) { r = (e && (e.stdout || e.stderr || e.message)) || ''; }
       const errs = r.split('\n').filter((l) => /ERROR|FATAL/.test(l));
       if (errs.length) log.push(path.basename(file) + ': ' + errs.slice(0, 2).join(' | '));
     };
@@ -434,12 +453,22 @@ async function startApi(opts) {
   const env = apiEnv(infra, Object.assign({ PORT: String(port) }, opts.extraEnv || {}));
   const logFile = path.join(infra.dir, 'api-' + port + '.log');
   const out = fs.openSync(logFile, 'a');
-  const cmd = opts.supervisor
-    ? 'while :; do ' + JSON.stringify(process.execPath) + ' server/index.js; echo "[supervisor] api exited rc=$? at $(date -u +%H:%M:%S.%3N)"; sleep 0.05; done'
-    : JSON.stringify(process.execPath) + ' server/index.js';
-  /* detached:true ⇒ گروهِ پروسهٔ مستقل؛ با kill(-pid) هم پوسته و هم node کشته می‌شوند
-     (وگرنه sh می‌مرد و node یتیم می‌ماند — نشتیِ مشاهده‌شده در باتریِ اول). */
-  const proc = spawn('sh', ['-c', cmd], { cwd: ROOT, env, stdio: ['ignore', out, out], detached: true });
+  /* 🔴 سخت‌گیریِ دروازهٔ امنیتی: حلقهٔ بازبه‌راه‌اندازی دیگر در پوسته نیست؛
+     node مستقیماً با آرگومان‌های اسکریپت‌ناپذیر اجرا می‌شود و بازبه‌راه‌اندازی
+     توسطِ خودِ هارنس مدیریت می‌شود. detached:true ⇒ گروهِ پروسهٔ مستقل
+     (kill(-pid) فقط node را می‌کشد). */
+  let proc = null;
+  let stopped = false;
+  const launch = () => {
+    proc = spawn(process.execPath, ['server/index.js'], { cwd: ROOT, env, stdio: ['ignore', out, out], detached: true });
+    if (opts.supervisor) {
+      proc.on('exit', (code) => {
+        try { fs.appendFileSync(logFile, '[supervisor] api exited rc=' + code + ' at ' + nowIso() + '\n'); } catch (e) {}
+        if (!stopped) setTimeout(launch, 50);
+      });
+    }
+  };
+  launch();
   const api = {
     port, proc, logFile, pid: null, startedAt: nowIso(),
     logs() { try { return fs.readFileSync(logFile, 'utf8'); } catch (e) { return ''; } },
@@ -458,7 +487,7 @@ async function startApi(opts) {
       return null;
     },
     kill9(pid) { try { process.kill(pid || api.pid, 'SIGKILL'); return true; } catch (e) { return false; } },
-    stop() { try { process.kill(-proc.pid, 'SIGKILL'); } catch (e) {} try { proc.kill('SIGKILL'); } catch (e) {} }
+    stop() { stopped = true; try { process.kill(-proc.pid, 'SIGKILL'); } catch (e) {} try { proc.kill('SIGKILL'); } catch (e) {} }
   };
   const r = await api.waitReady(opts.timeoutMs || 25000);
   if (!r.ok) { api.stop(); throw new Error('API بالا نیامد (' + r.ms + 'ms) — لاگ: ' + api.logs().slice(-1200)); }

@@ -20,7 +20,7 @@ const path = require('path');
 const http = require('http');
 
 const ROOT = path.join(__dirname, '..');
-const waf = require(path.join(ROOT, 'server', 'waf.js'));
+const waf = require('../server/waf.js');
 
 let green = 0, red = 0;
 function chk(name, ok, info) {

@@ -8,7 +8,7 @@
    M4 اعمال از buckets به unplaced برود ← O5 (هیچ‌کس چیده نشود)
    M5 شمارشِ چیده‌نشده‌ها در enroll-paid صفر شود ← O6 (توست)
    ───────────────────────────────────────────────────────────── */
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 /* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و
@@ -51,14 +51,14 @@ for (const m of MUTS) {
   const src0 = fs.readFileSync(abs, 'utf8');
   if (src0.indexOf(m.bad) < 0) { console.log(`  ❌ ${m.name}: الگو پیدا نشد در ${m.file}`); continue; }
   kit.mutant(abs, src0.replace(m.bad, m.mut)); /* کپی جدا؛ سورس اصلی دست‌نخورده */
-  execSync('node build.js', { stdio: 'pipe', env: kit.env(), cwd: ROOT });
+  execFileSync('node', ['build.js'], { stdio: 'pipe', env: kit.env(), cwd: ROOT });
   let out = '', crashed = false;
-  const cmd = 'node --max-old-space-size=1500 ' + SUITE;
-  try { execSync(cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
+  const args = ['--max-old-space-size=1500', SUITE];
+  try { execFileSync('node', args, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
   catch (e) {
     out = String(e.stdout || '') + String(e.stderr || '');
     if (out.trim() === '') {
-      try { execSync(cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
+      try { execFileSync('node', args, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
       catch (e2) { out = String(e2.stdout || '') + String(e2.stderr || ''); }
     }
     if (/JavaScript heap out of memory|FATAL|aborting/.test(out) || out.trim() === '') crashed = true;
@@ -74,7 +74,7 @@ for (const m of MUTS) {
 }
 let backGreen = false, finalOut = '';
 try {
-  finalOut = execSync('node --max-old-space-size=1500 ' + SUITE, { stdio: 'pipe' }).toString(); /* پایه: بدون env */
+  finalOut = execFileSync('node', ['--max-old-space-size=1500', SUITE], { stdio: 'pipe' }).toString(); /* پایه: بدون env */
   backGreen = /placement-overflow: \d+\/\d+ {2}✅/.test(finalOut);
 } catch (e) { finalOut = String(e.stdout || '') + String(e.stderr || ''); }
 console.log(`\nجهش: ${killed}/${MUTS.length} کشته · خطِ پایه: ${backGreen ? 'سبز ✅' : 'قرمز ❌'} · خطایِ محیطی: ${envFails}`);

@@ -54,7 +54,7 @@ if(MODE === 'prod-noredis'){
   process.env.ALLOW_MEMORY_FALLBACK = '1';
   /* پورتِ ۱ = ECONNREFUSEDِ قطعی و فوری */
   process.env.REDIS_URL = 'redis://127.0.0.1:1';
-  require(path.join(ROOT, 'server', 'index.js'));
+  require('../server/index.js');
   /* cache.init باید پیش از این تایمر fail-fast کند (exit 1). اگر زنده
      بمانیم یعنی fail-fast شکسته — با کدِ ۳ شکستِ آزمون. */
   setTimeout(() => {
@@ -69,7 +69,7 @@ process.on('uncaughtException', (e) => {
   process.exit(4);
 });
 
-const { server } = require(path.join(ROOT, 'server', 'index.js'));
+const { server } = require('../server/index.js');
 server.listen(0, () => {
   console.log('READY:' + server.address().port);
 });

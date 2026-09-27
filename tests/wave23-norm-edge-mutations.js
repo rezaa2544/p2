@@ -70,7 +70,7 @@ const EXP = {
 const sha = (p) => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 
 async function connect(dbName) {
-  const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
+  const { Client } = require('../node_modules/pg');
   const base = process.env.DATABASE_URL;
   const c = new Client({ connectionString: dbName ? base.replace(/\/[^/]*$/, '/' + dbName) : base });
   await c.connect();
@@ -110,7 +110,7 @@ async function seed() {
 
 /* ── اوراکل: سه کوئریِ تحصیلی را اجرا و با اعدادِ انتظار مقایسه می‌کند ── */
 async function oracle() {
-  const rs = require(path.join(ROOT, 'server', 'reports-sql.js'));
+  const rs = require('../server/reports-sql.js');
   const c = await connect(DB);
   let bad = 0;
   const eq = (label, got, want) => {

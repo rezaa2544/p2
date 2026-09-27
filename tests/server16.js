@@ -240,7 +240,7 @@ async function main() {
   chk('M3d teacher: users.phone → role_denied (خطِ اول)', res0(r).code === 'role_denied', JSON.stringify(res0(r)));
   r = await syncOps(C.st, [{ t: 'upd', c: 'users', id: CAST.st.id, by: CAST.st.id, data: { national_id: '9999999999' } }]);
   chk('M3e student: users.national_id → role_denied (خطِ اول)', res0(r).code === 'role_denied', JSON.stringify(res0(r)));
-  const { fieldGate } = require(path.join(ROOT, 'server', 'sync.js'));
+  const { fieldGate } = require('../server/sync.js');
   chk('M3e2 fieldGate: superadmin روی users.phone آزاد است (defense-in-depth معاف)',
     fieldGate({ t: 'upd', c: 'users', id: 1, data: { phone: '09990000000' } }, { role: 'superadmin', id: 1, school_id: null, name: 'x' }) === null);
   r = await syncOps(C.m1, [{ t: 'ins', c: 'grades', by: CAST.m1.id, data: { school_id: 1, student_id: CAST.st.id, class_id: 1, subject_id: 1, term: 'x', score: 1, version: 999999 } }]);

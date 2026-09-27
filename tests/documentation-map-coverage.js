@@ -25,7 +25,7 @@ grp('هشت بخش اصلی');
   .forEach(([num, title]) => chk('بخش ' + num + ': ' + title, doc.includes('## بخش ' + num + ': ' + title)));
 
 grp('سازگاری زنده با کاتالوگ');
-const tool = require(path.join(ROOT, 'tools/docs-metadata.js'));
+const tool = require('../tools/docs-metadata.js');
 const entries = tool.buildCatalog();
 /* C6-02 (board 2026-09-17): جمعِ یخ‌زدهٔ نقشه = درخت پایدار — اسناد daily-*
    (سوابقِ عملیاتیِ متغیر) خارج از شمار‌اند، هم‌ساز با

@@ -17,8 +17,8 @@ delete process.env.NODE_ENV;
 delete process.env.REDIS_URL;
 
 const ROOT = path.join(__dirname, '..');
-const redis = require(path.join(ROOT, 'server', 'redis.js'));
-const { parseInfo, collect, renderText } = require(path.join(ROOT, 'tools', 'redis-metrics.js'));
+const redis = require('../server/redis.js');
+const { parseInfo, collect, renderText } = require('../tools/redis-metrics.js');
 
 let pass = 0, fail = 0;
 function chk(name, ok, detail) {

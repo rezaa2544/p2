@@ -28,7 +28,7 @@ if(MODE !== 'nocfg') process.env.PAYESH_SMS_PROVIDER = 'mock';
 if(MODE === 'cap') process.env.PAYESH_SMS_MAX_PER_DAY = '1';
 if(MODE === 'dry') process.env.PAYESH_SMS_DRY_RUN = '1';
 
-const { server, store } = require(path.join(ROOT, 'server', 'index.js'));
+const { server, store } = require('../server/index.js');
 const SA = store.users.find(u => u.role === 'superadmin');
 
 server.listen(0, async () => {

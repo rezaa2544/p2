@@ -11,7 +11,7 @@
    M7 مقایسهٔ hash همیشه-درست (خود-مقایسه) ← R6
    (تغییرها فقط server/ است — نیازی به build نیست.)
    ───────────────────────────────────────────────────────────── */
-const { execSync, spawnSync } = require('child_process');
+const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 /* BH-mut (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی هرگز بازنویسی نمی‌شود. */
@@ -75,7 +75,7 @@ for (const m of MUTS) {
     if (/FATAL|JavaScript heap out of memory|aborting/.test(out) || out.trim() === '') crashed = true;
     else if (r.status === 0) out = 'PASSED (no failure)';
   }
-  try { execSync('pkill -f "[s]erver/index.js"'); } catch (e) {}
+  try { spawnSync('pkill', ['-f', '[s]erver/index.js']); } catch (e) {}
   if (crashed) {
     envFails++;
     console.log(`  ⚠️ ${m.name} — خطایِ محیطی (کرش/بی‌خروجی)، نه «زنده ماندن»`);
@@ -90,7 +90,7 @@ const b = spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8' }); /* بدو
 finalOut = String((b.stdout || '') + (b.stderr || ''));
 kit.cleanup();
 backGreen = b.status === 0 && /otp-ratelimit: \d+ ✅ \/ 0 ❌/.test(finalOut);
-try { execSync('pkill -f "[s]erver/index.js"'); } catch (e) {}
+try { spawnSync('pkill', ['-f', '[s]erver/index.js']); } catch (e) {}
 console.log(`\nجهش: ${killed}/${MUTS.length} کشته · خطِ پایه: ${backGreen ? 'سبز ✅' : 'قرمز ❌'} · خطایِ محیطی: ${envFails}`);
 const pass = killed === MUTS.length && backGreen && envFails === 0;
 console.log(pass ? 'همهٔ جهش‌ها کشته شدند ✅' : 'جهش‌مندی ناقص ❌');

@@ -8,7 +8,7 @@
    M2  فایل هرگز دوباره خوانده نشود (snapshotِ نخست کش می‌ماند)
    M3  timeoutِ صبر به ۱ میلی‌ثانیه برسد
    ═══════════════════════════════════════════════════════════════════ */
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 /* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و
    بازنویسی نمی‌شود — بازگردانیِ دستی و rebuildِ پایانی حذف شدند. */
@@ -42,7 +42,7 @@ const MUTS = [
 function runSim(e) {
   let r;
   try {
-    const out = execSync('node tests/sim_full3.js', { cwd: ROOT, encoding: 'utf8', stdio: 'pipe', env: e });
+    const out = execFileSync('node', ['tests/sim_full3.js'], { cwd: ROOT, encoding: 'utf8', stdio: 'pipe', env: e });
     r = { code: 0, out };
   } catch (e) {
     r = { code: e.status || 1, out: String(e.stdout || '') + String(e.stderr || '') };
@@ -51,7 +51,7 @@ function runSim(e) {
      count that as a mutation kill (reverse false-positive of the 15 suites) */
   if (String(r.out || '').trim() === '') {
     try {
-      const out = execSync('node tests/sim_full3.js', { cwd: ROOT, encoding: 'utf8', stdio: 'pipe', env: e });
+      const out = execFileSync('node', ['tests/sim_full3.js'], { cwd: ROOT, encoding: 'utf8', stdio: 'pipe', env: e });
       r = { code: 0, out };
     } catch (e2) {
       r = { code: e2.status || 1, out: String(e2.stdout || '') + String(e2.stderr || '') };

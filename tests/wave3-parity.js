@@ -95,11 +95,11 @@ async function main() {
   const noop = () => {};
   const mkCtx = (db) => ({ store, db, audit: noop, markDirty: noop, ids: { nextId: async () => 1 }, deleter: {} });
 
-  const { createStudentRoutes } = require(path.join(__dirname, '..', 'server', 'routes', 'students.js'));
-  const { createAttendanceRoutes } = require(path.join(__dirname, '..', 'server', 'routes', 'attendance.js'));
-  const { createGradeRoutes } = require(path.join(__dirname, '..', 'server', 'routes', 'grades.js'));
-  const { createClassRoutes } = require(path.join(__dirname, '..', 'server', 'routes', 'classes.js'));
-  const { createUserRoutes } = require(path.join(__dirname, '..', 'server', 'routes', 'users.js'));
+  const { createStudentRoutes } = require('../server/routes/students.js');
+  const { createAttendanceRoutes } = require('../server/routes/attendance.js');
+  const { createGradeRoutes } = require('../server/routes/grades.js');
+  const { createClassRoutes } = require('../server/routes/classes.js');
+  const { createUserRoutes } = require('../server/routes/users.js');
 
   const js = {
     students: createStudentRoutes(mkCtx(deadDb)).getStudentsList,

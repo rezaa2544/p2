@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* تستِ جهش‌مندی برای تکمیل‌های مالی — هر جهش باید حداقل یک تست را بکشد */
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 /* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و index.html هرگز
@@ -45,14 +45,14 @@ for (const m of MUTS) {
   const n = SRC0.indexOf(m.bad);
   if (n < 0) { console.log(`  ❌ ${m.name}: الگوی اصلی پیدا نشد`); continue; }
   kit.mutant(path.join(ROOT, P), SRC0.replace(m.bad, m.mut)); /* کپی جدا */
-  execSync('node build.js', { stdio: 'pipe', env: kit.env(), cwd: ROOT });
+  execFileSync('node', ['build.js'], { stdio: 'pipe', env: kit.env(), cwd: ROOT });
   let out = '', crashed = false;
-  const __r89cmd = 'node tests/finance2.js';
-  try { execSync(__r89cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
+  const __r89args = ['tests/finance2.js'];
+  try { execFileSync('node', __r89args, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
   catch (e) {
     out = String(e.stdout || '') + String(e.stderr || '');
     if (out.trim() === '') { /* R89: empty output = process killed (env/memory) — retry once */
-      try { execSync(__r89cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
+      try { execFileSync('node', __r89args, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
       catch (e2) { out = String(e2.stdout || '') + String(e2.stderr || ''); }
     }
     if (/JavaScript heap out of memory|FATAL|aborting/.test(out) || out.trim() === '') crashed = true;
@@ -63,7 +63,7 @@ for (const m of MUTS) {
   console.log(`  ${killedThis ? '✅' : '❌'} ${m.name} — ${killedThis ? 'کشته شد' + (crashed ? ' (مرگِ فرآیند)' : '') : 'زنده ماند! (خطا: ' + (out.split('\n').find(l => l.includes('❌')) || out.slice(0, 120)) + ')'}`);
   if (killedThis) killed++;
 }
-const out = execSync('node tests/finance2.js', { stdio: 'pipe' }).toString();
+const out = execFileSync('node', ['tests/finance2.js'], { stdio: 'pipe' }).toString();
 console.log(out.split('\n').find(l => l.includes('موفق')));
 console.log(killed === MUTS.length ? `همهٔ ${MUTS.length} جهش کشته شدند ✅` : `فقط ${killed}/${MUTS.length} جهش کشته شد ❌`);
 process.exit(killed === MUTS.length ? 0 : 1);

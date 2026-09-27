@@ -69,7 +69,7 @@ function findPgBin() {
   const cand = [];
   if (process.env.PG_LIVE_BIN) cand.push(process.env.PG_LIVE_BIN);
   try {
-    const w = cp.execSync('which initdb', { stdio: 'pipe' }).toString().trim().split('\n')[0];
+    const w = cp.execFileSync('which', ['initdb'], { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w) cand.push(path.dirname(w));
   } catch (e) {}
   for (const d of cand) {
@@ -92,13 +92,15 @@ const P_DATA = '/tmp/w10gate-primary-' + process.pid;
 const R_DATA = '/tmp/w10gate-replica-' + process.pid;
 const ROOT = path.join(__dirname, '..');
 
+function pgEnv() { return Object.assign({}, process.env, { PATH: BIN + path.delimiter + (process.env.PATH || '') }); }
+
 function pgctl(args, dir) {
-  return cp.execSync(path.join(BIN, 'pg_ctl') + ' -D ' + dir + ' ' + args,
-    { stdio: 'pipe', timeout: 60000 }).toString();
+  return cp.execFileSync('pg_ctl', ['-D', dir].concat(args),
+    { stdio: 'pipe', timeout: 60000, env: pgEnv() }).toString();
 }
 function cleanup() {
   for (const d of [R_DATA, P_DATA]) {
-    try { pgctl('stop -m immediate -w', d); } catch (e) {}
+    try { pgctl(['stop', '-m', 'immediate', '-w'], d); } catch (e) {}
     try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {}
   }
 }
@@ -107,13 +109,13 @@ process.on('SIGINT', () => { cleanup(); process.exit(130); });
 
 async function bootPair(Client) {
   /* primary */
-  cp.execSync(path.join(BIN, 'initdb') + ' -D ' + P_DATA + ' -U payesh --auth=trust -E UTF8',
-    { stdio: 'pipe', timeout: 120000 });
+  cp.execFileSync('initdb', ['-D', P_DATA, '-U', 'payesh', '--auth=trust', '-E', 'UTF8'],
+    { stdio: 'pipe', timeout: 120000, env: pgEnv() });
   fs.appendFileSync(P_DATA + '/postgresql.conf',
     "\nport = " + P_PORT + "\nlisten_addresses = '127.0.0.1'\nunix_socket_directories = '" + P_DATA + "'\n" +
     'wal_level = replica\nmax_wal_senders = 4\nmax_replication_slots = 4\nhot_standby = on\n');
   fs.appendFileSync(P_DATA + '/pg_hba.conf', '\nhost replication payesh 127.0.0.1/32 trust\n');
-  pgctl('start -w -l ' + P_DATA + '/log.txt', P_DATA);
+  pgctl(['start', '-w', '-l', P_DATA + '/log.txt'], P_DATA);
 
   const admin = new Client({ host: '127.0.0.1', port: P_PORT, user: 'payesh', database: 'postgres' });
   await admin.connect();
@@ -154,16 +156,16 @@ async function bootPair(Client) {
   await mig.end();
 
   /* replica: shutdown تمیز → cold copy → standby.signal (روشِ مستندِ PG) */
-  pgctl('stop -m fast -w', P_DATA);
-  cp.execSync('cp -a ' + P_DATA + ' ' + R_DATA);
+  pgctl(['stop', '-m', 'fast', '-w'], P_DATA);
+  cp.execFileSync('cp', ['-a', P_DATA, R_DATA], { stdio: 'pipe' });
   try { fs.rmSync(R_DATA + '/postmaster.pid'); } catch (e) {}
   fs.writeFileSync(R_DATA + '/standby.signal', '');
   fs.appendFileSync(R_DATA + '/postgresql.conf',
     "\nport = " + R_PORT + "\nunix_socket_directories = '" + R_DATA + "'\n" +
     "primary_conninfo = 'host=127.0.0.1 port=" + P_PORT + " user=payesh'\n");
   fs.chmodSync(R_DATA, 0o700);
-  pgctl('start -w -l ' + P_DATA + '/log.txt', P_DATA);
-  pgctl('start -w -l ' + R_DATA + '/log.txt', R_DATA);
+  pgctl(['start', '-w', '-l', P_DATA + '/log.txt'], P_DATA);
+  pgctl(['start', '-w', '-l', R_DATA + '/log.txt'], R_DATA);
 }
 
 async function main() {
@@ -214,7 +216,7 @@ async function main() {
   process.env.DATABASE_URL = P_URL;
   process.env.READ_DATABASE_URL = R_URL;
   delete require.cache[require.resolve(path.join(ROOT, 'server', 'db.js'))];
-  const db = require(path.join(ROOT, 'server', 'db.js'));
+  const db = require('../server/db.js');
   const initRes = await db.init({});
   db.__setReprobeDelayForTests(300); /* S3-1 در تست تند بچرخد */
   chk('D1 init: driver=postgres و read_replica=true و isReplicaActive()',
@@ -228,7 +230,7 @@ async function main() {
 
   /* D3: رپلیکا را بخوابان — fallback بدونِ خطا */
   await rc.end(); rc = null;
-  pgctl('stop -m fast -w', R_DATA);
+  pgctl(['stop', '-m', 'fast', '-w'], R_DATA);
   let fbRow = null, fbErr = null;
   try { fbRow = (await db.queryRead('SELECT pg_is_in_recovery() AS r')).rows[0].r; }
   catch (e) { fbErr = e; }
@@ -237,7 +239,7 @@ async function main() {
   chk('D3b پس از شکست، مسیریابی به رپلیکا می‌خوابد (isReplicaActive=false)', db.isReplicaActive() === false);
 
   /* D4: رپلیکا برگردد — reprobeِ S3-1 مسیریابی را برمی‌گرداند */
-  pgctl('start -w -l ' + R_DATA + '/log.txt', R_DATA);
+  pgctl(['start', '-w', '-l', R_DATA + '/log.txt'], R_DATA);
   let recovered = false;
   for (let i = 0; i < 60 && !recovered; i++) { recovered = db.isReplicaActive(); if (!recovered) await sleep(250); }
   const backRow = recovered ? (await db.queryRead('SELECT pg_is_in_recovery() AS r')).rows[0].r : null;

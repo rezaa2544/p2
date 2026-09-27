@@ -15,10 +15,10 @@ delete process.env.NODE_ENV;
 delete process.env.REDIS_URL;
 
 const ROOT = path.join(__dirname, '..');
-const redis = require(path.join(ROOT, 'server', 'redis.js'));
-const cache = require(path.join(ROOT, 'server', 'cache.js'));
-const rateLimit = require(path.join(ROOT, 'server', 'rate-limit.js'));
-const { classifyKey, audit } = require(path.join(ROOT, 'tools', 'redis-audit.js'));
+const redis = require('../server/redis.js');
+const cache = require('../server/cache.js');
+const rateLimit = require('../server/rate-limit.js');
+const { classifyKey, audit } = require('../tools/redis-audit.js');
 
 let pass = 0, fail = 0;
 function chk(name, ok, detail) {

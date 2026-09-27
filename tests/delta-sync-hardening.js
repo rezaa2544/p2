@@ -44,10 +44,10 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
-const { createPull } = require(path.join(ROOT, 'server', 'pull'));
-const { createCursor, DEFAULT_TTL_S, MIN_TTL_S, MAX_TTL_S } = require(path.join(ROOT, 'server', 'cursor'));
-const { createSync, attach } = require(path.join(ROOT, 'server', 'sync'));
-const metrics = require(path.join(ROOT, 'server', 'metrics'));
+const { createPull } = require('../server/pull');
+const { createCursor, DEFAULT_TTL_S, MIN_TTL_S, MAX_TTL_S } = require('../server/cursor');
+const { createSync, attach } = require('../server/sync');
+const metrics = require('../server/metrics');
 const { opX } = require('./helpers/opx');
 
 let pass = 0, fail = 0;

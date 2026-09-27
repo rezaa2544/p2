@@ -20,14 +20,14 @@ function findPgBin() {
   }
   const cand = [];
   try {
-    const w = cp.execSync('which initdb', { stdio: 'pipe' }).toString().trim().split('\n')[0];
+    const w = cp.execFileSync('which', ['initdb'], { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w) cand.push(path.dirname(w));
   } catch (e) {}
   /* F-A3 (Arena 1): same discovery gap as migration-009-live.js —
      pg_config --bindir + FHS glob so a fully installed PG is never
      reported as "missing binaries" just because it is off-PATH. */
   try {
-    const b = cp.execSync('pg_config --bindir', { stdio: 'pipe' }).toString().trim();
+    const b = cp.execFileSync('pg_config', ['--bindir'], { stdio: 'pipe' }).toString().trim();
     if (b) cand.push(b);
   } catch (e) {}
   try {

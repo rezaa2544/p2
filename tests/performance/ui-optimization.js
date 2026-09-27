@@ -31,7 +31,7 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..', '..');
 let JSDOM;
-try { ({ JSDOM } = require(path.join(ROOT, 'node_modules', 'jsdom'))); }
+try { ({ JSDOM } = require('../../node_modules/jsdom')); }
 catch (e) { console.error('⚠️ jsdom نصب نیست: npm install --no-save jsdom'); process.exit(1); }
 
 let pass = 0, fail = 0;

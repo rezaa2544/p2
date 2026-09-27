@@ -44,12 +44,12 @@ const path = require('path');
 const zlib = require('zlib');
 const crypto = require('crypto');
 const ROOT = path.join(__dirname, '..');
-const { createCursor, resolveSecret } = require(path.join(ROOT, 'server', 'cursor'));
-const { sendJsonCompressed, negotiateEncoding } = require(path.join(ROOT, 'server', 'compress'));
-const { createPull } = require(path.join(ROOT, 'server', 'pull'));
-const { createSync, attach } = require(path.join(ROOT, 'server', 'sync'));
-const redis = require(path.join(ROOT, 'server', 'redis'));
-const metrics = require(path.join(ROOT, 'server', 'metrics'));
+const { createCursor, resolveSecret } = require('../server/cursor');
+const { sendJsonCompressed, negotiateEncoding } = require('../server/compress');
+const { createPull } = require('../server/pull');
+const { createSync, attach } = require('../server/sync');
+const redis = require('../server/redis');
+const metrics = require('../server/metrics');
 const { opX } = require('./helpers/opx');
 
 let pass = 0, fail = 0;
@@ -379,7 +379,7 @@ await test('D2 checkRateLimit وزن‌دار: weight=N مصرفِ N واحد (f
 });
 
 await test('D3 دروازهٔ وزن‌دارِ واقعی: عبورِ اول مجاز، مصرفِ پنجره بعدی رد', async () => {
-  const { checkRateLimit } = require(path.join(ROOT, 'server', 'rate-limit'));
+  const { checkRateLimit } = require('../server/rate-limit');
   const id = 's9rl-' + process.pid + '-' + Date.now();
   const ok1 = await checkRateLimit({ prefix: 's9', identifier: id, limit: 10, windowSeconds: 60, weight: 6 });
   assert(ok1.allowed === true && ok1.remaining === 4, '۶ از ۱۰ ⇒ مجاز با باقی‌ماندهٔ ۴: ' + JSON.stringify(ok1));

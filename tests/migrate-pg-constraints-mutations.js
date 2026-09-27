@@ -8,7 +8,7 @@
    هر جهش: ابزار جهش می‌خورد ← schema.sql بازتولید می‌شود ← سوئیت باید قرمز شود ← هر دو فایل برمی‌گردند.
    اجرا: node tests/migrate-pg-constraints-mutations.js */
 'use strict';
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 /* BH-mut فاز ۲ (الگوی امن p06/p11): ابزار در کپیِ جدا جهش می‌خورد؛ بازتولیدِ
    schema.sql از طریق passthrough به کپیِ سایه می‌رود — schema.sql اصلی و ابزار
@@ -55,8 +55,8 @@ for (const m of MUTS) {
     /* F-A4: without --write-schema the tool never rewrites server/schema.sql
        (explicit since the crashed-run hardening), so every mutant silently
        "survived" against the untouched baseline file. */
-    execSync('node ' + TOOL + ' --write-schema', { stdio: 'pipe', timeout: 120000, cwd: ROOT, env: kit.env() }); /* بازتولید در سایه */
-    execSync('node ' + SUITE, { stdio: 'pipe', timeout: 120000, cwd: ROOT, env: kit.env() }); /* خواندن از سایه */
+  execFileSync('node', [TOOL, '--write-schema'], { stdio: 'pipe', timeout: 120000, cwd: ROOT, env: kit.env() }); /* بازتولید در سایه */
+  execFileSync('node', [SUITE], { stdio: 'pipe', timeout: 120000, cwd: ROOT, env: kit.env() }); /* خواندن از سایه */
     out = 'PASSED (no failure)';
   } catch (e) {
     out = String((e.stdout || '') + String(e.stderr || ''));
@@ -70,6 +70,6 @@ for (const m of MUTS) {
 kit.clear(TOOL_ABS); /* نقشهٔ خالی برای شفافیت؛ پاک‌سازیِ واقعی در exit */
 /* خطِ پایه: schema.sql اصلیِ repo (بدون env) باید همهٔ قیدها را داشته باشد */
 let backGreen = false;
-try { execSync('node ' + SUITE, { stdio: 'pipe', timeout: 120000, cwd: ROOT }); backGreen = true; } catch (e) { backGreen = false; }
+  try { execFileSync('node', [SUITE], { stdio: 'pipe', timeout: 120000, cwd: ROOT }); backGreen = true; } catch (e) { backGreen = false; }
 console.log('migrate-pg-constraints-mutations: ' + killed + '/' + MUTS.length + ' killed, baseline-green=' + backGreen + ', env-fail=' + envFails);
 process.exit(killed === MUTS.length && envFails === 0 && backGreen ? 0 : 1);

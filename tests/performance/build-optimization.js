@@ -30,7 +30,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..', '..');
-const { stripJs, stripCss } = require(path.join(ROOT, 'tools', 'minify-source.js'));
+const { stripJs, stripCss } = require('../../tools/minify-source.js');
 
 let pass = 0, fail = 0;
 const T = (ok, name, detail) => {

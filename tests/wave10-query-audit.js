@@ -30,8 +30,8 @@
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '..');
-const { deltaRowsSql, deltaKeysetSql, tombstonesSql, tableName } = require(path.join(ROOT, 'server', 'syncdelta'));
-const dq = require(path.join(ROOT, 'server', 'dbquery'));
+const { deltaRowsSql, deltaKeysetSql, tombstonesSql, tableName } = require('../server/syncdelta');
+const dq = require('../server/dbquery');
 
 let pass = 0, fail = 0;
 const failures = [];

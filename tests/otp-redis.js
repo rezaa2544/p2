@@ -16,8 +16,8 @@ const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const { createOtpStore } = require(path.join(ROOT, 'server', 'otp-store.js'));
-const cache = require(path.join(ROOT, 'server', 'cache.js'));
+const { createOtpStore } = require('../server/otp-store.js');
+const cache = require('../server/cache.js');
 
 let pass = 0, fail = 0;
 function chk(name, ok, detail) {

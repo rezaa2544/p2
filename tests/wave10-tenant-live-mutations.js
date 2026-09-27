@@ -17,7 +17,7 @@ function findPgBin() {
   const cand = [];
   if (process.env.PG_LIVE_BIN) cand.push(process.env.PG_LIVE_BIN);
   try {
-    const w = cp.execSync('which initdb', { stdio: 'pipe' }).toString().trim().split('\n')[0];
+    const w = cp.execFileSync('which', ['initdb'], { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w) cand.push(path.dirname(w));
   } catch (e) {}
   for (const d of cand) {

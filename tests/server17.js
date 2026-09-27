@@ -23,7 +23,7 @@ const { spawn } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const REAL_STORE = path.join(ROOT, 'server', 'data', 'payesh.json');
-const { makeSelfSigned } = require(path.join(ROOT, 'server', 'tls-cert.js'));
+const { makeSelfSigned } = require('../server/tls-cert.js');
 
 let pass = 0, fail = 0;
 const errors = [];

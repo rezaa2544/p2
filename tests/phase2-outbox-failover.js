@@ -7,7 +7,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn, execSync, spawnSync } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const http = require('http');
 const { Client } = require('pg');
 
@@ -83,10 +83,10 @@ let OBX_URL;
   /* BLOCKER 2 acceptance: migrate-to-pg --execute owns this EMPTY database
      end-to-end (two-phase DDL; the psql migration chain is exercised by the
      migration-cycle suite, not here). */
-  execSync(`${NODE} server/seed.js`, { cwd: ROOT, env: Object.assign({}, process.env, { PAYESH_STORE: STORE }), stdio: 'pipe' });
+  spawnSync(NODE, ['server/seed.js'], { cwd: ROOT, env: Object.assign({}, process.env, { PAYESH_STORE: STORE }), stdio: 'pipe' });
   fs.mkdirSync(path.dirname(STORE), { recursive: true });
   fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), STORE);   /* seed.js writes the default path only */
-  execSync(`${NODE} tools/migrate-to-pg.js --execute`, { cwd: ROOT, env: Object.assign({}, process.env, { DATABASE_URL: OBX_URL, PAYESH_STORE: STORE }), stdio: 'pipe' });
+  spawnSync(NODE, ['tools/migrate-to-pg.js', '--execute'], { cwd: ROOT, env: Object.assign({}, process.env, { DATABASE_URL: OBX_URL, PAYESH_STORE: STORE }), stdio: 'pipe' });
   /* migrate-to-pg predates 015–019; Phase 7 refuses listen() without them. */
   const migDir = path.join(ROOT, 'migrations');
   const extraMigs = fs.readdirSync(migDir)
@@ -162,8 +162,9 @@ let OBX_URL;
   fs.writeFileSync(path.join(os.tmpdir(), 'dlq-probe.js'), script);
   let dlqOk = false;
   try {
-    const out = execSync(`${NODE} ${path.join(os.tmpdir(), 'dlq-probe.js')}`, { cwd: ROOT, env: Object.assign({}, process.env), stdio: 'pipe' }).toString();
-    dlqOk = /DLQ_RES:\{"ok":true/.test(out);
+    const out = spawnSync('node', [path.join(os.tmpdir(), 'dlq-probe.js')], { cwd: ROOT, env: Object.assign({}, process.env), stdio: 'pipe' });
+    if (out.error) throw out.error;
+    dlqOk = /DLQ_RES:\{"ok":true/.test(String(out.stdout));
     console.log('   ' + out.trim().split('\n').pop().slice(0, 120));
   } catch (e) { console.log('   DLQ probe failed: ' + String(e.stderr || e.message).slice(0, 200)); }
   chk('moveToDlq با idِ خام کار کرد (event object یا id)', dlqOk);

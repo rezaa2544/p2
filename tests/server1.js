@@ -38,7 +38,7 @@ process.env.PAYESH_SMS_IP_LIMIT = '1000000';
 process.env.PAYESH_LOGIN_IP_LIMIT = '1000000';
 process.env.PAYESH_LOGIN_TRIES = '1000000';
 
-const { server, store } = require(path.join(ROOT, 'server', 'index.js'));
+const { server, store } = require('../server/index.js');
 
 let pass = 0, fail = 0;
 const errors = [];

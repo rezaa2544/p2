@@ -36,7 +36,7 @@ const f = (n) => n.toFixed(2);
 
 async function main() {
   const { Client } = require('pg');
-  const rs = require(path.join(ROOT, 'server', 'reports-sql.js'));
+  const rs = require('../server/reports-sql.js');
 
   const admin = new Client({ connectionString: BASE_URL });
   await admin.connect();

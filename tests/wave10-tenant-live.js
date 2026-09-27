@@ -55,7 +55,7 @@ function findPgBin() {
   const cand = [];
   if (process.env.PG_LIVE_BIN) cand.push(process.env.PG_LIVE_BIN);
   try {
-    const w = cp.execSync('which initdb', { stdio: 'pipe' }).toString().trim().split('\n')[0];
+    const w = cp.execFileSync('which', ['initdb'], { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w) cand.push(path.dirname(w));
   } catch (e) {}
   for (const d of cand) {
@@ -77,12 +77,13 @@ const PORT = 55460;
 const DATA = '/tmp/w10tenant-' + process.pid;
 const ROOT = path.join(__dirname, '..');
 
+function pgEnv() { return Object.assign({}, process.env, { PATH: BIN + path.delimiter + (process.env.PATH || '') }); }
+
 function pgctl(args) {
-  return cp.execSync(path.join(BIN, 'pg_ctl') + ' -D ' + DATA + ' ' + args,
-    { stdio: 'pipe', timeout: 60000 }).toString();
+  return cp.execFileSync('pg_ctl', ['-D', DATA].concat(args), { stdio: 'pipe', timeout: 60000, env: pgEnv() }).toString();
 }
 function cleanup() {
-  try { pgctl('stop -m immediate -w'); } catch (e) {}
+  try { pgctl(['stop', '-m', 'immediate', '-w']); } catch (e) {}
   try { fs.rmSync(DATA, { recursive: true, force: true }); } catch (e) {}
 }
 process.on('exit', cleanup);
@@ -93,11 +94,10 @@ process.on('SIGINT', () => { cleanup(); process.exit(130); });
   console.log('\nwave10-tenant-live — جداسازیِ tenant رویِ PG واقعی (builders→executePagedList→pg)\n');
 
   /* ── بوت ── */
-  cp.execSync(path.join(BIN, 'initdb') + ' -D ' + DATA + ' -U payesh --auth=trust -E UTF8',
-    { stdio: 'pipe', timeout: 120000 });
+  cp.execFileSync('initdb', ['-D', DATA, '-U', 'payesh', '--auth=trust', '-E', 'UTF8'], { stdio: 'pipe', timeout: 120000, env: pgEnv() });
   fs.appendFileSync(DATA + '/postgresql.conf',
     "\nport = " + PORT + "\nlisten_addresses = '127.0.0.1'\nunix_socket_directories = '" + DATA + "'\n");
-  pgctl('start -w -l ' + DATA + '/log.txt');
+  pgctl(['start', '-w', '-l', DATA + '/log.txt']);
 
   const admin = new Client({ host: '127.0.0.1', port: PORT, user: 'payesh', database: 'postgres' });
   await admin.connect();
@@ -149,7 +149,7 @@ const sql = fs.readFileSync(path.join(ROOT, 'migrations', f), 'utf8');
   const db = { query: (sql, params) => c.query(sql, params) };
   const {
     buildAttendanceList, buildGradesList, buildClassesList, buildUsersList, executePagedList
-  } = require(path.join(ROOT, 'server', 'dbquery.js'));
+  } = require('../server/dbquery.js');
 
   const run = (built) => executePagedList(db, built, { limit: 50, cursor: null });
   const ids = (r) => r.data.map((x) => Number(x.id)).sort((a, b) => a - b).join(',');

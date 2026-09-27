@@ -26,7 +26,7 @@ chk('خروجی متادیتا ساخته شد', fs.existsSync(path.join(ROOT, '
 chk('خروجی نمایهٔ جستجو ساخته شد', fs.existsSync(path.join(ROOT, 'docs/_search-index.json')));
 chk('خروجی‌ها در گیت‌ایگنور هستند', /_metadata\.json/.test(fs.readFileSync(path.join(ROOT, '.gitignore'), 'utf8')));
 
-const tool = require(path.join(ROOT, 'tools/docs-metadata.js'));
+const tool = require('../tools/docs-metadata.js');
 const entries = tool.buildCatalog();
 const index = tool.buildSearchIndex(entries);
 const s = tool.summarize(entries);

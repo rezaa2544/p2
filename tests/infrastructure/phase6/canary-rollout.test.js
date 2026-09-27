@@ -16,10 +16,10 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '../../../');
 
-const trafficFabric = require(path.join(ROOT, 'server/infrastructure/national-traffic-fabric'));
-const noc = require(path.join(ROOT, 'server/operations/national-operations-center'));
-const capacity = require(path.join(ROOT, 'server/infrastructure/national-capacity-enforcement'));
-const outbox = require(path.join(ROOT, 'server/outbox'));
+const trafficFabric = require('../../../server/infrastructure/national-traffic-fabric');
+const noc = require('../../../server/operations/national-operations-center');
+const capacity = require('../../../server/infrastructure/national-capacity-enforcement');
+const outbox = require('../../../server/outbox');
 
 async function testStage1CanaryBaseline() {
   console.log('▸ Phase 6: Stage 1 Canary Baseline Verification (5% Weight)');

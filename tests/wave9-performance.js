@@ -185,8 +185,8 @@ function probeStop() {
 
   /* ══ بخشِ ۲ — سرورِ واقعی در همین فرآیند ═════════════════════ */
 
-  const { server, store, workers, staticCache } = require(path.join(ROOT, 'server', 'index.js'));
-  const { computePublicReport } = require(path.join(ROOT, 'server', 'public-report-core'));
+  const { server, store, workers, staticCache } = require('../server/index.js');
+  const { computePublicReport } = require('../server/public-report-core');
   const { opX } = require('./helpers/opx');
 
   await new Promise((r) => server.listen(0, '127.0.0.1', r));

@@ -16,7 +16,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn, execSync } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const http = require('http');
 const { Client } = require('pg');
 
@@ -83,7 +83,7 @@ async function login(port, store) {
 (async () => {
   const BASE_URL = process.env.DATABASE_URL;
   if (!BASE_URL) { console.error('❌ DATABASE_URL required — dependency missing = FAIL (exit 1)'); process.exit(1); }
-  execSync(`${NODE} server/seed.js`, { cwd: ROOT, stdio: 'pipe' });   /* fresh default store (server/data/payesh.json) */
+  spawnSync(NODE, ['server/seed.js'], { cwd: ROOT, stdio: 'pipe' });   /* fresh default store (server/data/payesh.json) */
 
   /* ── S1: Redis failure ⇒ auth fails CLOSED ───────────────────────── */
   console.log('\n── S1: Redis failure');
@@ -97,7 +97,7 @@ async function login(port, store) {
       const url = dbUrlOf(BASE_URL, 'payesh_chaos1');
       const adm = new Client({ connectionString: BASE_URL }); await adm.connect();
       await adm.query('DROP DATABASE IF EXISTS payesh_chaos1').catch(() => {}); await adm.query('CREATE DATABASE payesh_chaos1'); await adm.end();
-      execSync(`psql "${url}" -v ON_ERROR_STOP=1 -q -f migrations/001_initial.sql`, { stdio: 'pipe' });
+      spawnSync('psql', [url, '-v', 'ON_ERROR_STOP=1', '-q', '-f', 'migrations/001_initial.sql'], { stdio: 'pipe' });
       const STORE = path.join(os.tmpdir(), 'chaos-s1-store.json');
       fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), STORE);
       const proc = await boot(3201, envFor(3201, url, STORE, path.join(os.tmpdir(), 'chaos-s1.key'), { REDIS_URL: `redis://127.0.0.1:${RPORT}` }));
@@ -122,7 +122,7 @@ async function login(port, store) {
   console.log('\n── S2: PostgreSQL failure');
   {
     const url = await freshDb(BASE_URL, 'payesh_chaos2');
-    execSync(`${NODE} tools/migrate-to-pg.js --execute`, { cwd: ROOT, env: Object.assign({}, process.env, { DATABASE_URL: url, PAYESH_STORE: path.join(ROOT, 'server', 'data', 'payesh.json') }), stdio: 'pipe' });
+    spawnSync(NODE, ['tools/migrate-to-pg.js', '--execute'], { cwd: ROOT, env: Object.assign({}, process.env, { DATABASE_URL: url, PAYESH_STORE: path.join(ROOT, 'server', 'data', 'payesh.json') }), stdio: 'pipe' });
     await pgOne(url, "SELECT setval('payesh_outbox_id_seq', (SELECT COALESCE(MAX(id), 1) FROM server_outbox))").catch(() => {});
     const STORE = path.join(os.tmpdir(), 'chaos-s2-store.json');
     fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), STORE);
@@ -135,7 +135,7 @@ async function login(port, store) {
       chk('S2 نوشتِ پیش از قطعی: 201', mk1.status === 201, mk1.status);
       /* stop the whole PostgreSQL cluster (real outage, not a mock) */
       let stopped = true;
-      try { execSync('sudo pg_ctlcluster 17 main stop --mode fast', { stdio: 'pipe' }); } catch (e) { stopped = false; }
+      try { spawnSync('sudo', ['pg_ctlcluster', '17', 'main', 'stop', '--mode', 'fast'], { stdio: 'pipe' }); } catch (e) { stopped = false; }
       chk('S2 PostgreSQL واقعاً متوقف شد', stopped);
       if (stopped) {
         await sleep(500);
@@ -146,7 +146,7 @@ async function login(port, store) {
            way: NEVER a 2xx ack for a write that never reached PG. */
         chk('S2 نوشتن در قطعی ⇒ fail-closed (401/503، هرگز 2xx/RAM-ack)',
           (w.status === 401 || w.status === 503), w.status + ' ' + w.body.slice(0, 60));
-        try { execSync('sudo pg_ctlcluster 17 main start', { stdio: 'pipe' }); } catch (e) {}
+        try { spawnSync('sudo', ['pg_ctlcluster', '17', 'main', 'start'], { stdio: 'pipe' }); } catch (e) {}
         await sleep(1500);
         const rec = await req(3202, 'POST', '/api/v1/classes', { name: 'AFTER_RECOVERY', grade: 10, school_id: 1 }, cookie);
         chk('S2 بازگشت PG ⇒ نوشتن دوباره کار می‌کند (recovery)', rec.status === 201, rec.status);
@@ -163,8 +163,9 @@ async function login(port, store) {
     const url = await freshDb(BASE_URL, 'payesh_chaos3');
     let ok = false;
     try {
-      execSync(`DATABASE_URL=${url} NODE_PATH=${path.join(ROOT, 'node_modules')} ${NODE} tests/phase2-occ-multi.js`, { cwd: ROOT, stdio: 'pipe' });
-      ok = true;
+      const r3 = spawnSync(NODE, ['tests/phase2-occ-multi.js'], { cwd: ROOT, env: Object.assign({}, process.env, { DATABASE_URL: url, NODE_PATH: path.join(ROOT, 'node_modules') }), stdio: 'pipe' });
+      ok = (r3.status === 0);
+      if (!ok) console.log('  ' + String(r3.stderr || r3.stdout || '').slice(0, 200));
     } catch (e) { console.log('  ' + String(e.stderr || e.message).slice(0, 200)); }
     chk('S3 race: دقیقاً ۱ موفق / ۹ تعارض / ۰ lost update / تعارض‌ها در PG', ok);
   }
@@ -173,7 +174,7 @@ async function login(port, store) {
   console.log('\n── S4: kill -9 recovery');
   {
     const url = await freshDb(BASE_URL, 'payesh_chaos4');
-    execSync(`${NODE} tools/migrate-to-pg.js --execute`, { cwd: ROOT, env: Object.assign({}, process.env, { DATABASE_URL: url, PAYESH_STORE: path.join(ROOT, 'server', 'data', 'payesh.json') }), stdio: 'pipe' });
+    spawnSync(NODE, ['tools/migrate-to-pg.js', '--execute'], { cwd: ROOT, env: Object.assign({}, process.env, { DATABASE_URL: url, PAYESH_STORE: path.join(ROOT, 'server', 'data', 'payesh.json') }), stdio: 'pipe' });
     await pgOne(url, "SELECT setval('payesh_outbox_id_seq', (SELECT COALESCE(MAX(id), 1) FROM server_outbox))").catch(() => {});
     const STORE = path.join(os.tmpdir(), 'chaos-s4-store.json');
     fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), STORE);

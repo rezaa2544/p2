@@ -61,7 +61,7 @@ grp('C6-02 — سیاست شمارِ روزانه (board 2026-09-17)');
 /* پذیرش: گزارش‌های روزانه دیگر آمارِ عادی را خراب نمی‌کنند. سه لایهٔ
    پین: (۱) ساختار truth()، (۲) متن ردیفِ مالک‌شده، (۳) پینِ repo-level:
    ساختِ یک گزارش روزانهٔ واقعی، شمار پایدار و گیتِ --check را نمی‌زند. */
-const stats = require(path.join(ROOT, 'tools/docs-stats-sync.js'));
+const stats = require('../tools/docs-stats-sync.js');
 const t0 = stats.truth();
 chk('truth: زیرپوشه‌های daily-* از شمار پایدار جداست',
   t0.dailyTotal === Object.values(t0.dailySubs).reduce((a, b) => a + b, 0) && t0.dailyTotal > 0,

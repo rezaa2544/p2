@@ -55,7 +55,7 @@ function findPgBin() {
   }
   const cand = [];
   try {
-    const w = cp.execSync('which initdb', { stdio: 'pipe' }).toString().trim().split('\n')[0];
+    const w = cp.execFileSync('which', ['initdb'], { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w) cand.push(path.dirname(w));
   } catch (e) {}
   /* F-A3 (Arena 1): Debian/Ubuntu keep cluster binaries in
@@ -63,7 +63,7 @@ function findPgBin() {
      made this gate SELF-SKIP GREEN on machines where PG is fully installed.
      pg_config --bindir + the FHS glob are the supported discovery paths. */
   try {
-    const b = cp.execSync('pg_config --bindir', { stdio: 'pipe' }).toString().trim();
+    const b = cp.execFileSync('pg_config', ['--bindir'], { stdio: 'pipe' }).toString().trim();
     if (b) cand.push(b);
   } catch (e) {}
   try {
@@ -93,11 +93,13 @@ const PORT = 55452;
 const DATA = '/tmp/mig009-' + process.pid;
 const ROOT = path.join(__dirname, '..');
 
+function pgEnv() { return Object.assign({}, process.env, { PATH: BIN + path.delimiter + (process.env.PATH || '') }); }
+
 function pgctl(args) {
-  return cp.execSync(path.join(BIN, 'pg_ctl') + ' -D ' + DATA + ' ' + args, { stdio: 'pipe', timeout: 60000 }).toString();
+  return cp.execFileSync('pg_ctl', ['-D', DATA].concat(args), { stdio: 'pipe', timeout: 60000, env: pgEnv() }).toString();
 }
 function cleanup() {
-  try { pgctl('stop -m immediate -w'); } catch (e) {}
+  try { pgctl(['stop', '-m', 'immediate', '-w']); } catch (e) {}
   try { fs.rmSync(DATA, { recursive: true, force: true }); } catch (e) {}
 }
 process.on('exit', cleanup);
@@ -110,10 +112,10 @@ async function main() {
   const { Client } = require('pg');
   console.log('\nmigration-009-live — CHECK + ایندکسِ مرکبِ report_logs رویِ PG زنده\n');
 
-  cp.execSync(path.join(BIN, 'initdb') + ' -D ' + DATA + ' -U payesh --auth=trust -E UTF8', { stdio: 'pipe', timeout: 120000 });
+  cp.execFileSync('initdb', ['-D', DATA, '-U', 'payesh', '--auth=trust', '-E', 'UTF8'], { stdio: 'pipe', timeout: 120000, env: pgEnv() });
   fs.appendFileSync(DATA + '/postgresql.conf',
     "\nport = " + PORT + "\nlisten_addresses = '127.0.0.1'\nunix_socket_directories = '" + DATA + "'\n");
-  pgctl('start -w -l ' + DATA + '/log.txt');
+  pgctl(['start', '-w', '-l', DATA + '/log.txt']);
   const admin = new Client({ host: '127.0.0.1', port: PORT, user: 'payesh', database: 'postgres' });
   await admin.connect(); await admin.query('CREATE DATABASE payesh'); await admin.end();
   const c = new Client({ host: '127.0.0.1', port: PORT, user: 'payesh', database: 'payesh' });

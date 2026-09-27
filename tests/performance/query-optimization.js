@@ -30,7 +30,7 @@ const os = require('os');
 const http = require('http');
 
 const ROOT = path.join(__dirname, '..', '..');
-const { stringifyAscii } = require(path.join(ROOT, 'server', 'json-fast.js'));
+const { stringifyAscii } = require('../../server/json-fast.js');
 
 let pass = 0, fail = 0;
 const T = (ok, name, detail) => {
@@ -75,7 +75,7 @@ async function serverChecks(){
   process.env.PAYESH_KEY = path.join(tmp, 'key');
   process.env.PAYESH_DEMO_CODE = '1';
 
-  const mod = require(path.join(ROOT, 'server', 'index.js'));
+  const mod = require('../../server/index.js');
   const server = mod.server || mod;
   await new Promise((res) => server.listen(0, '127.0.0.1', res));
   const port = server.address().port;

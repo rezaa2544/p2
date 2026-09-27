@@ -10,7 +10,7 @@
    M6: cooldown خاموش شود → O2 (سقفِ ارسالِ مکرر) باید شکست بخورد
    هر جهش: جایگزینی، اجرایِ suite، بررسیِ شکست، بازگشتِ فایل.
    ───────────────────────────────────────────────────────────── */
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 /* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا؛ سورس اصلی و
@@ -75,12 +75,12 @@ for (const m of MUTS) {
   if (n < 0) { console.log('  ❌ ' + m.name + ': الگوی اصلی پیدا نشد در ' + m.file); continue; }
   kit.mutant(abs, src0.replace(m.bad, m.mut, 1)); /* کپی جدا؛ سورس اصلی دست‌نخورده */
   let out = '', crashed = false;
-  const cmd = 'node --max-old-space-size=1500 ' + m.suite;
-  try { execSync(cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
+  const args = ['--max-old-space-size=1500', m.suite];
+  try { execFileSync('node', args, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
   catch (e) {
     out = String(e.stdout || '') + String(e.stderr || '');
     if (out.trim() === '') {
-      try { execSync(cmd, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
+      try { execFileSync('node', args, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
       catch (e2) { out = String(e2.stdout || '') + String(e2.stderr || ''); }
     }
     if (/JavaScript heap out of memory|FATAL|aborting/.test(out) || out.trim() === '') crashed = true;
@@ -93,9 +93,9 @@ for (const m of MUTS) {
 }
 
 console.log('\nبازبینیِ خطِ پایه (بدون جهش):');
-const o16 = execSync('node --max-old-space-size=1500 tests/server16.js', { stdio: 'pipe' }).toString();
+const o16 = execFileSync('node', ['--max-old-space-size=1500', 'tests/server16.js'], { stdio: 'pipe' }).toString();
 console.log('  server16: ' + (o16.split('\n').find(l => l.includes('سبز')) || o16.slice(-120)).trim());
-const o17 = execSync('node --max-old-space-size=1500 tests/server17.js', { stdio: 'pipe' }).toString();
+const o17 = execFileSync('node', ['--max-old-space-size=1500', 'tests/server17.js'], { stdio: 'pipe' }).toString();
 console.log('  server17: ' + (o17.split('\n').find(l => l.includes('سبز')) || o17.slice(-120)).trim());
 console.log(killed === MUTS.length ? 'همهٔ ' + MUTS.length + ' جهش کشته شدند ✅' : 'فقط ' + killed + '/' + MUTS.length + ' جهش کشته شد ❌');
 process.exit(killed === MUTS.length ? 0 : 1);

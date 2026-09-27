@@ -9,7 +9,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const http = require('http');
-const { spawn, execSync } = require('child_process');
+const { spawn, execSync, execFileSync, spawnSync } = require('child_process');
 const { Client } = require('pg');
 const pgOutage = require('./pg-outage-control');
 const gov = require('../server/infrastructure/phase6-governance');
@@ -85,13 +85,13 @@ function applyMigrations(url) {
   const files = fs.readdirSync(path.join(ROOT, 'migrations')).sort();
   for (const f of files) {
     if (!/^\d{3}_.*\.sql$/.test(f) || f.endsWith('.down.sql')) continue;
-    execSync(`psql "${url}" -v ON_ERROR_STOP=1 -q -f "${path.join(ROOT, 'migrations', f)}"`, { stdio: 'pipe' });
+    execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', path.join('migrations', f), url], { cwd: ROOT, stdio: 'pipe' });
   }
 }
 function rollbackMigrations(url) {
   const files = fs.readdirSync(path.join(ROOT, 'migrations')).filter((f) => /^\d{3}_.*\.down\.sql$/.test(f)).sort().reverse();
   for (const f of files) {
-    execSync(`psql "${url}" -v ON_ERROR_STOP=1 -q -f "${path.join(ROOT, 'migrations', f)}"`, { stdio: 'pipe' });
+    execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', path.join('migrations', f), url], { cwd: ROOT, stdio: 'pipe' });
   }
 }
 
@@ -180,7 +180,7 @@ async function flood(port, n, pth, headers) {
   const URL = BASE_URL.replace(/\/[^/?]+(\?.*)?$/, (m, q) => ('/' + DB + (q || '')));
   applyMigrations(URL);
 
-  execSync(`${NODE} server/seed.js`, { cwd: ROOT, stdio: 'pipe' });
+  execFileSync('node', ['server/seed.js'], { cwd: ROOT, stdio: 'pipe' });
   const STORE = path.join(os.tmpdir(), 'p65-store.json');
   fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), STORE);
   const PORTA = 3311;
@@ -425,8 +425,14 @@ async function flood(port, n, pth, headers) {
   process.exit(fail.length ? 1 : 0);
 })().catch((e) => {
   console.error('FATAL', e && e.stack || e);
-  try { execSync('sudo pg_ctlcluster 17 main start', { stdio: 'pipe' }); } catch (e2) {}
-  try { execSync('sudo pg_ctlcluster 16 main start', { stdio: 'pipe' }); } catch (e2) {}
-  try { execSync('docker ps -aq --filter ancestor=postgres:17 | xargs -r docker start', { stdio: 'pipe' }); } catch (e2) {}
+  try { execFileSync('sudo', ['pg_ctlcluster', '17', 'main', 'start'], { stdio: 'pipe' }); } catch (e2) {}
+  try { execFileSync('sudo', ['pg_ctlcluster', '16', 'main', 'start'], { stdio: 'pipe' }); } catch (e2) {}
+  try {
+    const ps = spawnSync('docker', ['ps', '-aq', '--filter', 'ancestor=postgres:17'], { encoding: 'utf8', stdio: 'pipe' });
+    if (ps.status === 0) {
+      const ids = String(ps.stdout).split('\n').map((s) => s.trim()).filter(Boolean);
+      for (const id of ids) { try { spawnSync('docker', ['start', id], { stdio: 'pipe' }); } catch (e3) {} }
+    }
+  } catch (e2) {}
   process.exit(1);
 });

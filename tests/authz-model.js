@@ -219,7 +219,7 @@ chk('D11) del روی users فقط manager/superadmin',
   !['teacher', 'edu_office', 'counselor', 'student', 'parent', 'driver'].some(r => inModel('users', r, 'del')));
 
 /* canOp از خودِ sync.js (مصرف‌کنندهٔ مدل) — fail-closed روی ناخواسته */
-const { canOp, ROLE_LEVEL } = require(path.join(ROOT, 'server', 'sync.js'));
+const { canOp, ROLE_LEVEL } = require('../server/sync.js');
 chk('D12) canOp: superadmin همه‌چیز', canOp('superadmin', 'grades', 'ins') && canOp('superadmin', 'grades', 'del'));
 chk('D13) canOp: مجموعهٔ ناشناخته = رد (حتی superadmin)', canOp('superadmin', 'totally_unknown_coll', 'ins') === false);
 chk('D14) canOp: نقشِ ناشناخته = رد', canOp('hacker', 'grades', 'ins') === false);

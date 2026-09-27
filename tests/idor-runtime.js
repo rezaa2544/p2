@@ -56,7 +56,7 @@ process.env.PAYESH_AUDIT = path.join(TMP, 'audit.log');
 process.env.PAYESH_DEMO_CODE = '1';
 process.env.PAYESH_JWT_SECRET = 'idor-rt-test-secret-0123456789abcdef0123456789';
 
-const { server } = require(path.join(ROOT, 'server', 'index.js'));
+const { server } = require('../server/index.js');
 
 let BASE = '';
 let pass = 0, fail = 0;
@@ -109,7 +109,7 @@ async function waitReady(ms) {
   return false;
 }
 async function pgQuery(sql, params) {
-  const pg = require(path.join(ROOT, 'node_modules', 'pg'));
+  const pg = require('../node_modules/pg');
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
   await client.connect();
   try { const r = await client.query(sql, params); return r.rows; } finally { await client.end(); }

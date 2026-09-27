@@ -33,7 +33,7 @@ const quant = (arr, q) => {
 
 async function main() {
   const { Client } = require('pg');
-  const { createReportsRoutes } = require(path.join(ROOT, 'server', 'routes', 'reports.js'));
+  const { createReportsRoutes } = require('../server/routes/reports.js');
 
   const admin = new Client({ connectionString: BASE_URL });
   await admin.connect();

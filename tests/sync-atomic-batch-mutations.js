@@ -8,7 +8,7 @@
    بدونِ بیلد (فایل‌هایِ سرور باندل نمی‌شوند) و بدونِ PG واقعی.
    اجرا: node tests/sync-atomic-batch-mutations.js */
 'use strict';
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 /* BH-mut فاز ۲ (الگوی امن p06/p11): جهش در کپیِ جدا (mutant-kit)؛ سورس اصلی
    هرگز بازنویسی نمی‌شود — restore حذف شد. فایل‌های جهش متناوب‌اند (db.js/sync.js):
@@ -55,7 +55,7 @@ for (const m of MUTS) {
   try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {}
   prevAbs = abs;
   let out = '', crashed = false;
-  try { execSync('node ' + SUITE, { stdio: 'pipe', timeout: 120000, cwd: ROOT, env: kit.env() }); out = 'PASSED (no failure)'; }
+  try { execFileSync('node', [SUITE], { stdio: 'pipe', timeout: 120000, cwd: ROOT, env: kit.env() }); out = 'PASSED (no failure)'; }
   catch (e) {
     out = String((e.stdout || '') + String(e.stderr || ''));
     if (/JavaScript heap out of memory|FATAL|aborting/.test(out) || out.trim() === '') crashed = true;
@@ -67,7 +67,7 @@ for (const m of MUTS) {
 }
 if (prevAbs) kit.clear(prevAbs); /* نقشهٔ خالی برای شفافیت؛ پاک‌سازیِ واقعی در exit */
 let backGreen = false;
-try { execSync('node ' + SUITE, { stdio: 'pipe', timeout: 120000 }); backGreen = true; }
+  try { execFileSync('node', [SUITE], { stdio: 'pipe', timeout: 120000 }); backGreen = true; }
 catch (e) { backGreen = false; }
 console.log('sync-atomic-batch-mutations: ' + killed + '/' + MUTS.length + ' killed, baseline-green=' + backGreen + ', env-fail=' + envFails);
 process.exit(killed === MUTS.length && backGreen && envFails === 0 ? 0 : 1);

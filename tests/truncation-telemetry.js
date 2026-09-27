@@ -26,7 +26,7 @@ process.env.PAYESH_AUDIT = path.join(TMP, 'audit.log');
 process.env.PAYESH_KEY = path.join(TMP, 'jwt.key');
 process.env.PAYESH_DEMO_CODE = '1';
 
-const { server, store } = require(path.join(ROOT, 'server', 'index.js'));
+const { server, store } = require('../server/index.js');
 
 let BASE = '';
 let pass = 0, fail = 0;
@@ -138,7 +138,7 @@ async function main() {
   });
 
   console.log('\n▸ بخش B — خودآزمون هارنس bench-reports-scale');
-  const bench = require(path.join(ROOT, 'tools', 'bench-reports-scale.js'));
+  const bench = require('../tools/bench-reports-scale.js');
 
   await test('parseArgs: پیش‌فرض‌ها و پرچم‌ها', async () => {
     const d = bench.parseArgs([]);

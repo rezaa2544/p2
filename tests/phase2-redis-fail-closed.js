@@ -11,12 +11,16 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn, execSync } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const http = require('http');
 
-const NODE = process.execPath;
 const ROOT = path.join(__dirname, '..');
 const PORT = 3104;
+/* 🔴 سخت‌گیریِ دروازهٔ امنیتی: execSync با رشتهٔ قالبی تزریق محسوب می‌شود.
+   docker cli فقط با نامِ ثابت و آرگومان‌های اسکریپت‌ناپذیر فراخوانی می‌شود. */
+const DOCKER_ARGS = (name) => ['rm', '-f', name];
+function docker(args, opts) { return spawnSync('docker', args, Object.assign({ stdio: 'pipe' }, opts || {})); }
+function dockerRun(name, port) { return spawnSync('docker', ['run', '-d', '--name', name, '-p', '127.0.0.1:' + port + ':6379', 'redis:7'], { stdio: 'pipe', timeout: 60000 }); }
 const RPORT = 17000 + (process.pid % 2000);   /* per-run port — a stale redis from a crashed earlier run must not be reused */
 const results = [];
 function chk(name, ok, detail) { results.push(ok); console.log((ok ? '✅ ' : '❌ ') + name + (detail != null ? ' — ' + String(detail).slice(0, 160) : '')); }
@@ -43,7 +47,8 @@ function req(method, p, body) {
   let dockerName = null;
   let ownBin = ['/usr/bin/redis-server', '/usr/local/bin/redis-server'].find((p) => { try { fs.accessSync(p); return true; } catch (e) { return false; } });
   if (!ownBin) {
-    try { const w = String(execSync('command -v redis-server', { encoding: 'utf8' })).trim(); if (w) ownBin = w; } catch (e) {}
+    /* command -v فقط با نامِ ثابتِ قابل‌اعتماد (یک نام دودویی ثابت است، نه ورودی) */
+    try { const w = String(spawnSync('command', ['-v', 'redis-server'], { encoding: 'utf8' }).stdout || '').trim(); if (w) ownBin = w; } catch (e) {}
   }
   if (ownBin) {
     const rlog = fs.openSync(path.join(os.tmpdir(), 'p2-redis-test.log'), 'w');
@@ -52,10 +57,10 @@ function req(method, p, body) {
     if (redisProc.exitCode != null) { console.log('── redis-server exited early code=' + redisProc.exitCode + ' — log: ' + fs.readFileSync(path.join(os.tmpdir(), 'p2-redis-test.log'), 'utf8').slice(0, 400)); }
   } else {
     try {
-      execSync('docker info', { stdio: 'ignore', timeout: 8000 });
+      if (spawnSync('docker', ['info'], { stdio: 'ignore', timeout: 8000 }).status !== 0) throw new Error('docker info failed');
       dockerName = 'p2-rdx-' + process.pid;
-      try { execSync('docker rm -f ' + dockerName, { stdio: 'ignore', timeout: 15000 }); } catch (e) {}
-      execSync('docker run -d --name ' + dockerName + ' -p 127.0.0.1:' + RPORT + ':6379 redis:7', { stdio: 'pipe', timeout: 60000 });
+      try { docker(DOCKER_ARGS(dockerName), { stdio: 'ignore', timeout: 15000 }); } catch (e) {}
+      dockerRun(dockerName, RPORT);
       await sleep(1200);
       console.log('── dedicated docker redis on :' + RPORT + ' name=' + dockerName);
     } catch (e) {
@@ -73,7 +78,9 @@ function req(method, p, body) {
   const KEY = path.join(os.tmpdir(), 'rdx-jwt.key');
   const STORE = path.join(os.tmpdir(), 'rdx-store.json');
   try { fs.unlinkSync(STORE); } catch (e) {}
-  execSync(`${NODE} server/seed.js`, { cwd: ROOT, env: Object.assign({}, process.env, { PAYESH_STORE: STORE }), stdio: 'pipe' });
+  /* 🔴 spawnSync با بردار آرگومان — همان معنای همزمانِ execSync را حفظ می‌کند
+     بدون اینکه رشته‌ای را به shell بسپارد. */
+  spawnSync(process.execPath, ['server/seed.js'], { cwd: ROOT, env: Object.assign({}, process.env, { PAYESH_STORE: STORE }), stdio: 'pipe' });
   fs.mkdirSync(path.dirname(STORE), { recursive: true });
   fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), STORE);   /* seed.js writes the default path only */
 
@@ -85,7 +92,7 @@ function req(method, p, body) {
   delete env.NODE_ENV; delete env.DATABASE_URL;
 
   const proc = await new Promise((resolve) => {
-    const p = spawn(NODE, ['server/index.js'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    const p = spawn(process.execPath, ['server/index.js'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
     let log = '';
     p.stdout.on('data', (d) => (log += d)); p.stderr.on('data', (d) => (log += d));
     p.__log = () => log;
@@ -114,7 +121,7 @@ function req(method, p, body) {
   if (redisProc) {
     redisProc.kill('SIGKILL');
   } else if (dockerName) {
-    try { execSync('docker rm -f ' + dockerName, { stdio: 'ignore', timeout: 15000 }); } catch (e) {}
+    try { docker(DOCKER_ARGS(dockerName), { stdio: 'ignore', timeout: 15000 }); } catch (e) {}
   } else {
     const Redis = require('ioredis');
     const k = new Redis(RURL, { maxRetriesPerRequest: 1, enableOfflineQueue: false, retryStrategy: () => null, connectTimeout: 1000 });
@@ -153,8 +160,8 @@ function req(method, p, body) {
     if (ownBin) {
       redisProc = spawn(ownBin, ['--port', String(RPORT), '--save', '', '--appendonly', 'no', '--dir', os.tmpdir()], { stdio: 'ignore' });
     } else if (dockerName) {
-      try { execSync('docker rm -f ' + dockerName, { stdio: 'ignore', timeout: 15000 }); } catch (e) {}
-      execSync('docker run -d --name ' + dockerName + ' -p 127.0.0.1:' + RPORT + ':6379 redis:7', { stdio: 'pipe', timeout: 60000 });
+      try { docker(DOCKER_ARGS(dockerName), { stdio: 'ignore', timeout: 15000 }); } catch (e) {}
+      dockerRun(dockerName, RPORT);
     }
     await sleep(1200);
     let recovered = false;
@@ -165,7 +172,7 @@ function req(method, p, body) {
     }
     chk('Redis برگشت ⇒ send-code دوباره 200 (recovery)', recovered);
     try { if (redisProc) redisProc.kill('SIGKILL'); } catch (e) {}
-    if (dockerName) { try { execSync('docker rm -f ' + dockerName, { stdio: 'ignore', timeout: 15000 }); } catch (e) {} }
+    if (dockerName) { try { docker(DOCKER_ARGS(dockerName), { stdio: 'ignore', timeout: 15000 }); } catch (e) {} }
   }
 
   try { proc.kill('SIGTERM'); } catch (e) {}
