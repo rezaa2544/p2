@@ -228,3 +228,26 @@ Canonical status remains **HARDENING / RECONCILIATION — NOT VERIFIED**.
 - Stale/duplicate findings are explicitly retained only as REVALIDATION_REQUIRED where current-head evidence shows mitigation.
 - Project state remains **HARDENING / RECONCILIATION — NOT VERIFIED**; broad certification remains blocked.
 \n\n## 2026-09-25 — Defect intake freeze pending Atria-1\n\nThe requested 37-item working register is retained as the primary intake list. A final repository-document audit also confirmed that the older unresolved A-01..A-29 carry-over and A-30..A-39 hardening obligations must not be deleted or silently treated as resolved; they overlap the 37 in places and will be deduplicated only after the Atria-1 report is reconciled against current HEAD.\n\nCanonical intake record: \`docs/audit/CANONICAL_DEFECT_INTAKE_FREEZE_2026-09-25.md\`.\n\n**Status:** WAITING FOR ATRIA-1 REPORT — NO NEW CODE FIXES FROM THIS INTAKE.\n
+
+## 2026-09-28 — Atria capability-development / post-skills re-audit receipt
+
+**Current remote main:** `5e527a4ce02d23e0e27537cf7deec926ea58193d` at the Atria security-delivery checkpoint; subsequent commits `631073d3` and `0139c122` are documentation/law synchronization.
+
+### Atria wave-1 result
+- [x] 36 independent-audit defects (N-01..N-35 + PUB-01) reported fixed.
+- [x] 1 additional UTC/local bell-day defect reported fixed.
+- [x] Multiple Mimosa/static-analysis hardening waves delivered.
+- [x] Build EOL reproducibility defect discovered during final verification and fixed with regression coverage.
+- [x] Delivery reached remote main at `5e527a4c`.
+
+### Re-audit status after engineering-skill upgrade
+- [x] Atria demonstrated self-audit behavior: new engineering law caused reassessment of prior work and discovery of previously unverified CI/post-push criteria.
+- [ ] Atria is **not yet MASTERED/CERTIFIED**; remaining evidence-chain, CI, runtime, DR, strict-gate and independent-review gaps are still open.
+- [ ] OTP 0000 production safety disposition.
+- [ ] A-13 / A-40 / A-41 / A-27-E4 closure and runtime evidence.
+- [ ] Strict-gate residual + registry rebind.
+- [ ] PG/live infrastructure verification.
+- [ ] Full multi-AI independent review.
+
+**Project state:** HARDENING / RE-AUDIT — NOT VERIFIED.  
+**Current strategic priority:** continue Atria capability assessment/training/re-audit before resuming broad Payesh completion work.
