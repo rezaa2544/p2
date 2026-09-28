@@ -288,6 +288,10 @@ async function seedDb() {
     const keys = Object.keys(obj);
     await c.query(`INSERT INTO ${tbl} (${keys.map(k => '"' + k + '"').join(',')}) VALUES (${keys.map((_, i) => '$' + (i + 1)).join(',')})`, keys.map(k => obj[k]));
   };
+  /* A-31-followup: مرجعِ استان برای نگهبانِ سیاستِ تننت (phase6 hardening +
+     tenant_policy مهاجرتِ 019) — بدونِ این، استانِ عددیِ ۱ به «01» نرمال
+     نمی‌شود و درخواست‌ها پیش از رسیدن به موتورهای تحلیلی ۴۰۳ می‌گیرند. */
+  await I('provinces', { id: 1, code: '01', name: 'تهران' });
   await I('schools', { id: 100, name: 'مدرسه آلفا', active: true, province_id: 1, county_id: 11, district_id: 111, gender: 'مختلط', type: 'governmental' });
   await I('schools', { id: 101, name: 'مدرسه بدون داده', active: true, province_id: 1, county_id: 11, district_id: 111, gender: 'مختلط', type: 'governmental' });
   const U = (id, role, school_id, extra) => Object.assign({ id, role, school_id, active: true, full_name: 'کاربر ' + id, phone: phOf(id), national_id: nidOf(id), status: 'active' }, extra || {});
