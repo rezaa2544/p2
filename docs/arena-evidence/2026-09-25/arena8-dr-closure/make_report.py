@@ -1,16 +1,20 @@
 import json,hashlib,subprocess,datetime
 from pathlib import Path
 B=Path(__file__).parent; E=B/'evidence'; R=Path('/home/user/p2')
+def _ev(name,f):
+ p=E/name/f
+ if p.parent.parent!=E and p.parent!=E: raise SystemExit(f'refusing path outside evidence dir: {p}')
+ return p
 sha=subprocess.check_output(['git','rev-parse','HEAD'],cwd=R,text=True).strip()
 base='5d4a48f7f3cc0bc8ba144c61fb3996e1b458a7f2'
 assert sha=='452c7c10eed0274544c71422a772b6448e04a09b'
 assert subprocess.check_output(['git','status','--porcelain'],cwd=R,text=True)==''
-sets={name:json.loads((E/name/'measurements.json').read_text()) for name in ['final-restore','final-sentinel']}
+sets={n:json.loads(_ev(n,'measurements.json').read_text()) for n in ['final-restore','final-sentinel']}
 ledger=[]
 for name,measurements in sets.items():
- assert json.loads((E/name/'failures.json').read_text())==[]
+ assert json.loads(_ev(name,'failures.json').read_text())==[]
  assert len(measurements)==5 and all(x['valid'] for x in measurements)
- for row in json.loads((E/name/'ledger.json').read_text()):ledger.append(dict(row,sha=sha,evidence_level='E3',source=str(Path(name)/'ledger.json')))
+ for row in json.loads(_ev(name,'ledger.json').read_text()):ledger.append(dict(row,sha=sha,evidence_level='E3',source=str(Path(name)/'ledger.json')))
 (E/'FINAL_LEDGER.json').write_text(json.dumps(ledger,indent=2))
 provenance={'sha':sha,'base':base,'branch':'arena8/dr-closure-20260923','tree':'clean','report_generated_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'cwd':str(R),'lab_environment':{'TMPDIR':'/var/tmp','network':'loopback only','PG':'17.11','Redis':'8.0.2','pgBackRest':'2.55.1','Node':'22.23.2'},'commands':[{'command':'TMPDIR=/var/tmp python3 tests/infrastructure/disaster-recovery/live-dr-closure.py --runs 5 --out /home/user/arena8-dr-closure/evidence/final-restore','exit':0,'rounds':5},{'command':'TMPDIR=/var/tmp python3 tests/infrastructure/disaster-recovery/live-redis-failover.py --out /home/user/arena8-dr-closure/evidence/final-sentinel','exit':0,'rounds':5},{'command':'python3 tests/infrastructure/disaster-recovery/s3-tool-contract.py','exit':0,'rounds':5,'evidence_level':'MOCK ONLY'}],'remote_push_exit':128,'PR':None,'merged':False,'GitHub_Actions':'NOT VERIFIED'}
 (E/'provenance.json').write_text(json.dumps(provenance,indent=2))
