@@ -644,3 +644,44 @@ Canonical status remains **HARDENING / RECONCILIATION — NOT VERIFIED**.
 A-13, A-40, A-41, A-27/E4, strict-gate residual, registry rebind, OTP 0000 disposition, PG/live-runtime evidence, G7/false-green inventory, unlisted authz writer actions, performance/scale evidence, and independent multi-AI review.
 
 **Important:** historical PASS/fixed claims remain evidence-bound to their tested SHA/environment. No certification is inferred from the Atria report alone.
+
+
+## 2026-09-28 — Copilot finding intake: bootstrap grade/grade_level path
+
+A repository finding supplied from GitHub Copilot against historical commit `fda5e38` identified a cluster around `server/index.js::seedPgFromBootstrap()`, specifically the `classes.grade` / `classes.grade_level` compatibility shim.
+
+**Important status:** this is an **INTAKE / REVALIDATION_REQUIRED** item, not an accepted list of seven independent defects. The historical commit is not by itself current-head evidence.
+
+### Current-head code review
+The current `server/index.js` still contains the same structural pattern:
+- `grade` is copied only when present in PostgreSQL columns;
+- Persian ordinal strings are mapped only by trimmed exact lookup;
+- the classes compatibility block unconditionally executes `fieldSet.add('grade_level')`;
+- `fieldSet.delete('grade')` is controlled by chunk-level `anyNumericGrade`.
+
+Repository search also confirms that `classes.grade_level` is an established VARCHAR field in the project schema/documentation.
+
+### Triage of Copilot's seven claims
+- **C1 / C6 — VALID STRUCTURAL RISK, consolidate as one root cause:** `fieldSet.add('grade_level')` is unconditional even though the initial source-column allowlist is based on `cols`. If a deployed schema lacks `classes.grade_level`, the generated INSERT can reference a non-existent column. Reproduce against a schema without that column before marking confirmed.
+- **C2 — PARTIALLY VALID:** mapping uses `String(val).trim()`, so ordinary leading/trailing whitespace is already handled. Prefixes/variants such as `پایه دهم`, Arabic/Persian presentation variants, or other non-exact forms are not mapped. Whether this is a defect depends on the bootstrap contract; do not assume a type-mismatch failure because the compatibility block can move non-numeric values to `grade_level`.
+- **C3 — DERIVED FROM C1:** deleting `row.grade` can become data-loss/insert-risk when `grade_level` is unavailable. Do not track as an independent defect.
+- **C4 — NOT CONFIRMED / likely false as stated:** recognized Persian values are converted to numbers before the compatibility block, making `anyNumericGrade=true`. The unconditional deletion therefore does not occur for an all-recognized Persian chunk. A separate mixed/unknown-value test is still required.
+- **C5 — NOT CONFIRMED as stated:** the second-stage numeric check is intentionally evaluating the post-normalization value. Unknown strings are moved to `grade_level`; the key remaining question is whether mixed rows cause unintended NULL/missing numeric grade semantics.
+- **C7 — VALID TEST SCENARIO / POTENTIAL DATA-INTEGRITY ISSUE:** mixed chunks containing numeric/recognized grades plus an unknown textual grade need explicit verification. Because INSERT columns are chunk-level while row values can differ, the unknown row may omit `grade` while `grade` remains in `fieldSet`. This must be reproduced against real PostgreSQL and checked for resulting NULL/data loss.
+
+### Required verification
+1. Inspect current migration/schema truth for `classes.grade` and `classes.grade_level`.
+2. Build a real PostgreSQL reproduction for:
+   - schema with and without `grade_level`;
+   - numeric-only grades;
+   - recognized Persian grades;
+   - unknown Persian/text variants;
+   - mixed numeric + recognized + unknown values in one chunk;
+   - missing/null values.
+3. Verify generated INSERT columns/values and resulting persisted rows.
+4. Add regression tests for every confirmed invariant.
+5. Re-run the complete bootstrap/PG seed path and bind evidence to the current SHA/environment.
+6. Only after reproduction, convert confirmed root causes into the canonical defect register and implementation mission.
+
+**Do not implement the Copilot's proposed patch verbatim before this verification.** The proposed patch itself can still lose/omit semantics for unknown values and does not by itself establish the correct bootstrap contract.
+
