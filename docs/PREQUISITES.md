@@ -2286,3 +2286,44 @@ DISCOVER → REPRODUCE → BLAST-RADIUS SEARCH → ROOT CAUSE → FIX AT CORRECT
 | تاریخ | تغییر | دلیل |
 |---|---|---|
 | 2026-09-28 | تبدیل docs/PREQUISITES.md به مرجع صریح Central Engineering Law و افزودن Filter / Scope / Data-Access Law شامل authorization-aware filtering، source-level filtering، cross-scope tests، aggregation/export/cache parity و filter mutation testing | یکپارچه‌سازی قوانین، skill/learning، workflow، lessons learned و قانون فیلترها در یک سند مادر و جلوگیری از پراکندگی قوانین بین Agentها |
+
+
+# 117. Atria / ZCode Capability Development Law
+
+در مرحله فعلی، تمرکز راهبردی پروژه بر شناخت عمیق، هدایت، آموزش و ارتقای Atria در محیط ZCode است تا از ظرفیت آن به‌عنوان بازوی اصلی مهندسی Payesh حداکثر استفاده شود. این تمرکز تا زمانی ادامه دارد که شواهد کافی برای سطح حرفه‌ای موردنظر به‌دست آید؛ سپس توسعه عادی Payesh ادامه می‌یابد.
+
+## 117.1 نقش‌ها
+- Atria/ZCode: بازوی اصلی اجرای مهندسی، تحلیل، implementation، test، verification و Git/GitHub delivery.
+- ChatGPT: ناظر و هدایت‌کننده؛ طراحی Mission، تحلیل گزارش، تشخیص gap و تعیین فرمان/آموزش بعدی.
+- Hermes: حافظه، مدیریت عملیاتی و watchdog؛ در جریان قوانین، وضعیت، مأموریت‌ها، تصمیمات و پیشرفت Atria باقی می‌ماند و برای مأموریت‌های کوتاه و نقش‌های آینده آماده می‌شود.
+- GitHub + PREQUISITES: مرجع مشترک و current source of truth.
+
+## 117.2 قانون «فرمان بهتر، نه قانون بیشتر»
+هر ضعف Atria نباید خودکار با Rule جدید درمان شود. ابتدا باید مشخص شود gap مربوط به Knowledge، Skill، Mission/Prompt/Command، Workflow، Tool/Environment، Verification/Evidence، Self-review، Context/Memory یا خود قانون است. راه‌حل باید متناسب با علت انتخاب شود.
+
+## 117.3 چرخه ارتقا
+OBSERVE → ANALYZE → CLASSIFY GAP → TARGETED TRAINING/COMMAND → APPLY → TEST/EVIDENCE → REVIEW → REASSESS
+
+گزارش Atria به‌تنهایی اثبات Mastery نیست.
+
+## 117.4 Self-Audit
+وقتی Atria معیار، قانون یا skill جدیدی دریافت می‌کند، در صورت applicability باید کارهای قبلی مرتبط را نیز با معیار جدید بازبینی کند:
+NEW KNOWLEDGE → REASSESS PRIOR WORK → FIND GAPS → CORRECT → REGRESSION → EVIDENCE
+
+## 117.5 Capability Review
+در گزارش‌های مهم، در صورت وجود evidence این موارد پایش شوند: فهم مسئله، root cause، blast radius، implementation، testing، negative/boundary/security testing، CI/GitHub، evidence discipline، documentation sync، self-review، prior-work reassessment، uncertainty handling و اجرای Mission Contract.
+
+## 117.6 معیار Mastery
+اعلام رسیدن Atria به سطح حرفه‌ای موردنظر فقط با شواهد متعدد و مستقل در contextهای متفاوت مجاز است. شواهد باید نشان دهند که skillها در عمل و به‌صورت تکرارپذیر اجرا می‌شوند، verification و evidence معتبر است، self-audit رخ می‌دهد، root cause از symptom تفکیک می‌شود، security/scope/filter invariants حفظ می‌شوند، regression و negative testing انجام می‌شوند، GitHub/CI/post-merge verification رعایت می‌شود و در نبود evidence ادعای قطعی مطرح نمی‌شود.
+
+## 117.7 Continuous Capability Development
+پس از شروع توسعه Payesh نیز هر weakness یا skill موردنیاز جدید باید ثبت، طبقه‌بندی، آموزش/هدایت، عملیاتی و با evidence ارزیابی شود. در صورت اثر بر قوانین یا فرآیند، PREQUISITES و اسناد canonical مرتبط باید synchronize شوند.
+
+اصل نهایی:
+UNDERSTANDS → REASONS → EXECUTES → VERIFIES → SELF-AUDITS → LEARNS → IMPROVES
+
+# 118. Change Log — Atria Capability Development
+
+| تاریخ | تغییر | دلیل |
+|---|---|---|
+| 2026-09-28 | ثبت Atria/ZCode به‌عنوان تمرکز فعلی ارتقای capability، تعریف نقش ChatGPT/Hermes، gap classification، self-audit، معیار mastery و continuous capability development | استفاده حداکثری از Atria/ZCode و جلوگیری از درمان خودکار هر ضعف با Rule جدید بدون تشخیص علت |
