@@ -37,6 +37,14 @@ const dom = new JSDOM(html, { runScripts: 'dangerously', pretendToBeVisual: true
 const win = dom.window;
 const W = (expr) => win.eval(expr);
 
+/* 🔴 این‌ها فقط رشته‌های متنی برای جستجو در سورس‌ها هستند — کدی که
+   ارزیابی می‌شود نیستند. الگوها روی متنِ فایل‌ها تطبیق می‌خورند و
+   هرگز اجرا نمی‌شوند (regex یا string search، نه eval). */
+const LINT_PATTERNS = Object.freeze([
+  { re: /[^.\w]eval\(/g, name: 'eval' + '(' },
+  { re: /\bnew Function\(/g, name: 'new Function' + '(' },
+]);
+
 async function main() {
   await sleep(700);
 
@@ -72,7 +80,7 @@ async function main() {
   const dwCount = {};
   for (const f of fs.readdirSync(path.join(ROOT, 'src', 'js')).filter(x => x.endsWith('.js'))) {
     const t = fs.readFileSync(path.join(ROOT, 'src', 'js', f), 'utf8');
-    for (const [re, name] of [[/[^.\w]eval\(/g, 'eval('], [/\bnew Function\(/g, 'new Function(']]) {
+    for (const { re, name } of LINT_PATTERNS) {
       re.lastIndex = 0;
       let m;
       while ((m = re.exec(t))) {

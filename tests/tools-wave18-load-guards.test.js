@@ -169,8 +169,8 @@ test('W18-G4a: TABLES is the six expected constants in FK order', () => {
 
 test('W18-G4b: TRUNCATE_SQL and COUNT_SQL have an entry for every table in TABLES', () => {
   TABLES_LIST.forEach((t) => {
-    assert.ok(TRUNCATE_SQL.hasOwnProperty(t), 'TRUNCATE_SQL missing entry for ' + t);
-    assert.ok(COUNT_SQL.hasOwnProperty(t), 'COUNT_SQL missing entry for ' + t);
+    assert.ok(Object.prototype.hasOwnProperty.call(TRUNCATE_SQL, t), 'TRUNCATE_SQL missing entry for ' + t);
+    assert.ok(Object.prototype.hasOwnProperty.call(COUNT_SQL, t), 'COUNT_SQL missing entry for ' + t);
   });
   /* No extra keys either — a stray table would mean a statement the allowlist
      does not know about. */

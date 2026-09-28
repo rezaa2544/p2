@@ -94,8 +94,8 @@ async function main() {
   process.env.REDIS_URL = ctx.url;
   delete process.env.NODE_ENV; /* توسعه: init مجاز است ولی ما URL زنده می‌دهیم */
 
-  const redis = require(path.join(__dirname, '..', 'server', 'redis.js'));
-  const cache = require(path.join(__dirname, '..', 'server', 'cache.js'));
+  const redis = require('../server/redis.js');
+  const cache = require('../server/cache.js');
 
   try {
     /* ── R1: init واقعی ── */

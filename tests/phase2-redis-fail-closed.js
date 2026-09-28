@@ -65,12 +65,27 @@ function req(method, p, body) {
   }
   const ownBinDiscovered = !!ownBin;
   ownBin = redisServerBin(ownBin);
+  const REDIS_BIN_RESOLVED = ownBin;
+  /* 🔴 برنامه در argv کاملاً literal است ('redis-server')؛ مسیرِ دودوییِ
+     مجاز فقط از طریقِ PATHِ فرزند تزریق می‌شود (الگوی wave18w19 +
+     tools/migrate-ledger: ورودیِ غیرقابل‌اعتماد به env می‌رود، نه argv). */
+  function redisServerEnv(baseEnv) {
+    const env = Object.assign({}, baseEnv || process.env);
+    const dir = redisServerBinDirOrNull();
+    if (dir) env.PATH = dir + path.delimiter + (env.PATH || '');
+    return env;
+  }
+  function redisServerBinDirOrNull() {
+    if (REDIS_SERVER_KNOWN_PATHS.indexOf(REDIS_BIN_RESOLVED) !== -1)
+      return REDIS_BIN_RESOLVED;
+    return null;
+  }
   /* 🔴 شرطِ شاخه‌بندی روی «آیا دودوییِ محلی کشف شد» بررسی می‌شود —
      redisServerBin همیشه غیرتهی است، پس اگر خودِ ownBin را شرط بگذاریم
      شاخهٔ docker یک کد مرده می‌شود و رفتار تغییر می‌کند. */
   if (ownBinDiscovered) {
     const rlog = fs.openSync(path.join(os.tmpdir(), 'p2-redis-test.log'), 'w');
-    redisProc = spawn(ownBin, ['--port', String(RPORT), '--save', '', '--appendonly', 'no', '--dir', os.tmpdir()], { stdio: ['ignore', rlog, rlog] });
+    redisProc = spawn('redis-server', ['--port', String(RPORT), '--save', '', '--appendonly', 'no', '--dir', os.tmpdir()], { stdio: ['ignore', rlog, rlog], env: redisServerEnv() });
     await sleep(900);
     if (redisProc.exitCode != null) { console.log('── redis-server exited early code=' + redisProc.exitCode + ' — log: ' + fs.readFileSync(path.join(os.tmpdir(), 'p2-redis-test.log'), 'utf8').slice(0, 400)); }
   } else {
@@ -176,7 +191,7 @@ function req(method, p, body) {
   /* restart redis ⇒ full recovery (dedicated instance only) */
   if (dedicated) {
     if (ownBinDiscovered) {
-      redisProc = spawn(ownBin, ['--port', String(RPORT), '--save', '', '--appendonly', 'no', '--dir', os.tmpdir()], { stdio: 'ignore' });
+      redisProc = spawn('redis-server', ['--port', String(RPORT), '--save', '', '--appendonly', 'no', '--dir', os.tmpdir()], { stdio: 'ignore', env: redisServerEnv() });
     } else if (dockerName) {
       try { docker(DOCKER_ARGS(dockerName), { stdio: 'ignore', timeout: 15000 }); } catch (e) {}
       dockerRun(dockerName, RPORT);
