@@ -2041,3 +2041,248 @@ CLAIM → EVIDENCE → REPRODUCE → RECONCILE → REVIEW → GATE → STATUS
 | تاریخ | تغییر | دلیل |
 |---|---|---|
 | 2026-09-27 | افزودن Evidence Gate جامع و سراسری شامل تعریف Evidence، حداقل بسته شواهد، انواع Evidence، SHA/Environment binding، freshness/invalidation، negative testing، independent review، anti-false-green، waiver، self-test، lifecycle و enforcement | تبدیل Evidence Ledger موجود به یک دروازه اجرایی و غیرقابل‌عبور برای جلوگیری از DONE/VERIFIED/CERTIFIED بدون شواهد معتبر و current |
+
+# 114. Central Engineering Law — قانون مرکزی و سند مادر پروژه
+
+این فایل (docs/PREQUISITES.md) سند مرکزی قوانین و پیش‌نیازهای مهندسی پروژه پایش است و باید به‌عنوان Project Engineering Constitution / Operating System استفاده شود.
+
+این سند مرجع canonical برای موارد زیر است و هیچ Agent/Chat نباید نسخه موازی و متناقضی از این قوانین ایجاد کند:
+
+- قوانین و invariants پروژه؛
+- استانداردهای مهندسی و Quality/Security/Verification؛
+- مهارت‌ها و Skill Matrix موردنیاز Agentها؛
+- روند یادگیری و Evidence-based skill progression؛
+- برنامه کاری، فازها، Mission Contract و Critical Path؛
+- workflow کامل Discovery → Root Cause → Fix → Test → Evidence → Delivery؛
+- قوانین Git/GitHub و Source of Truth؛
+- قوانین امنیت، Authorization، Scope و Tenant Isolation؛
+- قوانین Database/Migration/Sync/Offline/Distributed State؛
+- قوانین Testing، CI/CD، False-Green و Evidence Gate؛
+- قوانین Agent/Chat collaboration، ownership و handoff؛
+- تجربیات، incidentها، lessons learned و process improvements ثبت‌شده در همین سند و اسناد canonical مرتبط؛
+- ارجاع به اسناد تخصصی canonical مانند Dashboard، Roadmap، Mission Plan، Defect Master، Decision Log و Verification Registry.
+
+## 114.1 تقدم منابع حقیقت
+
+برای ادعاهای current engineering state، ترتیب اعتبار چنین است:
+
+1. Current GitHub repository truth + current evidence
+2. Evidence معتبر bind‌شده به SHA و Environment
+3. این سند و سایر اسناد canonical همگام‌شده با repository
+4. گزارش Agent/Chat
+5. حافظه یا context قدیمی Agent
+
+Memory هر Agent هرگز نمی‌تواند repository truth یا current evidence را override کند.
+
+## 114.2 قانون «اول PREQUISITES، بعد کار»
+
+هر Agent قبل از شروع Mission باید این سند را به‌عنوان قوانین پایه بخواند و سپس وضعیت واقعی repository، Mission و Evidence را reconcile کند.
+
+هیچ Prompt یا Mission جدیدی مجاز نیست این قوانین را حذف، تضعیف یا دور بزند؛ مگر با یک تصمیم صریح، ثبت‌شده و قابل ردیابی در Decision Log.
+
+## 114.3 Skill / Learning Law
+
+Skill فقط با مطالعه ارتقا نمی‌یابد. ارتقای skill باید بر اساس شواهد واقعی باشد:
+
+UNKNOWN → LEARNING → PRACTICING → UNDERSTOOD → VERIFIED → MASTERED
+
+VERIFIED نیازمند کاربرد واقعی و قابل تکرار در Payesh است.
+MASTERED نیازمند شواهد مستقل و چندموردی در contextهای متفاوت است.
+
+هر failure مهم باید به یکی از این خروجی‌ها منجر شود:
+
+DEFECT → ROOT CAUSE → LESSON → GUARD/TEST/AUTOMATION → REVALIDATION
+
+## 114.4 قانون هماهنگی قوانین با تغییرات
+
+هر تغییر کوچک در code، architecture، contract، security boundary، test infrastructure، workflow یا process که بر این قوانین اثر می‌گذارد باید بلافاصله بخش مرتبط این سند و اسناد canonical وابسته را synchronize کند.
+
+هدف:
+
+ONE PROJECT — ONE ENGINEERING LAW — ONE CURRENT TRUTH
+
+# 115. Filter / Scope / Data-Access Law — قانون مرکزی فیلترها و محدوده دسترسی
+
+این بخش قانون سراسری پروژه برای تمام مسیرهای دسترسی به داده، Query، API، Sync، Report، Analytics، Export، Cache و Aggregation است.
+
+## 115.1 اصل بنیادی
+
+هیچ داده‌ای نباید فقط به این دلیل که از یک table، collection، service یا endpoint قابل خواندن است، وارد لایه بالاتر شود و بعداً صرفاً در application code حذف شود.
+
+الگوی مطلوب:
+
+AUTHENTICATE → AUTHORIZE/SCOPE → FILTER AT SOURCE → TRANSFORM → OUTPUT
+
+و نه:
+
+READ BROAD DATA → FILTER LATER → AUTHORIZE LATER
+
+## 115.2 Filter باید با Authorization یکی باشد
+
+Filter صرفاً ابزار performance نیست؛ در Payesh بخشی از data-access security boundary است.
+
+هر مسیر حساس باید scope مربوط به context کاربر را اعمال کند، از جمله در صورت کاربرد:
+
+- tenant/school scope؛
+- province/region scope؛
+- office scope؛
+- role scope؛
+- ownership؛
+- parent/student relationship؛
+- teacher/class relationship؛
+- organization/unit scope؛
+- temporal/date scope؛
+- state/status constraints.
+
+Role به‌تنهایی مجوز دسترسی به object را اثبات نمی‌کند.
+
+## 115.3 SQL/Source-Level Filtering
+
+برای PostgreSQL و منابع داده مشابه، تا حد امکان filtering و authorization باید در نزدیک‌ترین لایه به source اعمال شود.
+
+برای queryهای حساس، الگوی ترجیحی:
+
+SQL WHERE / JOIN / EXISTS / policy-aware query → scoped result
+
+است.
+
+خواندن کل dataset و سپس فیلتر کردن آن در JavaScript/Node/Python به‌صورت پیش‌فرض safe فرض نمی‌شود و باید از نظر authorization، data leakage، memory، performance، pagination، aggregation، count/total، export و cache بررسی شود.
+
+اگر چنین الگویی به‌دلیل معماری یا compatibility ناگزیر باشد، باید دلیل، scope proof و regression evidence داشته باشد.
+
+## 115.4 Scope باید در تمام مسیرهای داده حفظ شود
+
+Filter نباید فقط روی مسیر اصلی GET اعمال شود و در مسیرهای دیگر حذف شود.
+
+حداقل blast radius قابل بررسی:
+
+- REST/API؛
+- Sync/offline؛
+- PATCH/PUT/DELETE؛
+- Reports؛
+- Analytics؛
+- Aggregations؛
+- Count/Total؛
+- Search؛
+- Export؛
+- Background jobs/workers؛
+- Outbox/events؛
+- Cache؛
+- Admin/management paths؛
+- Legacy/alternate endpoints.
+
+اگر یک invariant در REST وجود دارد و Sync یا worker همان داده را مصرف می‌کند، باید parity آن invariant اثبات شود.
+
+## 115.5 Cross-Scope / Cross-Tenant Rule
+
+برای هر endpoint یا service حساس، در صورت applicability باید حداقل این حالت‌ها بررسی شوند:
+
+VALID SCOPE
+
+INVALID SCOPE
+
+CROSS-SCOPE / CROSS-TENANT
+
+MISSING AUTHORITY
+
+EXPIRED/INVALID AUTHORITY
+
+دسترسی cross-scope نباید صرفاً به دلیل وجود object ID یا role مجاز شود.
+
+## 115.6 Empty / Null / Boundary Filter Rule
+
+این موارد باید به‌طور صریح بررسی شوند:
+
+- empty filter؛
+- missing filter؛
+- NULL؛
+- zero/false values؛
+- pagination boundaries؛
+- date boundaries؛
+- inclusive/exclusive ranges؛
+- unknown IDs؛
+- deleted/inactive objects؛
+- mixed valid/invalid scope inputs.
+
+نباید رفتار empty filter به‌صورت ضمنی به «همه داده‌ها» تبدیل شود مگر اینکه این رفتار صریحاً بخشی از contract و authorization باشد.
+
+## 115.7 Count / Aggregation / Export Parity
+
+اگر داده‌ای scope-sensitive است، موارد زیر باید دقیقاً همان scope را رعایت کنند:
+
+- SELECT result؛
+- COUNT/TOTAL؛
+- SUM/AVG/other aggregates؛
+- pagination metadata؛
+- reports؛
+- exports؛
+- analytics.
+
+نباید result فیلترشده باشد ولی count یا aggregate شامل داده خارج از scope باشد.
+
+## 115.8 Cache Rule
+
+Cache key و cache invalidation باید scope را در صورت نیاز encode/حفظ کنند.
+
+ممنوع:
+
+unscoped cache → scoped consumer
+
+مگر اینکه ثابت شود داده cache شده ذاتاً public و non-sensitive است.
+
+## 115.9 Filter Mutation Tests
+
+برای filterهای security-sensitive، تا حد امکان mutation/adversarial testing باید نشان دهد که حذف یا تضعیف filter باعث failure می‌شود.
+
+Mutationهای مهم:
+
+- حذف WHERE؛
+- حذف tenant condition؛
+- حذف school condition؛
+- حذف office/province condition؛
+- broad کردن scope؛
+- حذف relationship guard؛
+- حذف ownership condition؛
+- حذف NULL protection؛
+- حذف filter از COUNT/TOTAL؛
+- حذف filter از export؛
+- حذف filter از pagination؛
+- bypass کردن policy helper.
+
+اگر mutation بدون fail شدن test عبور کند، coverage برای آن invariant کافی نیست.
+
+## 115.10 Filter Review Checklist
+
+برای هر filter مهم بررسی شود:
+
+- [ ] منبع داده مشخص است.
+- [ ] owner/scope مشخص است.
+- [ ] authorization قبل از disclosure اعمال می‌شود.
+- [ ] filter در source تا حد امکان اعمال می‌شود.
+- [ ] cross-scope test وجود دارد.
+- [ ] negative test وجود دارد.
+- [ ] boundary/empty/null behavior مشخص است.
+- [ ] count/aggregate parity بررسی شده است.
+- [ ] export/search/pagination parity بررسی شده است.
+- [ ] cache impact بررسی شده است.
+- [ ] Sync/worker/legacy paths بررسی شده‌اند.
+- [ ] regression test وجود دارد.
+- [ ] Evidence به SHA و Environment bind است.
+
+## 115.11 Filter Law Enforcement
+
+هر finding مربوط به filter/scope باید با این زنجیره مدیریت شود:
+
+DISCOVER → REPRODUCE → BLAST-RADIUS SEARCH → ROOT CAUSE → FIX AT CORRECT BOUNDARY → NEGATIVE/BOUNDARY TEST → INDEPENDENT REVIEW → EVIDENCE GATE → DELIVERY
+
+«در این endpoint درست کار می‌کند» برای certification کافی نیست؛ sibling paths باید بررسی شوند.
+
+## 115.12 اصل نهایی Filter Law
+
+هیچ داده‌ای نباید خارج از محدوده مجاز خود از مرز data-access عبور کند. Scope باید در همان جایی که داده محدود می‌شود enforce شود و تمام مسیرهای مشتق‌شده همان invariant را حفظ کنند.
+
+# 116. Change Log — Central Law / Filter Law
+
+| تاریخ | تغییر | دلیل |
+|---|---|---|
+| 2026-09-28 | تبدیل docs/PREQUISITES.md به مرجع صریح Central Engineering Law و افزودن Filter / Scope / Data-Access Law شامل authorization-aware filtering، source-level filtering، cross-scope tests، aggregation/export/cache parity و filter mutation testing | یکپارچه‌سازی قوانین، skill/learning، workflow، lessons learned و قانون فیلترها در یک سند مادر و جلوگیری از پراکندگی قوانین بین Agentها |
