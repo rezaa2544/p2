@@ -199,6 +199,14 @@ async function seedPgFromBootstrap(store, db) {
   };
   const ident = (n) => '"' + String(n).replace(/"/g, '""') + '"';
   const valOf = (v) => (v !== null && typeof v === 'object') ? JSON.stringify(v) : v;
+  /* F1/A-31: ستونِ grade در جدول‌های classes و subjects از نوع INTEGER است اما
+     فروشگاه بوت‌استرپ ممکن است پایهٔ تحصیلی را به‌صورت نوشتاریِ فارسی نگه دارد.
+     تبدیلِ دوجانبه و محدود به نگاشت‌های قطعی — هر مقدارِ ناشناخته همچنان
+     مطابقِ قراردادِ fail-closed برخورد می‌شود. */
+  const GRADE_ORDINALS = {
+    'اول': 1, 'دوم': 2, 'سوم': 3, 'چهارم': 4, 'پنجم': 5, 'ششم': 6,
+    'هفتم': 7, 'هشتم': 8, 'نهم': 9, 'دهم': 10, 'یازدهم': 11, 'دوازدهم': 12
+  };
   const names = Object.keys(store).filter((k) => /^[a-z][a-z0-9_]*$/.test(k) && Array.isArray(store[k]));
   const head = ['schools', 'users', 'subjects', 'classes'].filter((c) => names.includes(c));
   const tail = names.filter((c) => !head.includes(c));
@@ -233,6 +241,12 @@ async function seedPgFromBootstrap(store, db) {
             if (col === 'attendance' && (k === 'late_at' || k === 'exit_at') && typeof val === 'string' && /^\d{2}:\d{2}$/.test(val)) {
               val = (r.date || '2026-09-01') + 'T' + val + ':00Z';
             }
+            /* F1/A-31: ستونِ grade در classes و subjects عددی است؛ پایه‌های نوشتاریِ
+               فارسیِ فروشگاه بوت‌استرپ را به عددِ متناظر تبدیل کن. */
+            if ((col === 'classes' || col === 'subjects') && k === 'grade' && typeof val === 'string') {
+              const mapped = GRADE_ORDINALS[String(val).trim()];
+              if (mapped != null) val = mapped;
+            }
             data[k] = val;
             fieldSet.add(k);
           }
@@ -244,15 +258,19 @@ async function seedPgFromBootstrap(store, db) {
       /* F1 hardening: bootstrap JSON may contain legacy semantic grade strings while
          PostgreSQL keeps the numeric grade in a separate column. Preserve the
          semantic value in grade_level instead of letting a type error silently
-         discard the whole row. */
-      if (col === 'classes' && fieldSet.has('grade') && fieldSet.has('grade_level')) {
+         discard the whole row.
+         A-31-note: فروشگاه بوت‌استرپ ممکن است فقط «grade» داشته باشد بدون
+         «grade_level»؛ بنابراین نگهبان نباید به حضور هر دو مشروط باشد. */
+      if (col === 'classes' && fieldSet.has('grade')) {
+        let anyNumericGrade = false;
         for (const row of cleanRows) {
           if (row.grade != null && !Number.isFinite(Number(row.grade))) {
             if (row.grade_level == null) row.grade_level = String(row.grade);
             delete row.grade;
-          }
+          } else if (row.grade != null) anyNumericGrade = true;
         }
-        fieldSet.delete('grade');
+        fieldSet.add('grade_level');
+        if (!anyNumericGrade) fieldSet.delete('grade');
       }
       const rowFields = Array.from(fieldSet);
       try {
