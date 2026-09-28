@@ -929,11 +929,13 @@ function generatePhase3ReleaseCertificate(params = {}, options = {}) {
   const zeroRanking = params.zeroRanking || validateZeroRankingCompliance(params);
   const e2eChain = params.e2eChain || executeEndToEndChain();
   const independentVerification = params.independentVerification || null;
-  const externallyVerified = independentVerification &&
+  /* Boolean صریح: زنجیرهٔ && آخرین عملوندِ راست‌ارزش را برمی‌گرداند
+     (مثلاً رشتهٔ امضا) و مقایسهٔ === true با آن هرگز برقرار نیست. */
+  const externallyVerified = Boolean(independentVerification &&
     independentVerification.verified === true &&
     independentVerification.verifier_id &&
     independentVerification.evidence_bundle_id &&
-    independentVerification.verification_signature;
+    independentVerification.verification_signature);
 
   /* A-31 / I-08: شبیه‌سازی هرگز جای راستی‌آزمایی رانتایمی نمی‌نشیند —
      زنجیره فقط وقتی معتبر است که مشاهدهٔ رانتایمی داشته باشد. */

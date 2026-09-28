@@ -238,6 +238,10 @@ async function seedPgFromBootstrap(store, db) {
         for (const k of Object.keys(r)) {
           if (cols.has(k)) {
             let val = r[k];
+            /* F1/A-31: در فروشگاه بوت‌استرپ، رشتهٔ تهی یعنی «تنظیم‌نشده» —
+               برای ستون‌های TIMESTAMPTZ/عددی ارسالِ '' خطای نوع می‌دهد؛
+               نرمال‌سازی به NULL امن و معادلِ معنایی است. */
+            if (val === '') val = null;
             if (col === 'attendance' && (k === 'late_at' || k === 'exit_at') && typeof val === 'string' && /^\d{2}:\d{2}$/.test(val)) {
               val = (r.date || '2026-09-01') + 'T' + val + ':00Z';
             }
