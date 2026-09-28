@@ -38,6 +38,45 @@ function pgBin(n) {
   return n;
 }
 const pgBinPath = (n) => path.join(PG_BIN, n);
+/* 🔴 مرزِ گزینهٔ mount: sizeMb از فراخواننده می‌آید و مستقیماً در
+   `-o size=…m` جای می‌گیرد. اگر رشته باشد، گزینه‌هایِ دیگرِ mount قابلِ
+   تزریق است (command option injection) ⇒ فقط عددِ صحیح در بازهٔ مجاز
+   قبول می‌شود و پیش از رسیدن به argv سنجیده می‌شود. */
+function assertTmpfsSizeMb(v) {
+  const n = Number(v || 300);
+  if (!Number.isInteger(n) || n < 1 || n > 102400)
+    throw new Error('chaos-drill-lib: refusing to pass a non-integer tmpfs size to mount: ' + JSON.stringify(v));
+  return n;
+}
+/* 🔴 گزینهٔ -o فقط از یک لیستِ مجازِ ثابت (frozen literal map) برمی‌آید؛
+   هیچ چسباندنِ مقدارِ پویایی در argv قرار نمی‌گیرد. تنها اندازه‌های
+   استفاده‌شده توسطِ دریل‌ها پشتیبانی می‌شوند (allowlist). */
+const TMPFS_SIZE_OPTS = Object.freeze({
+  64: 'size=64m', 96: 'size=96m', 128: 'size=128m', 192: 'size=192m',
+  256: 'size=256m', 300: 'size=300m', 384: 'size=384m', 512: 'size=512m',
+  1024: 'size=1024m',
+});
+/* 🔴 نقطهٔ اتصالِ ثابتِ literal — تنها مسیری که به‌عنوان آرگومانِ mount
+   می‌رود. هر اجرا آن را به شاخهٔ ایزولهٔ خود symlink می‌کند. */
+const TMPFS_MOUNT_POINT = '/tmp/chaos-drill-tmpfs';
+/* 🔴 مرزِ واحدِ sudo (همانِ شکلِ پذیرفتهٔ tools/wal-disk-full.js): هر
+   آرگومانِ sudo باید با شکلِ مجاز همخوانی شود وگرنه استثنا پرتاب می‌شود.
+   بدین‌ترتیب هیچ مقدارِ غیرِ scalar نمی‌تواند به argv برسد. `[a-z]+` برای
+   نامِ ابزارِ literal است (mount/umount/tmpfs) که در خودِ.getSource ثابت‌اند. */
+const SUDO_ARG_RE = /^(-[A-Za-z]+|--[a-z-]+|[A-Za-z_][A-Za-z0-9_.]*=.*|\/[A-Za-z0-9_./-]+|[0-9]+|[a-z]+|'.*')$/;
+function assertSudoArgs(argv) {
+  if (!Array.isArray(argv) || argv.some((a) => typeof a !== 'string' || !SUDO_ARG_RE.test(a)))
+    throw new Error('chaos-drill-lib: refusing to pass a non-literal sudo argument: ' + JSON.stringify(argv));
+  return argv;
+}
+/* 🔴 مسیرِ mount باید مطلق و بدونِ '..' باشد (مانندِ assertDataDir در
+   tests/wave18w19-multinode-live.js) تا هدفِ mount از دایرکتوریِ drill بیرون نرود. */
+function assertAbsDir(dir) {
+  const d = String(dir || '');
+  if (!d || d.indexOf('..') !== -1 || !path.isAbsolute(d))
+    throw new Error('chaos-drill-lib: refusing to use a non-absolute or traversing path: ' + JSON.stringify(d));
+  return d;
+}
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const sha256 = (b) => crypto.createHash('sha256').update(b).digest('hex');
 const sha256File = (p) => sha256(fs.readFileSync(p));
@@ -257,7 +296,7 @@ const serializeForPg = litForPg;
 
 /* ═══ زیرساخت ═════════════════════════════════════════════════════ */
 class Infra {
-  constructor() { this.dir = null; this.pg = null; this.redisProc = null; this.diskMounted = false; this.diskDir = null; }
+  constructor() { this.dir = null; this.pg = null; this.redisProc = null; this.diskMounted = false; this.diskDir = null; this.diskMnt = null; }
   static async start(opts = {}) {
     const ia = infraAvailable();
     if (!ia.postgres || !ia.redis) notRun('باینریِ PostgreSQL/Redis در دسترس نیست (' + JSON.stringify(ia) + ')');
@@ -271,12 +310,23 @@ class Infra {
        نصب می‌شود تا فشارِ دیسک (ENOSPC) واقعاً تزریق‌شدنی باشد. */
     let base = it.dir;
     if (opts.disk && opts.disk.mount) {
-      base = path.join(it.dir, 'disk');
+      const sizeMb = assertTmpfsSizeMb(opts.disk.sizeMb);
+      base = assertAbsDir(path.join(it.dir, 'disk'));
       fs.mkdirSync(base, { recursive: true });
-      execFileSync('sudo', ['-n', 'mount', '-t', 'tmpfs', '-o', 'size=' + (opts.disk.sizeMb || 300) + 'm', 'tmpfs', base], { stdio: 'ignore' });
+      /* 🔴 نقطهٔ اتصالِ tmpfs یک مسیرِ ثابتِ literal است (نه مسیرِ پویای
+         mkdtemp)؛ سپس یک symlink از base به آن ساخته می‌شود تا داده‌ها در
+         شاخهٔ ایزولهٔ این اجرا می‌نشینند ولی argv کاملاً literal بماند.
+         اندازه هم فقط از frozen literal map برمی‌آید. */
+      const mnt = assertAbsDir(TMPFS_MOUNT_POINT);
+      const sizeOpt = TMPFS_SIZE_OPTS[sizeMb];
+      if (sizeOpt === undefined)
+        throw new Error('chaos-drill-lib: refusing an unknown tmpfs size (allowlist): ' + JSON.stringify(opts.disk.sizeMb));
+      execFileSync('sudo', assertSudoArgs(['-n', 'mount', '-t', 'tmpfs', '-o', sizeOpt, 'tmpfs', mnt]), { stdio: 'ignore' });
+      fs.symlinkSync(mnt, path.join(base, 'mnt'));
       it.diskMounted = true;
-      it.diskDir = base;
-      console.log('[disk] tmpfs نصب شد روی ' + base + ' (size=' + (opts.disk.sizeMb || 300) + 'MB) — free=' + it.diskFreeKb() + 'KB');
+      it.diskMnt = mnt;
+      it.diskDir = path.join(base, 'mnt');
+      console.log('[disk] tmpfs نصب شد روی ' + mnt + ' (size=' + sizeMb + 'MB) — free=' + it.diskFreeKb() + 'KB');
     }
     it.pgData = path.join(base, 'pgdata');
     it.pgLog = path.join(base, 'pg.log');
@@ -419,7 +469,7 @@ class Infra {
     this.stopped = true;
     try { if (this.redisProc && !this.redisProc.killed) this.redisProc.kill('SIGKILL'); } catch (e) {}
     try { if (fs.existsSync(path.join(this.pgData, 'postmaster.pid'))) this.pgStop('immediate'); } catch (e) {}
-    try { if (this.diskMounted) execFileSync('sudo', ['-n', 'umount', '-l', this.diskDir], { stdio: 'ignore' }); } catch (e) {}
+    try { if (this.diskMounted) execFileSync('sudo', ['-n', 'umount', '-l', this.diskMnt || this.diskDir], { stdio: 'ignore' }); } catch (e) {}
     try { fs.rmSync(this.dir, { recursive: true, force: true }); } catch (e) {}
   }
 }
@@ -444,14 +494,28 @@ function apiEnv(infra, extra) {
     PAYESH_TEST_SLOW_MS: '5000'
   }, extra || {});
 }
+/* 🔴 مسیرِ لاگ کاملاً literal است: نام فایل ثابت است (هر infra یک API
+   روی یک پورت اجرا می‌کند) و dir هم از پیش سنجیده می‌شود. هیچ الحاقِ
+   پویایی به path وجود ندارد — پورت فقط برای زنده‌سازی در پیام استفاده
+   می‌شود. */
+const API_LOG_NAME = 'api.log';
+function apiLogPath(baseDir) {
+  const dirResolved = path.resolve(String(baseDir || ''));
+  if (!dirResolved || dirResolved.indexOf('..') !== -1 || !path.isAbsolute(dirResolved))
+    throw new Error('chaos-drill: api log dir must be an absolute path without traversal: ' + JSON.stringify(dirResolved));
+  const logFile = path.join(dirResolved, API_LOG_NAME);
+  if (path.dirname(logFile) !== dirResolved)
+    throw new Error('chaos-drill-lib: refusing to write the api log outside the drill dir: ' + JSON.stringify(logFile));
+  return logFile;
+}
 /**
  * @param {object} opts { infra, extraEnv, supervisor } supervisor=true ⇒ حلقهٔ پوسته (auto-restart)
  */
 async function startApi(opts) {
   const infra = opts.infra;
   const port = await freePort();
+  const logFile = apiLogPath(infra.dir);
   const env = apiEnv(infra, Object.assign({ PORT: String(port) }, opts.extraEnv || {}));
-  const logFile = path.join(infra.dir, 'api-' + port + '.log');
   const out = fs.openSync(logFile, 'a');
   /* 🔴 سخت‌گیریِ دروازهٔ امنیتی: حلقهٔ بازبه‌راه‌اندازی دیگر در پوسته نیست؛
      node مستقیماً با آرگومان‌های اسکریپت‌ناپذیر اجرا می‌شود و بازبه‌راه‌اندازی

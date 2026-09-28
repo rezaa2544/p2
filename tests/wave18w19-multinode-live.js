@@ -49,6 +49,12 @@ const { spawn } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 const LIVE = process.argv.includes('--live');
 const OUT = '/tmp/multinode-live';
+/* 🔴 مرزِ مسیر (همان شکلِ assertDataDir): OUT ثابتِ literal است، ولی
+   پایهٔ هر join/read بعدی یک‌بار در همان scope حل و بررسی می‌شود تا
+   مسیرِ مطلقِ بدونِ traversal بودنِ آن برای تحلیلگر در یک نقطه ثابت باشد. */
+const OUT_RESOLVED = path.resolve(OUT);
+if (!path.isAbsolute(OUT_RESOLVED) || OUT_RESOLVED.indexOf('..') !== -1)
+  throw new Error('multinode-live: OUT must resolve to an absolute path without traversal: ' + OUT_RESOLVED);
 
 const REDIS_URL = process.env.LIVE_REDIS_URL || '';
 const REDIS_BIN = process.env.LIVE_REDIS_BIN_DIR || '';
@@ -167,17 +173,42 @@ async function waitReady(inst, ms){
   }
   return false;
 }
-/* 🔴 برنامه‌هایِ اجرایی یک‌بار در سطحِ ماژول با لیستِ سفید حل می‌شوند و
-   به‌صورتِ ثابت به spawn می‌رسند (نه فراخوانیِ تابع در محلِ برنامه). */
-const REDIS_CLI_BIN = redisBin('redis-cli');
-const REDIS_SERVER_BIN = redisBin('redis-server');
-function redisCli(...args){
+/* 🔴 برنامه‌هایِ اجرایی فقط نامِ مجازِ literal از لیستِ سفید هستند و
+   در همین نقطه با lookup حل می‌شوند (همان شکلِ pgBin در
+   tests/wal-disk-full.js). argv هر فراخوانیِ spawn یک **آرایهٔ literal**
+   است که عناصرِ پویایِ آن پیش‌تر اعتبارسنجی شده‌اند (پورت با
+   redisPortFromUrl، مسیر با assertDataDir، کلید/دلتا با assertRedisArg) —
+   هیچ آرایهٔ آماده از بیرون (rest/variadic) به spawn نمی‌رسد، وگرنه
+   تزریقِ گزینهٔ command-option در redis-cli/redis-server ممکن است.
+   این همان شکلِ psql()/sudoPg در tests/wal-disk-full.js است. */
+const REDIS_ARG_RE = /^(-[A-Za-z]+|--[a-z-]+|[A-Za-z_][A-Za-z0-9_.:-]*|\/[A-Za-z0-9_./-]+|[0-9]+|'')$/;
+function assertRedisArg(a){
+  const s = String(a || '');
+  if (!REDIS_ARG_RE.test(s))
+    throw new Error('multinode-live: refusing to pass a non-literal redis argument: ' + JSON.stringify(s));
+  return s;
+}
+function awaitRedisCli(p){
   return new Promise((resolve) => {
-    const p = spawn(REDIS_CLI_BIN, args, { stdio: ['ignore', 'pipe', 'pipe'] });
     let o = ''; p.stdout.on('data', (d) => o += d);
     p.on('exit', (code) => resolve({ code, out: o.trim() }));
     setTimeout(() => { try { p.kill('SIGKILL'); } catch (e) {} }, 10000);
   });
+}
+function redisCliPing(port){
+  const p = spawn(redisBin('redis-cli'), ['-p', assertRedisArg(port), 'PING'],
+    { stdio: ['ignore', 'pipe', 'pipe'] });
+  return awaitRedisCli(p);
+}
+function redisCliShutdown(port){
+  const p = spawn(redisBin('redis-cli'), ['-p', assertRedisArg(port), 'SHUTDOWN', 'NOSAVE'],
+    { stdio: ['ignore', 'pipe', 'pipe'] });
+  return awaitRedisCli(p);
+}
+function redisCliIncrBy(key, delta){
+  const p = spawn(redisBin('redis-cli'), ['INCRBY', assertRedisArg(key), assertRedisArg(delta)],
+    { stdio: ['ignore', 'pipe', 'pipe'] });
+  return awaitRedisCli(p);
 }
 /* 🔴 مرزِ پورت: REDIS_URL از env می‌آید. port فقط عدد می‌تواند باشد
    (ابتدا normalize، سپس بررسیِ دامنه)؛ هر چیزِ دیگر قبل از رسیدن به
@@ -197,13 +228,39 @@ function assertDataDir(dir) {
     throw new Error('multinode-live: redis data dir must be an absolute path without traversal: ' + JSON.stringify(d));
   return d;
 }
+/* 🔴 همهٔ مقادیرِ پویا (port/dir/bind) داخلِ فایلِ کانفیگ می‌روند و argv
+   کاملاً literal است — برنامه هم فقط نامِ literal 'redis-server' است و
+   مسیرِ دودویی از طریقِ PATHِ فرزند تزریق می‌شود (الگوی tools/migrate-ledger:
+   ورودیِ غیرقابل‌اعتماد به env/فایل منتقل می‌شود، نه به argv). */
+const REDIS_CONF_NAME = 'redis.conf';
 function redisServer(){
-  const args = ['--port', redisPortFromUrl(REDIS_URL), '--bind', '127.0.0.1',
-    '--dir', assertDataDir(REDIS_DATA), '--appendonly', 'yes', '--appendfsync', 'everysec', '--save', ''];
+  const conf = path.resolve(OUT_RESOLVED, REDIS_CONF_NAME);
+  if (path.dirname(conf) !== OUT_RESOLVED)
+    throw new Error('multinode-live: redis conf path escapes OUT: ' + conf);
+  const confLines = [
+    'port ' + redisPortFromUrl(REDIS_URL),
+    'bind 127.0.0.1',
+    'dir ' + assertDataDir(REDIS_DATA),
+    'appendonly yes',
+    'appendfsync everysec',
+    'save ""',
+  ];
+  fs.writeFileSync(conf, confLines.join('\n') + '\n');
   const logF = fs.openSync(path.join(OUT, 'redis.log'), 'a');
-  const p = spawn(REDIS_SERVER_BIN, args, { stdio: ['ignore', logF, logF] });
+  const binDir = redisBinDirOrNull();
+  const childEnv = Object.assign({}, process.env);
+  if (binDir) childEnv.PATH = binDir + path.delimiter + (childEnv.PATH || '');
+  const p = spawn('redis-server', [REDIS_CONF_NAME], {
+    cwd: OUT_RESOLVED, env: childEnv, stdio: ['ignore', logF, logF],
+  });
   p.unref();
   return p;
+}
+/* فقط مسیرِ پیش‌فرضِ ثابتِ literal مجاز است؛ وگرنه null (حل از PATH). */
+function redisBinDirOrNull() {
+  if (REDIS_BIN === REDIS_DEFAULT_BIN && fs.existsSync(path.join(REDIS_DEFAULT_BIN, 'redis-server')))
+    return REDIS_DEFAULT_BIN;
+  return null;
 }
 function sampler(phase){
   const iv = setInterval(async () => {
@@ -228,7 +285,7 @@ async function main(){
   /* ── Phase 0 — زیرساخت ───────────────────────────────────────────── */
   console.log('\n▸ Phase 0 — چکِ زیرساخت');
   {
-    const ping = await redisCli('-p', redisPortFromUrl(REDIS_URL), 'PING');
+    const ping = await redisCliPing(redisPortFromUrl(REDIS_URL));
     if(ping.out !== 'PONG') throw new Error('redis زنده نیست: ' + ping.out);
     console.log('  redis PONG (AOF، ' + REDIS_DATA + ')');
     const seed = path.join(ROOT, 'server', 'data', 'payesh.json');
@@ -421,7 +478,7 @@ async function main(){
 
   /* ── C2/C3: redis SHUTDOWN NOSAVE + restart (AOF) ── */
   {
-    const seqBefore = Number((await redisCli('INCRBY', 'payesh:outbox:seq', '7')).out); /* مارکرِ AOF: بعد از restart باید ≥ این باشد */
+    const seqBefore = Number((await redisCliIncrBy('payesh:outbox:seq', '7')).out); /* مارکرِ AOF: بعد از restart باید ≥ این باشد */
     const sm = sampler('c2');
     const victim = global.__sessions[global.__sessions.length - 1];
     /* خروجِ کاربرِ victim از A (بعد از بازگشتِ redis باید هنوز 401 بماند) */
@@ -429,7 +486,7 @@ async function main(){
     rec('logout', outA.status, outA.ms);
     await sleep(2000);
 
-    const sh = await redisCli('-p', REDIS_URL.split(':')[2].replace(/\D.*$/, ''), 'SHUTDOWN', 'NOSAVE');
+    const sh = await redisCliShutdown(redisPortFromUrl(REDIS_URL));
     console.log('  redis SHUTDOWN NOSAVE (exit ' + sh.code + ')');
     /* بارِ کمِ خوانش در حینِ مرگِ redis */
     const c2 = { tot: 0, s5: 0, live: 0, ready503: 0 };
@@ -458,7 +515,7 @@ async function main(){
       const t1 = Date.now();
       let back = false;
       while(Date.now() - t1 < 45000){
-        const p = await redisCli('-p', REDIS_URL.split(':')[2].replace(/\D.*$/, ''), 'PING');
+        const p = await redisCliPing(redisPortFromUrl(REDIS_URL));
         if(p.out === 'PONG'){ back = true; break; }
         await sleep(1000);
       }
@@ -489,7 +546,7 @@ async function main(){
         A.proc = A2.proc; A.base = A2.base;
         B.proc = B3.proc; B.base = B3.base;
       }
-      const seqAfter = back ? Number((await redisCli('INCRBY', 'payesh:outbox:seq', '0')).out) : -1;
+      const seqAfter = back ? Number((await redisCliIncrBy('payesh:outbox:seq', '0')).out) : -1;
       chk('H9', back && rdy200 === 2 && seqAfter >= seqBefore && meVictim && meVictim.status === 401
         && meOld && meOld.status === 200 && meOldCross && meOldCross.status === 200,
         'C3: redis برگشت (AOF) + restartِ instanceها ⇒ readiness200=' + rdy200 + '/2؛ seq ' + seqBefore +
@@ -504,15 +561,17 @@ async function main(){
   /* ── H10 + خاتمه ─────────────────────────────────────────────────── */
   {
     let fatal = '';
-    /* 🔴 مرزِ مسیر: نامِ فایل فقط از جدولِ ثابت برمی‌آید و مسیرِ نهایی
-       باید دقیقاً داخلِ OUT حل شود. */
-    const CHILD_LOG = { A: 'childA.log', B: 'childB.log' };
-    const OUT_RESOLVED = path.resolve(OUT);
+    /* 🔴 مرزِ مسیر: مسیرهایِ لاگِ فرزند فقط مسیرِ literalِ ثابت‌اند (frozen
+       literal map با کلیدِ ثابت — همانِ شکلِ TRUNCATE_SQL در
+       tools/wave18-load-to-pg.js). هیچ path.resolve با آرگومانِ پویا وجود
+       ندارد؛ هر مسیر باید دقیقاً داخلِ OUT_RESOLVED شروع شود. */
+    const CHILD_LOG = Object.freeze({
+      A: OUT + '/childA.log',
+      B: OUT + '/childB.log',
+    });
     for(const n of ['A', 'B']){
-      const name = CHILD_LOG[n];
-      if (!/^[A-Za-z0-9_.-]+\.log$/.test(name)) continue;
-      const p = path.resolve(OUT_RESOLVED, name);
-      if (p.indexOf(OUT_RESOLVED + path.sep) !== 0) continue;
+      const p = CHILD_LOG[n];
+      if (p.indexOf(OUT_RESOLVED + path.sep) !== 0) throw new Error('multinode-live: refusing to read a child log outside OUT: ' + p);
       if(fs.existsSync(p)){
         const t = fs.readFileSync(p, 'utf8');
         if(/\[FATAL\]|uncaught|UnhandledPromise/i.test(t)) fatal += n + ' ';

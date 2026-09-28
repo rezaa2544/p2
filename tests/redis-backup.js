@@ -17,7 +17,26 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const crypto = require('crypto');
 const { spawnSync } = require('child_process');
+
+/* 🔴 رمزِ تستی کاملاً مصنوعی است و در زمانِ اجرا تولید می‌شود —
+   هیچ رشتهٔ رمزگونه‌ای در مخزن Commit نمی‌شود (الگوی tests/audit.js).
+   این رمز فقط به یک ردیسِ جعلیِ محلی متصل می‌شود و هرگز به سیستمی
+   واقعی نمی‌رسد. */
+function newSyntheticSecret() { return crypto.randomUUID(); }
+
+/* 🔴 مرزِ مسیر: زیرشاخه‌های tmp فقط با resolve ساخته می‌شوند و باید
+   دقیقاً داخلِ tmp بمانند (containment). در محلِ فراخوانی الحاقِ پویا
+   به path وجود ندارد. */
+function subDir(parent, name) {
+  if (!/^[a-z]+$/.test(String(name)))
+    throw new Error('redis-backup: refusing an unknown subdir name: ' + JSON.stringify(name));
+  const p = path.resolve(parent, name);
+  if (path.dirname(p) !== path.resolve(parent))
+    throw new Error('redis-backup: refusing a path outside the tmp root: ' + JSON.stringify(p));
+  return p;
+}
 
 const ROOT = path.join(__dirname, '..');
 const SCRIPT = path.join(ROOT, 'tools', 'redis-backup.sh');
@@ -65,13 +84,13 @@ main();
 function main() {
   console.log('\n▸ فاز ۲.۱ — پشتیبان ردیس (با ردیس جعلی)');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-rb-'));
-  const redisDir = path.join(tmp, 'redis'); fs.mkdirSync(redisDir);
-  const backupDir = path.join(tmp, 'backup'); fs.mkdirSync(backupDir);
-  const stub = makeStub(path.join(tmp, 'bin'), redisDir, {});
+  const redisDir = subDir(tmp, 'redis'); fs.mkdirSync(redisDir);
+  const backupDir = subDir(tmp, 'backup'); fs.mkdirSync(backupDir);
+  const stub = makeStub(subDir(tmp, 'bin'), redisDir, {});
 
   const baseEnv = {
     REDIS_CLI: stub, REDIS_DIR: redisDir, BACKUP_DIR: backupDir,
-    BACKUP_LOCK: path.join(tmp, 'lock'), BACKUP_RETENTION_DAYS: '7'
+    BACKUP_LOCK: subDir(tmp, 'lock'), BACKUP_RETENTION_DAYS: '7'
   };
 
   /* فایل‌های قدیمی برای آزمون نگهداری */
@@ -82,7 +101,8 @@ function main() {
   fs.utimesSync(oldRdb, tenDaysAgo, tenDaysAgo);
   fs.utimesSync(oldAof, tenDaysAgo, tenDaysAgo);
 
-  const r = runBackup(Object.assign({}, baseEnv, { REDIS_PASSWORD: 'p@ss-SECRET-xyz' }));
+  const REDIS_PASSWORD = newSyntheticSecret();
+  const r = runBackup(Object.assign({}, baseEnv, { REDIS_PASSWORD }));
   const out = (r.stdout || '') + (r.stderr || '');
 
   chk('B0 اسکریپت موفق اجرا شد (بدون ردیس واقعی)', r.status === 0, out.slice(-300));
@@ -102,24 +122,24 @@ function main() {
 
   /* شکست SAVE */
   const tmp2 = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-rb2-'));
-  const redisDir2 = path.join(tmp2, 'redis'); fs.mkdirSync(redisDir2);
-  const backupDir2 = path.join(tmp2, 'backup'); fs.mkdirSync(backupDir2);
-  const stubFail = makeStub(path.join(tmp2, 'bin'), redisDir2, { failSave: true });
-  const r2 = runBackup({ REDIS_CLI: stubFail, REDIS_DIR: redisDir2, BACKUP_DIR: backupDir2, BACKUP_LOCK: path.join(tmp2, 'lock') });
+  const redisDir2 = subDir(tmp2, 'redis'); fs.mkdirSync(redisDir2);
+  const backupDir2 = subDir(tmp2, 'backup'); fs.mkdirSync(backupDir2);
+  const stubFail = makeStub(subDir(tmp2, 'bin'), redisDir2, { failSave: true });
+  const r2 = runBackup({ REDIS_CLI: stubFail, REDIS_DIR: redisDir2, BACKUP_DIR: backupDir2, BACKUP_LOCK: subDir(tmp2, 'lock') });
   chk('B5 شکست SAVE = خروجی غیرصفر + پیام', r2.status !== 0 && /SAVE/.test((r2.stdout || '') + (r2.stderr || '')), 'status=' + r2.status);
 
   chk('B6 رمز در هیچ خروجی‌ای نشت نکرد',
-    out.indexOf('p@ss-SECRET-xyz') === -1 && ((r2.stdout || '') + (r2.stderr || '')).indexOf('p@ss-SECRET-xyz') === -1);
+    out.indexOf(REDIS_PASSWORD) === -1 && ((r2.stdout || '') + (r2.stderr || '')).indexOf(REDIS_PASSWORD) === -1);
 
   /* ── B7 (F-QA-08): تداخلِ قفل نباید «موفقیت» گزارش شود ──
      قفل را در یک پروسهٔ دیگر نگه می‌داریم و اسکریپت را صدا می‌زنیم.
      پیش از اصلاح، اسکریپت با exit 0 خارج می‌شد و cron یک اجرایِ
      بدونِ هیچ پشتیبانی را سبز می‌دید. */
   const tmp3 = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-rb3-'));
-  const redisDir3 = path.join(tmp3, 'redis'); fs.mkdirSync(redisDir3);
-  const backupDir3 = path.join(tmp3, 'backup'); fs.mkdirSync(backupDir3);
-  const stub3 = makeStub(path.join(tmp3, 'bin'), redisDir3, {});
-  const lock3 = path.join(tmp3, 'lock');
+  const redisDir3 = subDir(tmp3, 'redis'); fs.mkdirSync(redisDir3);
+  const backupDir3 = subDir(tmp3, 'backup'); fs.mkdirSync(backupDir3);
+  const stub3 = makeStub(subDir(tmp3, 'bin'), redisDir3, {});
+  const lock3 = subDir(tmp3, 'lock');
   /* نگهدارندهٔ قفل: تا ۳۰ ثانیه قفل را در اختیار می‌گیرد */
   const holder = spawnSync('bash', ['-c',
     `exec 9>"${lock3}"; flock -n 9 || exit 9; (exec 9>"${lock3}"; flock 9; sleep 30) & echo $!`

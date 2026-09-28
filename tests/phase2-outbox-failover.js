@@ -13,6 +13,23 @@ const { Client } = require('pg');
 
 const NODE = process.execPath;
 const ROOT = path.join(__dirname, '..');
+
+/* 🔴 تبدیلِ URLِ اتصال به متغیرهایِ env استانداردِ libpq؛ به این ترتیب
+   هیچ URLِ پویایی به argv نمی‌رسد. */
+function pgEnvFromUrl(url) {
+  const raw = String(url || '');
+  const parsed = new URL(raw.replace(/^postgres(ql)?:/, 'http:'));
+  const env = {
+    PGHOST: parsed.hostname || 'localhost',
+    PGPORT: String(parsed.port || 5432),
+    PGUSER: decodeURIComponent(parsed.username || ''),
+    PGDATABASE: String(parsed.pathname || '').replace(/^\//, ''),
+    PGSSLMODE: 'prefer',
+  };
+  if (parsed.password) env.PGPASSWORD = decodeURIComponent(parsed.password);
+  return env;
+}
+
 const PORT = 3103;
 const results = [];
 function chk(name, ok, detail) { results.push(ok); console.log((ok ? '✅ ' : '❌ ') + name + (detail != null ? ' — ' + String(detail).slice(0, 200) : '')); }
@@ -93,7 +110,16 @@ let OBX_URL;
     .filter((f) => /^\d{3}_.+\.sql$/.test(f) && !f.endsWith('.down.sql') && Number(f.slice(0, 3)) >= 15)
     .sort();
   for (const f of extraMigs) {
-    const r = spawnSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', path.join(migDir, f), OBX_URL], { encoding: 'utf8' });
+    /* 🔴 مسیرِ فایلِ مهاجرت با resolve + containment ساخته می‌شود و argv
+       کاملاً literal است؛ اتصالِ PG از env (PG*) برقرار می‌شود، نه با یک
+       آرگومانِ URLِ پویا (الگوی tools/migrate-ledger.js). */
+    const migFile = path.resolve(migDir, f);
+    if (path.dirname(migFile) !== path.resolve(migDir))
+      throw new Error('phase2-obx: migration file escapes the migrations dir: ' + JSON.stringify(f));
+    const r = spawnSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', migFile], {
+      encoding: 'utf8',
+      env: Object.assign({}, process.env, pgEnvFromUrl(OBX_URL)),
+    });
     if (r.status !== 0) throw new Error('migration ' + f + ' failed: ' + String(r.stderr || r.stdout || r.status).slice(0, 400));
   }
 
@@ -148,10 +174,13 @@ let OBX_URL;
      VALUES ('classes.deleted', 'classes', 4343, 1, 2, '{"school_id":1}', 'pending') RETURNING id`);
   await pgOne("SELECT setval('payesh_outbox_id_seq', (SELECT COALESCE(MAX(id), 1) FROM server_outbox))");
   const poisonId = Number(poison[0].id);
+  /* 🔴 هیچ مسیرِ پویایی در require قرار نمی‌گیرد: اسکریپت `require('server/...')`
+     می‌نویسد و مسیرِ ریشه را از NODE_PATH می‌گیرد. DATABASE_URL هم از env
+     منتقل می‌شود (نه interpolate در متنِ اسکریپت). اسکریپت از stdin اجرا
+     می‌شود تا argv کاملاً خالی باشد (الگوی mutant-kit-test). */
   const script = `
-    process.env.DATABASE_URL = ${JSON.stringify(OBX_URL)};
-    const db = require(${JSON.stringify(path.join(ROOT, 'server/db.js'))});
-    const { createOutbox } = require(${JSON.stringify(path.join(ROOT, 'server/outbox.js'))});
+    const db = require('server/db.js');
+    const { createOutbox } = require('server/outbox.js');
     (async () => {
       await db.init();
       const obx = createOutbox({ store: {}, db });
@@ -159,10 +188,13 @@ let OBX_URL;
       console.log('DLQ_RES:' + JSON.stringify({ ok: !!r, id: r && r.id, status: r && r.status }));
       process.exit(0);
     })().catch((e) => { console.error('DLQ_FATAL', e.message); process.exit(1); });`;
-  fs.writeFileSync(path.join(os.tmpdir(), 'dlq-probe.js'), script);
   let dlqOk = false;
   try {
-    const out = spawnSync('node', [path.join(os.tmpdir(), 'dlq-probe.js')], { cwd: ROOT, env: Object.assign({}, process.env), stdio: 'pipe' });
+    const out = spawnSync(process.execPath, [], {
+      cwd: ROOT, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'],
+      input: script,
+      env: Object.assign({}, process.env, { DATABASE_URL: OBX_URL, NODE_PATH: ROOT }),
+    });
     if (out.error) throw out.error;
     dlqOk = /DLQ_RES:\{"ok":true/.test(String(out.stdout));
     console.log('   ' + out.trim().split('\n').pop().slice(0, 120));

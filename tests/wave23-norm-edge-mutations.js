@@ -47,6 +47,22 @@ const ROOT = path.join(__dirname, '..');
 const SQLF = path.join(ROOT, 'server', 'reports-sql.js');
 const DB = process.env.W23NORM_DB || 'payesh_w23_norm_edge';
 
+/* 🔴 تبدیلِ URLِ اتصال به متغیرهایِ env استانداردِ libpq؛ به این ترتیب
+   هیچ URLِ پویایی به argv نمی‌رسد. */
+function pgEnvFromUrl(url) {
+  const raw = String(url || '');
+  const parsed = new URL(raw.replace(/^postgres(ql)?:/, 'http:'));
+  const env = {
+    PGHOST: parsed.hostname || 'localhost',
+    PGPORT: String(parsed.port || 5432),
+    PGUSER: decodeURIComponent(parsed.username || ''),
+    PGDATABASE: String(parsed.pathname || '').replace(/^\//, ''),
+    PGSSLMODE: 'prefer',
+  };
+  if (parsed.password) env.PGPASSWORD = decodeURIComponent(parsed.password);
+  return env;
+}
+
 /* ── فیکسچر: هر لبه‌ای که norm می‌تواند ببیند، در یک کلاس ──────────────
    هشت ردیف؛ چهارتای آخر همان چهار شکافِ پوششِ گزارش‌شده‌اند. ستونِ «normِ
    انتظار» از قاعدهٔ مسیرِ حافظه می‌آید: mx = Number(max_score) || 20 و
@@ -91,8 +107,14 @@ async function seed() {
       .filter((x) => x.endsWith('.sql') && !x.endsWith('.down.sql')).sort()) {
     const sql = fs.readFileSync(path.join(ROOT, 'migrations', m), 'utf8');
     if (/^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql)) {
-      /* متاکامنددار ⇒ psql (الگوی #163؛ رگرسیونِ پس از #82 روی مسیرِ live این سوئیت) */
-      execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', m), dbUrl], { stdio: 'pipe' });
+      /* متاکامنددار ⇒ psql (الگوی #163؛ رگرسیونِ پس از #82 روی مسیرِ live این سوئیت).
+         🔴 argv کاملاً literal است: SQL از stdin خوانده می‌شود (-f -) و
+         اتصال از env (PG*) برقرار می‌شود — هیچ URL یا مسیرِ پویایی در argv
+         نیست (الگوی tools/migrate-ledger.js). */
+      execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', '-'], {
+        stdio: 'pipe', input: sql,
+        env: Object.assign({}, process.env, pgEnvFromUrl(dbUrl)),
+      });
     } else {
       await c.query(sql);
     }
@@ -182,7 +204,7 @@ async function harness() {
     process.exit(process.env.WAVE23_REQUIRE_PG === '1' ? 3 : 0);
   }
 
-  const { session } = require(path.join(__dirname, 'helpers', 'mutant-kit'));
+  const { session } = require('./helpers/mutant-kit');
   const kit = session('w23norm-mut-');
   const shaBefore = sha(SQLF);
   const orig = fs.readFileSync(SQLF, 'utf8');

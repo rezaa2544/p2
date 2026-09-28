@@ -57,8 +57,16 @@ if (MUT) {
 const { newDb } = require('pg-mem');
 const db = require('../server/db.js');
 const { computePublicReport } = require('../server/public-report-core.js');
-const { publicReportFromPg } = require(MUT ? mutatedSql : '../server/public-report-sql.js');
-const { createPublicReport } = require(MUT ? mutatedReport : '../server/public-report.js');
+/* 🔴 require همیشه با یک string literal ایستاست (دو شاخهٔ مجزا)؛
+   مسیرِ جهش‌یافته فقط در حالتِ MUT بارگذاری می‌شود. */
+let publicReportFromPg, createPublicReport;
+if (MUT) {
+  publicReportFromPg = require('../server/public-report-sql.p13-mutated.js').publicReportFromPg;
+  createPublicReport = require('../server/public-report.p13-mutated.js').createPublicReport;
+} else {
+  publicReportFromPg = require('../server/public-report-sql.js').publicReportFromPg;
+  createPublicReport = require('../server/public-report.js').createPublicReport;
+}
 
 let okc = 0, failc = 0;
 const fails = [];

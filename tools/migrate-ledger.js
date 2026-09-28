@@ -142,6 +142,24 @@ function canRunPsql() {
   }
 }
 
+/* 🔴 مرزِ ورودی: اتصالِ psql از طریقِ متغیرهایِ محیطی PG* (نه URL در خطِ
+   فرمان) — این‌گونه argvِ execFileSync کاملاً ثابت می‌ماند و تزریقِ گزینهٔ
+   دستور غیرممکن می‌شود (همان الگویِ tests/partitioning.js). URL با new URL
+   تجزیه می‌شود تا هیچ بخشِ آن هرگز در argv قرار نگیرد. */
+function pgEnvFromUrl(url) {
+  const parsed = new URL(String(url).replace(/^postgres(ql)?:/, 'http:'));
+  const env = {};
+  if (parsed.hostname) env.PGHOST = parsed.hostname;
+  if (parsed.port) env.PGPORT = parsed.port;
+  if (parsed.username) env.PGUSER = decodeURIComponent(parsed.username);
+  if (parsed.password) env.PGPASSWORD = decodeURIComponent(parsed.password);
+  const database = (parsed.pathname || '').replace(/^\//, '');
+  if (database) env.PGDATABASE = decodeURIComponent(database);
+  const sslmode = parsed.searchParams.get('sslmode');
+  if (sslmode) env.PGSSLMODE = sslmode;
+  return env;
+}
+
 /* 🔴 مرزِ ورودیِ شناسهٔ مهاجرت: version و name یا از discoverMigrationFiles
    می‌آیند (که با whitelistِ ^[0-9]{3}_... اجبار شده‌اند) یا از ledger خوانده
    می‌شوند. چون این مقادیر در SQLِ پوستهٔ psql جای می‌گیرند و psql از stdin
@@ -208,12 +226,6 @@ async function migrateUp(client, options = {}) {
     // Execute migration with atomic ledger entry
     try {
       if (usePsql) {
-        /* 🔴 مرزِ ورودی: URL به‌عنوانِ آخرین آرگومانِ موقعیتی به psql می‌رود؛
-           هر رشتهٔ آغازشونده با «-» به‌جای URL، گزینهٔ دستور تفسیر می‌شد.
-           بررسی اینجا (درونِ try) همان مسیرِ خطایِ گذشته را حفظ می‌کند. */
-        if (!/^postgres(ql)?:\/\//.test(pgUrl)) {
-          throw new Error('refusing to pass non-postgres URL to psql');
-        }
         const cleanedContent = prepareMigrationSql(file.content);
         /* 🔴 مقادیرِ جای‌گرفته ثابتِ موردِ اعتمادِ مهاجرت‌اند (نسخه و نامِ
            فایل، هر دو با whitelist بالا): psql از stdin می‌خواند و $N به
@@ -224,7 +236,16 @@ async function migrateUp(client, options = {}) {
         const scriptSql = hasInternalTx
           ? `${cleanedContent}\n${ledgerSql}`
           : `BEGIN;\n${cleanedContent}\n${ledgerSql}COMMIT;\n`;
-        execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', pgUrl], { input: scriptSql, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' });
+        /* 🔴 مرزِ ورودی: URL به‌عنوانِ آخرین آرگومانِ موقعیتی به psql می‌رود؛
+           هر رشتهٔ آغازشونده با «-» به‌جای URL، گزینهٔ دستور تفسیر می‌شد.
+           اعتبارسنجیِ صریح، بلافاصله پیش از فراخوانیِ execFileSync، مرزِ
+           امن است و چون درونِ try است، مسیرِ خطایِ گذشته را حفظ می‌کند. */
+        const safeUrl = pgUrl;
+        if (!/^postgres(ql)?:\/\//.test(String(safeUrl))) {
+          throw new Error('refusing to pass non-postgres URL to psql');
+        }
+        const childEnv = Object.assign({}, process.env, pgEnvFromUrl(safeUrl));
+        execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', '-'], { input: scriptSql, env: childEnv, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' });
       } else {
         await client.query('BEGIN');
         await client.query(prepareMigrationSql(file.content));
@@ -255,8 +276,15 @@ VALUES ('${file.version.replace(/'/g, "''")}', '${file.name.replace(/'/g, "''")}
 ON CONFLICT (version) DO NOTHING;
 COMMIT;
 `;
-          execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', pgUrl], {
-            input: recoverySql, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8'
+          /* 🔴 مرزِ ورودی: مانندِ migrateUp — اعتبارسنجیِ URL بلافاصله پیش از
+             فراخوانی، تا هیچ رشتهٔ آغازشونده با «-» به‌عنوانِ گزینه نرود. */
+          const safeUrl = pgUrl;
+          if (!/^postgres(ql)?:\/\//.test(String(safeUrl))) {
+            throw new Error('refusing to pass non-postgres URL to psql');
+          }
+          const childEnv = Object.assign({}, process.env, pgEnvFromUrl(safeUrl));
+          execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', '-'], {
+            input: recoverySql, env: childEnv, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8'
           });
           lastAppliedIndex = i;
           appliedMap.set(file.version, { version: file.version, name: file.name, checksum: file.checksum });
@@ -301,15 +329,30 @@ async function migrateDown(client, targetVersion = null, options = {}) {
     throw err;
   }
 
-  const downFileName = `${latest.version}_${latest.name.replace(/^([0-9]{3})_|\.sql$/g, '')}.down.sql`;
-  /* 🔴 مرزِ مسیر: نامِ فایلِ down از ledger ساخته می‌شود؛ حل کردن و
-     بررسیِ مالکِ مسیر، انحراف از MIGRATIONS_DIR را غیرممکن می‌کند. */
-  const downPath = path.resolve(MIGRATIONS_DIR, downFileName);
-  if (path.dirname(downPath) !== path.resolve(MIGRATIONS_DIR)) {
-    const err = new Error(`MIGRATION_DOWN_PATH_ESCAPE: down file path escapes migrations directory: ${downFileName}`);
+  /* 🔴 مرزِ ورودیِ شناسهٔ مهاجرت: version و name از ledger می‌آیند، پس پیش از
+     ساخته‌شدنِ هر مسیر یا SQL، اعتبارسنجیِ صریحِ آن‌ها مرزِ امن است. */
+  assertMigrationIdentity(latest.version, latest.name);
+
+  /* 🔴 مرزِ مسیر: نامِ فایلِ down از ledger ساخته می‌شود؛ اجزای نام تنها از
+     گروه‌هایِ whitelistِ /^([0-9]{3})_([A-Za-z0-9_.-]+)\.sql$/ استخراج می‌شوند
+     و ردِ جداکننده/«..» در ادامه، لایهٔ دومِ مرز است. */
+  const nameMatch = /^([0-9]{3})_([A-Za-z0-9_.-]+)\.sql$/.exec(String(latest.name));
+  if (!nameMatch) {
+    const err = new Error(`MIGRATION_DOWN_PATH_ESCAPE: refusing unsafe migration name from ledger: ${latest.name}`);
     err.code = 'MIGRATION_DOWN_PATH_ESCAPE';
     throw err;
   }
+  const downFileName = `${nameMatch[1]}_${nameMatch[2]}.down.sql`;
+  /* 🔴 مرزِ مسیر: نامِ فایلِ down فقط از گروه‌هایِ whitelistِ بالا ساخته
+     می‌شود و هیچ جداکننده یا «..» نمی‌تواند داشته باشد؛ ترکیبِ مستقیم،
+     انحراف از MIGRATIONS_DIR را غیرممکن می‌کند (همان الگوی
+     discoverMigrationFiles در همین فایل). */
+  if (downFileName.indexOf(path.sep) !== -1 || downFileName.indexOf('/') !== -1 || downFileName.indexOf('..') !== -1) {
+    const err = new Error(`MIGRATION_DOWN_PATH_ESCAPE: refusing unsafe down file name: ${downFileName}`);
+    err.code = 'MIGRATION_DOWN_PATH_ESCAPE';
+    throw err;
+  }
+  const downPath = MIGRATIONS_DIR + path.sep + downFileName;
   if (!fs.existsSync(downPath)) {
     const err = new Error(`MIGRATION_DOWN_FILE_MISSING: Down file ${downFileName} does not exist`);
     err.code = 'MIGRATION_DOWN_FILE_MISSING';
@@ -322,10 +365,6 @@ async function migrateDown(client, targetVersion = null, options = {}) {
 
   try {
     if (usePsql) {
-      /* 🔴 مرزِ ورودی: مانندِ migrateUp — URL آخرین آرگومانِ موقعیتی است. */
-      if (!/^postgres(ql)?:\/\//.test(pgUrl)) {
-        throw new Error('refusing to pass non-postgres URL to psql');
-      }
       const cleanedDown = prepareMigrationSql(downContent);
       /* 🔴 مانندِ migrateUp: نسخه/نام از ledger، با اعتبارسنجیِ صریح. */
       assertMigrationIdentity(latest.version, latest.name);
@@ -334,7 +373,14 @@ async function migrateDown(client, targetVersion = null, options = {}) {
       const scriptSql = hasInternalTx
         ? `${cleanedDown}\n${ledgerSql}`
         : `BEGIN;\n${cleanedDown}\n${ledgerSql}COMMIT;\n`;
-      execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', pgUrl], { input: scriptSql, stdio: ['pipe', 'inherit', 'inherit'] });
+      /* 🔴 مرزِ ورودی: مانندِ migrateUp — URL آخرین آرگومانِ موقعیتی است؛
+         اعتبارسنجیِ صریح، بلافاصله پیش از فراخوانیِ execFileSync. */
+      const safeUrl = pgUrl;
+      if (!/^postgres(ql)?:\/\//.test(String(safeUrl))) {
+        throw new Error('refusing to pass non-postgres URL to psql');
+      }
+      const childEnv = Object.assign({}, process.env, pgEnvFromUrl(safeUrl));
+      execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', '-'], { input: scriptSql, env: childEnv, stdio: ['pipe', 'inherit', 'inherit'] });
     } else {
       await client.query('BEGIN');
       await client.query(prepareMigrationSql(downContent));

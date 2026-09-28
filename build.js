@@ -23,7 +23,13 @@ const ROOT = __dirname;
 const SRC = path.join(ROOT, 'src');
 const DIST = path.join(ROOT, 'dist');
 
-const read = (p) => fs.readFileSync(p, 'utf8');
+/* 🔴 نرمال‌سازیِ پایانِ خط: هر خواندنِ متنی LF می‌سازد. بدونِ این، خروجیِ
+   build به پلتفرم وابسته می‌شود: روی یک چک‌اوتِ ویندوزی (core.autocrlf=true
+   ⇒ منابع CRLF) خروجیِ CRLF تولید می‌شود و `--check` در مقایسهٔ بیت‌به‌بیت
+   با index.htmlِ LFِ کامیت‌شده شکست می‌خورد — هر چک‌اوتِ تمیز قرمز.
+   فقط \r\n→\n؛ CRهایِ تنها دست‌نخورده می‌مانند تا معنایِ ASI و رشته‌ها و
+   regexها عوض نشوند. */
+const read = (p) => fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
 
 // ترتیب فایل‌های CSS — نباید تغییر کند (fonts باید اول باشد)
 const CSS_ORDER = ['fonts.css', 'base.css', 'mobile.css'];
@@ -41,7 +47,9 @@ const JS_ORDER = JSON.parse(read(path.join(SRC, 'js', '_order.json')));
    (همیشه صحیح، فقط کندتر). env PAYESH_BUILD_NO_CACHE=1 → بدونِ کش. */
 const CACHE_META = path.join(ROOT, '.build-cache.meta.json');
 const CACHE_BLOB = path.join(ROOT, '.build-cache.blob');
-const CACHE_VERSION = 3; /* عوض شود اگر منطقِ strip عوض شد */
+const CACHE_VERSION = 4; /* عوض شود اگر منطقِ strip عوض شد. ۴: read() اینک
+   CRLF را به LF نرمال‌سازی می‌کند — کشِ ۳ محتوایِ strip‌شدهٔ CRLF دارد و
+   بی‌اعتبار است (کلیدِ کش mtime+size است و تغییرِ نرمال‌سازی را نشان نمی‌دهد). */
 const useCache = !process.env.PAYESH_BUILD_NO_CACHE;
 
 function loadCache(){
@@ -187,7 +195,9 @@ function main() {
 
 /* ═══ مُهرِ همگامیِ راهنما (USER_GUIDE.html) ══════════════════════ */
 const GUIDE = path.join(ROOT, 'USER_GUIDE.html');
-const buildHash = (h) => require('crypto').createHash('sha1').update(h).digest('hex').slice(0, 12);
+/* 🔴 SHA-256 (نه SHA-1 که ضعیف شده): مُهرِ همگامیِ راهنما. فقط ۱۲
+   هگزادسیمالِ اول نگه داشته می‌شود (regexِ مُهر همچنان [0-9a-f]{12} است). */
+const buildHash = (h) => require('crypto').createHash('sha256').update(h).digest('hex').slice(0, 12);
 const GUIDE_STAMP_RE = /<meta name="payesh-build" content="([0-9a-f]{12})"\s*\/?>/;
 
 function syncGuide(html, check){

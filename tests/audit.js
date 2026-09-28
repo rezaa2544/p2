@@ -20,6 +20,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const assert = require('assert');
 const { createAudit, maskPhone, maskNationalId, sanitizeData, sanitizeString } = require('../server/audit');
 
@@ -63,12 +64,16 @@ async function runTests() {
   /* 🔴 این مقادیر افزونهٔ آزمایشیِ کاملاً مصنوعی‌اند (Synthetic test
      fixtures) — هدفشان اثباتِ redaction توسط sanitizeData است، نه
      اعتبارِ خودشان. هیچگاه به یک سیستمِ واقعی متصل نمی‌شوند و در
-     خروجیِ برنامه جایی ندارند. */
+     خروجیِ برنامه جایی ندارند. مقادیرِ رمزگونه با crypto.randomUUID
+     تولید می‌شوند و هیچ رشتهٔ ثابتِ رمزگونه‌ای در مخزن وجود ندارد. */
+  function newSyntheticSecret() { return crypto.randomUUID(); }
+  const FIXTURE_PASSWORD = newSyntheticSecret();
+  const FIXTURE_TOKEN = newSyntheticSecret();
   const payloadWithPii = {
     phone: '09121112233',
     national_id: '0077889900',
-    password: 'SYNTHETIC-FIXTURE-PASSWORD-NOT-REAL',
-    token: 'SYNTHETIC-FIXTURE-TOKEN-NOT-REAL',
+    password: FIXTURE_PASSWORD,
+    token: FIXTURE_TOKEN,
     code: '8492',
     nested: {
       father_phone: '09194445566',
@@ -80,8 +85,8 @@ async function runTests() {
   const sanitizedObj = sanitizeData(payloadWithPii);
   chk('ماسک فیلد phone در شیء', sanitizedObj.phone === '0912***2233');
   chk('ماسک فیلد national_id در شیء', sanitizedObj.national_id === '007***9900');
-  chk('ردکت رمز عبور', sanitizedObj.password === '[REDACTED]');
-  chk('ردکت توکن', sanitizedObj.token === '[REDACTED]');
+  chk('ردکت رمز عبور', sanitizedObj.password === '[REDACTED]' && JSON.stringify(sanitizedObj).indexOf(FIXTURE_PASSWORD) === -1);
+  chk('ردکت توکن', sanitizedObj.token === '[REDACTED]' && JSON.stringify(sanitizedObj).indexOf(FIXTURE_TOKEN) === -1);
   chk('ردکت کد OTP', sanitizedObj.code === '[REDACTED]');
   chk('ماسک تودرتو تلفن پدر', sanitizedObj.nested.father_phone === '0919***5566');
   chk('ماسک تودرتو کد ملی', sanitizedObj.nested.melli_code === '123***7890');
@@ -226,7 +231,20 @@ async function runTests() {
   const archivedFiles = fs.readdirSync(rotateAuditDir);
   chk('حداقل ۱ فایل آرشیو در audit/ ذخیره شد', archivedFiles.length >= 1, archivedFiles.join(', '));
 
-  const firstArchive = path.join(rotateAuditDir, archivedFiles[0]);
+  /* نامِ آرشیو از سویِ خودِ محصول تولید می‌شود (server/audit.js:
+     `audit-${ts}.log` که ts فقط ارقام/خط‌تیره/زیرخط است). readdir مسیر
+     نمی‌سازد، اما نام خوانده‌شده را قبل از هر استفاده با یک regexِ
+     سخت‌گیرانه اعتبارسنجی کرده و با path.resolve + path.dirname
+     از خروجِ مسیر از پوشهٔ آرشیو مطمئن می‌شویم (دفاع در برابر
+     path traversal). */
+  const firstArchiveName = archivedFiles[0];
+  if (!/^[A-Za-z0-9._-]+$/.test(firstArchiveName)) {
+    throw new Error('archive name failed strict validation: ' + JSON.stringify(firstArchiveName));
+  }
+  const firstArchive = path.resolve(rotateAuditDir, firstArchiveName);
+  if (path.dirname(firstArchive) !== path.resolve(rotateAuditDir)) {
+    throw new Error('archive path escapes the audit directory: ' + firstArchive);
+  }
   const archiveContent = fs.readFileSync(firstArchive, 'utf8').trim().split('\n');
   chk('فایل آرشیو شامل ۵ رویداد پیشین است', archiveContent.length === 5);
   /* همان استثنایِ win32 بالاست — mode bits روی NTFS معنی‌دار نیستند. */

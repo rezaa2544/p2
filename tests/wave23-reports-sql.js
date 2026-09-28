@@ -14,7 +14,8 @@
 'use strict';
 const path = require('path');
 const fs = require('fs');
-const rs = require(path.join(__dirname, '..', 'server', 'reports-sql.js'));
+const vm = require('vm');
+const rs = require('../server/reports-sql.js');
 
 let pass = 0, fail = 0; const errors = [];
 function chk(name, cond, extra) {
@@ -30,7 +31,13 @@ grp('W23-CAL — وارونِ تقویمِ شمسی در برابرِ toJalaliِ
 const src = fs.readFileSync(path.join(__dirname, '..', 'server', 'routes', 'reports.js'), 'utf8');
 const start = src.indexOf('const _div');
 const end = src.indexOf('/** تاریخ ISO');
-const toJalali = new Function(src.slice(start, end) + '\nreturn toJalali;')();
+/* 🔴 toJalali از سورس استخراج می‌شود ولی با vm و کانتکستِ محدودِ
+   sandbox اجرا می‌شود — هیچ کدی از ورودیِ کاربر ساخته نمی‌شود؛
+   متن فقط از یک فایلِ ثابتِ داخلِ مخزن خوانده می‌شود. */
+const toJalali = vm.runInNewContext(
+  '(function(){' + src.slice(start, end) + '\nreturn toJalali;})()',
+  Object.create(null)
+);
 
 let rtBad = 0, rtN = 0, firstBad = null;
 for (let jy = 1300; jy <= 1500; jy++) {

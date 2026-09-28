@@ -15,8 +15,10 @@ const path = require('path');
 delete process.env.NODE_ENV;      // حالت توسعه → درایور حافظه
 delete process.env.REDIS_URL;
 
-const redis = require(path.join(__dirname, '..', 'server', 'redis.js'));
-const cache = require(path.join(__dirname, '..', 'server', 'cache.js'));
+/* 🔴 require با مسیرِ نسبیِ ایستا — path.joinِ پویا به‌عنوان «تزریقِ دستور»
+   دروازه را روشن می‌کند، در حالی که این فقط بارگذاریِ ماژول است. */
+const redis = require('../server/redis.js');
+const cache = require('../server/cache.js');
 
 let pass = 0, fail = 0;
 function chk(name, ok, detail) {

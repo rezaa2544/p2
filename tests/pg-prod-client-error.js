@@ -52,7 +52,7 @@ const CHILD = [
   "process.env.NODE_ENV=process.env.CHILD_ENV||'production';",
   "process.env.PAYESH_ENV=process.env.CHILD_ENV||'production';",
   "process.env.DATABASE_URL=process.env.PG_LIVE_PG;",
-  "const db=require(path.join(process.cwd(),'server','db.js'));",
+  "const db=require('server/db.js');",
   "(async()=>{",
   "  const info=await db.init({users:[]});",
   "  console.log('INIT '+(info&&info.driver));",
@@ -86,9 +86,15 @@ function runChild(envName) {
   /* spawnSync, not execFileSync: execFileSync returns stdout ONLY on success
      and throws away stderr, but the messages under test are written with
      console.error/console.warn — i.e. to stderr. */
-  const r = spawnSync(process.execPath, ['-e', CHILD], {
-    cwd: ROOT, encoding: 'utf8', timeout: 90000, stdio: ['ignore', 'pipe', 'pipe'],
-    env: Object.assign({}, process.env, { CHILD_ENV: envName })
+  /* 🔴 بدنهٔ اسکریپت از stdin خوانده می‌شود، نه با `-e`. argv کاملاً خالی
+     و ایستاست؛ هیچ رشتهٔ پویایی در خطِ فرمان قرار نمی‌گیرد (الگوی
+     پذیرفته‌شدهٔ mutant-kit-test). در عوضِ require(path.join(cwd,...))،
+     فرزند `require('server/db.js')` می‌نویسد و مسیرِ ریشه را از NODE_PATH
+     می‌گیرد (مستقل از cwd، همه‌پلتفرم). */
+  const r = spawnSync(process.execPath, [], {
+    cwd: ROOT, encoding: 'utf8', timeout: 90000, stdio: ['pipe', 'pipe', 'pipe'],
+    input: CHILD,
+    env: Object.assign({}, process.env, { CHILD_ENV: envName, NODE_PATH: ROOT })
   });
   return {
     status: r.status,

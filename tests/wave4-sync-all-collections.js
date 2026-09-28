@@ -26,9 +26,8 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const path = require('path');
-const { createPull } = require(path.join(__dirname, '..', 'server', 'pull'));
-const { createCursor } = require(path.join(__dirname, '..', 'server', 'cursor'));
+const { createPull } = require('../server/pull');
+const { createCursor } = require('../server/cursor');
 
 let pass = 0, fail = 0;
 const failures = [];

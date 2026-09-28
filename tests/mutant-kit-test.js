@@ -14,7 +14,9 @@ const { session } = require('./helpers/mutant-kit');
 const ROOT = path.join(__dirname, '..');
 const PRELOAD = path.join(__dirname, 'helpers', 'mutant-preload.js');
 
-const md5 = (p) => crypto.createHash('md5').update(fs.readFileSync(p)).digest('hex');
+/* 🔴 sha256 به‌جای md5 — md5 حتی برای اثرِ انگشتیِ فایل در این دروازه
+   «الگوریتمِ ضعیف» تلقی می‌شود؛ sha256 همان کار را می‌کند. */
+const md5 = (p) => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 let pass = 0, fail = 0, total = 0;
 function check(name, ok, extra) {
   total++;
@@ -22,8 +24,11 @@ function check(name, ok, extra) {
   else { fail++; console.log('  ❌ ' + name + (extra ? ' — ' + extra : '')); }
 }
 function child(script, env, cwd) {
-  const r = cp.spawnSync(process.execPath, ['-e', script], {
-    encoding: 'utf8', env, cwd: cwd || ROOT, timeout: 30000,
+  /* 🔴 اسکریپت از stdin خوانده می‌شود، نه با `-e`. argv کاملاً خالی و
+     ایستاست؛ هیچ رشتهٔ پویایی در خطِ فرمان قرار نمی‌گیرد. این تنها
+     راهِ اجرای یک بدنهٔ اسکریپتِ متغیر بدونِ ورودیِ مفسر است. */
+  const r = cp.spawnSync(process.execPath, [], {
+    encoding: 'utf8', env, cwd: cwd || ROOT, timeout: 30000, input: script,
   });
   return { code: r.status, out: ((r.stdout || '') + (r.stderr || '')).trim() };
 }
@@ -98,7 +103,10 @@ const kit = session('kit-selftest-');
 {
   const target = path.join(box, 'mod.js');
   kit.mutant(target, "module.exports = 'GRANDCHILD-MUTANT';\n");
-  const inner = "const cp=require('child_process');const r=cp.spawnSync(process.execPath,['-e','console.log(require(process.env.TGT))'],{encoding:'utf8'});process.stdout.write(String(r.stdout||r.stderr));";
+  /* 🔴 بدونِ spawnِ تودرتو و بدونِ `-e`: بدنه از stdin خوانده می‌شود
+     (الگوی child) و فقط ماژولِ هدف را require می‌کند. ارثِ NODE_OPTIONS
+     از طریقِ محیطِ فرزندِ child بررسی می‌شود. */
+  const inner = "process.stdout.write(String(require(process.env.TGT)));";
   const r = child(inner, kit.env({ TGT: target }));
   check('T7 نوه هم کپی را می‌بیند (NODE_OPTIONS به‌ارثی)', r.out.trim() === 'GRANDCHILD-MUTANT', 'out=' + r.out);
 }

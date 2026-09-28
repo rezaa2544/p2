@@ -21,12 +21,14 @@ function check(name, fn) {
   catch (e) { fail++; console.log(`  ❌ ${name}\n     ${e.message}`); }
 }
 
-const { createSemanticAnalyticsRoutes } = require(path.join(__dirname, '..', 'server', 'routes', 'semantic-analytics.js'));
+const { createSemanticAnalyticsRoutes } = require('../server/routes/semantic-analytics.js');
 const STORE_PATH = path.join(__dirname, '..', 'server', 'data', 'payesh.json');
 
 let store;
 try {
-  store = require(STORE_PATH);
+  /* 🔴 require همیشه با string literal ایستا اجرا می‌شود — مسیرِ پویا
+     (require با متغیر) امکان تزریق می‌دهد، پس اینجا فقط literal مجاز است. */
+  store = require('../server/data/payesh.json');
 } catch (e) {
   console.log('\n⚠️  store موجود نیست — ابتدا `node server/seed.js` را اجرا کنید.\n');
   process.exit(1);

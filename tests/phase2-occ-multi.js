@@ -15,6 +15,39 @@ const { Client } = require('pg');
 
 const NODE = process.execPath;
 const ROOT = path.join(__dirname, '..');
+
+/* 🔴 مسیرهای موقت در یک تابعِ محصور ساخته می‌شوند: پیشوند فقط حروفِ
+   مجاز است، نام با regex بررسی می‌شود، مسیر با path.resolve و حبسِ
+   path.dirname در os.tmpdir(). در محلِ فراخوانی هیچ الحاقِ پویایی به
+   path وجود ندارد. */
+function tmpFilePath(prefix, ext) {
+  if (!/^[a-z][a-z0-9-]*$/.test(String(prefix)))
+    throw new Error('phase2-occ: refusing an unknown tmp file prefix: ' + JSON.stringify(prefix));
+  if (!/^\.[a-z]+$/.test(String(ext)))
+    throw new Error('phase2-occ: refusing an unknown tmp file extension: ' + JSON.stringify(ext));
+  const dir = path.resolve(os.tmpdir());
+  const p = path.resolve(dir, prefix + '-' + Date.now() + ext);
+  if (path.dirname(p) !== dir)
+    throw new Error('phase2-occ: refusing a tmp path outside tmpdir: ' + JSON.stringify(p));
+  return p;
+}
+
+/* 🔴 تبدیلِ URLِ اتصال به متغیرهایِ env استانداردِ libpq؛ به این ترتیب
+   هیچ URLِ پویایی به argv نمی‌رسد. */
+function pgEnvFromUrl(url) {
+  const raw = String(url || '');
+  const parsed = new URL(raw.replace(/^postgres(ql)?:/, 'http:'));
+  const env = {
+    PGHOST: parsed.hostname || 'localhost',
+    PGPORT: String(parsed.port || 5432),
+    PGUSER: decodeURIComponent(parsed.username || ''),
+    PGDATABASE: String(parsed.pathname || '').replace(/^\//, ''),
+    PGSSLMODE: 'prefer',
+  };
+  if (parsed.password) env.PGPASSWORD = decodeURIComponent(parsed.password);
+  return env;
+}
+
 const results = [];
 function chk(name, ok, detail) { results.push(ok); console.log((ok ? '✅ ' : '❌ ') + name + (detail != null ? ' — ' + String(detail).slice(0, 200) : '')); }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -85,8 +118,8 @@ async function pgOne(url, sql, params) { const c = new Client({ connectionString
   if (!BASE_URL) { console.error('❌ DATABASE_URL required — dependency missing = FAIL (exit 1)'); process.exit(1); }
   const OCC_URL = process.env.P2_OCC_DATABASE_URL ||
     BASE_URL.replace(/\/[^/?]+(\?.*)?$/, (m, q) => ('/payesh_p2occ' + (q || '')));
-  const KEY = path.join(os.tmpdir(), 'occ-jwt-' + Date.now() + '.key');
-  const STORE = path.join(os.tmpdir(), 'occ-store-' + Date.now() + '.json');
+  const KEY = tmpFilePath('occ-jwt', '.key');
+  const STORE = tmpFilePath('occ-store', '.json');
 
   /* fresh dedicated database */
   const adm = new Client({ connectionString: BASE_URL });
@@ -109,7 +142,16 @@ async function pgOne(url, sql, params) { const c = new Client({ connectionString
     .filter((f) => /^\d{3}_.+\.sql$/.test(f) && !f.endsWith('.down.sql') && Number(f.slice(0, 3)) >= 15)
     .sort();
   for (const f of extraMigs) {
-    const r = spawnSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', path.join(migDir, f), OCC_URL], { encoding: 'utf8' });
+    /* 🔴 مسیرِ فایلِ مهاجرت با resolve + containment ساخته می‌شود و argv
+       کاملاً literal است؛ اتصالِ PG از env (PG*) برقرار می‌شود، نه با یک
+       آرگومانِ URLِ پویا (الگوی tools/migrate-ledger.js). */
+    const migFile = path.resolve(migDir, f);
+    if (path.dirname(migFile) !== path.resolve(migDir))
+      throw new Error('phase2-occ: migration file escapes the migrations dir: ' + JSON.stringify(f));
+    const r = spawnSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', migFile], {
+      encoding: 'utf8',
+      env: Object.assign({}, process.env, pgEnvFromUrl(OCC_URL)),
+    });
     if (r.status !== 0) throw new Error('migration ' + f + ' failed: ' + String(r.stderr || r.stdout || r.status).slice(0, 400));
   }
   const nTables = await pgOne(OCC_URL, "SELECT COUNT(*)::int n FROM information_schema.tables WHERE table_schema='public'");
@@ -126,7 +168,7 @@ async function pgOne(url, sql, params) { const c = new Client({ connectionString
     }
   } catch (_) { /* boot/readiness already fails loudly if Redis is required */ }
 
-  const OTPF = path.join(os.tmpdir(), 'occ-otp-' + Date.now() + '.json');   /* isolation: cooldown state of previous runs */
+  const OTPF = tmpFilePath('occ-otp', '.json');   /* isolation: cooldown state of previous runs */
   const envOf = (port) => {
     const e = Object.assign({}, process.env, {
       PORT: String(port), HOST: '127.0.0.1', DATABASE_URL: OCC_URL,

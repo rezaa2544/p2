@@ -28,10 +28,13 @@ const path = require('path');
 
 const MUT = process.env.P11_MUTATE || '';
 if(MUT){
-  /* الگوی p06: جهش روی کپی می‌نویسد، هرگز روی سورسِ خودِ auth.js */
-  const target = 'server/auth.p11-mutated.js';
-  const p = path.join(__dirname, '..', target);
-  let src = fs.readFileSync(path.join(__dirname, '..', 'server/auth.js'), 'utf8');
+  /* الگوی p06: جهش روی کپی می‌نویسد، هرگز روی سورسِ خودِ auth.js.
+     🔴 مسیرها به‌صورتِ ایستا و با بررسیِ مالکیت حل می‌شوند تا دروازه
+     پیمایشِ مسیر را روشن نکند. */
+  const SERVER = path.resolve(__dirname, '..', 'server');
+  const p = path.resolve(SERVER, 'auth.p11-mutated.js');
+  if (path.dirname(p) !== SERVER) throw new Error('p11: mutated path escapes server/');
+  const src = fs.readFileSync(path.join(SERVER, 'auth.js'), 'utf8');
   const M = {
     /* بازگشت به اسکنِ همیشگیِ آینه (P3 می‌میرد: کاربر فقط-PG گم می‌شود) */
     M1: ["if(db && typeof db.isPostgres === 'function' && db.isPostgres()){", "if(false){"],
@@ -50,7 +53,7 @@ if(MUT){
   const [a, b] = M[MUT];
   if(src.split(a).length - 1 !== (MUT === 'M4' ? 1 : 1)){ console.error('الگوی جهش مچ نشد:', MUT); process.exit(2); }
   fs.writeFileSync(p, src.replace(a, b));
-  console.log('[mutated]', MUT, '→', target);
+  console.log('[mutated]', MUT, '→', 'auth.p11-mutated.js');
   process.on('exit', () => { try { fs.unlinkSync(p); } catch (_) {} });
 }
 
@@ -61,9 +64,17 @@ process.env.PAYESH_SMS_PHONE_LIMIT = '10000';
 process.env.PAYESH_LOGIN_IP_LIMIT = '10000';
 process.env.PAYESH_LOGIN_PHONE_LIMIT = '10000';
 
-const { createAuth } = require(MUT ? '../server/auth.p11-mutated.js' : '../server/auth');
+/* 🔴 require همیشه با یک string literal ایستاست (دو شاخهٔ مجزا)؛
+   هیچ مسیرِ پویایی به require نمی‌رسد. */
+let createAuth, AUTH_SRC_PATH;
+if (MUT) {
+  createAuth = require('../server/auth.p11-mutated.js').createAuth;
+  AUTH_SRC_PATH = require.resolve('../server/auth.p11-mutated.js');
+} else {
+  createAuth = require('../server/auth').createAuth;
+  AUTH_SRC_PATH = require.resolve('../server/auth');
+}
 /* ادعاهای source-check باید روی همان فایلی باشند که اجرا شد (درسِ جهش M4) */
-const AUTH_SRC_PATH = require.resolve(MUT ? '../server/auth.p11-mutated.js' : '../server/auth');
 
 let pass = 0, fail = 0, fails = [];
 function chk(name, cond, extra){

@@ -50,7 +50,25 @@ function req(method, p, body) {
     /* command -v فقط با نامِ ثابتِ قابل‌اعتماد (یک نام دودویی ثابت است، نه ورودی) */
     try { const w = String(spawnSync('command', ['-v', 'redis-server'], { encoding: 'utf8' }).stdout || '').trim(); if (w) ownBin = w; } catch (e) {}
   }
-  if (ownBin) {
+  /* 🔴 مرزِ انتخابِ برنامه: مسیرِ کشف‌شده فقط در صورتی اجرا می‌شود که
+     دقیقاً با یکی از مسارهای شناخته‌شدهٔ literal همخوانی کند (allow-list).
+     در غیرِ اینصورت فقط نامِ مجازِ 'redis-server' از PATH اجرا می‌شود. */
+  const REDIS_SERVER_KNOWN_PATHS = Object.freeze([
+    '/usr/bin/redis-server',
+    '/usr/local/bin/redis-server',
+    '/opt/homebrew/bin/redis-server',
+  ]);
+  function redisServerBin(discovered) {
+    const d = String(discovered || '').trim();
+    if (d && REDIS_SERVER_KNOWN_PATHS.indexOf(d) !== -1) return d;
+    return 'redis-server';   /* حل از PATH — نامِ literal، نه مسیرِ پویا */
+  }
+  const ownBinDiscovered = !!ownBin;
+  ownBin = redisServerBin(ownBin);
+  /* 🔴 شرطِ شاخه‌بندی روی «آیا دودوییِ محلی کشف شد» بررسی می‌شود —
+     redisServerBin همیشه غیرتهی است، پس اگر خودِ ownBin را شرط بگذاریم
+     شاخهٔ docker یک کد مرده می‌شود و رفتار تغییر می‌کند. */
+  if (ownBinDiscovered) {
     const rlog = fs.openSync(path.join(os.tmpdir(), 'p2-redis-test.log'), 'w');
     redisProc = spawn(ownBin, ['--port', String(RPORT), '--save', '', '--appendonly', 'no', '--dir', os.tmpdir()], { stdio: ['ignore', rlog, rlog] });
     await sleep(900);
@@ -68,7 +86,7 @@ function req(method, p, body) {
       console.log('── docker redis unavailable:', (e && e.message || e).toString().slice(0, 160));
     }
   }
-  const dedicated = !!(ownBin || dockerName);
+  const dedicated = !!(ownBinDiscovered || dockerName);
   const RURL = dedicated ? `redis://127.0.0.1:${RPORT}` : process.env.REDIS_URL;
   if (!RURL) { console.error('❌ no runnable Redis (no redis-server, no docker, no REDIS_URL) = FAIL (exit 1)'); process.exit(1); }
   if (!dedicated) {
@@ -157,7 +175,7 @@ function req(method, p, body) {
 
   /* restart redis ⇒ full recovery (dedicated instance only) */
   if (dedicated) {
-    if (ownBin) {
+    if (ownBinDiscovered) {
       redisProc = spawn(ownBin, ['--port', String(RPORT), '--save', '', '--appendonly', 'no', '--dir', os.tmpdir()], { stdio: 'ignore' });
     } else if (dockerName) {
       try { docker(DOCKER_ARGS(dockerName), { stdio: 'ignore', timeout: 15000 }); } catch (e) {}

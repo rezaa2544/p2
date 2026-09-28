@@ -179,7 +179,7 @@ async function main() {
     const script = `
       process.env.PAYESH_PULL_MAX_ROWS = '400';
       process.env.PAYESH_PULL_MAX_BYTES = String(1024*1024*1024);
-      const { server, store } = require(${JSON.stringify(path.join(ROOT, 'server', 'index.js'))});
+      const { server, store } = require('server/index.js');
       server.listen(0, '127.0.0.1', async () => {
         const B = 'http://127.0.0.1:' + server.address().port;
         const sup = store.users.find(u => u.role === 'superadmin');
@@ -209,11 +209,24 @@ async function main() {
       PAYESH_SMS_COOLDOWN_S: '0'
     });
     delete env.DATABASE_URL;
+    /* 🔴 بدنهٔ اسکریپت از stdin خوانده می‌شود، نه با `-e` — argv کاملاً
+       خالی و ایستاست (الگوی پذیرفته‌شده). requireها literal‌اند و مسیرِ
+       ریشه از NODE_PATH حل می‌شود. */
     let out;
     try {
-      out = cp.execFileSync(process.execPath, ['-e', script], { env, timeout: 60000 }).toString();
+      const r = cp.spawnSync(process.execPath, [], {
+        input: script, encoding: 'utf8', timeout: 60000,
+        env: Object.assign({}, env, { NODE_PATH: ROOT }),
+      });
+      if (r.error) throw r.error;
+      if (r.status !== 0) {
+        const e = new Error('subprocess exit ' + r.status);
+        e.stderr = (r.stderr || '');
+        throw e;
+      }
+      out = String(r.stdout || '');
     } catch (e) {
-      throw new Error('subprocess failed: ' + (e.stderr ? e.stderr.toString().slice(-400) : e.message));
+      throw new Error('subprocess failed: ' + (e.stderr ? String(e.stderr).slice(-400) : e.message));
     }
     const counts = JSON.parse(out.trim().split('\n').pop());
     assert.ok(counts.att <= ROW_CAP, `attendance=${counts.att} > ${ROW_CAP} (بودجهٔ آزاد، کران ردیف تنها دفاع)`);
