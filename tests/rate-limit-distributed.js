@@ -63,11 +63,11 @@ async function rlGroup() {
 /* ── Redis واقعی ─────────────────────────────────────────── */
 function findRedisServer() {
   const cands = ['/usr/bin/redis-server', '/usr/local/bin/redis-server', '/opt/redis/bin/redis-server'];
-  for (const c of cands) { try { if (fs.existsSync(c)) return c; } catch (e) {} }
+  for (const c of cands) { try { if (fs.existsSync(c)) return c; } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ } }
   try {
     const w = cp.execSync('which redis-server', { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w && fs.existsSync(w)) return w;
-  } catch (e) {}
+  } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ }
   return null;
 }
 function portFree(port) {
@@ -95,11 +95,11 @@ async function startRedis() {
   let ok = false;
   const t0 = Date.now();
   while (Date.now() - t0 < 10000) {
-    try { if ((await probe.ping()) === 'PONG') { ok = true; break; } } catch (e) {}
+    try { if ((await probe.ping()) === 'PONG') { ok = true; break; } } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ }
     await sleep(250);
   }
-  try { probe.disconnect(); } catch (e) {}
-  if (!ok) { try { proc.kill('SIGKILL'); } catch (e) {} return null; }
+  try { probe.disconnect(); } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ }
+  if (!ok) { try { proc.kill('SIGKILL'); } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ } return null; }
   return { proc, url, port };
 }
 
@@ -161,17 +161,17 @@ async function bootApp(port, tmp, extraEnv) {
     try {
       const r = await apiRequest(port, 'GET', '/api/health');
       if (r.status === 200) return child;
-    } catch (e) {}
+    } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ }
     await sleep(250);
   }
-  try { child.kill('SIGKILL'); } catch (e) {}
+  try { child.kill('SIGKILL'); } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ }
   return null;
 }
 async function flushRedis(url) {
   /* نمونهٔ Redis مالِ خودِ تست است (پورتِ خصوصی) — flush امن است. */
   const RedisLib = require('ioredis');
   const c = new RedisLib(url, { lazyConnect: true, maxRetriesPerRequest: 1, enableOfflineQueue: false });
-  try { await c.connect(); await c.flushdb(); } finally { try { c.disconnect(); } catch (e) {} }
+  try { await c.connect(); await c.flushdb(); } finally { try { c.disconnect(); } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ } }
 }
 async function distGroup(ctx) {
   grp('DIST — دو نمونه با یک Redis (یا پرشِ بلند)');
@@ -183,7 +183,7 @@ async function distGroup(ctx) {
   const portB = await pickPort(18991);
   const A = await bootApp(portA, tmp, { REDIS_URL: ctx.url });
   const B = await bootApp(portB, tmp, { REDIS_URL: ctx.url });
-  const stop = () => { try { A && A.kill('SIGKILL'); } catch (e) {} try { B && B.kill('SIGKILL'); } catch (e) {} };
+  const stop = () => { try { A && A.kill('SIGKILL'); } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ } try { B && B.kill('SIGKILL'); } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ } };
   if (!A || !B) { skips(names, 'بوت ناموفق'); stop(); return; }
   try {
     /* سقفِ phone مشترک: ۳ از A + ۲ از B ← ششمی (از هرکدام) ۴۲۹ */
@@ -232,7 +232,7 @@ async function distGroup(ctx) {
       drs.slice(0, 20).every((r) => r.allowed) && !drs[20].allowed, 'allowed21=' + drs[20].allowed);
   } finally {
     stop();
-    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ }
   }
 }
 
@@ -261,11 +261,11 @@ async function fbGroup() {
     try {
       const r = await apiRequest(port, 'GET', '/api/health');
       if (r.status === 200) { ok = true; break; }
-    } catch (e) {}
+    } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ }
     await sleep(250);
   }
   chk('FB-0 بوتِ بدونِ Redis', ok);
-  if (!ok) { try { child.kill('SIGKILL'); } catch (e) {} return; }
+  if (!ok) { try { child.kill('SIGKILL'); } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ } return; }
   try {
     const ph = '0912000099';
     const rs = [];
@@ -274,8 +274,8 @@ async function fbGroup() {
       rs.slice(0, 5).every((r) => r.status === 200) && rs[5].status === 429,
       rs.map((r) => r.status).join(','));
   } finally {
-    try { child.kill('SIGKILL'); } catch (e) {}
-    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+    try { child.kill('SIGKILL'); } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ }
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ }
   }
 }
 
@@ -298,9 +298,9 @@ async function fbGroup() {
     failures.push('crash: ' + String((e && e.message) || e));
     console.log('  ❌ کرش: ' + String((e && e.stack) || e).slice(0, 400));
   }
-  try { if (ctx) ctx.proc.kill('SIGKILL'); } catch (e) {}
-  try { await redis.close(); } catch (e) {}
-  try { delete process.env.REDIS_URL; } catch (e) {}
+  try { if (ctx) ctx.proc.kill('SIGKILL'); } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ }
+  try { await redis.close(); } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ }
+  try { delete process.env.REDIS_URL; } catch (e) { /* best-effort: کشف/پاک‌سازی — خطا مهم نیست */ }
   console.log('\n' + '─'.repeat(52));
   console.log('جمع: ' + pass + ' موفق، ' + fail + ' ناموفق از ' + (pass + fail));
   if (failures.length) console.log('ناموفق‌ها: ' + failures.join(' | ').slice(0, 400));

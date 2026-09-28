@@ -164,17 +164,17 @@ function startProxy(targetPort) {
       up.write(chunk);
     });
     up.on('data', (chunk) => { if (st.mode === 'swallow') { st.swallowed++; return; } if (!client.destroyed) client.write(chunk); else {} });
-    up.on('error', () => { try { client.destroy(); } catch (e) {} });
-    client.on('error', () => { try { up.destroy(); } catch (e) {} });
-    client.on('close', () => { try { up.destroy(); } catch (e) {} });
-    up.on('close', () => { try { client.destroy(); } catch (e) {} });
+    up.on('error', () => { try { client.destroy(); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ } });
+    client.on('error', () => { try { up.destroy(); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ } });
+    client.on('close', () => { try { up.destroy(); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ } });
+    up.on('close', () => { try { client.destroy(); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ } });
   });
   return new Promise((resolve) => {
     srv.listen(0, '127.0.0.1', () => {
       resolve({
         port: srv.address().port, state: st,
         setMode(m, ms) { st.mode = m; if (ms) st.delayMs = ms; },
-        stop() { try { srv.close(); } catch (e) {} }
+        stop() { try { srv.close(); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ } }
       });
     });
   });
@@ -197,7 +197,7 @@ function httpReq(port, method, p, body, opts) {
       res.on('data', (d) => (b += d));
       res.on('end', () => {
         if (jar) jar.absorb(res.headers);
-        let j = null; try { j = JSON.parse(b); } catch (e) {}
+        let j = null; try { j = JSON.parse(b); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ }
         resolve({ status: res.statusCode, headers: res.headers, json: j, raw: b, ms: Date.now() - t0, error: null });
       });
     });
@@ -273,7 +273,7 @@ function sweepOrphans() {
       /* محیطِ پروسهٔ API حاویِ PAYESH_STORE/DATABASE_URL با مسیرِ drill است — نشانهٔ قطعی */
       try { isApi = fs.readFileSync('/proc/' + pid + '/environ', 'utf8').includes('/tmp/chaos-drill-'); } catch (e) { isApi = false; }
     }
-    if (isPg || isRd || isApi) { try { process.kill(Number(pid), 'SIGKILL'); killed++; } catch (e) {} }
+    if (isPg || isRd || isApi) { try { process.kill(Number(pid), 'SIGKILL'); killed++; } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ } }
   }
   if (killed) console.log('[cleanup] ' + killed + ' پروسهٔ یتیمِ اجراهای قبلی کشته شد');
   return killed;
@@ -422,7 +422,7 @@ class Infra {
     try {
       if (mode === 'kill9') process.kill(this.redisProc.pid, 'SIGKILL');
       else redisCli(this.redisPort, ['shutdown', 'nosave']);
-    } catch (e) {}
+    } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ }
   }
   async startRedisAgain() {
     this.redisDir = this.redisDir || path.join(this.dir, 'redis');
@@ -445,7 +445,7 @@ class Infra {
     return { ok: true, allocatedKb: allocKb, freeKb: this.diskFreeKb() };
   }
   clearDiskFiller() {
-    try { if (this.filler && fs.existsSync(this.filler)) fs.unlinkSync(this.filler); } catch (e) {}
+    try { if (this.filler && fs.existsSync(this.filler)) fs.unlinkSync(this.filler); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ }
     return this.diskFreeKb();
   }
   pgStop(mode) { execFileSync(pgBin('pg_ctl'), ['-D', this.pgData, '-m', mode || 'fast', 'stop'], { stdio: 'ignore' }); return this; }
@@ -458,7 +458,7 @@ class Infra {
   /** ثبتِ پاک‌سازیِ خودکار (تا کشته‌شدنِ drill، tmpfs/پروسه یتیم نگذارد) */
   installCleanup() {
     const self = this;
-    const run = () => { try { self.stop(); } catch (e) {} };
+    const run = () => { try { self.stop(); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ } };
     process.once('exit', run);
     process.once('SIGTERM', () => { run(); process.exit(143); });
     process.once('SIGINT', () => { run(); process.exit(130); });
@@ -467,10 +467,10 @@ class Infra {
   stop() {
     if (this.stopped) return this;
     this.stopped = true;
-    try { if (this.redisProc && !this.redisProc.killed) this.redisProc.kill('SIGKILL'); } catch (e) {}
-    try { if (fs.existsSync(path.join(this.pgData, 'postmaster.pid'))) this.pgStop('immediate'); } catch (e) {}
-    try { if (this.diskMounted) execFileSync('sudo', ['-n', 'umount', '-l', this.diskMnt || this.diskDir], { stdio: 'ignore' }); } catch (e) {}
-    try { fs.rmSync(this.dir, { recursive: true, force: true }); } catch (e) {}
+    try { if (this.redisProc && !this.redisProc.killed) this.redisProc.kill('SIGKILL'); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ }
+    try { if (fs.existsSync(path.join(this.pgData, 'postmaster.pid'))) this.pgStop('immediate'); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ }
+    try { if (this.diskMounted) execFileSync('sudo', ['-n', 'umount', '-l', this.diskMnt || this.diskDir], { stdio: 'ignore' }); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ }
+    try { fs.rmSync(this.dir, { recursive: true, force: true }); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ }
   }
 }
 
@@ -527,7 +527,7 @@ async function startApi(opts) {
     proc = spawn(process.execPath, ['server/index.js'], { cwd: ROOT, env, stdio: ['ignore', out, out], detached: true });
     if (opts.supervisor) {
       proc.on('exit', (code) => {
-        try { fs.appendFileSync(logFile, '[supervisor] api exited rc=' + code + ' at ' + nowIso() + '\n'); } catch (e) {}
+        try { fs.appendFileSync(logFile, '[supervisor] api exited rc=' + code + ' at ' + nowIso() + '\n'); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ }
         if (!stopped) setTimeout(launch, 50);
       });
     }
@@ -551,7 +551,7 @@ async function startApi(opts) {
       return null;
     },
     kill9(pid) { try { process.kill(pid || api.pid, 'SIGKILL'); return true; } catch (e) { return false; } },
-    stop() { stopped = true; try { process.kill(-proc.pid, 'SIGKILL'); } catch (e) {} try { proc.kill('SIGKILL'); } catch (e) {} }
+    stop() { stopped = true; try { process.kill(-proc.pid, 'SIGKILL'); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ } try { proc.kill('SIGKILL'); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ } }
   };
   const r = await api.waitReady(opts.timeoutMs || 25000);
   if (!r.ok) { api.stop(); throw new Error('API بالا نیامد (' + r.ms + 'ms) — لاگ: ' + api.logs().slice(-1200)); }

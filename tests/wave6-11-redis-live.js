@@ -36,7 +36,6 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 const cp = require('child_process');
-const path = require('path');
 
 let okc = 0, failc = 0, skipped = 0;
 const fails = [];
@@ -58,7 +57,7 @@ function findRedisServer() {
   try {
     const w = cp.execSync('which redis-server', { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w) return w;
-  } catch (e) {}
+  } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ }
   return null;
 }
 
@@ -76,11 +75,11 @@ async function startRedis() {
   let ok = false;
   const t0 = Date.now();
   while (Date.now() - t0 < 10000) {
-    try { if ((await probe.ping()) === 'PONG') { ok = true; break; } } catch (e) {}
+    try { if ((await probe.ping()) === 'PONG') { ok = true; break; } } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ }
     await sleep(200);
   }
-  try { probe.disconnect(); } catch (e) {}
-  if (!ok) { try { proc.kill('SIGKILL'); } catch (e) {} return null; }
+  try { probe.disconnect(); } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ }
+  if (!ok) { try { proc.kill('SIGKILL'); } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ } return null; }
   return { proc, url };
 }
 
@@ -160,7 +159,7 @@ async function main() {
       await sleep(300); /* subscription settle */
       await other.publish('w611:chan', 'cross-instance');
       await Promise.race([gotP, sleep(3000)]);
-      try { other.disconnect(); } catch (e) {}
+      try { other.disconnect(); } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ }
       chk('R7 pub/sub بین‌نمونه‌ای: پیامِ کلاینتِ دیگر می‌رسد', got === 'cross-instance', 'got=' + got);
     }
 
@@ -189,7 +188,7 @@ async function main() {
       if (l2Key) l2ttl = await probe.ttl(l2Key);
       chk('C1b کلیدِ L2 واقعاً در Redis نشسته و TTL منطقی دارد',
         !!l2Key && l2ttl > 0 && l2ttl <= 3600, 'key=' + l2Key + ' ttl=' + l2ttl);
-      try { probe.disconnect(); } catch (e) {}
+      try { probe.disconnect(); } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ }
     }
 
     /* ── C2: invalidateUser ⇒ خوانشِ بعدی miss ── */
@@ -226,13 +225,13 @@ async function main() {
       await cache.invalidateSchool(7703);
       if (cache.setL1MaxEntries) { cache.setL1MaxEntries(0); cache.setL1MaxEntries(10000); }
       await probe2.set('payesh:cache:bootstrap:990004', rawEnv, 'EX', 300); /* بازگشتِ ورودیِ کهنه به L2 */
-      try { probe2.disconnect(); } catch (e) {}
+      try { probe2.disconnect(); } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ }
       const stale = await cache.getBootstrapCache(990004);
       chk('C5 epochِ ابطال: L2-hitِ کهنه پس از invalidateSchool رد می‌شود', stale == null, JSON.stringify(stale));
     }
   } finally {
-    try { await redis.close(); } catch (e) {}
-    if (ctx.proc) { try { ctx.proc.kill('SIGKILL'); } catch (e) {} }
+    try { await redis.close(); } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ }
+    if (ctx.proc) { try { ctx.proc.kill('SIGKILL'); } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ } }
   }
   finish();
 }

@@ -156,12 +156,12 @@ async function main() {
     try {
       const r = await fetch('http://127.0.0.1:9011/api/health');
       if (r.ok) { up = true; const h = await fetch('http://127.0.0.1:9011/'); csp = h.headers.get('content-security-policy'); break; }
-    } catch (e) {}
+    } catch (e) { /* سرور هنوز بالا نیامده — دوباره تلاش می‌کنیم */ }
     if (proc.exitCode !== null) break;
     await sleep(300);
   }
   proc.kill('SIGKILL');
-  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) { /* best-effort: پاک‌سازیِ دایرکتوریِ موقت */ }
   chk('X5a سرور بالا آمد', up);
   chk('X5b CSP با nonce در هدر', !!csp && /nonce-/.test(csp) && /script-src/.test(csp), csp || 'no CSP');
 

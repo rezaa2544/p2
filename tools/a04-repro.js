@@ -7,8 +7,7 @@
  * Reports duplicate ids across concurrent simulated push handlers.
  */
 'use strict';
-const path = require('path');
-const { createIds } = require(path.join(__dirname, '..', 'server', 'ids'));
+const { createIds } = require('../server/ids');
 
 const N = Number(process.env.A04_N || 300);
 

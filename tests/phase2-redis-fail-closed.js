@@ -48,7 +48,7 @@ function req(method, p, body) {
   let ownBin = ['/usr/bin/redis-server', '/usr/local/bin/redis-server'].find((p) => { try { fs.accessSync(p); return true; } catch (e) { return false; } });
   if (!ownBin) {
     /* command -v فقط با نامِ ثابتِ قابل‌اعتماد (یک نام دودویی ثابت است، نه ورودی) */
-    try { const w = String(spawnSync('command', ['-v', 'redis-server'], { encoding: 'utf8' }).stdout || '').trim(); if (w) ownBin = w; } catch (e) {}
+    try { const w = String(spawnSync('command', ['-v', 'redis-server'], { encoding: 'utf8' }).stdout || '').trim(); if (w) ownBin = w; } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ }
   }
   /* 🔴 مرزِ انتخابِ برنامه: مسیرِ کشف‌شده فقط در صورتی اجرا می‌شود که
      دقیقاً با یکی از مسارهای شناخته‌شدهٔ literal همخوانی کند (allow-list).
@@ -92,7 +92,7 @@ function req(method, p, body) {
     try {
       if (spawnSync('docker', ['info'], { stdio: 'ignore', timeout: 8000 }).status !== 0) throw new Error('docker info failed');
       dockerName = 'p2-rdx-' + process.pid;
-      try { docker(DOCKER_ARGS(dockerName), { stdio: 'ignore', timeout: 15000 }); } catch (e) {}
+      try { docker(DOCKER_ARGS(dockerName), { stdio: 'ignore', timeout: 15000 }); } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ }
       dockerRun(dockerName, RPORT);
       await sleep(1200);
       console.log('── dedicated docker redis on :' + RPORT + ' name=' + dockerName);
@@ -110,7 +110,7 @@ function req(method, p, body) {
 
   const KEY = path.join(os.tmpdir(), 'rdx-jwt.key');
   const STORE = path.join(os.tmpdir(), 'rdx-store.json');
-  try { fs.unlinkSync(STORE); } catch (e) {}
+  try { fs.unlinkSync(STORE); } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ }
   /* 🔴 spawnSync با بردار آرگومان — همان معنای همزمانِ execSync را حفظ می‌کند
      بدون اینکه رشته‌ای را به shell بسپارد. */
   spawnSync(process.execPath, ['server/seed.js'], { cwd: ROOT, env: Object.assign({}, process.env, { PAYESH_STORE: STORE }), stdio: 'pipe' });
@@ -154,12 +154,12 @@ function req(method, p, body) {
   if (redisProc) {
     redisProc.kill('SIGKILL');
   } else if (dockerName) {
-    try { docker(DOCKER_ARGS(dockerName), { stdio: 'ignore', timeout: 15000 }); } catch (e) {}
+    try { docker(DOCKER_ARGS(dockerName), { stdio: 'ignore', timeout: 15000 }); } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ }
   } else {
     const Redis = require('ioredis');
     const k = new Redis(RURL, { maxRetriesPerRequest: 1, enableOfflineQueue: false, retryStrategy: () => null, connectTimeout: 1000 });
     try { await k.call('shutdown', 'nosave'); } catch (e) { /* connection dies with the server — expected */ }
-    try { k.disconnect(); } catch (e) {}
+    try { k.disconnect(); } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ }
   }
   await sleep(1500);
   try {
@@ -167,7 +167,7 @@ function req(method, p, body) {
     const rc = new RedisPing(RURL, { maxRetriesPerRequest: 1, enableOfflineQueue: false, retryStrategy: () => null, connectTimeout: 800 });
     const pr = await rc.ping();
     console.log('── ping after kill:', pr, '| redisProc.exit=', redisProc && redisProc.exitCode, '| docker=', dockerName);
-    try { rc.disconnect(); } catch (e) {}
+    try { rc.disconnect(); } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ }
   } catch (e) {
     console.log('── ping after kill: DEAD (', e && e.message, ') | redisProc.exit=', redisProc && redisProc.exitCode, '| docker=', dockerName);
   }
@@ -181,7 +181,7 @@ function req(method, p, body) {
   }
   chk('Redis قطع ⇒ send-code 503 redis_required (fail closed)', h2.status === 503, h2.status + ' ' + h2.body.slice(0, 100));
   let bodyOk = false;
-  try { bodyOk = JSON.parse(h2.body).code === 'redis_required'; } catch (e) {}
+  try { bodyOk = JSON.parse(h2.body).code === 'redis_required'; } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ }
   chk('بدنهٔ خطا code=redis_required', bodyOk, h2.body.slice(0, 80));
 
   /* login path must fail closed too */
@@ -193,7 +193,7 @@ function req(method, p, body) {
     if (ownBinDiscovered) {
       redisProc = spawn('redis-server', ['--port', String(RPORT), '--save', '', '--appendonly', 'no', '--dir', os.tmpdir()], { stdio: 'ignore', env: redisServerEnv() });
     } else if (dockerName) {
-      try { docker(DOCKER_ARGS(dockerName), { stdio: 'ignore', timeout: 15000 }); } catch (e) {}
+      try { docker(DOCKER_ARGS(dockerName), { stdio: 'ignore', timeout: 15000 }); } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ }
       dockerRun(dockerName, RPORT);
     }
     await sleep(1200);
@@ -204,11 +204,11 @@ function req(method, p, body) {
       await sleep(800);
     }
     chk('Redis برگشت ⇒ send-code دوباره 200 (recovery)', recovered);
-    try { if (redisProc) redisProc.kill('SIGKILL'); } catch (e) {}
-    if (dockerName) { try { docker(DOCKER_ARGS(dockerName), { stdio: 'ignore', timeout: 15000 }); } catch (e) {} }
+    try { if (redisProc) redisProc.kill('SIGKILL'); } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ }
+    if (dockerName) { try { docker(DOCKER_ARGS(dockerName), { stdio: 'ignore', timeout: 15000 }); } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ } }
   }
 
-  try { proc.kill('SIGTERM'); } catch (e) {}
+  try { proc.kill('SIGTERM'); } catch (e) { /* best-effort: این خطا در پاک‌سازی/کشف مهم نیست */ }
   const pass = results.filter(Boolean).length;
   console.log('\n════ PHASE2 REDIS FAIL-CLOSED: ' + pass + '/' + results.length + ' ════');
   process.exit(pass === results.length ? 0 : 1);

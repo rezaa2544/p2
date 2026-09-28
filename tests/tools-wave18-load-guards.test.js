@@ -126,7 +126,7 @@ test('W18-G3: a real dir inside the repo passes the path guard (fails on DATABAS
       'loader attempted a database connection without a DATABASE_URL');
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
-    try { fs.rmdirSync(path.join(ROOT, 'tmp'), { force: true }); } catch (e) {}
+    try { fs.rmdirSync(path.join(ROOT, 'tmp'), { force: true }); } catch (e) { /* best-effort: شاید tmp توسطِ تستِ دیگر در استفاده باشد */ }
   }
 });
 
