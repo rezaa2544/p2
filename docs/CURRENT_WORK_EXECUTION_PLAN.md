@@ -630,3 +630,17 @@ Canonical status remains **HARDENING / RECONCILIATION — NOT VERIFIED**.
 - Stale/duplicate findings are explicitly retained only as REVALIDATION_REQUIRED where current-head evidence shows mitigation.
 - Project state remains **HARDENING / RECONCILIATION — NOT VERIFIED**; broad certification remains blocked.
 \n\n## 2026-09-25 — Defect intake freeze pending Atria-1\n\nThe previously consolidated 37-item working register is retained. A final repository-memory audit also confirms unresolved carry-over obligations A-01..A-29 and hardening items A-30..A-39. These may overlap the 37 and must be deduplicated only after the Atria-1 report is reconciled with current main.\n\nCanonical record: \`docs/audit/CANONICAL_DEFECT_INTAKE_FREEZE_2026-09-25.md\`.\n\n**Next gate:** receive Atria-1 report → reconcile all findings → freeze one root-cause queue → start fixes.\n
+
+## 2026-09-28 — Atria capability-development priority override
+
+تا زمانی که ارزیابی شواهدی نشان ندهد Atria در مهارت‌های مهندسی موردنیاز به سطح حرفه‌ای پایدار رسیده است، تمرکز عملیاتی فعلی روی **مشاهده، re-audit، کشف ضعف مهارتی، آموزش هدفمند و اثبات توانایی Atria** است؛ این وضعیت به معنی شروع Phase D یا certification نیست.
+
+### Evidence from Atria's latest completed sweep
+- 36 defect items from the 2026-09-25 independent audit + 1 hidden UTC/local defect were reported fixed.
+- Multiple security/harness hardening waves were delivered and pushed to main.
+- Atria then began reassessing previous work under the newly added engineering laws/skills and surfaced additional evidence-chain and verification gaps.
+
+### Open engineering/verification queue carried forward
+A-13, A-40, A-41, A-27/E4, strict-gate residual, registry rebind, OTP 0000 disposition, PG/live-runtime evidence, G7/false-green inventory, unlisted authz writer actions, performance/scale evidence, and independent multi-AI review.
+
+**Important:** historical PASS/fixed claims remain evidence-bound to their tested SHA/environment. No certification is inferred from the Atria report alone.
