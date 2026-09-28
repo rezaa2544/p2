@@ -199,3 +199,39 @@ Canonical status remains **HARDENING / RECONCILIATION — NOT VERIFIED**.
 - NCR-01..NCR-27 are now recorded with severity, disposition and execution order.
 - Stale/duplicate findings are explicitly retained only as REVALIDATION_REQUIRED where current-head evidence shows mitigation.
 - Project state remains **HARDENING / RECONCILIATION — NOT VERIFIED**; broad certification remains blocked.
+
+
+## 2026-09-28 — Atria post-skills re-audit synchronization
+
+این بخش نتیجهٔ گزارش مستقل Atria پس از موج اول رفع عیوب و پس از دریافت قانون/مهارت‌های مهندسی جدید را ثبت می‌کند. این گزارش **certification نیست** و موارد صرفاً بر اساس گزارش Atria سبز نمی‌شوند.
+
+### موارد رفع‌شده در موج Atria
+
+- [x] N-01..N-35 + PUB-01 — 36 عیب ممیزی مستقل 2026-09-25 طبق گزارش Atria رفع شده‌اند.
+- [x] یک عیب اضافی UTC/local weekday در مسیر bell/dorm نیز رفع شده است.
+- [x] Mimosa hardening در چند موج: static require، shell-string exec، dynamic path، SQL identifier/path handling و eval در harnessهای بررسی‌شده.
+- [x] build EOL reproducibility defect کشف و رفع شد؛ normalization + cache-version bump + EOL policy و regression suite اضافه شد.
+- [x] گزارش Atria اعلام می‌کند npm test در baseline مورد آزمون 37+31+547 سبز بوده و چندین suite اختصاصی نیز پنج‌باره اجرا شده‌اند.
+- [x] آخرین تحویل امنیتی در main تا `5e527a4c` قرار گرفته و گزارش Atria delivery را روی remote تأیید کرده است.
+
+### موارد باز / نیازمند evidence مستقل
+
+- [ ] **OTP 0000 bypass — Critical:** از upstream وارد شاخه شده و باید قبل از production حذف یا صریحاً opt-in شود؛ تست `tests/p11-phone-auth.js` نیز باید با قرارداد جدید همگام شود.
+- [ ] **A-13:** حدود 30 سوئیت `tests/api/*.test.js` خارج از `npm test`/workflow/gate مانده‌اند؛ wiring یا disposition رسمی لازم است.
+- [ ] **A-40:** cascading skip در CI؛ شکست یک step باعث skip شدن gateهای بعدی می‌شود و evidence runtime را پنهان می‌کند.
+- [ ] **A-41:** production truth step در `strict-verification.yml` با شرط env نامناسب عملاً غیرقابل‌دسترسی است.
+- [ ] **A-27 / E4:** Production Truth Gate، DR/restore/failover و RPO/RTO روی HEAD فعلی هنوز اجرا/اثبات نشده‌اند.
+- [ ] **Strict Verification Gate:** residual bypass مربوط به evidence متنی/عدد ساختگی روی فایل واقعی باقی است؛ اجرای مستقل برای رد آن لازم است.
+- [ ] **Verification Registry:** تا freeze شدن hardening SHA و تولید evidence جدید، historical evidence نباید به‌عنوان current-head certification تلقی شود.
+- [ ] **G7 / false-green:** regex sweep هنوز قرمز گزارش شده و allowlist فعلی باید تعیین تکلیف شود.
+- [ ] **60 writer actions:** بررسی جامع authz/write-perms برای اکشن‌های unlisted هنوز باز است.
+- [ ] **PG runtime / SQL row security:** چند ادعای وابسته به PG واقعی هنوز NOT VERIFIED/NOT-RUN هستند.
+- [ ] **Performance/scale:** benchmark و capacity claims برای بخش‌های کلیدی هنوز evidence اندازه‌گیری‌شدهٔ کافی ندارند.
+- [ ] **Three-AI agreement:** برای certification، بررسی مستقل ChatGPT + Arena + Atria هنوز کامل نشده است.
+- [ ] **~137 harness sites:** بخشی از hardening harnessهای ازپیش‌موجود هنوز خارج از suite معمول باقی مانده و مالکیت/گیت آن‌ها باید روشن شود.
+
+### وضعیت کنونی
+
+**HARDENING / RE-AUDIT — NOT VERIFIED / NOT CERTIFIED**
+
+قانون deduplication: N-01..N-35/PUB-01 و یافته‌های مشابه تاریخی نباید دوباره به‌عنوان defect جدید شمرده شوند؛ فقط اگر current-head evidence آن‌ها را باز کند، به‌عنوان regression/reopen ثبت شوند.
