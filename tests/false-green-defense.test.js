@@ -159,7 +159,7 @@ function tmpDir(name) {
     const src = fs.readFileSync(projRunner, 'utf8');
     chk('C4 project api/runner.js exits non-zero on suite failure',
       /process\.exit\(1\)/.test(src), 'no process.exit(1) on failure');
-    const listed = (src.match(/'([a-z0-9\-]+\.test\.js)'/g) || []).map((s) => s.replace(/'/g, ''));
+    const listed = (src.match(/'([a-z0-9-]+\.test\.js)'/g) || []).map((s) => s.replace(/'/g, ''));
     const missingOnDisk = listed.filter((f) => !fs.existsSync(path.join(ROOT, 'tests', 'api', f)));
     chk('C4 every suite in api/runner.js list exists on disk (' + listed.length + ' listed)',
       missingOnDisk.length === 0, 'missing: ' + JSON.stringify(missingOnDisk));
