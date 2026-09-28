@@ -2327,3 +2327,59 @@ UNDERSTANDS → REASONS → EXECUTES → VERIFIES → SELF-AUDITS → LEARNS →
 | تاریخ | تغییر | دلیل |
 |---|---|---|
 | 2026-09-28 | ثبت Atria/ZCode به‌عنوان تمرکز فعلی ارتقای capability، تعریف نقش ChatGPT/Hermes، gap classification، self-audit، معیار mastery و continuous capability development | استفاده حداکثری از Atria/ZCode و جلوگیری از درمان خودکار هر ضعف با Rule جدید بدون تشخیص علت |
+
+
+# 119. Clean Code Engineering Law — اصول کدنویسی تمیز
+
+این بخش از خلاصه مقاله/منبع «۱۰ اصل طلایی Clean Code» دریافت شده در 2026-09-28 استخراج شده است. فقط اصولی که در منبع دریافت‌شده به‌طور صریح در دسترس بود وارد قانون پروژه شده‌اند.
+
+## 119.1 Meaningful Naming — نام‌گذاری معنادار
+
+نام‌ها باید intent و معنای واقعی خود را منتقل کنند، نه اینکه صرفاً نوع یا وجود یک چیز را بیان کنند.
+
+قواعد عملی:
+- نام تابع باید تا حد امکان بگوید چه کاری انجام می‌دهد؛ نامی مانند getUserData از نام مبهمی مانند handleUser قابل فهم‌تر است.
+- از نام‌های عمومی و مبهم مانند info، data، manager و process تا حد امکان دوری شود.
+- وضوح بر کوتاهی مقدم است؛ نام واضح و طولانی می‌تواند از اختصار مبهم بهتر باشد.
+- برای function از نامی استفاده شود که عمل را بیان کند و برای variable نامی که مفهوم داده را روشن کند.
+- نام‌های دروغ‌گو، نادرست، نزدیک به هم و اختصارهای گیج‌کننده نامطلوب‌اند.
+- واژگان نام‌گذاری در یک domain باید consistent باشند؛ تغییر بی‌دلیل واژه‌هایی مانند fetch و get برای یک مفهوم باعث ambiguity می‌شود.
+- نام باید با رفتار واقعی کد مطابقت داشته باشد؛ دروغ‌گویی نام می‌تواند عیب منطقی و نگهداری را پنهان کند.
+
+### کاربرد در Payesh
+در code review، debugging و re-audit، نام‌گذاری باید به‌عنوان بخشی از readability و correctness بررسی شود؛ مخصوصاً در policy، scope، authorization، sync، database، analytics و test helpers که نام مبهم می‌تواند باعث برداشت اشتباه از security boundary یا contract شود.
+
+## 119.2 Single Responsibility — هر تابع یک مسئولیت روشن
+
+یک تابع تمیز باید یک کار مشخص و قابل توضیح انجام دهد. اگر برای توضیح رفتار تابع نیاز به فهرست طولانی از مسئولیت‌ها باشد، احتمالاً چند concern در یک واحد ترکیب شده‌اند.
+
+قواعد عملی:
+- intent تابع باید با یک نگاه قابل فهم باشد.
+- تابع نباید بدون دلیل معماری چند مسئولیت مستقل مانند validation، authorization، persistence، transformation و side-effectهای نامرتبط را در خود جمع کند.
+- افزایش اندازه و پیچیدگی تابع باید باعث بازبینی responsibility آن شود، نه صرفاً پذیرش آن به‌عنوان کدی که کار می‌کند.
+- refactor برای Single Responsibility نباید contract، security boundary یا behavior را بدون regression evidence تغییر دهد.
+
+### کاربرد در Payesh
+در مسیرهای حساس مانند authorization/scope، database transaction، sync/offline، outbox، API handlers و verification gates، توابع بزرگ یا چندمسئولیتی باید در re-audit به‌عنوان محل بالقوه پنهان‌شدن defect بررسی شوند؛ اما refactor صرفاً برای زیبایی و بدون defect/risk justification انجام نشود.
+
+## 119.3 Clean Code ≠ Certification
+
+Clean Code یک quality attribute و ابزار کاهش complexity و maintenance risk است، نه evidence امنیت، correctness یا certification.
+
+بنابراین:
+- readable code جای negative test را نمی‌گیرد.
+- naming خوب جای authorization proof را نمی‌گیرد.
+- single-responsibility جای runtime evidence را نمی‌گیرد.
+- refactor بدون regression evidence، verified محسوب نمی‌شود.
+
+اصل اجرایی:
+CLARITY → REVIEWABILITY → TESTABILITY → MAINTAINABILITY
+
+اما برای وضعیت مهندسی همچنان قانون Evidence Gate مقدم است:
+CLAIM → EVIDENCE → REPRODUCE → RECONCILE → REVIEW → GATE → STATUS
+
+# 120. Change Log — Clean Code Engineering Law
+
+| تاریخ | تغییر | دلیل |
+|---|---|---|
+| 2026-09-28 | استخراج و وارد کردن دو اصل پشتیبانی‌شده از منبع Clean Code: meaningful naming و single responsibility؛ همچنین تفکیک Clean Code از security/correctness/certification | بهبود خوانایی، reviewability، testability و نگهداری بدون تضعیف Evidence Gate یا تبدیل style guidance به ادعای verification |
