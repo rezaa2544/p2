@@ -33,6 +33,12 @@ function chk(name, ok, detail) {
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 const ISS = 'payesh', AUD = 'payesh-web';
+
+/* N-06: server/key-strength.js یک کلیدِ امضای ضعیف را در بوت رد می‌کند
+   (طول ≥ ۳۲ بایت، بدون نشانگرِ placeholder، ≥ ۸ کاراکترِ متمایز).
+   S4 باید بتواند یک توکن را با کلیدی که از بیرون می‌شناسد امضا کند،
+   پس اینجا یک کلیدِ ثابتِ آزمایشی با کافی بودنِ آن دروازه استفاده می‌شود. */
+const S4_KEY = 's4-known-signing-key-0123456789abcdef0123456789abcdef';
 function b64u(x) { return Buffer.from(x).toString('base64url'); }
 function signToken(secret, payload) {
   const h = b64u(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
@@ -292,17 +298,38 @@ async function main() {
         chk('S3a logout رویِ A در قطعی ۲۰۰ داد', lo.status === 200, 'lo=' + lo.status);
         chk('S3b A کوکی را رد می‌کند (denylistِ محلیِ همان پروسه)',
           afterA.status === 401, 'A=' + afterA.status);
-        const bOk = afterB.status === 200;
-        chk('S3c B هنوز کوکیِ ابطال‌شده را می‌پذیرد ← FAIL-OPEN بین‌نمونه‌ای',
-          bOk, 'B=' + afterB.status + ' ' + String(afterB.body).slice(0, 100));
-        if (bOk) console.log('     ⚠️  آسیب‌پذیریِ واقعی: ابطال رویِ A انجام شد ولی B آن را نمی‌بیند.');
+        const bAccepted = afterB.status === 200;
+        /* A-22 — MISSION 02 CORRECTION.
 
-        /* پایداریِ پنجرهٔ آسیب: حتی پس از بازیابیِ ردیس، denylist نوشته نشده */
+           This assertion was previously INVERTED: it asserted that B still
+           accepted the revoked session (bOk === true), i.e. the test passed
+           by *demonstrating the vulnerability*. On HEAD 691f8d6 the
+           vulnerability does not exist — server/auth.js sessionFrom()
+           catches REVOCATION_UNAVAILABLE and fails closed, so B denies the
+           revoked cookie with 401. The old test reported that as a FAILURE.
+
+           The security invariant under test is:
+
+             "After an authoritative revocation on one instance, another
+              instance must NOT accept the revoked session during a Redis
+              outage — revocation reads fail closed, not open."
+
+           That is what the assertion now enforces. A regression that
+           reintroduces fail-open makes this test RED, which is the point.
+        */
+        chk('S3c B کوکیِ ابطال‌شده را در قطعیِ ردیس رد می‌کند (fail-closed بین‌نمونه‌ای)',
+          !bAccepted, 'B=' + afterB.status + ' ' + String(afterB.body).slice(0, 100));
+        if (bAccepted) console.log('     ⚠️  آسیب‌پذیریِ واقعی: ابطال رویِ A انجام شد ولی B آن را نمی‌بیند.');
+
+        /* بازیابیِ ردیس: یک نشستِ ابطال‌شده همچنان باید ابطال‌شده بماند.
+           (پیش‌از این، این مرحله فرض می‌کرد که پنجرهٔ آسیب باز می‌ماند —
+           یعنی denylist هرگز در ردیس نوشته نمی‌شد. اگر logout در S3a با ۲۰۰
+           پاسخ داده، ابطال باید پایدار باشد.) */
         await fake.listen(); /* بازیابی رویِ همان پورت */
         await sleep(2500);
         const afterB2 = await authed(rB, cookie);
-        chk('S3d پس از بازیابیِ ردیس هم B می‌پذیرد (پنجره خودبه‌خود بسته نمی‌شود)',
-          afterB2.status === 200, 'B=' + afterB2.status);
+        chk('S3d پس از بازیابیِ ردیس هم B کوکیِ ابطال‌شده را رد می‌کند (ابطال پایدار)',
+          afterB2.status !== 200, 'B=' + afterB2.status);
         fake.kill();
 
         /* S5: ریاستارتِ B ⇒ بارگذاریِ denylistِ ماندگارشده */
@@ -338,7 +365,13 @@ async function main() {
     const req = makeReq(8988);
     const code = await waitFor(8988, req);
     if (code === 200) {
-      fs.writeFileSync(t.key, 'a'.repeat(64)); /* کلیدِ معلوم برای امضای دستی */
+      /* N-06: server/key-strength.js اکنون کلیدهای ضعیف را در بوت رد می‌کند
+         (طول ≥ ۳۲ بایت، بدون نشانگرِ placeholder، ≥ ۸ کاراکترِ متمایز).
+         'a'.repeat(64) فقط ۱ کاراکترِ متمایز دارد و در راه می‌افتد. این یک
+         کلیدِ ثابتِ آزمایشی است که از نظرِ آن دروازه کافی است و اینجا
+         دقیقاً به همین دلیل نصب می‌شود — برای امضایِ دستیِ یک توکنِ
+         منقضی‌شده در یک تست. */
+      fs.writeFileSync(t.key, 's4-known-signing-key-0123456789abcdef0123456789abcdef');
       killInst(inst); await awaitExit(inst);
       const inst2 = bootInstance(8989, 'redis://127.0.0.1:' + RPORT, t.store, t.audit, t.key);
       const req2 = makeReq(8989);
@@ -347,7 +380,7 @@ async function main() {
       if (up2) {
         const now = Math.floor(Date.now() / 1000);
         const sub = 1; /* سوپرادمینِ seed */
-        const tok = signToken('a'.repeat(64), { sub, role: 'superadmin', school_id: null, iat: now - 60, exp: now - 30, jti: 'jt_expired_probe', sv: 0 });
+        const tok = signToken(S4_KEY, { sub, role: 'superadmin', school_id: null, iat: now - 60, exp: now - 30, jti: 'jt_expired_probe', sv: 0 });
         const cookie = 'payesh_session=' + tok;
         const r1 = await authed(req2, cookie);
         chk('S4b توکنِ منقضی‌شده با ردیسِ سالم رد می‌شود (exp، fail-closed)',

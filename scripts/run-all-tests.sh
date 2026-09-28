@@ -76,6 +76,19 @@ fi
 # report path. It self-skips with a loud NOT-RUN when no PostgreSQL is reachable,
 # so a PG-less machine does not go red for a reason it cannot act on. When one IS
 # reachable we REQUIRE it: the gate must not be silently skipped where it can run.
+#
+# G7 ROOT CAUSE (verified on origin/main 691f8d6, Node.js CI run 36348586658):
+# the CI workflow exports PGURL/REDIS_URL at job level but NOT DATABASE_URL, and
+# `set -u` (above) turns the bare `$DATABASE_URL` reference into a fatal
+# "unbound variable" abort before the pg_isready fallback can ever run.
+# The canonical connection variable for this project's tooling is DATABASE_URL
+# (tools/migrate-ledger.js reads DATABASE_URL first, PGURL second), so export it
+# from PGURL when only PGURL is set — then the probe sees one canonical variable
+# instead of two divergent ones.
+if [ -z "${DATABASE_URL:-}" ] && [ -n "${PGURL:-}" ]; then
+  export DATABASE_URL="$PGURL"
+  echo "-- DATABASE_URL derived from PGURL (canonical connection variable)" | tee -a $OUT
+fi
 if [ -n "${DATABASE_URL:-}" ] || (command -v pg_isready >/dev/null 2>&1 && pg_isready -h 127.0.0.1 -p 5432 -q 2>/dev/null); then
   export WAVE23_REQUIRE_PG=1
   echo "-- live PostgreSQL detected — wave23-reports-pg is REQUIRED" | tee -a $OUT
