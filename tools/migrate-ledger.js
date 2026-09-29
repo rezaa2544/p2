@@ -73,6 +73,118 @@ function prepareMigrationSql(sql) {
   return stripTrailingCommit(stripLeadingBegin(sql));
 }
 
+/* Splits a multi-statement SQL script into individual statements without
+   splitting inside dollar-quoted bodies ($$ ... $$ / $tag$ ... $tag$),
+   single-quoted strings, E''/C'' escapes, double-quoted identifiers, or
+   comments. Returns statement bodies without the trailing ';' so a caller can
+   execute them one message per statement.
+   Independently reviewed: tags may contain digits, "a$$b" identifiers must not
+   open a dollar-quote, and E'...' / C'...' constants must not be mistaken for
+   plain single-quoted strings. */
+function splitSqlStatements(sql) {
+  const out = [];
+  let buf = '';
+  let i = 0;
+  const n = sql.length;
+  let tag = null;
+  let quote = false;
+  let dquote = false;
+  while (i < n) {
+    const ch = sql[i];
+    if (tag) {
+      if (ch === '$') {
+        const m = /^\$([A-Za-z0-9_$]*)\$/.exec(sql.slice(i));
+        if (m && tag === ('$' + m[1] + '$')) {
+          buf += m[0];
+          i += m[0].length;
+          tag = null;
+          continue;
+        }
+      }
+      buf += ch;
+      i++;
+      continue;
+    }
+    if (quote) {
+      buf += ch;
+      if (ch === '\\') {
+        /* E''/C'' constants and any backslash escape: the escaped character
+           cannot close the string. */
+        if (i + 1 < n) { buf += sql[i + 1]; i += 2; continue; }
+      }
+      if (ch === "'") {
+        if (sql[i + 1] === "'") { buf += "'"; i += 2; continue; }
+        quote = false;
+      }
+      i++;
+      continue;
+    }
+    if (dquote) {
+      buf += ch;
+      if (ch === '"') { dquote = false; }
+      i++;
+      continue;
+    }
+    if (ch === '$') {
+      const m = /^\$([A-Za-z0-9_$]*)\$/.exec(sql.slice(i));
+      if (m) { tag = '$' + m[1] + '$'; buf += m[0]; i += m[0].length; continue; }
+    }
+    if ((ch === 'E' || ch === 'e' || ch === 'C' || ch === 'c') && (sql[i + 1] === "'")) {
+      /* E'...' / C'...' constant: the prefix letter is not an identifier here
+         because it can only occur where an expression begins; treat the whole
+         constant as a quoted body. */
+      buf += ch;
+      i++;
+      continue;
+    }
+    if (ch === "'") { quote = true; buf += ch; i++; continue; }
+    if (ch === '"') { dquote = true; buf += ch; i++; continue; }
+    if (ch === '-' && sql[i + 1] === '-') {
+      const e = sql.indexOf('\n', i);
+      const e2 = e === -1 ? n : e + 1;
+      buf += sql.slice(i, e2);
+      i = e2;
+      continue;
+    }
+    if (ch === '/' && sql[i + 1] === '*') {
+      const e = sql.indexOf('*/', i);
+      const e2 = e === -1 ? n : e + 2;
+      buf += sql.slice(i, e2);
+      i = e2;
+      continue;
+    }
+    if (ch === ';') {
+      const s = buf.trim();
+      if (s) out.push(s);
+      buf = '';
+      i++;
+      continue;
+    }
+    buf += ch;
+    i++;
+  }
+  const s = buf.trim();
+  if (s) out.push(s);
+  return out;
+}
+
+/* True when a migration's own script manages transactions internally. A
+   PL/pgSQL procedure that COMMITs mid-batch (012's chunk-commit copy), or a
+   top-level CALL of one, cannot be sent as one simple-query message:
+   PostgreSQL wraps a multi-statement message in an implicit transaction block,
+   and COMMIT inside that block raises 2D000 "invalid transaction termination".
+   (PG16 docs, CALL: "If CALL is executed in a transaction block, then the
+   called procedure cannot execute transaction control statements.") The psql
+   path already handles this by feeding statements individually; this detects
+   the same need for the pg-client path so an environment without a psql binary
+   can still apply the chain. */
+function hasInternalTransactionControl(sql) {
+  const hasProc = /\bCREATE\s+(?:OR\s+REPLACE\s+)?PROCEDURE\b/i.test(sql);
+  const hasCommit = /\bCOMMIT\s*;/i.test(sql);
+  const hasCall = /(?:^|[\s;])CALL\s+/i.test(sql);
+  return hasCommit && (hasProc || hasCall);
+}
+
 /* 🔴 مرزِ ثابتِ DDL: این دو رشتهٔ ثابتِ ماژولی‌اند — هیچ ورودیِ بیرونی
    در آن‌ها جای نمی‌گیرد. `CREATE TABLE` و SELECTِ ثابت نمی‌توانند با
    پارامترِ $N نوشته شوند (DDL پارامتری نمی‌شود)، پس ثابتِ سراسریِ
@@ -247,13 +359,35 @@ async function migrateUp(client, options = {}) {
         const childEnv = Object.assign({}, process.env, pgEnvFromUrl(safeUrl));
         execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', '-'], { input: scriptSql, env: childEnv, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' });
       } else {
-        await client.query('BEGIN');
-        await client.query(prepareMigrationSql(file.content));
-        await client.query(`
-          INSERT INTO schema_migrations (version, name, applied_at, checksum)
-          VALUES ($1, $2, NOW(), $3);
-        `, [file.version, file.name, file.checksum]);
-        await client.query('COMMIT');
+        /* Migrations whose procedures COMMIT internally (012's chunk-commit
+           copy) cannot run inside BEGIN...COMMIT or as one multi-statement
+           message — PostgreSQL raises 2D000 "invalid transaction termination"
+           because the whole message is an implicit transaction block. When
+           psql is unavailable, feed statements individually like psql does:
+           each statement gets its own message and its own implicit block (a
+           single statement without BEGIN is not wrapped), so COMMIT inside a
+           procedure is legal. The ledger row is written afterwards in its own
+           transaction, matching the psql path's hasInternalTx behaviour. */
+        const content = prepareMigrationSql(file.content);
+        if (hasInternalTransactionControl(content)) {
+          for (const stmt of splitSqlStatements(content)) {
+            await client.query(stmt);
+          }
+          await client.query('BEGIN');
+          await client.query(`
+            INSERT INTO schema_migrations (version, name, applied_at, checksum)
+            VALUES ($1, $2, NOW(), $3);
+          `, [file.version, file.name, file.checksum]);
+          await client.query('COMMIT');
+        } else {
+          await client.query('BEGIN');
+          await client.query(content);
+          await client.query(`
+            INSERT INTO schema_migrations (version, name, applied_at, checksum)
+            VALUES ($1, $2, NOW(), $3);
+          `, [file.version, file.name, file.checksum]);
+          await client.query('COMMIT');
+        }
       }
 
       lastAppliedIndex = i;
@@ -266,26 +400,48 @@ async function migrateUp(client, options = {}) {
          re-executing destructive swap logic. */
       const stderr = String(err && err.stderr ? err.stderr : '');
       const errText = String(err && err.message ? err.message : err);
-      const alreadyApplied = usePsql && /ALREADY_APPLIED:/.test(stderr + '\\n' + errText);
+      /* The psql path and the pg-client path both surface the migration's own
+         ALREADY_APPLIED guard (a RAISE in 012's swap block), so this recovery
+         works on hosts without a psql binary too — exactly the environment the
+         split-path fix targets. */
+      const alreadyApplied = /ALREADY_APPLIED:/.test(stderr + '\n' + errText);
       if (alreadyApplied) {
         try {
           assertMigrationIdentity(file.version, file.name);
-          const recoverySql = `BEGIN;
+          const escapedVersion = file.version.replace(/'/g, "''");
+          const escapedName = file.name.replace(/'/g, "''");
+          const escapedChecksum = file.checksum.replace(/'/g, "''");
+          if (usePsql) {
+            const recoverySql = `BEGIN;
 INSERT INTO schema_migrations (version, name, applied_at, checksum)
-VALUES ('${file.version.replace(/'/g, "''")}', '${file.name.replace(/'/g, "''")}', NOW(), '${file.checksum.replace(/'/g, "''")}')
+VALUES ('${escapedVersion}', '${escapedName}', NOW(), '${escapedChecksum}')
 ON CONFLICT (version) DO NOTHING;
 COMMIT;
 `;
-          /* 🔴 مرزِ ورودی: مانندِ migrateUp — اعتبارسنجیِ URL بلافاصله پیش از
-             فراخوانی، تا هیچ رشتهٔ آغازشونده با «-» به‌عنوانِ گزینه نرود. */
-          const safeUrl = pgUrl;
-          if (!/^postgres(ql)?:\/\//.test(String(safeUrl))) {
-            throw new Error('refusing to pass non-postgres URL to psql');
+            /* 🔴 مرزِ ورودی: مانندِ migrateUp — اعتبارسنجیِ URL بلافاصله پیش از
+               فراخوانی، تا هیچ رشتهٔ آغازشونده با «-» به‌عنوانِ گزینه نرود. */
+            const safeUrl = pgUrl;
+            if (!/^postgres(ql)?:\/\//.test(String(safeUrl))) {
+              throw new Error('refusing to pass non-postgres URL to psql');
+            }
+            const childEnv = Object.assign({}, process.env, pgEnvFromUrl(safeUrl));
+            execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', '-'], {
+              input: recoverySql, env: childEnv, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8'
+            });
+          } else {
+            await client.query('BEGIN');
+            try {
+              await client.query(`
+                INSERT INTO schema_migrations (version, name, applied_at, checksum)
+                VALUES ($1, $2, NOW(), $3)
+                ON CONFLICT (version) DO NOTHING;
+              `, [file.version, file.name, file.checksum]);
+              await client.query('COMMIT');
+            } catch (recoveryWriteErr) {
+              try { await client.query('ROLLBACK'); } catch (_) {}
+              throw recoveryWriteErr;
+            }
           }
-          const childEnv = Object.assign({}, process.env, pgEnvFromUrl(safeUrl));
-          execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', '-'], {
-            input: recoverySql, env: childEnv, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8'
-          });
           lastAppliedIndex = i;
           appliedMap.set(file.version, { version: file.version, name: file.name, checksum: file.checksum });
           results.push({ version: file.version, name: file.name, status: 'ALREADY_APPLIED_RECOVERED', checksum: file.checksum });
@@ -470,6 +626,8 @@ if (require.main === module) {
 module.exports = {
   computeChecksum,
   prepareMigrationSql,
+  splitSqlStatements,
+  hasInternalTransactionControl,
   ensureLedgerTable,
   getAppliedMigrations,
   discoverMigrationFiles,
