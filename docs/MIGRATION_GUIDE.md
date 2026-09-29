@@ -277,8 +277,10 @@ $ node tools/migrate-helper.js --next
 | ۰۲۱ | `021_outbox_processing_lease.sql` / `.down` | lease برای پردازش outbox و recovery پس از crash | مرج (فاز ۸) |
 | ۰۲۲ | `022_users_staff_flags.sql` / `.down` | ستون‌های پرچم کارکنان (lib_staff/asset_staff/is_head) برای ماندگاری AuthZ پس از restart | مرج (فاز ۸) |
 | ۰۲۳ | `023_server_tombstones.sql` / `.down` | جدولِ سنگ‌قبرِ دلتای ماندگار — تا قبل از این مهاجرت فقط در `schema.sql` (خروجیِ تولیدی) وجود داشت و با هیچ مهاجرتی ساخته نمی‌شد (N-17) | اصلاحِ حسابرسی (N-17) |
+| ۰۲۴ | `024_ref_id_text_receipt_codes.sql` / `.down` | تبدیلِ `ref_id` به TEXT روی installments/parent_subscriptions/subscription_payments — کلاینت کدهای پرداخت را به‌صورت رشته می‌سازد (`RC-<۸ رقم>`، `SUB-S<plan>-<id>`) ولی `۰۰۱` این ستون‌ها را INTEGER داشت؛ seed یک‌بارۀ bootstrap→PG روی PostgreSQLِ خالی fail-closed می‌شد (پیگیریِ A-31) | اصلاحِ نوع داده (پیگیریِ A-31) |
+| ۰۲۵ | `025_bell_schedule_days_text.sql` / `.down` | تبدیلِ `bell_schedules.days` به TEXT — هفتهٔ واقعیِ مدرسه به‌صورت آرایه‌ای از day objectها ذخیره می‌شود و ~۱٫۳KB است (فراتر از VARCHAR(255) از `۰۰۱`)؛ seed و آینهٔ زنده با `value too long for type character varying(255)` fail می‌شدند (پیگیریِ A-31) | اصلاحِ نوع داده (پیگیریِ A-31) |
 
-> مهاجرت بعدی شمارهٔ `024` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را به جدول اضافه کند — مالک: نویسندهٔ مهاجرت.
+> مهاجرت بعدی شمارهٔ `026` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را به جدول اضافه کند — مالک: نویسندهٔ مهاجرت.
 
 ---
 
