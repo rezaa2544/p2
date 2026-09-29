@@ -69,3 +69,4 @@ node_modules
 /* tools/baseline-check.js scratch record — the mission baseline artifact,
    regenerated per mission; never committed (it describes a transient state). */
 .baseline-check.json
+docs-refs-probe.json
