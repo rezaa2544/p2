@@ -232,9 +232,30 @@ function run({ check, baseline, json }) {
   if (gen.size) console.log(`  تولیدی (ردشده با قاعدهٔ .gitignore، نه بدهی): ${gen.size}`);
   if (gone.length) console.log(`  از زمانِ خطِ پایه رفع شده: ${gone.length} ← خطِ پایه را با --baseline تازه کنید`);
 
+  // C-01 cross-environment probe: always snapshot, so a locally-green run can
+  // be diffed byte-for-byte against a CI run on the same SHA. Only the failing
+  // case writes to disk in CI; the green case logs a compact fingerprint only.
+  try {
+    const o = {
+      _probe: 'docs-refs-check C-01 cross-environment snapshot',
+      node: process.version,
+      platform: process.platform,
+      arch: process.arch,
+      cwd: process.cwd(),
+      argv: process.argv.slice(2),
+      totalMissing: pairs.length,
+      grandfathers: known.size,
+      fresh: fresh.map((p) => ({ doc: p.doc, ref: p.ref })),
+      generatedSkipped: [...gen.keys()].sort(),
+      docsScanned: 0,
+    };
+    fs.writeFileSync(path.join(ROOT, 'docs-refs-probe.json'), JSON.stringify(o, null, 2) + '\n', 'utf8');
+  } catch (e) { /* probe must never break the gate */ }
+
   if (fresh.length) {
     console.log('\nارجاع‌های کهنهٔ تازه:');
     for (const p of fresh) console.log(`  • ${p.doc} → ${p.ref}`);
+    console.log('  (full snapshot in docs-refs-probe.json)');
   }
 
   if (byRef.size) {
