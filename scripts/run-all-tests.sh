@@ -114,6 +114,12 @@ if [ -f tools/docs-refs-check.js ]; then
     echo "!! STALE DOC REFERENCE — a doc points at a file that does not exist" | tee -a $OUT
     echo "   fix the reference, or if the doc is historical:" | tee -a $OUT
     echo "   node tools/docs-refs-check.js --baseline && git commit" | tee -a $OUT
+    # C-01 probe: surface the snapshot so CI failures can be diffed against
+    # a local run on the same SHA.
+    if [ -f docs-refs-probe.json ]; then
+      echo "--- docs-refs-probe.json (C-01 cross-environment snapshot) ---" | tee -a $OUT
+      cat docs-refs-probe.json | tee -a $OUT
+    fi
     exit 6
   fi
 fi
