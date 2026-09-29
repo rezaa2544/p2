@@ -8,9 +8,15 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 const crypto = require('crypto');
+const path = require('path');
 const { validate } = require('./validate');
 const rateLimit = require('./rate-limit'); /* R dist: شمارنده‌های Redis (اتمیک) */
 const revocation = require('./revocation'); /* ابطالِ توزیع‌شدهٔ نشست */
+/* A-22 (Mission 02): durable journal for revocations Redis could not
+   confirm, plus replay on recovery. Bounds the window where a revoked
+   session silently becomes valid again after Redis returns.
+   See server/revocation-fallback.js for the invariant and the tradeoff. */
+const revocationFallback = require('./revocation-fallback');
 const gdpr = require('./gdpr'); /* حقِ فراموشی */ /* R dist: شمارنده‌های Redis (اتمیک) */
 
 /* نرمال‌سازیِ سطحی برایِ اعتبارسنجی: trimِ رشته‌ها (کلاینت هم همین را
@@ -35,6 +41,11 @@ function createAuth(ctx){
   const isHttps = ctx.isHttps;
   const otp = ctx.otp; /* R101: otp.json (distributed) */
   const db = ctx.db;   /* P1-1: PG-live → جستجوی auth با ایندکس (010) */
+  /* A-22 (Mission 02): where the durable revocation journal lives.
+     Defaults to the store's data directory, so the journal inherits the
+     store's existing cross-instance channel. ctx.revocationDataDir exists
+     so tests can point it at a temp dir and observe the file directly. */
+  const revocationDataDir = ctx.revocationDataDir || path.join(__dirname, 'data');
 
   /* ── JWT (hand-rolled HS256; alg is hard-coded, contract §2.2) ────
      R96 P0-3: aud/iss/iat validated; key >= 256 bit enforced at boot;
@@ -113,6 +124,12 @@ function createAuth(ctx){
       if(sv > 0 && (p.sv || 0) < sv) return null;
     } catch (e) {
       if (e && e.code === 'REVOCATION_UNAVAILABLE') {
+        /* A-22 (Mission 02): Redis is unreachable, so the fast denylist path
+           cannot be consulted. Another instance may have revoked this
+           session during the outage; that revocation is durable in the
+           shared journal. Consult it before falling back to the documented
+           fail-closed posture. */
+        if (revocationFallback.journalContains(revocationDataDir, p.jti)) return null;
         console.error('[AUTH] session revocation authority unavailable — fail closed');
         return null;
       }
@@ -149,6 +166,21 @@ function createAuth(ctx){
       }
       if(school && !school.active) return null;
     }
+    /* A-22 (Mission 02): if Redis is reachable again, drain the durable
+       journal into it so the fast denylist becomes authoritative once more.
+       Best-effort and non-fatal: entries that still cannot be written stay
+       in the journal for the next read. Called on every read rather than on
+       a timer so no background loop is introduced and the drain happens at
+       exactly the moment a session is being checked. */
+    try {
+      const redis = require('./redis');
+      if (redis.isRedis && redis.isRedis()) {
+        await revocationFallback.replayJournal(revocationDataDir, async (jti, ttl) => {
+          await redis.set('revoked:' + jti, '1', 'EX', ttl);
+        });
+      }
+    } catch (e) { /* replay is an optimisation, not a gate — ignore */ }
+
     return Object.assign({ jti: p.jti, token: tok }, user);
   }
   async function setSessionCookie(req, res, user){
@@ -442,7 +474,21 @@ let rLi, rLp;
     const tok = parseCookies(req)[SESSION_NAME];
     if(tok){
       const v = jwtVerify(tok);
-      if(!v.err){ store.__revoked_jti[v.payload.jti] = Date.now(); await revocation.revokeSession(v.payload.jti, Math.max(1, v.payload.exp - Math.floor(Date.now() / 1000))); audit('logout', { user_id: v.payload.sub, role: v.payload.role, school_id: v.payload.school_id, ip: clientIp(req), summary: 'خروج کاربر: ' + v.payload.sub }); if(ctx.markDirty) ctx.markDirty(); }
+      if(!v.err){
+        store.__revoked_jti[v.payload.jti] = Date.now();
+        /* A-22 (Mission 02): revokeSession returns false when Redis could NOT
+           confirm the write. That used to be silently ignored, so the
+           denylist entry was lost and — once Redis reconnected — the revoked
+           session became valid again (tests/reaudit-redis-outage.js S3d).
+           Now the unconfirmed revocation is made durable; it is replayed
+           into Redis on recovery and is honoured by the journal read above. */
+        const recorded = await revocation.revokeSession(v.payload.jti, Math.max(1, v.payload.exp - Math.floor(Date.now() / 1000)));
+        if (recorded !== true) {
+          revocationFallback.appendJournal(revocationDataDir, { jti: v.payload.jti, exp: v.payload.exp });
+          try { audit('revocation_journalled', { user_id: v.payload.sub, jti: v.payload.jti, reason: 'redis_unconfirmed_write' }); } catch (_) {}
+        }
+        audit('logout', { user_id: v.payload.sub, role: v.payload.role, school_id: v.payload.school_id, ip: clientIp(req), summary: 'خروج کاربر: ' + v.payload.sub }); if(ctx.markDirty) ctx.markDirty();
+      }
     }
     res.setHeader('Set-Cookie', SESSION_NAME + '=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');
     sendJson(res, 200, { ok: true });

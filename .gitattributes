@@ -7,3 +7,10 @@
 index.html        eol=lf
 USER_GUIDE.html   eol=lf
 dist/payesh.html  eol=lf
+
+# docs-stats-sync.js hashes the on-disk bytes of docs/*.md into the rc44
+# freeze manifest. A Windows checkout with core.autocrlf=true would CRLF
+# those files, changing every sha256 and breaking --freeze --check even on
+# a clean tree. Pin markdown (and the tools that hash it) to LF so the
+# manifest is byte-identical on every platform.
+*.md  eol=lf

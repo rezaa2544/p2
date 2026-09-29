@@ -66,3 +66,6 @@ node_modules
 *.patch
 .build-cache.meta.json
 .build-cache.blob
+/* tools/baseline-check.js scratch record — the mission baseline artifact,
+   regenerated per mission; never committed (it describes a transient state). */
+.baseline-check.json
