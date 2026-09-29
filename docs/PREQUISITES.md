@@ -2746,3 +2746,124 @@ Payesh تا زمانی که Strict Verification Gate، runtime truth، relevant 
 | 2026-09-29 | اضافه‌شدن Evidence Status Model از DISCOVERED تا CERTIFIED و بازگشت status در صورت contradiction/regression | یکسان‌سازی زبان verification و certification در کل تیم |
 | 2026-09-29 | ثبت current strategic state، mastery protocol، consolidated lessons و Central Synchronization Rule | تبدیل تجربه چند agent به یک operating law قابل استفاده در missionهای بعدی |
 
+
+
+# 132. Multi-Agent Micro-Defect Discovery Protocol — 16-View Review Model (2026-09-29)
+
+از این مرحله، **11 Arena + در missionهای مهم 5 ChatGPT** به‌عنوان یک شبکه مستقل برای کشف defect، به‌خصوص **باگ‌های ریز، edge caseها، regressionهای پنهان و mismatchهای ظریف** استفاده می‌شوند.
+
+## 132.1 اصل 16-view
+
+وقتی mission برای Arena تعیین می‌شود، یک prompt canonical و یکسان به هر 11 Arena داده می‌شود و خروجی‌ها در یک بسته واحد جمع‌آوری می‌شوند. برای missionهای مهم bug-finding/testing می‌توان همان prompt را به 5 ChatGPT مستقل نیز داد.
+
+الگو:
+**1 Prompt → 11 Arena + 5 ChatGPT → 16 Independent Reports/Views → Reconciliation → Evidence**
+
+هدف رأی‌گیری یا انتخاب «قوی‌ترین Chat» نیست؛ هدف افزایش پوشش زاویه‌های کشف و کاهش blind spot است.
+
+## 132.2 قانون مهم: تعداد گزارش = evidence نیست
+
+- consensus فقط signal است، نه proof.
+- finding تک‌agent نباید به‌دلیل نبود consensus حذف شود؛ ممکن است blind-spot candidate باشد.
+- contradiction باید صریح ثبت و با آزمایش تمایزبخش حل شود.
+- هیچ finding صرفاً به‌علت «اکثریت 16 agent» confirmed نمی‌شود.
+- هر finding مهم باید به repository evidence، reproduction، root cause و در صورت نیاز independent verification برسد.
+
+## 132.3 وظیفه اصلی این 16 reviewer
+
+تمرکز پیش‌فرض آنها **کشف** است، نه اصلاح مستقیم؛ مخصوصاً برای مواردی که در review سطحی از دست می‌روند:
+
+- off-by-one و boundary conditions؛
+- null/undefined/empty/zero/false و missing-field behavior؛
+- type coercion و parsing؛
+- Unicode/whitespace/normalization؛
+- case sensitivity و path/filename mismatch؛
+- date/time/timezone/locale؛
+- pagination/count/total/export parity؛
+- duplicate/idempotency/race/concurrency؛
+- stale cache/invalidation؛
+- retry/replay/order/restart/recovery؛
+- authorization/scope/filter leakage؛
+- legacy/alternate endpoints و bypass paths؛
+- mixed-version/schema/data-shape compatibility؛
+- partial failure و fail-open/fail-closed؛
+- false-green/false-red در test harness و CI؛
+- assertionsی که عملاً چیزی را assert نمی‌کنند؛
+- swallowed errors، ignored return values، silent fallback؛
+- dead code و unreachable branches؛
+- documentation/code/test divergence؛
+- stale SHA/evidence و claims خارج از محیط اجرا؛
+- کوچک‌ترین regression ناشی از تغییرات اخیر.
+
+## 132.4 Maximum-Capacity Prompting
+
+Promptهای multi-agent نباید صرفاً «کل پروژه را بررسی کن» باشند. برای استفاده حداکثری از ظرفیت reviewer، هر mission باید تا حد امکان این قرارداد را صریح کند:
+
+1. Context: project laws، current SHA، scope و هدف mission.
+2. Role: adversarial independent defect hunter؛ نه executor.
+3. Primary objective: پیدا کردن defectهای واقعی، به‌خصوص موارد کوچک و hidden.
+4. Search strategy: source inspection + call graph/blast radius + invariant tracing + tests + alternate paths.
+5. Adversarial strategy: boundary، negative، malformed، missing، duplicate، concurrent، restart و failure scenarios.
+6. Evidence discipline: هر claim با file/line، reproduction یا دلیل دقیق، environment و confidence همراه باشد.
+7. Contradiction handling: موارد مشکوک و متناقض جدا از confirmed findings ثبت شوند.
+8. No bulk-fix: sibling pattern بدون reproduction نباید خودکار fix یا confirmed شود.
+9. Scope discipline: از mission خارج نشود مگر security/data-corruption/build-breaking blocker کشف شود.
+10. Output taxonomy: CONFIRMED / REPRODUCED / SUSPECTED / UNKNOWN / DISPROVED، همراه root cause candidate و next verification.
+11. Micro-defect pass: قبل از پایان، یک pass مستقل فقط برای ریزباگ‌ها و edge caseها انجام شود.
+12. Self-review: reviewer باید قبل از گزارش، یافته‌های خود را برای false positive، duplicate و unsupported inference دوباره بررسی کند.
+
+## 132.5 Skill Layer — مهارت‌های reusable
+
+اگر یک mission نشان دهد reviewer در یک capability ضعف دارد، به‌جای تکرار صرف prompt باید آن skill به‌صورت reusable در repository ثبت شود؛ برای نمونه:
+
+- adversarial code review؛
+- boundary-value analysis؛
+- negative testing؛
+- root-cause analysis؛
+- blast-radius analysis؛
+- authorization/scope reasoning؛
+- SQL/schema/invariant review؛
+- concurrency/distributed-state reasoning؛
+- test-harness/false-green detection؛
+- cross-platform verification؛
+- evidence/reproducibility discipline؛
+- contradiction resolution؛
+- regression archaeology؛
+- micro-defect and edge-case hunting.
+
+Skill progression:
+**UNKNOWN → LEARNING → PRACTICING → UNDERSTOOD → VERIFIED → MASTERED**
+
+ثبت skill به‌تنهایی mastery نیست؛ mastery نیازمند evidence تکرارشونده در contextهای مستقل است.
+
+## 132.6 حافظه بین missionها
+
+پس از هر cycle:
+**16 Reports → Extract Findings → Normalize/Deduplicate → Group by Root Cause → Extract Lessons/Skills → Canonical Sync**
+
+اگر lesson یا skill عمومی و reusable باشد، در PREQUISITES یا سند canonical تخصصی ثبت شود. در missionهای بعدی، prompt باید **یادآوری کوتاه به skill/law موجود** بدهد، نه اینکه متن کامل آن دوباره کپی شود.
+
+## 132.7 Evidence Matrix
+
+برای هر cycle مهم، reconciliation باید حداقل این سه دسته را جدا کند:
+
+- Consensus: چند agent مستقل به یک invariant/finding نزدیک شده‌اند.
+- Disagreement: agentها در نتیجه، policy یا interpretation اختلاف دارند.
+- Blind-spot candidates: findingهایی که فقط یک یا چند agent محدود کشف کرده‌اند.
+
+سپس:
+**DISCOVER → NORMALIZE → DEDUPLICATE → REPRODUCE → ROOT-CAUSE → NEGATIVE/BOUNDARY → INDEPENDENT VERIFY → EVIDENCE GATE**
+
+این مدل برای افزایش confidence است، اما confidence نهایی فقط از evidence حاصل می‌شود، نه از شمارش رأی agentها.
+
+## 132.8 Prompt Reuse Rule
+
+از این پس هر mission جدید Arena/ChatGPT باید از این protocol به‌عنوان baseline استفاده کند و فقط قسمت mission-specific را تغییر دهد:
+
+**Canonical Review Skill Reminder → Mission Context → Target Scope → Invariants → Adversarial Checklist → Evidence Contract → Output Contract**
+
+هدف این است که ظرفیت reasoning هر reviewer به‌جای مصرف شدن برای بازسازی قوانین پایه، روی defect discovery همان mission متمرکز شود.
+
+## 132.9 Operational outcome
+
+این شبکه reviewer برای **افزایش پوشش کشف باگ، مخصوصاً micro-defectها** است؛ جایگزین Atria به‌عنوان executor یا جایگزین Evidence Gate نیست. Atria/Executor اصلاح و validation اجرایی را انجام می‌دهد و findings شبکه reviewer پس از reconciliation وارد canonical fix/verification queue می‌شوند.
