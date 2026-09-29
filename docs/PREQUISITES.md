@@ -2383,3 +2383,487 @@ CLAIM → EVIDENCE → REPRODUCE → RECONCILE → REVIEW → GATE → STATUS
 | تاریخ | تغییر | دلیل |
 |---|---|---|
 | 2026-09-28 | استخراج و وارد کردن دو اصل پشتیبانی‌شده از منبع Clean Code: meaningful naming و single responsibility؛ همچنین تفکیک Clean Code از security/correctness/certification | بهبود خوانایی، reviewability، testability و نگهداری بدون تضعیف Evidence Gate یا تبدیل style guidance به ادعای verification |
+
+
+# 121. Capability Development — Latest Evidence Synchronization (2026-09-29)
+
+این بخش وضعیت و درس‌های حاصل از آخرین چرخه ارتقای اعضای تیم را به قانون مرکزی منتقل می‌کند. این بخش وضعیت capability و lessons learned است، نه گواهی تکمیل پروژه Payesh.
+
+## 121.1 وضعیت Atria / ZCode
+
+Atria در چرخه اخیر از سطح صرفاً implementation به سمت engineering مبتنی بر evidence، root-cause analysis و self-audit ارتقا یافته است.
+
+### شواهد مثبت ثبت‌شده
+- پس از دریافت قانون/skill جدید، Atria در یک مورد به‌صورت خودکار prior work را بازبینی کرد و missing CI verification را شناسایی و دنبال کرد.
+- در مأموریت D-3 مربوط به false-green harness، root cause را در سطح lifecycle/process تشخیص داد: child process مرده + listener دیرهنگام + Promise unresolved + drain شدن event loop → خروجی 0 بدون اثبات موفقیت.
+- برای D-3 دو جهت negative test ایجاد کرد: broken tree → exit 0 و بازتولید false-green؛ fixed tree → exit 1 و fail-fast.
+- blast radius را بررسی کرد و چند harness مشابه را پیدا کرد، اما بدون reproduction آن‌ها را بی‌دلیل تغییر نداد و به‌عنوان reported-only نگه داشت.
+- پس از push، CI را جداگانه بررسی کرد و failure پیش از test stage را به‌عنوان CI regression ناشی از تغییر خود claim نکرد.
+- محدودیت‌های evidence را صریحاً جدا کرد: local regression = VERIFIED؛ CI regression = NOT EXECUTED / blocked by earlier CI failure؛ PostgreSQL/Redis runtime = NOT RUN به‌دلیل نبود runtime لازم.
+- در گزارش‌ها تفاوت REPORTED / IMPLEMENTED / TESTED / VERIFIED / INDEPENDENTLY VERIFIED / CERTIFIED را رعایت کرده و Mastery را بدون evidence کافی ادعا نکرده است.
+
+### وضعیت capability
+Atria در حال حاضر:
+**VERIFIED / ADVANCED ENGINEERING AGENT — NOT MASTERED**
+
+Mastery هنوز اعلام نمی‌شود. مهم‌ترین evidenceهای باقی‌مانده برای mastery:
+- اجرای واقعی PostgreSQL/Redis و distributed/concurrency scenarios؛
+- failure injection و recovery با post-condition قابل اثبات؛
+- CI-level regression proof در محیطی که کل gate اجرا شود؛
+- تکرار همین کیفیت reasoning در context مستقل و متفاوت؛
+- independent verification و evidence provenance؛
+- self-audit و generalization در چند context غیرمرتبط.
+
+## 121.2 قانون جدید برای Atria: Evidence Boundary
+
+Atria باید برای هر claim، boundary شواهد را صریح اعلام کند:
+
+**LOCAL PASS ≠ CI PASS ≠ RUNTIME PASS ≠ PRODUCTION-TRUTH PASS ≠ CERTIFICATION**
+
+نباید موفقیت یک environment به environment دیگر تعمیم داده شود مگر contract/evidence آن را اثبات کند.
+
+در گزارش هر mission باید حداقل مشخص شود:
+- چه چیزی واقعاً اجرا شد؛
+- در چه SHA؛
+- در چه environment؛
+- چه چیزی اجرا نشد؛
+- blocker چه بود؛
+- کدام نتیجه مستقل verify شد؛
+- کدام نتیجه فقط reported یا historical است.
+
+## 121.3 Atria — درس D-3 برای False-Green
+
+هر test/harness باید نه فقط happy-path، بلکه failure-path خود را نیز اثبات کند.
+
+برای harnessهای child-process/event-driven، در صورت applicability باید process exit، event listener timing، Promise settlement، timeout، stderr/stdout، non-zero exit، signal/crash و process already-dead state بررسی شوند.
+
+قاعده:
+**A test that can silently exit 0 without observing the intended assertion is not evidence of success.**
+
+False-green detection خود یک security/reliability invariant است، نه صرفاً test hygiene.
+
+## 121.4 Atria — قانون Scope Control
+
+یافتن sibling pattern به‌تنهایی مجوز اصلاح همه موارد مشابه نیست.
+
+الگوی الزامی:
+**DISCOVER → CLASSIFY → REPRODUCE → CONFIRM BLAST RADIUS → FIX**
+
+اگر sibling بدون reproduction فقط suspected است:
+- گزارش شود؛
+- severity/status مشخص شود؛
+- evidence موردنیاز ثبت شود؛
+- از تغییر بی‌دلیل جلوگیری شود.
+
+Exception فقط برای security-critical، data-corruption یا build-breaking blocker است که باید فوری synchronize شود.
+
+## 121.5 Atria — Runtime/Distributed Capability Gap
+
+تا زمانی که evidence واقعی برای PostgreSQL، Redis، multi-instance، OCC، migration/rollback، outbox/idempotency، scope/filter و failure/recovery وجود ندارد، capability runtime/distributed نباید MASTERED اعلام شود.
+
+Mock، in-memory و static inspection می‌توانند evidence مفید باشند اما جای runtime truth را نمی‌گیرند.
+
+---
+
+# 122. Hermes Capability Development — Latest Evidence Synchronization (2026-09-29)
+
+Hermes در چرخه‌های اخیر از نقش صرفاً project-memory به سمت:
+**Project Memory + Mission Controller + Engineering Watchdog + Evidence Manager**
+حرکت کرده است.
+
+## 122.1 شواهد مثبت
+- baseline واقعی GitHub را در ابتدای mission بررسی کرده و stale baseline را شناسایی کرده است.
+- duplicate/superseded work را با upstream مقایسه کرده و از ادامه کار تکراری جلوگیری کرده است.
+- در contradiction مهم Local PASS / CI FAIL برای docs-refs، از فرضیه‌سازی به آزمایش محیطی رفت.
+- اختلاف Windows/NTFS و Linux/ext4 را با یک probe مشخص کرد و case-sensitive path defect را ریشه‌یابی کرد.
+- instrumentation برای خروجی docs-refs اضافه کرد تا evidence در محیط CI قابل مشاهده باشد.
+- false-green و stale evidence را بررسی کرده و در موارد unresolved به‌جای حدس، UNKNOWN نگه داشته است.
+- در یک مورد، contradiction داخلی خود را با verification مستقل تشخیص داد و نتیجه‌گیری قبلی را اصلاح کرد.
+- recovery از تغییرات upstream، branch divergence و conflict را بدون destructive reset مدیریت کرده است.
+- گزارش capability خود را از VERIFIED بالاتر نبرده و MASTERED را بدون evidence کافی اعلام نکرده است.
+
+## 122.2 وضعیت capability
+Hermes:
+**VERIFIED / ADVANCING — NOT MASTERED**
+
+ضعف‌های اصلی باقی‌مانده:
+- runtime independence؛
+- PostgreSQL/Redis واقعی و failure/recovery؛
+- delegation/handoff در contextهای جدید؛
+- generalization در contextهای مستقل؛
+- مشاهده و تحلیل کامل CI step-level در missionهای طولانی.
+
+## 122.3 قانون Hermes برای Contradiction
+
+وقتی دو evidence معتبر ظاهراً متناقض‌اند:
+
+**STOP CLAIM → IDENTIFY ENVIRONMENT/SHA → FORM HYPOTHESES → RUN DISCRIMINATING EXPERIMENT → INSTRUMENT → REPRODUCE → ROOT CAUSE → REVALIDATE**
+
+هیچ evidence با evidence دیگر صرفاً به‌دلیل «احتمال بیشتر» حذف نشود.
+
+---
+
+# 123. Independent Review — Arena Findings Intake Law (2026-09-29)
+
+Arena به‌عنوان reviewer مستقل برای جلوگیری از single-agent truth ثبت می‌شود.
+
+## 123.1 اصل نقش
+Arena نباید جای Atria را به‌عنوان executor بگیرد و Atria نباید تنها منبع کشف defect باشد.
+
+الگو:
+**Atria / Executor → Arena / Independent Review → Reconciliation → Canonical Fix Queue → Atria / Executor → Verification**
+
+## 123.2 Findings دریافت‌شده در آخرین review
+
+Arena 1، 2 و 3 findings زیر را مطرح کردند. این موارد تا reproduction/verification در repository باید **DISCOVERY / SUSPECTED / REVALIDATION_REQUIRED** تلقی شوند و نباید صرفاً بر اساس گزارش Arena به confirmed defect تبدیل شوند.
+
+### Security / scope / CI findings مطرح‌شده
+- OTP 0000 bypass در non-production path؛
+- دوگانگی production-truth بین isProdShape() و NODE_ENV/PAYESH_ENV؛
+- CI early-exit / false-green risks؛
+- stale/broken documentation references؛
+- Strict Verification Gate و Verification Registry دارای evidenceهای stale؛
+- A-26..A-29 در registry به‌طور کامل current-bound نیستند؛
+- office/region fallback که نیازمند بررسی scope است؛
+- canary logging که ممکن است وضعیت memory را به‌صورت PostgreSQL-derived نشان دهد؛
+- structural lint budget concerns؛
+- tombstone/pull scope behavior؛
+- امکان green-on-zero در authz checks؛
+- محدود بودن برخی syntax checks.
+
+### Architecture / data / distributed findings مطرح‌شده
+- احتمال حذف DB/Redis environment در tests/api/runner.js و اثر آن بر truthfulness برخی suiteها؛
+- احتمال outbox collision که در آن ON CONFLICT (id) DO NOTHING می‌تواند event را silently drop کند؛
+- احتمال fail-open در officeCoversSchool(null)؛
+- احتمال schema mismatch مربوط به user.region_id؛
+- in-memory SMS quota/idempotency؛
+- migration/PK compatibility با ON CONFLICT(id)؛
+- الگوهای بالقوه false-green مانند assert(true)، process.exit(0) و || true.
+
+**اصل مهم:** Arena discovery ≠ confirmed defect. هر مورد باید با repository evidence، reproduction، blast-radius و independent verification تعیین تکلیف شود.
+
+---
+
+# 124. Copilot / External Finding Intake — Bootstrap Grade Path (2026-09-29)
+
+در بررسی مستقل مسیر seedPgFromBootstrap() در server/index.js، درباره تبدیل classes.grade و grade_level چند finding مطرح شد.
+
+## 124.1 Triage ثبت‌شده
+- خطر structural ناشی از fieldSet.add('grade_level') بدون تضمین وجود column در schema، یک ریشه مشترک برای findingهای 1 و 6 تلقی شد و نیازمند reproduction واقعی PostgreSQL است.
+- mapping فعلی Persian grade با trim() whitespace معمولی را پوشش می‌دهد، اما variant/prefixهای دیگر ممکن است mapping نشوند.
+- finding مربوط به حذف grade در نبود grade عددی، به‌صورت blanket تأیید نشد؛ چون Persian values شناخته‌شده ابتدا به ordinal تبدیل می‌شوند و unknown stringها در compatibility path به grade_level منتقل می‌شوند.
+- unknown/non-numeric handling باید با داده mixed و schema واقعی PostgreSQL verify شود.
+- mixed numeric/unknown chunks به‌عنوان test scenario مهم ثبت شد.
+
+## 124.2 قانون
+برای bootstrap/seed conversion:
+- schema discovery باید قبل از write معتبر باشد؛
+- conversion نباید باعث data loss خاموش شود؛
+- mixed-shape input باید test شود؛
+- هر تبدیل grade → grade_level باید با actual DB schema و positive/negative/boundary evidence revalidate شود.
+
+این intake در زمان ثبت، **REVALIDATION_REQUIRED** است و نباید به‌عنوان defect confirmed یا fixed تلقی شود مگر evidence جدید آن را تعیین کند.
+
+---
+
+# 125. ZCode / Atria Provider Integration — Engineering Environment Law
+
+اتصال Atria به ZCode نیز به‌عنوان بخشی از engineering environment ثبت شد.
+
+## 125.1 E2E evidence
+در یک E2E کنترل‌شده:
+- zcode-executor نسخه 0.3.2 نصب و فعال بود؛
+- معماری واقعی مشخص شد: Hermes host → zcode-executor Node CLI → ZCode zcode.cjs؛
+- provider Atria با base URL و model موردنظر در یک temporary worktree و temporary executor home تست شد؛
+- doctor موفق شد؛
+- session ساخته شد؛
+- task واقعی sandbox اجرا و پاسخ دریافت شد؛
+- هیچ تغییر Payesh در این E2E ایجاد نشد؛
+- temporary state پاک شد.
+
+## 125.2 Provider compatibility lesson
+provider مورد آزمایش با فرض پیش‌فرض high در zcode-executor سازگار نبود و در مسیر مورد آزمایش disabled/enabled را پذیرفت. برای E2E موقت، variantها به disabled/enabled محدود و default روی enabled قرار گرفت.
+
+این نتیجه فقط compatibility evidence برای آن E2E است و به‌تنهایی به معنی persistent production configuration یا certification کل integration نیست.
+
+## 125.3 Security rule
+Credential/API key هرگز نباید در report، source، repository یا evidence چاپ شود. در صورت exposure:
+**STOP → ROTATE/REVOKE → REMEDIATE → AUDIT**
+
+---
+
+# 126. Evidence Status Model — تجربه تکمیل‌شده
+
+برای جلوگیری از overclaiming، statusها در کل پروژه باید به‌صورت زیر استفاده شوند:
+
+1. **DISCOVERED** — مشاهده/گزارش اولیه.
+2. **REPORTED** — finding به‌صورت رسمی ثبت شده.
+3. **SUSPECTED** — evidence اولیه وجود دارد ولی reproduction/confirmation ناقص است.
+4. **REPRODUCED** — رفتار در شرایط مشخص بازتولید شده.
+5. **ROOT-CAUSED** — علت ریشه‌ای با evidence مشخص شده.
+6. **IMPLEMENTED** — fix در code/docs اعمال شده.
+7. **TESTED** — test مرتبط اجرا شده.
+8. **VERIFIED** — evidence معتبر و محیط/SHA مشخص، بدون contradiction شناخته‌شده.
+9. **INDEPENDENTLY VERIFIED** — مسیر مستقل دیگری همان invariant/result را تأیید کرده.
+10. **CERTIFIED** — تمام gates موردنیاز capability/project و evidence prerequisites برقرار است.
+
+قواعد:
+- status بالاتر جای status پایین‌تر را بدون حفظ provenance حذف نمی‌کند.
+- historical evidence با current evidence یکی نیست.
+- یک failure جدید می‌تواند status را به NOT VERIFIED / REVALIDATION_REQUIRED برگرداند.
+- fixed، tested، verified و certified مترادف نیستند.
+
+---
+
+# 127. Current Strategic State — 2026-09-29
+
+## 127.1 تمرکز فعلی
+تمرکز راهبردی فعلی همچنان:
+**Atria capability development / mastery proof**
+است، نه ادامه کورکورانه broad Payesh hardening.
+
+تا زمانی که evidence کافی برای سطح حرفه‌ای موردنظر Atria به‌دست نیامده:
+- missionهای جدید باید capability gap را هدف بگیرند؛
+- از broad duplicate scanning بدون هدف پرهیز شود؛
+- هر گزارش جدید باید با وضعیت قبلی reconcile شود.
+
+پس از احراز سطح موردنظر Atria، توسعه عادی Payesh ادامه می‌یابد و capability development متوقف نمی‌شود؛ هر weakness جدید در جریان توسعه Payesh باید targeted training/command دریافت کند.
+
+## 127.2 نقش فعلی اعضا
+| عضو | نقش | وضعیت فعلی |
+|---|---|---|
+| ChatGPT | Supervisor / Architect / Mission Designer / Evidence Adjudicator | فعال |
+| Atria / ZCode | Primary Engineering Executor | VERIFIED / ADVANCED — NOT MASTERED |
+| Hermes | Project Memory / Mission Controller / Watchdog / Evidence Manager | VERIFIED / ADVANCING — NOT MASTERED |
+| Arena | Independent Reviewer / Adversarial Discovery | reviewer مستقل |
+| GitHub + CI | Source/Evidence Infrastructure | مرجع delivery و verification؛ هر run باید با SHA/commit مشخص تفسیر شود |
+
+## 127.3 Current project certification rule
+Payesh تا زمانی که Strict Verification Gate، runtime truth، relevant security/scope invariants، test integrity، registry binding، CI evidence و سایر gates موردنیاز به‌صورت current و مستقل برقرار نشده‌اند، نباید CERTIFIED تلقی شود.
+
+## 127.4 Known unresolved themes carried forward
+این موارد از آخرین چرخه‌ها به‌عنوان موضوعات باز/نیازمند revalidation حمل می‌شوند و وضعیت دقیق هرکدام باید از current GitHub/evidence تعیین شود:
+- OTP 0000 bypass؛
+- A-13 test coverage/gate closure؛
+- A-40 cascading CI skip؛
+- A-41 strict-verification production-truth condition؛
+- Verification Registry current-SHA rebinding؛
+- stale/false-green verification evidence؛
+- G7 / test-runner integrity؛
+- writer-action authorization review؛
+- real PostgreSQL/Redis runtime evidence؛
+- DR/recovery/RPO/RTO؛
+- performance/scale evidence؛
+- multi-AI independent validation؛
+- legacy harness/test ownership و false-green patterns؛
+- Copilot bootstrap grade/grade_level revalidation؛
+- Arena discoveries listed in section 123.
+
+**این فهرست status نهایی هر item نیست؛ فقط queue/themeهای منتقل‌شده از آخرین evidence cycle است.**
+
+---
+
+# 128. Capability Mastery Proof Protocol — آخرین معیار
+
+برای Atria و Hermes، Mastery فقط زمانی قابل اعلام است که در یک context تازه و مستقل، چرخه زیر با evidence واقعی طی شود:
+
+**BASELINE → NEW CONTEXT → REPRODUCE → ROOT CAUSE → FIX/DECISION → NEGATIVE/BOUNDARY TEST → RUNTIME (when applicable) → FAILURE INJECTION → RECOVERY → INDEPENDENT VERIFICATION → CI/GITHUB → SELF-AUDIT → REASSESS**
+
+حداقل quality gates:
+- evidence provenance؛
+- SHA binding؛
+- environment declaration؛
+- no false-green؛
+- no unsupported claim؛
+- scope/ownership discipline؛
+- independent verification؛
+- explicit limitations؛
+- regression after fix؛
+- documentation synchronization.
+
+اگر runtime مورد نیاز باشد ولی runtime اجرا نشده باشد، status نباید به‌صورت ضمنی Mastered/Certified اعلام شود.
+
+---
+
+# 129. Lessons Learned — Consolidated Engineering Lessons
+
+آخرین چرخه پروژه این lessons را به قانون reusable تبدیل کرده است:
+
+1. **Current SHA مهم‌تر از memory است.**
+2. **Local PASS بدون CI/runtime context کافی نیست.**
+3. **Windows و Linux می‌توانند برای path/case/line-ending رفتار متفاوت داشته باشند؛ cross-platform verification باید هدفمند باشد.**
+4. **False-green می‌تواند از خود harness بیاید، نه از application.**
+5. **Negative tests برای اثبات failure behavior ضروری‌اند.**
+6. **گزارش agent evidence نیست؛ artifact قابل بازتولید evidence است.**
+7. **Mock/in-memory runtime جای production-like runtime truth را نمی‌گیرد.**
+8. **Fix کوچک می‌تواند blast radius بزرگ داشته باشد.**
+9. **Sibling finding بدون reproduction الزاماً مجوز bulk fix نیست.**
+10. **Stale registry می‌تواند false-red ایجاد کند؛ rebind بدون rerun ممنوع است.**
+11. **CI contradiction باید با discriminating experiment حل شود، نه با حدس.**
+12. **اگر evidence متناقض است، status باید پایین بیاید تا reconciliation کامل شود.**
+13. **Root cause از symptom مهم‌تر است؛ fix باید invariant را ببندد.**
+14. **Clean Code quality است، نه certification.**
+15. **Filter و scope بخشی از security boundary هستند، نه فقط optimization.**
+16. **تعداد Agent بیشتر لزوماً throughput بیشتر نمی‌دهد؛ coordination cost باید سنجیده شود.**
+17. **هر mission باید ownership، scope، non-scope و exit criteria داشته باشد.**
+18. **Capability development باید با targeted command انجام شود، نه با افزودن بی‌رویه rule.**
+19. **Self-audit پس از دریافت قانون جدید یک capability کلیدی است.**
+20. **در نبود evidence، UNKNOWN وضعیت سالم‌تری از ادعای قطعی است.**
+
+---
+
+# 130. Central Synchronization Rule — قانون به‌روزرسانی خودکار سند مادر
+
+هر گزارش معتبر جدید از Atria، Hermes، Arena یا reviewer مستقل که یکی از موارد زیر را تغییر دهد، باید در اولین synchronization مناسب به PREQUISITES منتقل یا به canonical source مربوطه ارجاع داده شود:
+- engineering law؛
+- skill/capability level؛
+- mission/workflow؛
+- defect taxonomy؛
+- evidence methodology؛
+- security/scope invariant؛
+- test/CI rule؛
+- project role؛
+- lesson learned؛
+- unresolved critical finding؛
+- source-of-truth mapping.
+
+اما PREQUISITES نباید به محل dump کردن raw reports تبدیل شود.
+
+الگو:
+**RAW REPORT → TRIAGE → RECONCILE → EXTRACT LAW/LESSON/STATUS → CANONICAL SYNC**
+
+---
+
+# 131. Change Log — Latest Team Capability / Evidence / Lessons
+
+| تاریخ | تغییر | دلیل |
+|---|---|---|
+| 2026-09-29 | ثبت آخرین وضعیت Atria پس از D-3 false-green mission، شامل root-cause analysis، دوطرفه negative testing، scope control، CI/runtime evidence boundaries و وضعیت VERIFIED/ADVANCED — NOT MASTERED | جلوگیری از overclaiming و تبدیل تجربه واقعی Atria به معیار reusable |
+| 2026-09-29 | ثبت چرخه Hermes شامل contradiction resolution، cross-environment probe، stale/false-green handling، recovery، delegation و وضعیت VERIFIED/ADVANCING — NOT MASTERED | انتقال capability و lessons از Hermes به قانون مرکزی |
+| 2026-09-29 | ثبت Arena به‌عنوان independent reviewer و انتقال discoveries به intake/revalidation pipeline به‌جای confirmed defect | جلوگیری از single-agent truth و جلوگیری از تبدیل report به fact بدون reproduction |
+| 2026-09-29 | ثبت Copilot bootstrap grade/grade_level intake و الزام PostgreSQL/mixed-shape revalidation | جلوگیری از data-loss/schema assumptions در bootstrap |
+| 2026-09-29 | ثبت ZCode/Atria provider E2E architecture و compatibility lesson با حفظ secret hygiene | تثبیت engineering environment و جلوگیری از secret leakage |
+| 2026-09-29 | اضافه‌شدن Evidence Status Model از DISCOVERED تا CERTIFIED و بازگشت status در صورت contradiction/regression | یکسان‌سازی زبان verification و certification در کل تیم |
+| 2026-09-29 | ثبت current strategic state، mastery protocol، consolidated lessons و Central Synchronization Rule | تبدیل تجربه چند agent به یک operating law قابل استفاده در missionهای بعدی |
+
+
+
+# 132. Multi-Agent Micro-Defect Discovery Protocol — 16-View Review Model (2026-09-29)
+
+از این مرحله، **11 Arena + در missionهای مهم 5 ChatGPT** به‌عنوان یک شبکه مستقل برای کشف defect، به‌خصوص **باگ‌های ریز، edge caseها، regressionهای پنهان و mismatchهای ظریف** استفاده می‌شوند.
+
+## 132.1 اصل 16-view
+
+وقتی mission برای Arena تعیین می‌شود، یک prompt canonical و یکسان به هر 11 Arena داده می‌شود و خروجی‌ها در یک بسته واحد جمع‌آوری می‌شوند. برای missionهای مهم bug-finding/testing می‌توان همان prompt را به 5 ChatGPT مستقل نیز داد.
+
+الگو:
+**1 Prompt → 11 Arena + 5 ChatGPT → 16 Independent Reports/Views → Reconciliation → Evidence**
+
+هدف رأی‌گیری یا انتخاب «قوی‌ترین Chat» نیست؛ هدف افزایش پوشش زاویه‌های کشف و کاهش blind spot است.
+
+## 132.2 قانون مهم: تعداد گزارش = evidence نیست
+
+- consensus فقط signal است، نه proof.
+- finding تک‌agent نباید به‌دلیل نبود consensus حذف شود؛ ممکن است blind-spot candidate باشد.
+- contradiction باید صریح ثبت و با آزمایش تمایزبخش حل شود.
+- هیچ finding صرفاً به‌علت «اکثریت 16 agent» confirmed نمی‌شود.
+- هر finding مهم باید به repository evidence، reproduction، root cause و در صورت نیاز independent verification برسد.
+
+## 132.3 وظیفه اصلی این 16 reviewer
+
+تمرکز پیش‌فرض آنها **کشف** است، نه اصلاح مستقیم؛ مخصوصاً برای مواردی که در review سطحی از دست می‌روند:
+
+- off-by-one و boundary conditions؛
+- null/undefined/empty/zero/false و missing-field behavior؛
+- type coercion و parsing؛
+- Unicode/whitespace/normalization؛
+- case sensitivity و path/filename mismatch؛
+- date/time/timezone/locale؛
+- pagination/count/total/export parity؛
+- duplicate/idempotency/race/concurrency؛
+- stale cache/invalidation؛
+- retry/replay/order/restart/recovery؛
+- authorization/scope/filter leakage؛
+- legacy/alternate endpoints و bypass paths؛
+- mixed-version/schema/data-shape compatibility؛
+- partial failure و fail-open/fail-closed؛
+- false-green/false-red در test harness و CI؛
+- assertionsی که عملاً چیزی را assert نمی‌کنند؛
+- swallowed errors، ignored return values، silent fallback؛
+- dead code و unreachable branches؛
+- documentation/code/test divergence؛
+- stale SHA/evidence و claims خارج از محیط اجرا؛
+- کوچک‌ترین regression ناشی از تغییرات اخیر.
+
+## 132.4 Maximum-Capacity Prompting
+
+Promptهای multi-agent نباید صرفاً «کل پروژه را بررسی کن» باشند. برای استفاده حداکثری از ظرفیت reviewer، هر mission باید تا حد امکان این قرارداد را صریح کند:
+
+1. Context: project laws، current SHA، scope و هدف mission.
+2. Role: adversarial independent defect hunter؛ نه executor.
+3. Primary objective: پیدا کردن defectهای واقعی، به‌خصوص موارد کوچک و hidden.
+4. Search strategy: source inspection + call graph/blast radius + invariant tracing + tests + alternate paths.
+5. Adversarial strategy: boundary، negative، malformed، missing، duplicate، concurrent، restart و failure scenarios.
+6. Evidence discipline: هر claim با file/line، reproduction یا دلیل دقیق، environment و confidence همراه باشد.
+7. Contradiction handling: موارد مشکوک و متناقض جدا از confirmed findings ثبت شوند.
+8. No bulk-fix: sibling pattern بدون reproduction نباید خودکار fix یا confirmed شود.
+9. Scope discipline: از mission خارج نشود مگر security/data-corruption/build-breaking blocker کشف شود.
+10. Output taxonomy: CONFIRMED / REPRODUCED / SUSPECTED / UNKNOWN / DISPROVED، همراه root cause candidate و next verification.
+11. Micro-defect pass: قبل از پایان، یک pass مستقل فقط برای ریزباگ‌ها و edge caseها انجام شود.
+12. Self-review: reviewer باید قبل از گزارش، یافته‌های خود را برای false positive، duplicate و unsupported inference دوباره بررسی کند.
+
+## 132.5 Skill Layer — مهارت‌های reusable
+
+اگر یک mission نشان دهد reviewer در یک capability ضعف دارد، به‌جای تکرار صرف prompt باید آن skill به‌صورت reusable در repository ثبت شود؛ برای نمونه:
+
+- adversarial code review؛
+- boundary-value analysis؛
+- negative testing؛
+- root-cause analysis؛
+- blast-radius analysis؛
+- authorization/scope reasoning؛
+- SQL/schema/invariant review؛
+- concurrency/distributed-state reasoning؛
+- test-harness/false-green detection؛
+- cross-platform verification؛
+- evidence/reproducibility discipline؛
+- contradiction resolution؛
+- regression archaeology؛
+- micro-defect and edge-case hunting.
+
+Skill progression:
+**UNKNOWN → LEARNING → PRACTICING → UNDERSTOOD → VERIFIED → MASTERED**
+
+ثبت skill به‌تنهایی mastery نیست؛ mastery نیازمند evidence تکرارشونده در contextهای مستقل است.
+
+## 132.6 حافظه بین missionها
+
+پس از هر cycle:
+**16 Reports → Extract Findings → Normalize/Deduplicate → Group by Root Cause → Extract Lessons/Skills → Canonical Sync**
+
+اگر lesson یا skill عمومی و reusable باشد، در PREQUISITES یا سند canonical تخصصی ثبت شود. در missionهای بعدی، prompt باید **یادآوری کوتاه به skill/law موجود** بدهد، نه اینکه متن کامل آن دوباره کپی شود.
+
+## 132.7 Evidence Matrix
+
+برای هر cycle مهم، reconciliation باید حداقل این سه دسته را جدا کند:
+
+- Consensus: چند agent مستقل به یک invariant/finding نزدیک شده‌اند.
+- Disagreement: agentها در نتیجه، policy یا interpretation اختلاف دارند.
+- Blind-spot candidates: findingهایی که فقط یک یا چند agent محدود کشف کرده‌اند.
+
+سپس:
+**DISCOVER → NORMALIZE → DEDUPLICATE → REPRODUCE → ROOT-CAUSE → NEGATIVE/BOUNDARY → INDEPENDENT VERIFY → EVIDENCE GATE**
+
+این مدل برای افزایش confidence است، اما confidence نهایی فقط از evidence حاصل می‌شود، نه از شمارش رأی agentها.
+
+## 132.8 Prompt Reuse Rule
+
+از این پس هر mission جدید Arena/ChatGPT باید از این protocol به‌عنوان baseline استفاده کند و فقط قسمت mission-specific را تغییر دهد:
+
+**Canonical Review Skill Reminder → Mission Context → Target Scope → Invariants → Adversarial Checklist → Evidence Contract → Output Contract**
+
+هدف این است که ظرفیت reasoning هر reviewer به‌جای مصرف شدن برای بازسازی قوانین پایه، روی defect discovery همان mission متمرکز شود.
+
+## 132.9 Operational outcome
+
+این شبکه reviewer برای **افزایش پوشش کشف باگ، مخصوصاً micro-defectها** است؛ جایگزین Atria به‌عنوان executor یا جایگزین Evidence Gate نیست. Atria/Executor اصلاح و validation اجرایی را انجام می‌دهد و findings شبکه reviewer پس از reconciliation وارد canonical fix/verification queue می‌شوند.
