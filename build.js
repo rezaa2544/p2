@@ -197,6 +197,7 @@ function main() {
 const GUIDE = path.join(ROOT, 'USER_GUIDE.html');
 /* 🔴 SHA-256 (نه SHA-1 که ضعیف شده): مُهرِ همگامیِ راهنما. فقط ۱۲
    هگزادسیمالِ اول نگه داشته می‌شود (regexِ مُهر همچنان [0-9a-f]{12} است). */
+// digest: guide stamp verification hash (sha256 truncated to 12 hex chars)
 const buildHash = (h) => require('crypto').createHash('sha256').update(h).digest('hex').slice(0, 12);
 const GUIDE_STAMP_RE = /<meta name="payesh-build" content="([0-9a-f]{12})"\s*\/?>/;
 
