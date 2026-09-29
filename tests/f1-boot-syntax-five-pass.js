@@ -190,8 +190,15 @@ async function runPass5_IndependentRegression() {
   // 5.1 Run backend API test runner
   try {
     const apiOut = execFileSync(NODE_BIN, ['tests/api/runner.js'], { cwd: ROOT, encoding: 'utf-8' });
-    assert(apiOut.includes('30/30 سوئیت موفق'), 'API runner should pass all suites');
-    log(5, 'Assertion 5.1 PASSED: tests/api/runner.js (30/30 suites) passed cleanly.');
+    // The runner prints `${passedSuites}/${totalSuites} سوئیت موفق` with both counts built
+    // dynamically from API_TESTS.length. Compare the two counts instead of hardcoding a
+    // literal like "30/30" — that literal goes stale the moment a suite is added upstream
+    // and then turns this pass red on a perfectly green runner.
+    const summary = apiOut.match(/(\d+)\/(\d+)\s*سوئیت\s*موفق/);
+    assert(summary, 'API runner must emit a suite-count summary line');
+    assert(summary[1] === summary[2],
+      `API runner should pass all suites: got ${summary[1]}/${summary[2]}`);
+    log(5, `Assertion 5.1 PASSED: tests/api/runner.js (${summary[1]}/${summary[2]} suites) passed cleanly.`);
   } catch (err) {
     console.error('API runner stderr:', err.stderr);
     throw err;
@@ -200,7 +207,12 @@ async function runPass5_IndependentRegression() {
   // 5.2 Verify server/index.js file integrity
   const serverContent = fs.readFileSync(path.join(ROOT, 'server/index.js'), 'utf-8');
   assert(!serverContent.includes('+ (n + 1)).join'), 'Corrupted merge fragment must not exist');
-  assert(serverContent.endsWith('};\n') || serverContent.endsWith('};'), 'File must cleanly end with module.exports');
+  // The committed blob is LF, but a Windows checkout (core.autocrlf=true) materialises
+  // server/index.js with CRLF. A literal `endsWith('};\n')` then fails even when the file is
+  // perfectly clean, because the byte before the final `\n` is `\r`. Compare on the
+  // LF-normalised tail instead.
+  const serverTail = serverContent.replace(/\r\n/g, '\n').trimEnd();
+  assert(serverTail.endsWith('};'), 'File must cleanly end with module.exports');
   log(5, 'Assertion 5.2 PASSED: server/index.js has no duplicate appends or malformed fragments.');
 
   log(5, 'PASS 5 (Independent Regression): VERIFIED');

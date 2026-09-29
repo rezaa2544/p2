@@ -7,7 +7,8 @@
 /* Test harness execution flag: allows in-memory JSON store REST tests to run
    without attached PostgreSQL authority in dev/test only. */
 process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY = '1';
-// These 30 suites are JSON-store REST contract tests, not live-PG tests.
+// These are JSON-store REST contract tests, not live-PG tests. The suite list is built
+// dynamically from API_TESTS below, so the count grows as suites are added.
 // CI service credentials must not silently redirect them to PostgreSQL and 503.
 for (const key of ['DATABASE_URL', 'PGURL', 'READ_DATABASE_URL', 'REDIS_URL']) delete process.env[key];
 
