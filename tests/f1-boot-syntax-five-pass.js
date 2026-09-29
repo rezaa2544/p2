@@ -87,7 +87,15 @@ async function runPass1_Functional() {
 
   } finally {
     serverProc.kill('SIGTERM');
-    await new Promise(r => serverProc.on('exit', r));
+    /* D-3: اگر فرزند پیش از این خط از کار افتاده باشد (crash در بوت، شکست در
+       bind کردن پورت، یا رسیدنِ تأخیریِ SIGTERM)، رویداد 'exit' دیگر هرگز
+       اتفاق نمی‌افتد و این Promise برای همیشه معلق می‌ماند. یک Promiseٔ معلق
+       بدون handleِ باز، event loop را زنده نگه نمی‌دارد، پس Node با exit 0
+       خارج می‌شود و هر خطای در حال انجام بی‌صدا دور ریخته می‌شود — یک false
+       green واقعی. تنها زمانی منتظر می‌مانیم که فرزند هنوز زنده باشد. */
+    if (serverProc.exitCode === null && serverProc.signalCode === null) {
+      await new Promise(r => serverProc.on('exit', r));
+    }
   }
   log(1, 'PASS 1 (Functional): VERIFIED');
 }
