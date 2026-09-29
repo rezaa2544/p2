@@ -235,6 +235,27 @@ function run({ check, baseline, json }) {
   if (fresh.length) {
     console.log('\nارجاع‌های کهنهٔ تازه:');
     for (const p of fresh) console.log(`  • ${p.doc} → ${p.ref}`);
+    // CI-vs-Local contradiction probe (Hermes C-01): when this check fails in CI
+    // but passes locally on the same SHA, the pairs/baseline/env diff is invisible
+    // because $OUT is discarded. Dump a full snapshot so the artifact survives.
+    try {
+      const o = {
+        _probe: 'docs-refs-check C-01 cross-environment snapshot',
+        node: process.version,
+        platform: process.platform,
+        arch: process.arch,
+        cwd: process.cwd(),
+        totalMissing: pairs.length,
+        grandfathers: known.size,
+        fresh: fresh.map((p) => ({ doc: p.doc, ref: p.ref })),
+        allPairs: pairs.map((p) => ({ doc: p.doc, ref: p.ref })),
+        generatedSkipped: [...gen.keys()].sort(),
+        baselineCount: known.size,
+        baselineKeys: [...known],
+      };
+      fs.writeFileSync(path.join(ROOT, 'docs-refs-probe.json'), JSON.stringify(o, null, 2) + '\n', 'utf8');
+      console.log('  (snapshot written to docs-refs-probe.json)');
+    } catch (e) { /* probe must never break the gate */ }
   }
 
   if (byRef.size) {
