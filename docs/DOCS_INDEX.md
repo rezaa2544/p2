@@ -1,6 +1,14 @@
+> ## CURRENT DOCUMENTATION CONTROL — 2026-09-30
+> **Current main:** 00a5e383b733261e28b441d4c4d4872abf2a17b1
+> **Canonical current-state entry points:** `docs/CURRENT_PROJECT_INTELLIGENCE.md` → `docs/CURRENT_WORK_EXECUTION_PLAN.md` → `docs/PREQUISITES.md`
+> **Canonical historical/engineering roadmap:** `docs/ROADMAP.md` and `docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md`
+> **Operational roles:** Atria = executor/remediator; Hermes = independent verifier; 11 Arena + 5 ChatGPT views = targeted discovery/validation network.
+> **Rule:** historical reports remain evidence records; they do not override current HEAD. Routine status changes must update these canonical documents instead of creating new report files.
+> **Documentation cleanup:** no blind deletion. Consolidation/deletion requires reference, freeze-manifest, script and CI impact review.
+>
 # 🗺️ نمایهٔ مرکزی مستندات — DOCS_INDEX
 
-**نسخه:** ۱.۰.۰ | **تاریخ:** 2026-09-10 | **مالک:** چت ۶ (مستندساز و مهندس انتشار)
+**نسخه:** ۱.۱.۰ | **تاریخ:** 2026-09-30 | **مالک:** چت ۶ (مستندساز و مهندس انتشار)
 **هدف:** با تکمیل §۳۰ (۱۴ سند) و انباشت ۲۰۰ سند در `docs/`، این فایل تنها نقطهٔ ورود به نقشهٔ مستندات است.
 **سلامت لینک‌ها:** خروجی ماشین‌سازی‌شدهٔ `tools/docs-health.sh` در `docs/DOCS_HEALTH_REPORT.md` — قبل از هر تصمیم بزرگ، آن را بازتولید کنید.
 
