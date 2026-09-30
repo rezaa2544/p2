@@ -2898,3 +2898,14 @@ Prefer consolidation in existing canonical files. Do not add a report file for a
 current Git HEAD + reproducible runtime evidence + CI → source/tests → audited reports → planning documents → conversation claims
 
 No lower layer may override a higher layer without new evidence.
+
+## FINAL TEAM OPERATING CONTRACT — 2026-09-30
+
+Before each material mission, the team must preserve this information chain:
+
+**Canonical project context → Atria mission → Atria evidence → Hermes independent verification → Current-HEAD reconciliation → ChatGPT final decision.**
+
+Hermes must be briefed from canonical documents sufficiently to understand architecture, current phase, prior completed work, open queue, evidence boundaries, current HEAD and remaining roadmap. The 16-view network is invoked only for targeted independent discovery/review.
+
+Completion states are explicit: **VERIFIED / FIXED-SCOPED / REVALIDATION_REQUIRED / NOT VERIFIED / UNKNOWN / BLOCKED**. Historical evidence cannot silently become current evidence.
+
