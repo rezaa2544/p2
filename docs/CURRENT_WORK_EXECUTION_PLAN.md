@@ -792,3 +792,60 @@ Activated reviews should preserve: task envelope, strategy used, attack, defense
 
 ### Interaction with the final operating model
 Atria EXECUTE → Hermes VERIFY → targeted Arena/16-view CHALLENGE → Hermes RE-VERIFY when material → ChatGPT RECONCILE/DECIDE → DOCUMENT → NEXT MISSION.
+
+
+## CAPABILITY-DERIVED EXECUTION RULES — 2026-10-01
+
+از capability harvesting، این موارد مستقیماً وارد چرخهٔ Mission شده‌اند:
+
+### A. قبل از Mission
+- current SHA و working state را freeze/record کن.
+- Environment Doctor / readiness checks را برای missionهای حساس اجرا کن.
+- success invariant، evidence boundary و timeout contract را قبل از اجرا مشخص کن.
+- اگر claim قبلی وجود دارد، baseline را blind نگه دار تا reviewer تحت تأثیر نتیجهٔ قبلی قرار نگیرد.
+
+### B. هنگام اجرا
+- Atria فقط scope صادرشده را تغییر می‌دهد.
+- suite/request/worker بدون deadline مجاز نیست.
+- no-data/stale/fallback باید semantic state مستقل داشته باشند.
+- cache TTL/invalidation/outage behavior باید observable و testable باشند.
+- browser automation فقط در sandbox/credential-isolated context و read-only-by-default اجرا شود.
+- security/scientific skills به‌عنوان روش اجرا استفاده می‌شوند، نه به‌عنوان evidence مستقل.
+
+### C. هنگام Verification
+Hermes علاوه بر correctness، این 10 سؤال را بررسی می‌کند:
+1. آیا invariant واقعاً اثبات شده یا فقط code path دیده شده؟
+2. آیا proof روی current HEAD است؟
+3. آیا alternate path/configuration می‌تواند همان bug را برگرداند؟
+4. آیا failure mode واقعاً fail-closed است؟
+5. آیا timeout/no-hang ثابت شده؟
+6. آیا stale/fallback با healthy اشتباه نشده؟
+7. آیا cache invalidation/ownership اثبات شده؟
+8. آیا test می‌تواند false-green شود؟
+9. آیا evidence provenance کامل است؟
+10. آیا lesson جدید باید به checklist/skill/memory تبدیل شود؟
+
+### D. Challenge escalation
+اگر یکی از این موارد وجود داشت، Hermes یا ChatGPT یک Arena/16-view challenge هدفمند فعال می‌کند:
+- disputed closure
+- P0/P1/security/data-integrity
+- architectural uncertainty
+- repeated defect recurrence
+- suspicious green/allowlist
+- evidence gap
+- hidden alternate path
+- high-cost or irreversible change
+
+### E. Mission completion
+Definition of Done اکنون علاوه بر fix/test/evidence شامل:
+scope closed + current-head bound + failure behavior checked + false-green checked + provenance recorded + reusable lesson extracted when warranted.
+
+### F. Capability-specific future workstreams
+- Browser Use: فقط در صورت نیاز به UI black-box/E2E یا external workflow.
+- Uptime Kuma: پس از رسیدن به operational monitoring maturity؛ به‌عنوان external probe.
+- OpenViking/Agent-Memory: فقط به‌عنوان agent-context/memory layer، با عدم تعارض با canonical docs.
+- Paperclip: فقط الگوهای governance/agent registry/budget/heartbeat؛ نصب control plane دوم ممنوع.
+- Diagram Design: برای architecture/evidence diagrams با semantic templates.
+- Scientific Skills: برای analytics/research/evidence-heavy intelligence missions.
+- Cybersecurity Skills: برای security review، threat-informed verification و defensive playbooks.
+- Harness catalog: برای periodic capability discovery و ارتقای harness، نه برای ایجاد dependency.
