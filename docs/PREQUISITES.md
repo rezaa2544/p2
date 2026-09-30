@@ -2709,6 +2709,7 @@ Payesh تا زمانی که Strict Verification Gate، runtime truth، relevant 
 18. **Capability development باید با targeted command انجام شود، نه با افزودن بی‌رویه rule.**
 19. **Self-audit پس از دریافت قانون جدید یک capability کلیدی است.**
 20. **در نبود evidence، UNKNOWN وضعیت سالم‌تری از ادعای قطعی است.**
+21. **سیگنال سلامت/verdict باید از اندازه‌گیریِ تازهٔ همان درخواست ساخته شود، نه از پرچمِ همگامی که به رویدادِ transport وصل است.** رویدادِ 'connect' زمانی حالت می‌دهد که TCP پذیرفته شده، نه زمانی که فرمانی پاسخ گرفته؛ در یک پارتیشنِ «اتصالِ زنده ولی بی‌پاسخ» (blackhole) پرچم روشن می‌ماند و ok:true / HTTP 200 با alive:false در همان بدنه تولید می‌شود — stale-flag false-green در سطحِ protocol. اثبات: redis.ready() زیر blackhole → ok:true (۷ از ۱۰ نمونه)، redis.ping() همیشه → ok:false.
 
 ---
 
@@ -2738,6 +2739,7 @@ Payesh تا زمانی که Strict Verification Gate، runtime truth، relevant 
 
 | تاریخ | تغییر | دلیل |
 |---|---|---|
+| 2026-09-30 | اصلاحِ stale-flag health verdict در server/index.js (isHealthy/cache اکنون از redis.ping() تازهٔ همان درخواست ساخته می‌شوند، نه از redis.ready()) + ثبت Lesson 21 (blackhole partition و connect-event flag) | یک پارتیشنِ واقعی TCP blackhole باعث ok:true / HTTP 200 با redis.alive:false در همان بدنه می‌شد؛ اثبات بازتولیدشده با tests/a-next-health-blackhole.js (درخت broken: 10/10 false-green، درخت fixed: 9/9 green) |
 | 2026-09-29 | ثبت آخرین وضعیت Atria پس از D-3 false-green mission، شامل root-cause analysis، دوطرفه negative testing، scope control، CI/runtime evidence boundaries و وضعیت VERIFIED/ADVANCED — NOT MASTERED | جلوگیری از overclaiming و تبدیل تجربه واقعی Atria به معیار reusable |
 | 2026-09-29 | ثبت چرخه Hermes شامل contradiction resolution، cross-environment probe، stale/false-green handling، recovery، delegation و وضعیت VERIFIED/ADVANCING — NOT MASTERED | انتقال capability و lessons از Hermes به قانون مرکزی |
 | 2026-09-29 | ثبت Arena به‌عنوان independent reviewer و انتقال discoveries به intake/revalidation pipeline به‌جای confirmed defect | جلوگیری از single-agent truth و جلوگیری از تبدیل report به fact بدون reproduction |
