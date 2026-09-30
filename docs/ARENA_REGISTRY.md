@@ -54,3 +54,32 @@ Activation occurs when Hermes or ChatGPT identifies a specialist scope, disputed
 
 The governing chain is: **Atria executes → Hermes verifies/challenges → 16-view network investigates selected gaps → ChatGPT reconciles and decides.**
 
+## ARENA METHOD LAYER — 2026-10-01
+
+The Arena registry now uses a method layer in addition to its role/workstream layer. This layer is adapted from the external arena-skill methodology and is intentionally implementation-agnostic.
+
+### Strategy-card library
+A challenge may combine one reasoning mode, one workflow and one strategy posture. The reference library contains 15 reasoning modes × 12 workflows × 12 strategy postures (2,160 possible combinations). This is a selection library, not 2,160 agents.
+
+Use only combinations that are orthogonal to the mission. Examples:
+- evidence-first + test-first + maximal-rigour for certification/evidence disputes;
+- inversion + build-then-break + defensive for security/failure claims;
+- systems-thinking + requirements-checklist + completeness for end-to-end capability gaps;
+- first-principles + decomposition + fewest-moving-parts for architecture/root-cause disputes.
+
+### Fixed challenge contract
+For one Arena challenge, every participant receives the same task/context envelope, including exact SHA, scope, constraints and evidence boundary. Strategy cards may change the reasoning approach but never the mission facts or acceptance criteria.
+
+### Adversarial round pattern
+Where useful, use:
+candidate → attack → defend with evidence → independent judge → unresolved objections → revalidation.
+A fatal verified flaw in a critical invariant blocks closure. A tournament/bracket result, reviewer count or internal score cannot certify correctness by itself.
+
+### Baseline and persistence
+If a previous report/fix is being challenged, use blind baseline comparison where practical. Preserve the challenge packet and objections so the work can resume after context reset. Current-head evidence remains authoritative.
+
+### Activation / cost rule
+The 11 Arena views remain independent workstreams, not a standing tournament. Activate a small non-overlapping subset for routine material uncertainty; expand only for critical/disputed/recurrent findings. Never use the Arena method to duplicate an active Atria remediation scope.
+
+### Relationship to Hermes
+Arena challenges discover and attack; Hermes independently verifies the resulting claims; ChatGPT reconciles and decides. Arena cannot promote a finding to VERIFIED and cannot close a gate.
