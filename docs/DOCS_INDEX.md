@@ -560,3 +560,14 @@ For every material mission the operational path is:
 
 No new standalone report is required for ordinary progress synchronization.
 
+
+
+## CAPABILITY / HARNESS KNOWLEDGE — 2026-10-01
+
+The canonical operating docs now include a capability-harvest layer derived from external engineering/agent repositories. The harvested knowledge is integrated into:
+- CURRENT_PROJECT_INTELLIGENCE.md — capability matrix + engineering invariants
+- CURRENT_WORK_EXECUTION_PLAN.md — mission-time execution/verification rules
+- PREQUISITES.md — admission, safety, memory, browser, security, research and harness prerequisites
+- ARENA_REGISTRY.md — adversarial challenge method and activation rules
+
+Rule: external repositories are knowledge/pattern sources unless a concrete integration decision explicitly promotes a capability. They do not override GitHub truth, current-head evidence, or the ChatGPT control plane.
