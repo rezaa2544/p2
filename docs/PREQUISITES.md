@@ -2869,3 +2869,32 @@ Skill progression:
 ## 132.9 Operational outcome
 
 این شبکه reviewer برای **افزایش پوشش کشف باگ، مخصوصاً micro-defectها** است؛ جایگزین Atria به‌عنوان executor یا جایگزین Evidence Gate نیست. Atria/Executor اصلاح و validation اجرایی را انجام می‌دهد و findings شبکه reviewer پس از reconciliation وارد canonical fix/verification queue می‌شوند.
+
+
+# 56. Current Monitoring Team Operating Contract — 2026-09-30
+
+This section is an operating update to the existing prerequisites; it does not create a new project document.
+
+## 56.1 Team model
+The project now uses a 16-view discovery/validation network plus two principal agents:
+- Atria: execution and adversarial remediation.
+- Hermes: independent verification and supervisory evidence review.
+- 11 Arena views + 5 ChatGPT views: targeted discovery/validation when their scope is independent or a checkpoint requires additional coverage.
+- ChatGPT control plane: prioritization, reconciliation, central-document maintenance, and final governance.
+
+## 56.2 Monitoring is continuous
+The project is not considered complete merely because one mission is green. Each material change creates a new current-HEAD boundary. Findings and fixes are revalidated against the current repository state.
+
+## 56.3 Hermes invocation rule
+Hermes is not required after every Atria prompt. Invoke it at high-risk checkpoints, P0/P1 findings, false-green/test-integrity findings, disputed evidence, recovery/security/data-integrity changes, and certification gates. This preserves both independence and throughput.
+
+## 56.4 Agent learning rule
+Weaknesses observed in Atria or Hermes are recorded as reusable lessons in the existing central intelligence/prerequisites material and tested in subsequent missions. The objective is measurable improvement, not repeated prompt inflation.
+
+## 56.5 Repository cleanliness rule
+Prefer consolidation in existing canonical files. Do not add a report file for a routine update. Any documentation deletion/consolidation requires dependency/reference/freeze impact review first. Generated/freeze metadata must remain synchronized.
+
+## 56.6 Ground-truth order
+current Git HEAD + reproducible runtime evidence + CI → source/tests → audited reports → planning documents → conversation claims
+
+No lower layer may override a higher layer without new evidence.
