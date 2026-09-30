@@ -378,3 +378,31 @@ Recurring Atria/Hermes weaknesses are converted into reusable rules/checklists i
 
 **Operational decision:** this is now the primary and final Payesh operating model unless a later Architecture/Management decision explicitly supersedes it.
 
+## ARENA METHOD ADAPTATION — 2026-10-01
+
+The project has adopted the reusable, implementation-agnostic parts of the external arena-skill methodology as an optional adversarial-review protocol. The Claude Code implementation itself is not a project dependency and is not treated as a certification mechanism.
+
+### Adopted mechanisms
+- Strategy-card diversity: targeted reviews may deliberately vary reasoning mode, workflow and optimization posture instead of asking every reviewer to reason identically. Useful modes include first-principles, inversion, adversarial, constraint-first, systems-thinking, decomposition, working-backwards and evidence-first; workflows include test-first, research-then-synthesise, build-then-break, requirements-checklist and options-matrix.
+- Identical task envelope: reviewers in one challenge receive the same scope, constraints, current-HEAD/SHA, evidence boundary and success criteria. Strategy variation must not silently change the task.
+- Attack → defend → judge: a candidate finding/fix/report is challenged by an independent reviewer, the owner responds with evidence, and a judge/reconciler compares the claims against the rubric and repository evidence.
+- Blind baseline comparison: when a previous report/fix exists, the challenge may compare the new proposal against the prior baseline without telling the challenger which one is preferred. This is for defect discovery, not automatic selection.
+- Fatal-flaw rule: a verified fatal flaw in security, tenant isolation, data integrity, boot/recovery, certification integrity or another declared critical invariant prevents a candidate from being treated as closed until the flaw is resolved or explicitly dispositioned.
+- Persistent/resumable challenge state: long adversarial reviews should preserve inputs, round results, evidence references and unresolved objections so a context reset cannot silently erase challenge history.
+
+### Integration boundary
+These mechanisms strengthen the existing chain rather than replace it:
+Atria EXECUTE → Hermes VERIFY → targeted 16-view/arena challenge → ChatGPT RECONCILE/DECIDE.
+Arena output remains evidence input. It never becomes certification by tournament victory, vote count or score alone.
+
+### Activation policy
+- Routine low-risk work: no Arena tournament by default.
+- Material/disputed/security/data-integrity/architecture/evidence-gap work: targeted challenge, normally a small orthogonal reviewer set.
+- Critical unresolved invariant: expand the challenge only when the expected information gain justifies the cost; then require Hermes re-verification on the same current HEAD.
+- Do not use multiple reviewers to duplicate an active Atria remediation lane.
+
+### Quality rubric for adversarial reviews
+Unless a mission defines a stricter domain rubric, challenge results should examine: Correctness, Completeness, Robustness, Specificity, Clarity, with correctness and fatal-invariant preservation taking precedence over presentation quality. Numeric scores are internal comparison aids only and must not replace evidence/status.
+
+### Non-adoption / guardrails
+The project does not adopt the external tool's Claude-specific orchestration, default agent counts, package/runtime assumptions, or its tournament winner as a correctness oracle. Cost and latency are controlled by selecting the smallest reviewer set that can meaningfully challenge the invariant.
