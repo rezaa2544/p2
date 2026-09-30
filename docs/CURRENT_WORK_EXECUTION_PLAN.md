@@ -689,7 +689,7 @@ Repository search also confirms that `classes.grade_level` is an established VAR
 
 ## 2026-09-30 — CONTINUOUS MONITORING OPERATING MODEL
 
-**Current main:** bcd00801f02a14b0ae8bab65de3a54c3151afb1c
+**Current main:** 7c147d3e58687059b248417d348f63cdbf0155d5
 **Status:** ACTIVE / MONITORING + REMEDIATION / NOT CERTIFIED
 
 The execution plan is now operated as a continuous evidence loop rather than a sequence of disconnected prompts. The following rules are authoritative for the active period.
@@ -724,7 +724,7 @@ No separate upgrade prompt is required for every weakness; real-mission evidence
 - The current intelligence snapshot and current execution plan are the primary operational entry points.
 
 ### 14.5 Current-head binding
-Any report whose SHA differs from bcd00801f02a14b0ae8bab65de3a54c3151afb1c is historical until revalidated. This includes older Atria/Hermes M10/M11 material and older phase reports.
+Any report whose SHA differs from 7c147d3e58687059b248417d348f63cdbf0155d5 is historical until revalidated. This includes older Atria/Hermes M10/M11 material and older phase reports.
 
 ### 14.6 Certification gate
 No broad Capability/Role/E2E/Performance certification starts as a formality. It begins only after the active hardening queue is closed or explicitly dispositioned and the verification registry is rebuilt against the final hardening SHA with independent evidence.

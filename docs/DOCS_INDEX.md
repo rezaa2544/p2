@@ -1,5 +1,5 @@
 > ## CURRENT DOCUMENTATION CONTROL — 2026-09-30
-> **Current main:** 00a5e383b733261e28b441d4c4d4872abf2a17b1
+> **Current main:** 7c147d3e58687059b248417d348f63cdbf0155d5
 > **Canonical current-state entry points:** `docs/CURRENT_PROJECT_INTELLIGENCE.md` → `docs/CURRENT_WORK_EXECUTION_PLAN.md` → `docs/PREQUISITES.md`
 > **Canonical historical/engineering roadmap:** `docs/ROADMAP.md` and `docs/ROADMAP_MASTER_EXECUTION_SCHEDULE.md`
 > **Operational roles:** Atria = executor/remediator; Hermes = independent verifier; 11 Arena + 5 ChatGPT views = targeted discovery/validation network.
