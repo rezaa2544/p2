@@ -2710,6 +2710,8 @@ Payesh تا زمانی که Strict Verification Gate، runtime truth، relevant 
 19. **Self-audit پس از دریافت قانون جدید یک capability کلیدی است.**
 20. **در نبود evidence، UNKNOWN وضعیت سالم‌تری از ادعای قطعی است.**
 21. **سیگنال سلامت/verdict باید از اندازه‌گیریِ تازهٔ همان درخواست ساخته شود، نه از پرچمِ همگامی که به رویدادِ transport وصل است.** رویدادِ 'connect' زمانی حالت می‌دهد که TCP پذیرفته شده، نه زمانی که فرمانی پاسخ گرفته؛ در یک پارتیشنِ «اتصالِ زنده ولی بی‌پاسخ» (blackhole) پرچم روشن می‌ماند و ok:true / HTTP 200 با alive:false در همان بدنه تولید می‌شود — stale-flag false-green در سطحِ protocol. اثبات: redis.ready() زیر blackhole → ok:true (۷ از ۱۰ نمونه)، redis.ping() همیشه → ok:false.
+22. **هر خواندنِ پایگاهِ داده در مسیرِ داغِ هر درخواست، حتی وقتی cache field دارد، یک round-tripِ همگام است — مگر اینکه gateِ آن واقعاً خوانده شود.** در `refreshCacheFromPg` فیلدِ `_sotCacheAt` نوشته می‌شد ولی هرگز خوانده نمی‌شد، پس TTL gate، dead code بود و یک `SELECT * FROM phase6_canary_configs;` در `onRequest`ِ **هر** درخواستِ HTTP قبل از route dispatch اجرا می‌شد. زیر blackhole این یعنی ۳۰۰۰ms اضافه رویِ هر response — اضافه بر timeoutِ خودِ `db.ping()`. نشانهٔ کلیدی: دوبار شدنِ latency نسبت به آنچه یک تعاملِ PG توجیه می‌کرد، یعنی **دو** تعاملِ سری در مسیر. درس: وقتی gateی برای cache اضافه می‌شود باید اثبات کرد که در مسیرِ read واقعاً ارزیابی می‌شود (نه فقط نوشته می‌شود) و تمامِ مسیرهای write با `force:true` + `invalidateSotCache()` بنویسند تا gate فقط stalenessِ read را محدود کند و هرگز writeِ fail-closed را مسدود نکند.
+23. **پلاریتهٔ خروجیِ پروبِ دوطرفه باید ماشین‌خوانا باشد: درختِ شکسته باید exit≠0 بدهد.** پروبی که در هر دو درخت exit 0 می‌دهد اثباتی نیست — در حالتِ LEGACY سبز شدنِ چک‌ها یعنی «باگ بازتولید شد»، نه «پروب سالم است». همچنین LEGACY باید **تمام** knobهای مربوطه را قطع کند: غیرفعال کردنِ فقط `query_timeout` کافی نیست وقتی `connectionTimeoutMillis` هنوز اتصالِ تازه را می‌بندد (`PG_TIMEOUT_MS=0` هم لازم است).
 
 ---
 
@@ -2740,6 +2742,7 @@ Payesh تا زمانی که Strict Verification Gate، runtime truth، relevant 
 | تاریخ | تغییر | دلیل |
 |---|---|---|
 | 2026-09-30 | اصلاحِ stale-flag health verdict در server/index.js (isHealthy/cache اکنون از redis.ping() تازهٔ همان درخواست ساخته می‌شوند، نه از redis.ready()) + ثبت Lesson 21 (blackhole partition و connect-event flag) | یک پارتیشنِ واقعی TCP blackhole باعث ok:true / HTTP 200 با redis.alive:false در همان بدنه می‌شد؛ اثبات بازتولیدشده با tests/a-next-health-blackhole.js (درخت broken: 10/10 false-green، درخت fixed: 9/9 green) |
+| 2026-09-30 | B-PG remediation کامل: (1a) `connectionTimeoutMillis`/`query_timeout`/`pingTimeoutMs` + keepAlive رویِ هر دو pg.Pool در server/db.js؛ (1b) TTL + outage-backoff gate واقعی رویِ `refreshCacheFromPg` (قبلاً `_sotCacheAt` نوشته می‌شد ولی خوانده نمی‌شد — dead code، SELECTِ هر-درخواست)؛ (2) tests/b-pg-health-blackhole.js پروبِ دوطرفهٔ TCP blackhole؛ (3) tests/b-pg-migration-midflight-kill.js پروبِ دوطرفهٔ kill در وسطِ migrateUp + ثبت Lessons 22 و 23 | یک PG blackholeِ runtime باعثِ hangِ نامحدودِ /api/health و /api/readiness می‌شد (~6000ms در هر response، ۸/۸ hang در درختِ شکسته، پاسخِ outage خودش هم گیر می‌کرد)؛ درختِ اصلاح‌شده: 11/11 green، slowest 6022ms، median ~3011ms، 0 hang، recovery به 200 OK. مهاجرتِ نیمه‌کاره رویِ میزبانِ بدونِ psql با checksum درست recover می‌شود (9/9 green / LEGACY 7/7 RED exit 1) |
 | 2026-09-29 | ثبت آخرین وضعیت Atria پس از D-3 false-green mission، شامل root-cause analysis، دوطرفه negative testing، scope control، CI/runtime evidence boundaries و وضعیت VERIFIED/ADVANCED — NOT MASTERED | جلوگیری از overclaiming و تبدیل تجربه واقعی Atria به معیار reusable |
 | 2026-09-29 | ثبت چرخه Hermes شامل contradiction resolution، cross-environment probe، stale/false-green handling، recovery، delegation و وضعیت VERIFIED/ADVANCING — NOT MASTERED | انتقال capability و lessons از Hermes به قانون مرکزی |
 | 2026-09-29 | ثبت Arena به‌عنوان independent reviewer و انتقال discoveries به intake/revalidation pipeline به‌جای confirmed defect | جلوگیری از single-agent truth و جلوگیری از تبدیل report به fact بدون reproduction |
@@ -2869,6 +2872,53 @@ Skill progression:
 ## 132.9 Operational outcome
 
 این شبکه reviewer برای **افزایش پوشش کشف باگ، مخصوصاً micro-defectها** است؛ جایگزین Atria به‌عنوان executor یا جایگزین Evidence Gate نیست. Atria/Executor اصلاح و validation اجرایی را انجام می‌دهد و findings شبکه reviewer پس از reconciliation وارد canonical fix/verification queue می‌شوند.
+
+
+# 133. B-PG Mission — PostgreSQL Blackhole & Migration-Crash Resilience (2026-09-30)
+
+این بخش recordِ کاملِ mission-B-PG است: سه defect، دو ریشه، سه پروبِ دوطرفه.
+
+## 133.1 Scope و non-scope
+
+- **Scope:** رفتارِ runtime زمانی که PostgreSQL از نوعِ «blackhole» از کار افتاده (TCP accepted، zero replies)، و بازیابیِ مهاجرتِ نیمه‌کاره رویِ میزبانِ بدونِ باینریِ psql.
+- **Non-scope:** failover/multi-master، DR topology، و آماده‌سازیِ phase6_canary_configs. میزبانِ آزمون: همین جعبه با PG16 واقعی + Redis محلی (psql رویِ PATH **نیست** — دقیقاً مسیرِ pg-client اجرا می‌شود).
+
+## 133.2 Defect B-PG-1a — poolهای بدونِ timeout
+
+`new pg.Pool(...)` در server/db.js هیچ‌یک از `connectionTimeoutMillis`، `query_timeout` یا `keepAlive` را تنظیم نکرده بود. نتیجه: یک query رویِ اتصالِ فروزن تا ابد معلق می‌ماند و `db.ping()` در `/api/health` هیچ حد بالایی نداشت.
+
+**Fix:** `connectionTimeoutMillis` (env `PG_TIMEOUT_MS`/`PG_TIMEOUT`، پیش‌فرض 3000) + `query_timeout` (env `PAYESH_PG_QUERY_TIMEOUT_MS`، پیش‌فرض 10000) رویِ poolِ primary و read-replica؛ `db.ping()` و `db.healthCheck()` از `pool.query({ text: 'SELECT 1 AS ping', query_timeout: config.pingTimeoutMs })` (پیش‌فرض 2000) استفاده می‌کنند.
+
+## 133.3 Defect B-PG-1b — dead-code cache gate (root cause دوم)
+
+`refreshCacheFromPg()` در مسیرِ `onRequest → applyCanaryRouting → routeRequestSoT`ی **هر** درخواستِ HTTP اجرا می‌شد. فیلدِ `_sotCacheAt` نوشته می‌شد ولی هیچ‌وقت خوانده نمی‌شد — TTL gate، dead code. پس یک `SELECT * FROM phase6_canary_configs;`ی همگام قبل از dispatch رویِ همه‌چیز می‌رفت. این دلیلِ مشاهدهٔ ~6000ms بود: ~3000ms برایِ SoT refresh + ~3000ms برایِ db.ping، در سری.
+
+**Fix:** freshness gate (`PAYESH_CANARY_SOT_TTL_MS`، پیش‌فرض 2000) + outage backoff (`PAYESH_CANARY_SOT_BACKOFF_MS`، پیش‌فرض 30000) فقط رویِ مسیرِ read. `refreshCacheFromPg({force:true})` از gateها عبور می‌کند و همهٔ مسیرهای write ابتدا `invalidateSotCache()` می‌زنند (که backoff را هم پاک می‌کند) — پس gateها هرگز writeِ fail-closed را مسدود نمی‌کنند. در یک outage، SoT یک بار زمین می‌خورد و بعد 30s صرفاً cached/stale می‌خواند.
+
+## 133.4 Defect B-PG-2 — پروبِ health blackhole
+
+`tests/b-pg-health-blackhole.js`: یک relayِ TCP رویِ 38533 که connectionها را می‌پذیرد و هیچی برنمی‌گرداند؛ server رویِ 38532 از طریقِ آن relay به PG وصل می‌شود.
+
+- **FIXED tree:** 11/11 checks PASS، exit 0. 0 hang، slowest 6022ms (نمونهٔ انتقالی که هم SoT-refresh و هم ping را می‌پردازد)، median ~3011ms، 8/8 responseها ok:false / HTTP 503 / pg-driver-but-dead — یعنی **canary routing همچنان کار می‌کند و health outage خودش را گزارش می‌دهد**. بعد از رفعِ پارتیشن، recovery به 200 OK.
+- **LEGACY tree** (`PG_TIMEOUT_MS=0` + `PG_TIMEOUT=0` + `PAYESH_PG_QUERY_TIMEOUT_MS=0` + `PAYESH_PG_PING_TIMEOUT_MS=0` + keepalive off): 8/8 hang، slowest 9017ms، exit 1. تنظیمِ تنها `query_timeout` کافی نبود — `connectionTimeoutMillis` اتصالِ تازه را بعد ازِ destroy شدنِ clientِ فروزنِ اول می‌بست.
+
+## 133.5 Defect B-PG-3 — kill در وسطِ migrateUp
+
+`tests/b-pg-migration-midflight-kill.js`: یک crash-client که دقیقاً وقتی `INSERT INTO schema_migrations ... VALUES ('012', ...)` صدا زده می‌شود، connection را `end()` می‌کند و `SIMULATED_KILL` پرتاب می‌کند — یعنی DDLِ 012 (partition swap) committed است ولی سطرِ ledger نیست. اجرایِ مجدد باید نگهبانِ `ALREADY_APPLIED:`ی خودِ 012 را ببیند و ledger را با `ALREADY_APPLIED_RECOVERED` و checksum درست ثبت کند.
+
+- **FIXED tree:** 9/9 checks PASS، exit 0. ledger پس از rerun همهٔ 25 مهاجرت را با checksum منطبق دارد.
+- **LEGACY tree:** 7/7 checks PASS ولی exit 1 (RED): تشخیصِ pre-D-4 به `usePsql && ...` گره داشت و رویِ میزبانِ بدونِ psql هرگز روشن نمی‌شد، پس rerun با RAISE propagating FAIL می‌شد.
+
+## 133.6 Verification receipts
+
+| Artifact | نتیجه |
+|---|---|
+| `node tests/b-pg-health-blackhole.js` | 11/11 PASS، exit 0 |
+| `PROBE_LEGACY=1 node tests/b-pg-health-blackhole.js` | RED exit 1 (8/8 hang) |
+| `node tests/b-pg-migration-midflight-kill.js` | 9/9 PASS، exit 0 |
+| `PROBE_LEGACY=1 node tests/b-pg-migration-midflight-kill.js` | 7/7 PASS + RED، exit 1 |
+| `npm test` (رگرسیونِ کامل) | 547/547 موفق، exit 0 |
+| eslint رویِ ۵ فایلِ تغییر‌یافته | 0 error (فقط no-empty warnings هم‌سبکِ کدبیس) |
 
 
 # 56. Current Monitoring Team Operating Contract — 2026-09-30

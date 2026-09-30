@@ -172,8 +172,14 @@ function task5Migration() {
   assert(/ALREADY_APPLIED:\s*migration 012/.test(src));
   pass(5,'012 exposes explicit completed-swap sentinel');
   const runner=fs.readFileSync(path.join(__dirname,'..','tools','migrate-ledger.js'),'utf8');
-  assert(/alreadyApplied\s*=\s*usePsql/.test(runner)&&/ALREADY_APPLIED_RECOVERED/.test(runner));
-  pass(5,'runner contains explicit 012 recovery path');
+  /* D-4 (79f1a093): تشخیصِ «ازقبلًا-اعمال‌شده» دیگر بهِ بودنِ psql گره
+     نخورده است — نگهبانِ RAISE در اسکریپتِ ۰۱۲ روی هر دو مسیرِ psql و
+     pg-client از طریقِ stderr پیچیده می‌شود، تا میزبانِ بدونِ باینریِ psql
+     هم مسیرِ بازیابی را ببیند. ادعا همان ساختارِ فعلی را می‌بندد. */
+  assert(/alreadyApplied\s*=\s*\/ALREADY_APPLIED:\/\.test\(stderr/.test(runner)
+    &&/ALREADY_APPLIED_RECOVERED/.test(runner)
+    &&/await client\.query\(`/.test(runner));
+  pass(5,'runner detects the 012 sentinel on both psql and pg-client paths and records ALREADY_APPLIED_RECOVERED');
   const prepared=prepareMigrationSql(src);
   assert(/\bCOMMIT\s*;/i.test(prepared));
   assert(computeChecksum(src).length===64);

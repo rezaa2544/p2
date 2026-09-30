@@ -2,6 +2,18 @@
 
 Material changes to the Payesh project are recorded here in reverse chronological order.
 
+## 2026-09-30
+
+### Fixed — B-PG: PostgreSQL blackhole resilience and mid-migration crash recovery
+
+- **B-PG-1a (`server/db.js`):** both `pg.Pool` instances (primary and read replica) now set `connectionTimeoutMillis` (`PG_TIMEOUT_MS`/`PG_TIMEOUT`, default 3000), `query_timeout` (`PAYESH_PG_QUERY_TIMEOUT_MS`, default 10000) and keepAlive options. `db.ping()` and `db.healthCheck()` probe with an explicit `query_timeout` (`PAYESH_PG_PING_TIMEOUT_MS`, default 2000).
+- **B-PG-1b (`server/infrastructure/phase6-canary-engine.js`):** `refreshCacheFromPg()` runs in the `onRequest` hot path of every HTTP request. Its `_sotCacheAt` field was written but never read, so the TTL gate was dead code and every request paid a synchronous `SELECT * FROM phase6_canary_configs;` before route dispatch. Added a real freshness gate (`PAYESH_CANARY_SOT_TTL_MS`, default 2000) plus an outage backoff (`PAYESH_CANARY_SOT_BACKOFF_MS`, default 30000) on the read path only; every authority write calls `invalidateSotCache()` and `refreshCacheFromPg({force:true})`, so the gates bound read staleness and never block a fail-closed write.
+- **B-PG-2 (`tests/b-pg-health-blackhole.js`, new):** two-tree TCP-blackhole probe. Fixed tree: 11/11 checks pass, exit 0 — 0 client hangs, slowest 6022ms, median ~3011ms, every response is ok:false / HTTP 503 (the endpoint reports its own outage), recovery to 200 OK once the partition clears. Legacy tree (all timeout knobs disabled, incl. `PG_TIMEOUT_MS=0`): 8/8 responses hang, slowest 9017ms, exit 1.
+- **B-PG-3 (`tests/b-pg-migration-midflight-kill.js`, new):** two-tree probe that kills the backend precisely between migration 012's committed partition swap and its ledger INSERT, on the pg-client path (this host has no `psql` binary — the D-4 environment). Fixed tree: 9/9 checks pass, exit 0 — the rerun detects 012's own `ALREADY_APPLIED` guard and records the ledger row with a matching checksum. Legacy tree: detection was gated on `usePsql`, so a psql-absent host could not recover; reproduced RED, exit 1.
+- Updated the stale assertion in `tests/data-integrity-occ-migration.js` so task 5 binds the post-D-4 detection shape (`ALREADY_APPLIED` surfaced through stderr on both the psql and pg-client paths) instead of the removed `usePsql` gate.
+
+Evidence: full regression `npm test` 547/547 passing, exit 0; eslint on all five changed files reports 0 errors. See `docs/PREQUISITES.md` §133 for the complete mission record and Lessons 22–23.
+
 ## 2026-09-25
 
 ### Added — External project memory system

@@ -8,7 +8,9 @@
    - Methods: query(sql, params), queryRead(sql, params), transaction(callback),
      ping(), persistOp(op), persistOpsBatch(ops), healthCheck(), close().
    - Supports: PG_POOL_MIN, PG_POOL_MAX, PG_TIMEOUT_MS, DATABASE_URL,
-     READ_DATABASE_URL (+ READ_POOL_MIN, READ_POOL_MAX).
+     READ_DATABASE_URL (+ READ_POOL_MIN, READ_POOL_MAX), and (B-PG-1)
+     PAYESH_PG_QUERY_TIMEOUT_MS / PAYESH_PG_PING_TIMEOUT_MS /
+     PAYESH_PG_KEEPALIVE / PAYESH_PG_KEEPALIVE_DELAY_MS.
 
    Wave 10 (chat2) — Database Scale: READ REPLICA (additive, safe-by-default).
    An optional read-only connection pool is created when READ_DATABASE_URL is
@@ -40,6 +42,10 @@ function dbSlow(startNs) {
   catch (e) { return false; }
 }
 
+/* B-PG-1: the text of the liveness probe used by ping() and healthCheck().
+   A frozen literal (never interpolated) so it is statically a constant. */
+const PG_PING_PROBE = 'SELECT 1 AS ping';
+
 let pg = null;
 try {
   pg = require('pg');
@@ -62,6 +68,20 @@ const config = {
   max: parseInt(process.env.PG_POOL_MAX || '20', 10),
   connectionTimeoutMillis: parseInt(process.env.PG_TIMEOUT_MS || process.env.PG_TIMEOUT || '3000', 10),
   idleTimeoutMillis: 30000,
+  /* B-PG-1 — query-level bound. connectionTimeoutMillis only covers
+     *establishing* a connection; an already-leased client whose socket stays
+     open but never replies (a frozen engine, a TCP blackhole, a firewall
+     DROP) has no bound at all — pg's own query_timeout default is
+     false/unlimited — so /api/health, /api/readiness and every DB-backed
+     route would block until the caller's own TCP timeout, and the health
+     endpoint could not even report its own 503. pingTimeoutMs bounds the two
+     health probes (symmetric with the Redis arm's commandTimeout in
+     server/redis.js); queryTimeoutMs is the last-resort cap for every other
+     request-scoped query. Both are env-overridable. */
+  queryTimeoutMs: parseInt(process.env.PAYESH_PG_QUERY_TIMEOUT_MS || process.env.PG_QUERY_TIMEOUT_MS || '10000', 10),
+  pingTimeoutMs: parseInt(process.env.PAYESH_PG_PING_TIMEOUT_MS || '2000', 10),
+  keepAlive: process.env.PAYESH_PG_KEEPALIVE !== '0',
+  keepAliveInitialDelayMillis: parseInt(process.env.PAYESH_PG_KEEPALIVE_DELAY_MS || '10000', 10),
   /* Wave 10 — read replica (optional). When READ_DATABASE_URL is present a
      second read-only pool is opened and heavy GET-list reads route to it. */
   readConnectionString: process.env.READ_DATABASE_URL || null,
@@ -191,7 +211,17 @@ async function init(fallbackStore) {
       min: config.min,
       max: config.max,
       connectionTimeoutMillis: config.connectionTimeoutMillis,
-      idleTimeoutMillis: config.idleTimeoutMillis
+      idleTimeoutMillis: config.idleTimeoutMillis,
+      /* B-PG-1: pg-pool forwards every option to each Client it creates
+         (node_modules/pg-pool/index.js — `new this.Client(this.options)`), so
+         a pool-level query_timeout bounds every pooled query. When an
+         already-sent query times out, pg destroys that connection
+         (node_modules/pg/lib/client.js readTimeout branch), so a blackholed
+         client is discarded instead of poisoning the pool. keepAlive makes a
+         dead-but-open socket detectable at TCP level as well. */
+      query_timeout: config.queryTimeoutMs,
+      keepAlive: config.keepAlive,
+      keepAliveInitialDelayMillis: config.keepAliveInitialDelayMillis
     });
 
     pool.on('error', (err) => {
@@ -242,7 +272,11 @@ async function init(fallbackStore) {
           min: config.readMin,
           max: config.readMax,
           connectionTimeoutMillis: config.connectionTimeoutMillis,
-          idleTimeoutMillis: config.idleTimeoutMillis
+          idleTimeoutMillis: config.idleTimeoutMillis,
+          /* B-PG-1: same query bound as the primary pool (see above). */
+          query_timeout: config.queryTimeoutMs,
+          keepAlive: config.keepAlive,
+          keepAliveInitialDelayMillis: config.keepAliveInitialDelayMillis
         });
         readPool.on('error', (err) => {
           console.error('[DB] Read-replica pool background error:', err.message);
@@ -663,7 +697,11 @@ async function ping() {
     return { ok: true, driver: 'memory', alive: true };
   }
   try {
-    const res = await pool.query('SELECT 1 AS ping');
+    /* B-PG-1: bound the probe itself. A health check that hangs cannot report
+       its own 503, so the ping uses the short pingTimeoutMs, not the pool's
+       request-scoped cap. query_timeout is read from the query config by
+       node_modules/pg/lib/client.js, overriding the client-level default. */
+    const res = await pool.query({ text: PG_PING_PROBE, query_timeout: config.pingTimeoutMs });
     return { ok: true, driver: 'postgres', alive: res.rows && res.rows[0] && res.rows[0].ping === 1 };
   } catch (err) {
     return { ok: false, driver: 'postgres', alive: false, error: err.message };
@@ -1046,7 +1084,7 @@ async function healthCheck() {
 
   const start = Date.now();
   try {
-    await pool.query('SELECT 1');
+    await pool.query({ text: PG_PING_PROBE, query_timeout: config.pingTimeoutMs });
     const latency = Date.now() - start;
     const out = {
       ok: true,

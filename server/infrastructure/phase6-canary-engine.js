@@ -139,6 +139,16 @@ class Phase6CanaryEngine {
     this.db = options.db || null;
     this.publicKey = options.publicKey || gov.loadPublicKeyFromEnv();
     this._sotCacheAt = 0;
+    /* B-PG-1b: refreshCacheFromPg() sits in the hot path of EVERY HTTP request
+       (onRequest → applyCanaryRouting → routeRequestSoT). The two fields below
+       are the freshness gate that stops it from becoming a synchronous
+       round-trip to PostgreSQL per request — which, against a blackholed PG,
+       adds the full connection timeout to every single response. Any
+       authority WRITE invalidates the cache and refreshes with force:true, so
+       these only bound the *read* path's staleness, never a write. */
+    this._sotCacheTtlMs = Math.max(0, parseInt(process.env.PAYESH_CANARY_SOT_TTL_MS || '2000', 10));
+    this._sotRefreshFailedAt = 0;
+    this._sotRefreshBackoffMs = Math.max(0, parseInt(process.env.PAYESH_CANARY_SOT_BACKOFF_MS || '30000', 10));
     this.initDefaultClusters();
   }
 
@@ -171,13 +181,35 @@ class Phase6CanaryEngine {
 
   invalidateSotCache() {
     this._sotCacheAt = 0;
+    /* a WRITE just landed — clear the outage backoff too, so the forced
+       refresh below actually reaches PostgreSQL and reflects the write. */
+    this._sotRefreshFailedAt = 0;
   }
 
   async refreshCacheFromPg({ force } = {}) {
+    /* B-PG-1b: see the constructor. Fresh cache → skip; recent refresh
+       failure → skip and keep the stale cache rather than re-hammering a
+       blackholed PostgreSQL on every request. `force` (used by init and by
+       every authority write path) always bypasses both gates. */
+    const now = Date.now();
+    if (!force) {
+      if (this._sotCacheAt > 0 && (now - this._sotCacheAt) < this._sotCacheTtlMs) return;
+      if (this._sotRefreshFailedAt > 0 && (now - this._sotRefreshFailedAt) < this._sotRefreshBackoffMs) return;
+    }
     if (authority.attached()) {
       const db = authority.requireDb();
       if (db) this.db = db;
-      const rows = await authority.listCanaryConfigs();
+      let rows;
+      try {
+        rows = await authority.listCanaryConfigs();
+      } catch (err) {
+        if (force) throw err;
+        /* routing only — authority writes stay fail-closed. Record the
+           failure so the next request within the backoff window does not
+           pay the connection timeout again. */
+        this._sotRefreshFailedAt = Date.now();
+        return;
+      }
       if (rows && Array.isArray(rows) && rows.length > 0) {
         for (const row of rows) {
           const cluster = rowToCluster(row);
@@ -191,6 +223,7 @@ class Phase6CanaryEngine {
         }
       }
       this._sotCacheAt = Date.now();
+      this._sotRefreshFailedAt = 0;
       return;
     }
     if (process.env.DATABASE_URL) {
