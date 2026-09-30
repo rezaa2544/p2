@@ -2959,3 +2959,57 @@ Hermes must be briefed from canonical documents sufficiently to understand archi
 
 Completion states are explicit: **VERIFIED / FIXED-SCOPED / REVALIDATION_REQUIRED / NOT VERIFIED / UNKNOWN / BLOCKED**. Historical evidence cannot silently become current evidence.
 
+
+
+## 134. CAPABILITY HARVEST / TOOL-INTEGRATION PREREQUISITES — 2026-10-01
+
+### 134.1 Truth hierarchy
+1. GitHub code/history
+2. current runtime/test evidence
+3. canonical project docs
+4. agent reports
+5. external capability/tool knowledge
+
+هیچ capability، memory store، diagram، browser result یا agent report این ترتیب را معکوس نمی‌کند.
+
+### 134.2 Capability admission gate
+برای هر ابزار/skill جدید باید ثبت شود:
+- exact capability;
+- Payesh use-case;
+- integration point;
+- owner;
+- security/privacy risk;
+- overlap with existing system;
+- rollback/removal path;
+- measurable acceptance criterion.
+
+### 134.3 Memory systems
+OpenViking/Agent-Memory-like concepts are permitted as agent context layers only. Stored memory must carry provenance/confidence/lifecycle where practical. Secrets, tokens and private credentials must never enter memory. Stale or contradictory memories must not override current repository evidence.
+
+### 134.4 Browser automation
+Browser automation is read-only by default. Production mutations, credential changes, destructive operations and external side effects require an explicit mission and approval boundary. Every browser-derived claim must record URL/context/time and observable result.
+
+### 134.5 Security skills
+Security skill libraries are knowledge/playbook sources, not proof. Use prerequisite→workflow→verification structure, map relevant findings to the project threat model, and keep all offensive actions inside explicitly authorized scope.
+
+### 134.6 Research/scientific skills
+Evidence-heavy analytics must preserve source provenance, query parameters, pagination/count reconciliation, dataset/version, assumptions and reproducibility. Model output or narrative interpretation alone is never sufficient evidence.
+
+### 134.7 External monitoring
+External probes (e.g. Uptime Kuma pattern) complement internal metrics/traces/logs. They should test user-visible availability from an independent vantage point and must not redefine internal readiness semantics.
+
+### 134.8 Architecture/diagram skills
+Architecture diagrams should separate semantic pattern from visual layout and prefer static, inspectable, accessible artifacts. A diagram communicates a contract; it does not certify implementation.
+
+### 134.9 Harness/evaluation
+Evaluation harnesses should vary reasoning strategy while keeping task facts identical. Use targeted challengers, not indiscriminate agent multiplication. Record attack, defense, judge disposition and unresolved objections.
+
+### 134.10 Engineering invariants imported from external reviews
+- no-data/stale/fallback semantics are explicit;
+- architecture boundaries are executable;
+- all critical paths have bounded execution;
+- failure/recovery drills prove no-hang;
+- cache TTL/invalidation is real, not dead code;
+- performance claims are measured, not extrapolated;
+- false-green paths are fail-closed;
+- every material claim is current-head and provenance-bound.
