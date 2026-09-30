@@ -83,3 +83,19 @@ The 11 Arena views remain independent workstreams, not a standing tournament. Ac
 
 ### Relationship to Hermes
 Arena challenges discover and attack; Hermes independently verifies the resulting claims; ChatGPT reconciles and decides. Arena cannot promote a finding to VERIFIED and cannot close a gate.
+
+
+## CROSS-CAPABILITY CHALLENGE ENVELOPE — 2026-10-01
+
+When a challenge is activated, the challenge packet may use:
+- Arena strategy diversity for independent reasoning;
+- Agent-memory/OpenViking-style retrieval to surface prior lessons, with provenance and no authority over current code;
+- cybersecurity skill playbooks for threat-informed checks;
+- scientific-skill discipline for source/provenance/reproducibility-heavy analysis;
+- Browser Use for controlled black-box UI verification;
+- Diagram Design for evidence/architecture visualization;
+- God's Eye View patterns for freshness, boundaries, doctor checks, deadlines, cache ownership and performance evidence;
+- Harness-engineering catalog knowledge for eval/feedback-loop design.
+
+These are orthogonal helpers. None can certify the result. The final chain remains:
+Atria EXECUTE → Hermes VERIFY → targeted challenge/helpers → Hermes RE-VERIFY when material → ChatGPT RECONCILE/DECIDE.
