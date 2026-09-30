@@ -747,3 +747,48 @@ Atria executes. Hermes verifies. ChatGPT decides. The 16-view network discovers/
 ### Final gate discipline
 For P0/P1 and critical invariants, independent verification is mandatory. A green test, commit, or report is not sufficient when the invariant is not proven across alternate paths/configurations or when current-head binding is missing.
 
+## ARENA-INSPIRED ADVERSARIAL REVIEW PROTOCOL — 2026-10-01
+
+The execution plan now incorporates the portable parts of the external arena-skill method. This is a review protocol, not a new execution phase and not a requirement to spawn 100 agents.
+
+### When to activate
+Hermes or ChatGPT may activate this protocol when a mission has a disputed result, hidden-risk potential, security/data-integrity implications, architectural uncertainty, repeated defect recurrence, or a meaningful evidence gap. Routine remediation remains Atria → Hermes.
+
+### Challenge packet
+Every activated challenge must freeze one byte-identical task/context envelope for all challengers containing:
+1. mission/question and exact scope;
+2. current HEAD/SHA and repository state;
+3. explicit evidence boundary and known limitations;
+4. success/invariant criteria;
+5. relevant baseline report/fix, if any;
+6. instruction not to modify the repository unless the mission explicitly grants execution authority.
+Only the reasoning strategy varies between challengers. It must not change the factual task.
+
+### Strategy diversification
+Select a small orthogonal set appropriate to the risk. Candidate strategy families include:
+- first-principles / decomposition;
+- inversion / adversarial / contrarian;
+- constraint-first / evidence-first;
+- systems-thinking / working-backwards;
+- test-first / build-then-break;
+- requirements-checklist / options-matrix.
+The objective is to expose blind spots, not to manufacture disagreement.
+
+### Attack → defend → judge
+1. Challenger attacks the proposed finding, fix or closure claim.
+2. Owner/reviewer defends only with reproducible evidence, source inspection or explicit limitation.
+3. Independent judge/reconciler classifies each objection as substantiated, disproved, unresolved or out-of-scope.
+4. A verified fatal invariant failure blocks closure regardless of how many non-fatal observations favor the proposal.
+5. ChatGPT reconciles the challenge with current repository state before changing project status.
+
+### Baseline discipline
+When a prior fix/report exists, use blind comparison where practical. Do not disclose a preferred winner to challengers. A challenge winner is never itself a certification; the decisive artifact is the current-HEAD evidence chain.
+
+### Cost control
+Use the smallest effective challenge set. Default targeted review is preferred over large tournaments. Expansion is justified only by criticality, unresolved disagreement, recurrence or evidence value. The external arena-skill's 100-agent/595-call pattern is not adopted as a default.
+
+### Required challenge record
+Activated reviews should preserve: task envelope, strategy used, attack, defense/evidence, judge disposition, fatal-flaw check, unresolved objections, current SHA, and next verification action. This makes the challenge resumable and auditable after chat/context changes.
+
+### Interaction with the final operating model
+Atria EXECUTE → Hermes VERIFY → targeted Arena/16-view CHALLENGE → Hermes RE-VERIFY when material → ChatGPT RECONCILE/DECIDE → DOCUMENT → NEXT MISSION.
