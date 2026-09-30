@@ -1199,15 +1199,27 @@ const onRequest = async (req, res) => {
          Wave 15: کدِ وضعیت روی همان درگاهِ P0-13 می‌ماند (قراردادِ
          server13/S1 — تغییر نمی‌کند) و بدنه گسترش یافت: گزارشِ کاملِ
          db/redis/queue + آمارِ pool و حافظه. */
-      const rdy = redis.ready();
       let dbp = { ok: false, driver: 'unknown', alive: false };
       try { dbp = await db.ping(); } catch (e) { dbp = { ok: false, driver: 'unknown', alive: false, error: String(e.message || e).slice(0, 120) }; }
       let rdp = { ok: false, driver: 'unknown', alive: false };
       try { rdp = await redis.ping(); } catch (e) {}
       const pool = db.getPool();
       const dbAlive = !!(dbp && dbp.ok);
+      /* A-NEXT: verdict باید از اندازه‌گیریِ تازهٔ خودِ این درخواست ساخته
+         شود، نه از پرچمِ همگامِ redis.ready(). آن پرچم با رویدادِ 'connect'
+        زه ioredis روشن می‌شود — و در یک پارتیشنِ «اتصالِ زنده ولی
+         بی‌پاسخ» (blackhole)، TCP پذیرفته می‌شود (پرچم=true) در حالی که
+         هیچ فرمانی هرگز پاسخ نمی‌گیرد. نتیجه: /api/health با 200 و
+         cache:redis پاسخ می‌داد در حالی که همان بدنهٔ خودش redis.alive:false
+         گزارش می‌کرد — یک سیگنالِ سلامتِ دروغین که LB را نگه می‌دارد.
+         rdp.ok در هر حالتِ دیگر دقیقاً هم‌معنای ready() است (حافظهٔ dev:
+         ok=true؛ قطعیِ کامل در تولید: ok=false)؛ تنها تغییرِ رفتار同じ
+         پنجرهٔ blackhole است. (اثبات بازتولید: اتصالِ پروکسی‌شدهٔ واقعی،
+         ۷ از ۱۰ نمونهٔ ok:true زیر blackhole، سپس ۱۰/۱۰ در پروبِ
+         تکرارشوندهٔ tests/a-next-health-blackhole.js؛ پس از fix ۰ ok:true.) */
+      const redisOk = !!(rdp && rdp.ok);
       const workerHealthy = typeof worker.isHealthy === 'function' ? worker.isHealthy() : true;
-      const isHealthy = rdy && dbAlive && workerHealthy;
+      const isHealthy = redisOk && dbAlive && workerHealthy;
       /* Q3: health exposes bounded integer counters only; no session, tenant,
          actor, URL, or payload data leaves the runtime monitor. */
       const runtimeSecurity = runtimeMonitor.snapshot();
@@ -1221,7 +1233,7 @@ const onRequest = async (req, res) => {
         suspicious_sessions: runtimeSecurity.suspicious_sessions,
         attack_patterns_blocked: runtimeSecurity.attack_patterns_blocked,
         worker: typeof worker.health === 'function' ? worker.health() : { healthy: true },
-        cache: redis.isRedis() ? 'redis' : (rdy ? 'memory-dev' : 'unavailable'),
+        cache: redisOk ? (rdp.driver === 'redis' ? 'redis' : 'memory-dev') : 'unavailable',
         db: { driver: dbp.driver, alive: !!(dbp && dbp.ok), pool: pool ? { total: pool.totalCount, idle: pool.idleCount, pending: pool.pendingCount } : null },
         redis: { driver: rdp.driver, alive: !!(rdp && rdp.ok) },
         queue: { outbox: (store.outbox || []).length, notify_pending: (store.notify_queue || []).filter(q => q.status === 'pending').length, in_flight: inFlight },

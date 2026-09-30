@@ -2709,6 +2709,7 @@ Payesh تا زمانی که Strict Verification Gate، runtime truth، relevant 
 18. **Capability development باید با targeted command انجام شود، نه با افزودن بی‌رویه rule.**
 19. **Self-audit پس از دریافت قانون جدید یک capability کلیدی است.**
 20. **در نبود evidence، UNKNOWN وضعیت سالم‌تری از ادعای قطعی است.**
+21. **سیگنال سلامت/verdict باید از اندازه‌گیریِ تازهٔ همان درخواست ساخته شود، نه از پرچمِ همگامی که به رویدادِ transport وصل است.** رویدادِ 'connect' زمانی حالت می‌دهد که TCP پذیرفته شده، نه زمانی که فرمانی پاسخ گرفته؛ در یک پارتیشنِ «اتصالِ زنده ولی بی‌پاسخ» (blackhole) پرچم روشن می‌ماند و ok:true / HTTP 200 با alive:false در همان بدنه تولید می‌شود — stale-flag false-green در سطحِ protocol. اثبات: redis.ready() زیر blackhole → ok:true (۷ از ۱۰ نمونه)، redis.ping() همیشه → ok:false.
 
 ---
 
@@ -2738,6 +2739,7 @@ Payesh تا زمانی که Strict Verification Gate، runtime truth، relevant 
 
 | تاریخ | تغییر | دلیل |
 |---|---|---|
+| 2026-09-30 | اصلاحِ stale-flag health verdict در server/index.js (isHealthy/cache اکنون از redis.ping() تازهٔ همان درخواست ساخته می‌شوند، نه از redis.ready()) + ثبت Lesson 21 (blackhole partition و connect-event flag) | یک پارتیشنِ واقعی TCP blackhole باعث ok:true / HTTP 200 با redis.alive:false در همان بدنه می‌شد؛ اثبات بازتولیدشده با tests/a-next-health-blackhole.js (درخت broken: 10/10 false-green، درخت fixed: 9/9 green) |
 | 2026-09-29 | ثبت آخرین وضعیت Atria پس از D-3 false-green mission، شامل root-cause analysis، دوطرفه negative testing، scope control، CI/runtime evidence boundaries و وضعیت VERIFIED/ADVANCED — NOT MASTERED | جلوگیری از overclaiming و تبدیل تجربه واقعی Atria به معیار reusable |
 | 2026-09-29 | ثبت چرخه Hermes شامل contradiction resolution، cross-environment probe، stale/false-green handling، recovery، delegation و وضعیت VERIFIED/ADVANCING — NOT MASTERED | انتقال capability و lessons از Hermes به قانون مرکزی |
 | 2026-09-29 | ثبت Arena به‌عنوان independent reviewer و انتقال discoveries به intake/revalidation pipeline به‌جای confirmed defect | جلوگیری از single-agent truth و جلوگیری از تبدیل report به fact بدون reproduction |
@@ -2867,3 +2869,32 @@ Skill progression:
 ## 132.9 Operational outcome
 
 این شبکه reviewer برای **افزایش پوشش کشف باگ، مخصوصاً micro-defectها** است؛ جایگزین Atria به‌عنوان executor یا جایگزین Evidence Gate نیست. Atria/Executor اصلاح و validation اجرایی را انجام می‌دهد و findings شبکه reviewer پس از reconciliation وارد canonical fix/verification queue می‌شوند.
+
+
+# 56. Current Monitoring Team Operating Contract — 2026-09-30
+
+This section is an operating update to the existing prerequisites; it does not create a new project document.
+
+## 56.1 Team model
+The project now uses a 16-view discovery/validation network plus two principal agents:
+- Atria: execution and adversarial remediation.
+- Hermes: independent verification and supervisory evidence review.
+- 11 Arena views + 5 ChatGPT views: targeted discovery/validation when their scope is independent or a checkpoint requires additional coverage.
+- ChatGPT control plane: prioritization, reconciliation, central-document maintenance, and final governance.
+
+## 56.2 Monitoring is continuous
+The project is not considered complete merely because one mission is green. Each material change creates a new current-HEAD boundary. Findings and fixes are revalidated against the current repository state.
+
+## 56.3 Hermes invocation rule
+Hermes is not required after every Atria prompt. Invoke it at high-risk checkpoints, P0/P1 findings, false-green/test-integrity findings, disputed evidence, recovery/security/data-integrity changes, and certification gates. This preserves both independence and throughput.
+
+## 56.4 Agent learning rule
+Weaknesses observed in Atria or Hermes are recorded as reusable lessons in the existing central intelligence/prerequisites material and tested in subsequent missions. The objective is measurable improvement, not repeated prompt inflation.
+
+## 56.5 Repository cleanliness rule
+Prefer consolidation in existing canonical files. Do not add a report file for a routine update. Any documentation deletion/consolidation requires dependency/reference/freeze impact review first. Generated/freeze metadata must remain synchronized.
+
+## 56.6 Ground-truth order
+current Git HEAD + reproducible runtime evidence + CI → source/tests → audited reports → planning documents → conversation claims
+
+No lower layer may override a higher layer without new evidence.

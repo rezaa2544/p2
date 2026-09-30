@@ -284,3 +284,63 @@ Canonical status remains **HARDENING / RECONCILIATION — NOT VERIFIED**.
 - NCR-01..NCR-27 are now recorded with severity, disposition and execution order.
 - Stale/duplicate findings are explicitly retained only as REVALIDATION_REQUIRED where current-head evidence shows mitigation.
 - Project state remains **HARDENING / RECONCILIATION — NOT VERIFIED**; broad certification remains blocked.
+
+
+## CURRENT OPERATING SYNCHRONIZATION — 2026-09-30
+
+**Current GitHub main HEAD:** 670e2332084b89b6a5ecb4fbfce413779ac39fa3.
+
+This section supersedes stale snapshot dates above for operational decisions. The repository HEAD is authoritative; earlier sections remain historical evidence and are not deleted.
+
+### Current execution mode
+**Mode:** CONTINUOUS PROJECT MONITORING + EVIDENCE-DRIVEN REMEDIATION.
+
+The project has moved from preparation into active monitoring. The current operating model is:
+
+DISCOVER/EXECUTE → REPORT → INDEPENDENT VERIFY → RECONCILE → REMEDIATE → REGRESSION → UPDATE PROJECT INTELLIGENCE → NEXT MISSION
+
+Atria is the primary executor for the active sweep/mission. Hermes is the independent supervisory verifier. The 11 Arena views and 5 ChatGPT views are a 16-view discovery/validation network and are activated by checkpoint or non-overlapping scope, not by indiscriminate parallel editing.
+
+### Agent capability operating policy
+- Atria: executor, adversarial defect hunter/fixer, then re-auditor. Atria's own completion report is never sole certification evidence.
+- Hermes: independent verifier/supervisor. It checks Atria's claims, false-green paths, evidence completeness, current-HEAD binding and reappearance of previously fixed invariants. Hermes should be activated at material checkpoints, high-risk findings, disputed evidence, and before certification—not mechanically after every prompt.
+- 16-view network: discovery and independent review. No view may invent scope, duplicate an active invariant fix, or promote historical evidence to current PASS.
+- ChatGPT: project control plane: reconcile reports with repository truth, set priorities, assign next missions, maintain central intelligence, and retain National GO/NO-GO authority.
+
+### Current Atria/Hermes status
+- Atria is in the active monitoring/execution lane; its latest work must be evaluated against the current main HEAD rather than older report SHAs.
+- Hermes has demonstrated independent runtime verification capability, including convergence with delegated static analysis and detection of incomplete fixes. This is capability evidence, not certification of the project.
+- Agent maturity is now evaluated continuously from real mission performance. New weaknesses discovered in Atria/Hermes become explicit reusable operating rules and are re-tested in later missions.
+
+### Current repository state and immediate reality
+- Current main advanced to 670e2332084b89b6a5ecb4fbfce413779ac39fa3 with a fresh Redis health-verdict fix: health status now derives from a fresh redis.ping() measurement rather than the stale redis.ready() flag; the fix includes a real runtime blackhole probe.
+- Recent migration hardening also fixed the Node/pg-client path for migration 012 and recovery/ledger handling, with real PostgreSQL evidence recorded in Git history.
+- The latest known Hermes M10 report bound to 4171f0bb is historical relative to current main; any M10/M11 status must therefore be re-bound to 670e2332084b89b6a5ecb4fbfce413779ac39fa3 before certification claims.
+- The repository currently has an unrelated open PR #429 for Vercel Web Analytics. It is not part of the Payesh validation program and must not be treated as certification evidence or allowed to silently alter the monitoring queue.
+
+### Non-negotiable verification rules
+1. No PASS/VERIFIED from a report alone.
+2. Historical SHA evidence never certifies a newer HEAD.
+3. A fix is not closed until its invariant is checked across alternate paths/configurations and regression evidence exists.
+4. For critical invariants, use independent executor + verifier evidence; where feasible, prove both broken and fixed behavior.
+5. NOT-RUN, UNKNOWN, BLOCKED, HISTORICAL, and REVALIDATION_REQUIRED remain first-class states; never convert them to green for convenience.
+6. Every material merge invalidates evidence that depended on an older SHA unless explicitly shown equivalent.
+7. Documentation changes must update the existing central source of truth and required generated/freeze metadata; do not create a new report file merely to record a routine status change.
+8. Repository cleanliness is a quality requirement: prefer updating canonical documents, removing obsolete duplication only when dependency/reference impact is known, and avoid uncontrolled report proliferation.
+
+### Monitoring checkpoints
+Hermes review is required when any of the following occurs:
+- Critical/P0 or High/P1 finding;
+- false-green or test-integrity finding;
+- security/tenant/data-integrity invariant;
+- recovery/boot/DB/Redis failure behavior;
+- a disputed or incomplete fix;
+- a material change to a canonical gate;
+- pre-certification gate closure.
+
+Routine low-risk execution can proceed without a Hermes turn when scope and evidence are clear.
+
+### Current sequence
+Active Atria monitoring/remediation → Hermes checkpoint verification → reconcile current HEAD → close/reopen findings → 16-view targeted discovery → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification
+
+Broad certification remains blocked until the hardening findings and verification registry are re-bound to the final current HEAD with independent evidence.
