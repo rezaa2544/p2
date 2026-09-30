@@ -543,3 +543,20 @@ DOCS_INDEX (همین سند) ← نمای همهٔ بالا + خروجی سلا�
 | ۱.۲۴.۰ | ۲۰۲۶-۰۹-۱۱ | رجیستری مرکزی باندل‌ها در §۲.۵ + قفل `rc25` — چت ۶ |
 | ۱.۲۵.۰ | ۲۰۲۶-۰۹-۱۱ | راهنمای بازیابی باندل جامع در §۲.۵ + قفل `rc26` — چت ۶ |
 | ۱.۲۶.۰ | ۲۰۲۶-۰۹-۱۱ | مرج `origin/main`: ده سند تازه + رفع یتیم‌ها در §۲.۵/§۲.۸/§۲.۹/§۲.۱۱ + بامپ قفل به `rc27` |
+
+## FINAL OPERATING MODEL — 2026-09-30
+
+Canonical operating chain:
+
+1. **Project Intelligence** — current ground truth and architecture context.
+2. **Current Work Execution Plan** — mission sequencing and control-plane rules.
+3. **Prerequisites** — execution contract and evidence prerequisites.
+4. **Arena Registry** — specialist 16-view activation/ownership.
+5. **Roadmap Master Schedule** — phase/gate progression.
+
+For every material mission the operational path is:
+
+**ChatGPT mission → Atria execution → Hermes independent verification → targeted 16-view review when needed → ChatGPT reconciliation/final decision → canonical documentation update.**
+
+No new standalone report is required for ordinary progress synchronization.
+
