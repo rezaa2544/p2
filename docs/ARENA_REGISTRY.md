@@ -31,3 +31,17 @@ A Chat works from its current `docs/daily-missions/<Chat>/ACTIVE.md` whenever th
 **Continuity exception:** if the exact active Mission is temporarily unrecoverable after the prescribed recovery attempt, the Chat may work only within the bounded standing authorization in `docs/ARENA_CONTINUITY_AUTHORIZATION.md`. This is not a new Mission and does not permit scope invention.
 
 The registry is a role map plus the identity of the applicable fallback envelope; it is not permission for unrelated work.
+
+
+## CURRENT OPERATING OVERLAY — 2026-09-30
+
+The registry above remains the role map; this overlay defines the current monitoring mode.
+
+- Atria owns the active remediation lane and may not be duplicated on the same invariant by another executor.
+- Hermes is the independent verifier/supervisor and is invoked at material checkpoints rather than after every Atria prompt.
+- The 11 Arena + 5 ChatGPT views form the 16-view discovery network described in docs/PREQUISITES.md §132 and are activated by targeted scope/checkpoint.
+- Chat1/coordination metadata must never become a global blocker; safe independent work may proceed when dependencies and collision boundaries are explicit.
+- No agent may declare National GO/NO-GO or promote historical evidence to current certification.
+- Current status must always be read from docs/CURRENT_PROJECT_INTELLIGENCE.md and execution order from docs/CURRENT_WORK_EXECUTION_PLAN.md.
+
+Current HEAD binding: 670e2332084b89b6a5ecb4fbfce413779ac39fa3.
