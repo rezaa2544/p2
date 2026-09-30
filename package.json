@@ -40,6 +40,7 @@
     "@opentelemetry/resources": "^2.11.0",
     "@opentelemetry/sdk-trace-node": "^2.11.0",
     "@opentelemetry/semantic-conventions": "^1.43.0",
+    "@vercel/analytics": "^2.0.1",
     "ioredis": "^6.0.0",
     "pg": "^8.23.0"
   },

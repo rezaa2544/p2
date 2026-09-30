@@ -1314,3 +1314,21 @@ Design → Decision Gate → Bounded Implementation → 5-Pass Regression → E3
 Canonical architecture backlog: docs/ARCHITECTURE_EVOLUTION_ROADMAP.md
 
 Priority placement: P0 foundations = Modular Monolith/Vertical Slices, Event-Driven + Transactional Outbox, OpenTelemetry, Policy-as-Code. P1 = Selective CQRS and Workflow/Saga. Conditional research = Event Sourcing, Microservices, Kubernetes, Service Mesh. Zero-Trust Service Boundaries = cross-cutting. These items do not reorder the active Atria/Cary-over/P2/P3/validation sequence without Architecture Review.
+
+
+## CURRENT EXECUTION SYNCHRONIZATION — 2026-09-30
+
+**Current main HEAD:** fa060d9b5459d0b9e94892c6cde96310eec68053
+**Operating mode:** CONTINUOUS MONITORING / REMEDIATION / EVIDENCE RECONCILIATION
+
+The historical schedule above remains the project timeline. Current execution is governed by the newer canonical execution plan and project-intelligence snapshot.
+
+### Current order
+Atria active monitoring/remediation → Hermes independent checkpoints → current-HEAD reconciliation → targeted 16-view discovery → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification.
+
+### Governance rules
+- No historical PASS/VERIFIED is promoted to the current HEAD without revalidation.
+- Atria is the primary executor; Hermes is the independent verifier; the 16-view network is activated by scope/checkpoint.
+- Routine status updates belong in existing canonical documents; no new report file is required merely to record progress.
+- Any documentation cleanup must preserve historical evidence and first reconcile references, freeze metadata, scripts and CI gates.
+- Broad certification remains blocked until the active hardening queue and verification registry are bound to a final current HEAD with independent evidence.

@@ -685,3 +685,46 @@ Repository search also confirms that `classes.grade_level` is an established VAR
 
 **Do not implement the Copilot's proposed patch verbatim before this verification.** The proposed patch itself can still lose/omit semantics for unknown values and does not by itself establish the correct bootstrap contract.
 
+
+
+## 2026-09-30 — CONTINUOUS MONITORING OPERATING MODEL
+
+**Current main:** 7c147d3e58687059b248417d348f63cdbf0155d5
+**Status:** ACTIVE / MONITORING + REMEDIATION / NOT CERTIFIED
+
+The execution plan is now operated as a continuous evidence loop rather than a sequence of disconnected prompts. The following rules are authoritative for the active period.
+
+### 14.1 Control-plane responsibilities
+- ChatGPT: project control plane and independent senior auditor. Reconciles repository, reports, evidence, open PRs and mission state; decides the next bounded mission; updates canonical documents; does not accept a claim merely because an agent reports success.
+- Atria: primary executor for the active defect/monitoring lane. It discovers, reproduces, root-causes, fixes and regression-tests within explicit scope.
+- Hermes: independent verifier. It does not duplicate every Atria prompt; it verifies material checkpoints and high-risk invariants independently and may reject Atria's conclusion.
+- 11 Arena + 5 ChatGPT views: targeted independent discovery/validation network. Activate only for independent/non-overlapping scopes or formal checkpoints. No parallel duplicate fixing of the same invariant.
+
+### 14.2 Mission loop
+PLAN → EXECUTE → REPORT → INDEPENDENT VERIFY → RECONCILE → FIX/RETEST → DOCUMENT → NEXT
+
+The mission report is an input, not the final truth. The repository and reproducible evidence decide status.
+
+### 14.3 Agent-performance improvement loop
+Atria and Hermes are themselves monitored:
+1. record concrete weakness or false assumption;
+2. identify root cause in the agent's process/reasoning behavior;
+3. convert the lesson into a reusable project rule/checklist;
+4. apply it to the next applicable mission;
+5. verify whether the weakness recurs.
+
+No separate upgrade prompt is required for every weakness; real-mission evidence is preferred.
+
+### 14.4 Repository/document hygiene
+- Update canonical documents in place whenever the information is already represented there.
+- Do not create a new report for routine status changes.
+- Do not delete historical evidence blindly.
+- Before deleting/consolidating documentation, verify references, freeze manifests, scripts and CI gates.
+- Keep historical evidence searchable but prevent it from becoming a competing current source of truth.
+- The current intelligence snapshot and current execution plan are the primary operational entry points.
+
+### 14.5 Current-head binding
+Any report whose SHA differs from 7c147d3e58687059b248417d348f63cdbf0155d5 is historical until revalidated. This includes older Atria/Hermes M10/M11 material and older phase reports.
+
+### 14.6 Certification gate
+No broad Capability/Role/E2E/Performance certification starts as a formality. It begins only after the active hardening queue is closed or explicitly dispositioned and the verification registry is rebuilt against the final hardening SHA with independent evidence.
