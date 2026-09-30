@@ -728,3 +728,22 @@ Any report whose SHA differs from 7c147d3e58687059b248417d348f63cdbf0155d5 is hi
 
 ### 14.6 Certification gate
 No broad Capability/Role/E2E/Performance certification starts as a formality. It begins only after the active hardening queue is closed or explicitly dispositioned and the verification registry is rebuilt against the final hardening SHA with independent evidence.
+
+## FINAL OPERATING MODEL — 2026-09-30
+
+The following control loop is mandatory for ongoing execution:
+
+1. ChatGPT establishes current ground truth and assigns one prioritized, bounded mission to Atria.
+2. Atria executes, fixes, tests, and returns reproducible evidence with exact SHA and explicit unresolved items.
+3. Hermes independently audits the mission and Atria report against the canonical project context and repository reality.
+4. Hermes identifies: confirmed completion, incomplete work, suspicious assumptions/options, regression risk, missing evidence, and scopes requiring the 16-view network.
+5. ChatGPT reconciles Hermes with current GitHub HEAD, roadmap, open findings and evidence registry.
+6. ChatGPT makes the final decision: close/reopen/defer/escalate and selects the next mission.
+7. Canonical documents are updated; historical evidence is preserved; no duplicate report files are created merely for routine status.
+
+### Non-negotiable separation of duties
+Atria executes. Hermes verifies. ChatGPT decides. The 16-view network discovers/challenges when activated. No single report can self-certify its own work.
+
+### Final gate discipline
+For P0/P1 and critical invariants, independent verification is mandatory. A green test, commit, or report is not sufficient when the invariant is not proven across alternate paths/configurations or when current-head binding is missing.
+
