@@ -97,7 +97,7 @@ await section('A — بوت و هویت/مجوزها', async () => {
   T(SW(`canRoute('users','counselor')`).v === false, 'A8 مشاور فهرستِ کاربران را نمی‌بیند');
   T(SW(`canRoute('users','manager')`).v === true, 'A9 مدیر فهرستِ کاربران مدرسه‌اش را می‌بیند');
   T(SW(`canRoute('officedash','superadmin')`).v === true, 'A10 اصل: سوپرادمین همهٔ روت‌ها');
-  T(SW(`canRoute('record','student')` && SW(`canRoute('record','parent')`).v === true).v === true, 'A11 پرونده برای دانش‌آموز/ولی');
+  T(SW(`canRoute('record','student')`).v === true && SW(`canRoute('record','parent')`).v === true, 'A11 پرونده برای دانش‌آموز/ولی');
 });
 
 /* زمینهٔ دانش‌آموزان */
