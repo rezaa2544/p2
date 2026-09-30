@@ -1332,3 +1332,14 @@ Atria active monitoring/remediation → Hermes independent checkpoints → curre
 - Routine status updates belong in existing canonical documents; no new report file is required merely to record progress.
 - Any documentation cleanup must preserve historical evidence and first reconcile references, freeze metadata, scripts and CI gates.
 - Broad certification remains blocked until the active hardening queue and verification registry are bound to a final current HEAD with independent evidence.
+
+## FINAL EXECUTION CONTROL — 2026-09-30
+
+The roadmap is governed operationally by the following loop:
+
+**PRIORITIZE → Atria EXECUTE → Hermes VERIFY → targeted 16-view DISCOVERY → ChatGPT RECONCILE/DECIDE → UPDATE ROADMAP → NEXT MISSION**
+
+A phase cannot advance merely because Atria reports completion. Hermes verification and current-HEAD reconciliation are required whenever the work affects a gate, critical invariant, security/data integrity, or disputed result. Routine low-risk work may continue without a Hermes checkpoint, subject to the same evidence and current-HEAD rules.
+
+The roadmap remains the authoritative sequence; agent reports are evidence inputs, not state transitions by themselves.
+
