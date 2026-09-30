@@ -406,3 +406,79 @@ Unless a mission defines a stricter domain rubric, challenge results should exam
 
 ### Non-adoption / guardrails
 The project does not adopt the external tool's Claude-specific orchestration, default agent counts, package/runtime assumptions, or its tournament winner as a correctness oracle. Cost and latency are controlled by selecting the smallest reviewer set that can meaningfully challenge the invariant.
+
+
+## CAPABILITY HARVEST — ENGINEERING KNOWLEDGE INTEGRATION — 2026-10-01
+
+این بخش کتابخانهٔ تجربهٔ قابل‌استفاده است: از capability/repositoryهای بررسی‌شده فقط الگوهایی وارد مدل کاری پایش شده‌اند که کیفیت، کشف عیب، قابلیت اثبات یا بهره‌وری را بالا می‌برند. هیچ ابزار بیرونی صرفاً به‌خاطر محبوبیت یا نام، Source of Truth یا dependency اجرایی پایش محسوب نمی‌شود.
+
+### 1) معماری مرجع لایه‌های دانش و ابزار
+
+GitHub/Code = Source of Truth
+→ Canonical Docs = Project Operating Memory
+→ Evidence/Artifacts = Proof
+→ Atria = Execute/Remediate
+→ Hermes = Independent Verify
+→ Arena/16-view = Targeted Challenge
+→ ChatGPT = Reconcile/Decide
+
+لایه‌های کمکی:
+- Agent Memory / OpenViking concepts: حافظهٔ بلندمدت، lessons، retrieval و context؛ هرگز جایگزین GitHub/Canonical Docs نیستند.
+- Browser automation: adapter برای black-box E2E و عملیات کنترل‌شده؛ هرگز مجوز ضمنی برای mutation تولید نیست.
+- Diagram Design: لایهٔ ارائهٔ معماری/شواهد؛ نمودار باید semantic و قابل‌ردیابی باشد.
+- Security Skills: playbook knowledge برای دفاع، audit و verification؛ اجرای offensive فقط در scope مجاز.
+- Scientific Skills: روش تحقیق، provenance، آمار، reproducibility و evidence-traceability برای intelligence/analytics.
+- External monitoring: black-box probe مکمل observability داخلی، نه جایگزین آن.
+- Harness Engineering: اصول محیط، محدودیت، feedback loop، eval، guardrail و context engineering.
+
+### 2) Capability → چیزی که واقعاً جذب شد
+
+| منبع | سطح استفاده در Payesh | الگوی جذب‌شده | قید |
+|---|---|---|---|
+| OpenViking | ADOPT METHOD / OPTIONAL MEMORY LAYER | Resource/Memory/Skill separation، hierarchical context، retrieval trace، session→memory، skill discovery | second source of truth ممنوع |
+| Agent-Memory | ADOPT PATTERNS | working→episodic→semantic→procedural memory، provenance، contradiction/supersession، TTL/decay، privacy filtering، shared/private namespaces، Git snapshots | حافظهٔ عامل نباید truth repository را override کند |
+| Arena Skill | ADOPT | identical task envelope، strategy diversity، attack→defend→judge، fatal-flaw rule، blind baseline، resumable challenge، cost control | tournament بزرگ پیش‌فرض نیست؛ certification نمی‌کند |
+| Diagram Design | ADOPT SKILL PATTERN | semantic pattern + layout separation، static-first، accessible/traceable diagrams، deployment/dependency/data/policy/trust-boundary views | dependency runtime نیست |
+| Scientific Agent Skills | ADOPT METHOD | evidence-traceable research، deterministic data lookup، provenance، pagination/count reconciliation، hypothesis/test discipline، statistical validation | فقط skillهای مرتبط با دامنه؛ خروجی علمی/تحلیلی باید source-bound باشد |
+| Awesome Harness Engineering | ADOPT AS CATALOG/META-RULE | context/tool design، evals، benchmarking، observability، memory، security/fuzzing، feedback loops | catalog است، نه dependency اجرایی |
+| Cybersecurity Skills | ADOPT SECURITY PLAYBOOK PATTERN | skill frontmatter برای discovery، prerequisite→workflow→verification، MITRE/NIST mapping، structured security procedures | فقط defensive/authorized scope؛ هر skill باید با Payesh threat model تطبیق داده شود |
+| Browser Use | ADOPT AS CONTROLLED ADAPTER | browser-based black-box E2E، UI regression، evidence capture، structured result extraction | sandbox، credential isolation، approval gate برای write/destructive actions |
+| God's Eye View | ADOPT ENGINEERING PATTERNS | freshness/stale/unavailable semantics، executable boundaries، environment doctor، targeted failure/recovery QA، deadline/bounded response، cache ownership، provenance، measured performance baselines | هیچ UI/geospatial dependency وارد Payesh نمی‌شود |
+| Uptime Kuma | ADOPT LATER / OPTIONAL | external black-box HTTP/TCP/Ping/DNS/Push probes، cert/availability monitoring، incident notification | مکمل Prometheus/Grafana/Alertmanager؛ نه جایگزین |
+| Paperclip | ADOPT CONCEPTS ONLY | agent registry، org/role، task hierarchy، goals، budget/cost، heartbeat، governance، audit trail | second control plane ممنوع |
+
+### 3) الگوهای مهندسی که از امروز قانون پروژه هستند
+
+1. Freshness semantics: NO DATA ≠ HEALTHY؛ STALE ≠ FRESH؛ FALLBACK ≠ PRIMARY؛ REQUEST SUCCEEDED ≠ SEMANTIC RESULT VALID.
+2. Executable architecture: مرزهای package/module/import باید با gate/test قابل‌اجرا enforce شوند، نه فقط در سند.
+3. Environment Doctor: پیش از drillهای حساس، readiness محیط، runtime، dependency، DB/Redis، migration، credential، tooling و current SHA باید machine-checkable باشد.
+4. Bounded execution: هر suite/request/worker باید timeout و recovery contract داشته باشد؛ hang در CI وضعیت قابل‌قبول نیست.
+5. False-green defense: zero suites، swallowed errors، permissive || true، unconditional assertions و allowlistهای بدون justification/file scope باید کشف و fail-closed شوند.
+6. Evidence provenance: هر claim باید به SHA، command/test، environment، output و scope/limitation متصل باشد.
+7. Provider/source isolation: acquisition، validation، freshness، semantic interpretation، engine و API از هم قابل‌تفکیک و قابل‌آزمون باشند.
+8. Cache ownership: TTL باید واقعاً read/write شود؛ invalidation و outage backoff باید explicit و testable باشند.
+9. Failure/recovery QA: هر critical path حداقل failure injection + recovery + no-hang proof داشته باشد.
+10. Performance truth: baseline باید با environment، dataset، repetitions، cache state و metric definition ثبت شود؛ extrapolation عدد measured نیست.
+11. Research discipline: lookupهای داده‌ای باید source، endpoint/query، pagination/count reconciliation و provenance داشته باشند.
+12. Security playbook discipline: security mission از prerequisite→workflow→verification عبور کند و finding بدون reproduction/evidence current-head promoted نشود.
+13. Diagram-as-evidence: نمودارهای معماری/flow فقط وقتی ارزش دارند که scope، ownership، trust boundary و evidence relation را روشن کنند؛ نمودار جای proof نیست.
+14. Memory lifecycle: lesson فقط وقتی به حافظهٔ عامل منتقل شود که source، confidence، lifecycle و supersession مشخص باشد؛ contradictory memory باید حل/بازنشسته شود.
+15. Controlled browser actions: browser automation باید read-only by default باشد و mutation/destructive actions explicit approval داشته باشند.
+
+### 4) یادگیری از عامل به‌صورت چرخهٔ دائمی
+
+Agent mistake / false assumption
+→ Root cause of reasoning/process
+→ Reusable rule / checklist / skill
+→ Apply on next matching mission
+→ Measure recurrence
+→ Keep / refine / retire
+
+این چرخه برای Atria، Hermes و 16-view یکسان است. تکرار یک خطا بدون تبدیل آن به guard/checklist یک نقص در خود سیستم کاری محسوب می‌شود.
+
+### 5) اصل عدم‌انباشت ابزار
+
+ابزار جدید فقط وقتی وارد عملیات واقعی می‌شود که:
+Capability → Concrete Payesh use-case → Integration point → Security/operational risk → Overlap check → Measured value → Owner
+
+اگر این زنجیره کامل نشود، capability فقط در knowledge catalog می‌ماند و به dependency یا control-plane دوم تبدیل نمی‌شود.
