@@ -44,4 +44,4 @@ The registry above remains the role map; this overlay defines the current monito
 - No agent may declare National GO/NO-GO or promote historical evidence to current certification.
 - Current status must always be read from docs/CURRENT_PROJECT_INTELLIGENCE.md and execution order from docs/CURRENT_WORK_EXECUTION_PLAN.md.
 
-Current HEAD binding: 670e2332084b89b6a5ecb4fbfce413779ac39fa3.
+Current HEAD binding: bcd00801f02a14b0ae8bab65de3a54c3151afb1c.

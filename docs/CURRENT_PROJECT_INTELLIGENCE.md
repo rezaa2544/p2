@@ -288,7 +288,7 @@ Canonical status remains **HARDENING / RECONCILIATION — NOT VERIFIED**.
 
 ## CURRENT OPERATING SYNCHRONIZATION — 2026-09-30
 
-**Current GitHub main HEAD:** 670e2332084b89b6a5ecb4fbfce413779ac39fa3.
+**Current GitHub main HEAD:** bcd00801f02a14b0ae8bab65de3a54c3151afb1c.
 
 This section supersedes stale snapshot dates above for operational decisions. The repository HEAD is authoritative; earlier sections remain historical evidence and are not deleted.
 
@@ -313,9 +313,9 @@ Atria is the primary executor for the active sweep/mission. Hermes is the indepe
 - Agent maturity is now evaluated continuously from real mission performance. New weaknesses discovered in Atria/Hermes become explicit reusable operating rules and are re-tested in later missions.
 
 ### Current repository state and immediate reality
-- Current main advanced to 670e2332084b89b6a5ecb4fbfce413779ac39fa3 with a fresh Redis health-verdict fix: health status now derives from a fresh redis.ping() measurement rather than the stale redis.ready() flag; the fix includes a real runtime blackhole probe.
+- Current main advanced to bcd00801f02a14b0ae8bab65de3a54c3151afb1c with a fresh Redis health-verdict fix: health status now derives from a fresh redis.ping() measurement rather than the stale redis.ready() flag; the fix includes a real runtime blackhole probe.
 - Recent migration hardening also fixed the Node/pg-client path for migration 012 and recovery/ledger handling, with real PostgreSQL evidence recorded in Git history.
-- The latest known Hermes M10 report bound to 4171f0bb is historical relative to current main; any M10/M11 status must therefore be re-bound to 670e2332084b89b6a5ecb4fbfce413779ac39fa3 before certification claims.
+- The latest known Hermes M10 report bound to 4171f0bb is historical relative to current main; any M10/M11 status must therefore be re-bound to bcd00801f02a14b0ae8bab65de3a54c3151afb1c before certification claims.
 - The repository currently has an unrelated open PR #429 for Vercel Web Analytics. It is not part of the Payesh validation program and must not be treated as certification evidence or allowed to silently alter the monitoring queue.
 
 ### Non-negotiable verification rules
