@@ -45,3 +45,12 @@ The registry above remains the role map; this overlay defines the current monito
 - Current status must always be read from docs/CURRENT_PROJECT_INTELLIGENCE.md and execution order from docs/CURRENT_WORK_EXECUTION_PLAN.md.
 
 Current HEAD binding: 7c147d3e58687059b248417d348f63cdbf0155d5.
+
+## FINAL OPERATING MODEL OVERLAY — 2026-09-30
+
+The 16-view Arena/ChatGPT network is a **targeted independent discovery and challenge layer**, not a mandatory parallel executor for every Atria mission.
+
+Activation occurs when Hermes or ChatGPT identifies a specialist scope, disputed claim, security/data-integrity concern, architectural uncertainty, or evidence gap requiring independent examination. Outputs must remain non-overlapping, evidence-bound and reconciled against the same current HEAD.
+
+The governing chain is: **Atria executes → Hermes verifies/challenges → 16-view network investigates selected gaps → ChatGPT reconciles and decides.**
+

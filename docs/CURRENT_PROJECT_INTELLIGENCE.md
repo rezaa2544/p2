@@ -344,3 +344,37 @@ Routine low-risk execution can proceed without a Hermes turn when scope and evid
 Active Atria monitoring/remediation → Hermes checkpoint verification → reconcile current HEAD → close/reopen findings → 16-view targeted discovery → Capability Matrix → Role Matrix → E2E → Failure/Recovery → Performance → Final Certification
 
 Broad certification remains blocked until the hardening findings and verification registry are re-bound to the final current HEAD with independent evidence.
+
+## FINAL OPERATING MODEL — 2026-09-30 — GOVERNING CONTROL PLANE
+
+This section supersedes any earlier agent-coordination wording where the two conflict. It defines the final operational model for Payesh.
+
+### Roles
+- **ChatGPT — Control Plane / Final Decision:** owns priority, mission definition, reconciliation of reports with repository reality, roadmap state, gate decisions, and selection of the next mission.
+- **Atria — Executor / Remediator:** executes the assigned mission, investigates and fixes defects, runs required tests, records exact evidence/SHA, and reports both completed work and unresolved uncertainty.
+- **Hermes — Independent Verifier / Supervisor:** receives the project context and Atria report, independently checks claims against code/evidence/architecture, identifies omissions, suspicious options, incomplete fixes and items requiring the 16-view network, and returns a concise verification/next-work recommendation. Hermes is not the final decision-maker.
+- **16-view network — Targeted Discovery/Adversarial Review:** activated by Hermes/ChatGPT when a scope needs independent specialist examination; it is not required to run on every routine mission.
+
+### Mandatory mission loop
+`PLAN → ATRIA EXECUTE → ATRIA REPORT → HERMES INDEPENDENT VERIFY → RECONCILE WITH CURRENT REPOSITORY → CHATGPT FINAL DECISION → DOCUMENT → NEXT MISSION`
+
+### Evidence hierarchy
+Exact current-HEAD evidence > reproducible runtime/test evidence > current source inspection > SHA-bound audit evidence > historical reports. A report alone never certifies a result.
+
+### Final decision rule
+Hermes may verify, challenge, classify and recommend. **ChatGPT makes the final stage/mission decision only after comparing Hermes' findings with the actual repository state and the roadmap.**
+
+### Revalidation rule
+Any material merge/change can invalidate evidence bound to an older SHA. Findings marked FIXED without current-head proof remain FIXED-SCOPED / REVALIDATION_REQUIRED, not certified.
+
+### Security and integrity rule
+For P0/P1, security, tenant/data isolation, authorization, boot/recovery, test-integrity, certification-gate and disputed findings, Hermes must independently verify before the work is promoted. Routine low-risk work may proceed without an immediate Hermes checkpoint when no gate/invariant is affected.
+
+### Context continuity rule
+Hermes must be given enough canonical project context to understand: architecture, roadmap, completed work, current phase, open findings, evidence boundaries, agent roles, current HEAD, and remaining work. Its report must explicitly separate VERIFIED, FIXED-SCOPED, NOT VERIFIED, UNKNOWN, BLOCKED and REVALIDATION_REQUIRED.
+
+### Agent-learning loop
+Recurring Atria/Hermes weaknesses are converted into reusable rules/checklists in the existing canonical operating documents and then tested in later missions. The objective is to improve the process, not merely to fix individual findings.
+
+**Operational decision:** this is now the primary and final Payesh operating model unless a later Architecture/Management decision explicitly supersedes it.
+
