@@ -3066,3 +3066,17 @@ Conversation is not the project memory of record. Any reusable project knowledge
 
 **Evidence rule:** persistence records knowledge; it does not certify it. Current-HEAD evidence, runtime proof and verification status remain authoritative.
 
+
+
+## HERMES LEARNING / ENGINEERING-DISCIPLINE PREREQUISITE — 2026-10-02
+
+A recent Hermes infrastructure session adds reusable verification lessons:
+- clean-environment execution is required when environment variables can leak between sessions;
+- migration tooling must validate process exit status, not only visible SQL errors;
+- PostgreSQL CLI option ordering/explicit `-d` connection semantics must be tested on supported platforms;
+- migration recovery must test partial-state and already-applied branches;
+- platform-specific filesystem/signal behavior must be classified separately from product defects;
+- date-sensitive tests must use deterministic temporal fixtures;
+- local agent fixes are not project fixes until repository synchronization is evidenced.
+
+These are process/verification prerequisites. They do not promote Hermes' session report or its local fixes to VERIFIED status.
