@@ -3020,3 +3020,36 @@ Evaluation harnesses should vary reasoning strategy while keeping task facts ide
 External repository audits are **candidate discovery evidence**, never certification. Before promotion: pin audited SHA/environment; distinguish static, synthetic and live evidence; reproduce material findings on current main; deduplicate against canonical registers; require Hermes verification for privacy/security/tenant/Redis-recovery/data-integrity/test-integrity findings; retain explicit false-positive/conditional dispositions where useful.
 
 For the Replit audit pinned to `6152a48add2ba8197c7c122133d9e2859e90711f`, no live PG/Redis infrastructure was available. Therefore R-A2/R-A3 require runtime revalidation and R-A1 requires product-contract/role-matrix verification. R-A4 is source-confirmed as a cleanup-safety concern and should receive bounded regression coverage.
+
+
+## EXTERNAL BLIND AUDIT + 18-VIEW PANEL CONTRACT — 2026-10-01
+
+### Replit
+**Role:** BLIND-DISCOVERY-AUDITOR  
+**Authority:** discovery only  
+**Default mode:** read-only, independent of prior reports during blind phase  
+**Primary value:** repository-wide hidden defect discovery and alternate-path/configuration analysis.
+
+### Bolt
+**Role:** CROSS-LAYER-ARCHITECTURE-CHALLENGER  
+**Authority:** discovery/challenge only  
+**Default mode:** read-only, independent challenge  
+**Primary value:** detecting contract gaps across route/auth/policy/service/data/cache/worker/observability/test boundaries.
+
+### 18-view challenge rules
+1. Identical task envelope for every active reviewer.
+2. Current HEAD is pinned before analysis.
+3. Static, synthetic and live evidence must be labeled separately.
+4. Historical reports are not current proof.
+5. Reviewer count is not evidence strength.
+6. Findings from external auditors must be reproduced before promotion.
+7. Security/privacy/tenant/Redis-recovery/data-integrity/test-integrity findings require Hermes verification after material remediation.
+8. No blind auditor may directly close a defect or certify a gate.
+9. Disagreement is a signal for investigation, not a vote.
+10. Keep the smallest effective reviewer set; activate all 18 only when information gain justifies the cost.
+
+### Standard panel pipeline
+**DISCOVER → NORMALIZE → DEDUPLICATE → CONTRADICTION REVIEW → REPRODUCE → ROOT-CAUSE → REMEDIATE → REGRESSION → HERMES VERIFY → CHATGPT RECONCILE/DECIDE**
+
+### Evidence statuses
+External discovery may use: **CONFIRMED / LIKELY / CONDITIONAL / POSSIBLE / HYPOTHESIS / FALSE POSITIVE**. Project closure uses the canonical execution statuses only: **VERIFIED / FIXED-SCOPED / REVALIDATION_REQUIRED / NOT VERIFIED / UNKNOWN / BLOCKED / FAIL**.
