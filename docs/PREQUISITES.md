@@ -3013,3 +3013,10 @@ Evaluation harnesses should vary reasoning strategy while keeping task facts ide
 - performance claims are measured, not extrapolated;
 - false-green paths are fail-closed;
 - every material claim is current-head and provenance-bound.
+
+
+## EXTERNAL BLIND AUDIT / DISCOVERY PREREQUISITES — 2026-10-01
+
+External repository audits are **candidate discovery evidence**, never certification. Before promotion: pin audited SHA/environment; distinguish static, synthetic and live evidence; reproduce material findings on current main; deduplicate against canonical registers; require Hermes verification for privacy/security/tenant/Redis-recovery/data-integrity/test-integrity findings; retain explicit false-positive/conditional dispositions where useful.
+
+For the Replit audit pinned to `6152a48add2ba8197c7c122133d9e2859e90711f`, no live PG/Redis infrastructure was available. Therefore R-A2/R-A3 require runtime revalidation and R-A1 requires product-contract/role-matrix verification. R-A4 is source-confirmed as a cleanup-safety concern and should receive bounded regression coverage.
