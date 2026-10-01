@@ -849,3 +849,33 @@ scope closed + current-head bound + failure behavior checked + false-green check
 - Scientific Skills: برای analytics/research/evidence-heavy intelligence missions.
 - Cybersecurity Skills: برای security review، threat-informed verification و defensive playbooks.
 - Harness catalog: برای periodic capability discovery و ارتقای harness، نه برای ایجاد dependency.
+
+
+## NEXT DISCOVERY QUEUE — REPLIT BLIND AUDIT — 2026-10-01
+
+A read-only external blind audit produced four non-duplicate candidate areas. They are a **future controlled remediation/verification queue**, not closed defects.
+
+### Mission R-A — reproduce before repair
+**Owner:** Atria executor; **Verifier:** Hermes; **Final authority:** ChatGPT.
+
+1. **R-A1 Class roster privacy/projection** — trace student/parent authorization, school/class ownership, response projection and intended privacy contract; reproduce with the real role matrix before changing behavior.
+2. **R-A2 Redis Cluster recovery** — reproduce retry exhaustion, client state, application error handling and recovery/recreation after Redis becomes healthy; prefer isolated live cluster evidence.
+3. **R-A3 HA-only Redis classification/fallback** — build a matrix for URL, cluster-node and sentinel modes; verify boot gating, production classification, Redis initialization failure and memory fallback on positive/negative paths.
+4. **R-A4 test cleanup safety** — verify ownership of `/tmp/payesh-*`; make cleanup run-owned and add a regression proving unrelated scratch data survives.
+
+### Required mission contract
+- Freeze/report actual current HEAD before execution.
+- Reproduce/classify each item as `CONFIRMED / FALSE POSITIVE / CONDITIONAL / REVALIDATION_REQUIRED` before editing.
+- Fix only confirmed defects or explicitly approved hardening.
+- Add regression coverage for every accepted fix.
+- Exercise alternate paths/configurations, not only the reported path.
+- Preserve timeout/no-hang and false-green defenses.
+- Separate source, runtime, environment and limitation evidence.
+- No broad certification follows from this mission alone.
+- Hermes independently verifies material remediation on the same current HEAD.
+
+### Existing-known-finding rule
+Office scope, conditional OTP bypass and CI timeout are already registered; update existing records/evidence instead of creating duplicates.
+
+### Queue ordering
+R-A1/R-A2/R-A3 are security/privacy/reliability-sensitive and form the first controlled batch. R-A4 may run separately if collision boundaries are clear. Do not overlap Atria remediation with Arena/16-view implementation on the same invariant.
