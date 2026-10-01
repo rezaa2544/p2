@@ -576,3 +576,8 @@ Rule: external repositories are knowledge/pattern sources unless a concrete inte
 ## External Blind Discovery Register — 2026-10-01
 
 Replit blind-audit findings are tracked through the canonical execution chain and must not become standalone source-of-truth documents. Current queue: **R-A1..R-A4**. See `docs/CURRENT_PROJECT_INTELLIGENCE.md` for the canonical finding summary and `docs/CURRENT_WORK_EXECUTION_PLAN.md` for execution order.
+
+## AUTOMATIC VALUE CAPTURE RULE — 2026-10-01
+
+The repository is the durable project memory. During every material analysis or mission, newly discovered reusable value must be persisted automatically in the appropriate canonical document; the user does not need to issue a separate save-to-repository command. Prefer existing canonical documents and create a new document only when no suitable home exists. This rule is operationally defined in `CURRENT_PROJECT_INTELLIGENCE.md`, `CURRENT_WORK_EXECUTION_PLAN.md`, and `PREQUISITES.md`.
+
