@@ -502,3 +502,30 @@ Reproduce/classify R-A1..R-A4 first; fix only confirmed defects; add regression 
 
 ### External-audit evidence rule
 External blind auditors are discovery layers, not certifiers. External severity labels or "confirmed" wording do not override the project's evidence hierarchy when live runtime evidence is absent.
+
+
+## 18-VIEW DISCOVERY PANEL — REPLIT + BOLT — 2026-10-01
+
+برای افزایش استقلال کشف نقص، دو auditor بیرونی به شبکهٔ کشف اضافه شدند. این دو «عامل رأی‌دهنده» یا certifier نیستند؛ هر دو discovery-only هستند.
+
+### نقش‌های رسمی
+- **Replit — BLIND-DISCOVERY-AUDITOR:** ممیزی مستقلِ repository بدون اتکا به گزارش‌های قبلی در مرحلهٔ blind؛ تمرکز بر کشف نقص‌های پنهان، مسیرهای جایگزین، configuration contradictions، security/privacy، reliability/recovery، false-green و cross-layer gaps.
+- **Bolt — CROSS-LAYER-ARCHITECTURE-CHALLENGER:** چالش مستقلِ قرارداد بین لایه‌ها؛ تمرکز بر Route → Middleware → Policy → Service → DB/Redis → Worker/Queue → Cache → Observability → CI/Test و کشف شکاف‌هایی که در یک لایه منفرد دیده نمی‌شوند.
+
+### شبکهٔ 18-view
+وقتی یک موضوع مهم به بررسی گسترده نیاز دارد، 11 Arena + 5 ChatGPT views + Replit + Bolt می‌توانند یک **18-view Discovery Panel** تشکیل دهند. همهٔ reviewers یک Task Envelope یکسان دریافت می‌کنند؛ فقط زاویهٔ reasoning متفاوت است.
+
+18-view به معنی «18 رأی» نیست. نتیجه از Evidence Matrix، reproduction، current-HEAD validation و independent verification به‌دست می‌آید. consensus صرفاً signal است و جای evidence را نمی‌گیرد.
+
+### Activation modes
+- **Normal:** ChatGPT → Atria → Hermes.
+- **Deep Investigation:** Atria/Hermes + Replit/Bolt + subset هدفمند از 16-view.
+- **Critical / Disputed:** هر 18 view با همان task envelope؛ سپس deduplication، reproduction، Atria remediation و Hermes verification.
+
+### Separation of duties
+Replit/Bolt در blind discovery حق certify، close defect یا تغییر repository را ندارند. Finding آن‌ها باید به:
+DISCOVER → NORMALIZE → DEDUPLICATE → REPRODUCE → ROOT-CAUSE → FIX → REGRESSION → HERMES VERIFY
+برود.
+
+### Disagreement handling
+High agreement می‌تواند اولویت reproduction را بالا ببرد؛ high disagreement باید به بررسی عمیق‌تر و evidence بیشتر منجر شود؛ هیچ‌کدام به‌تنهایی حکم نهایی نیست.
