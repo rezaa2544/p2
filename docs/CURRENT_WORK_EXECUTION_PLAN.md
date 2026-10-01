@@ -950,3 +950,15 @@ Replit و Bolt discovery-only هستند؛ Atria executor/remediator؛ Hermes ve
 - [ ] status و evidence boundary روشن است.
 - [ ] remote repository synchronization انجام شد یا blocker صریح ثبت شد.
 
+
+
+## HERMES FOLLOW-UP / CURRENT LEARNING SIGNAL — 2026-10-02
+
+Hermes' latest infrastructure session produced a new controlled follow-up queue:
+1. Verify migration-012 execution contract and the reported psql exit-code/option-order defect on current main.
+2. Verify the reported migration-012 crisis-recovery failure and its remediation path.
+3. Verify the day-of-week-sensitive smoke tests and replace calendar dependence with deterministic time fixtures if confirmed.
+4. Re-run affected infrastructure suites under a clean environment and record platform-specific limitations separately.
+5. Treat Hermes' local `tools/migrate-ledger.js` and `scripts/run-all-tests.sh` edits as unmerged until a repository commit proves otherwise.
+
+No remediation is considered current until it is present on the repository current HEAD and passes the normal Atria → Hermes → ChatGPT evidence chain.
