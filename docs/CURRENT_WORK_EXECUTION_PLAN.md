@@ -879,3 +879,41 @@ Office scope, conditional OTP bypass and CI timeout are already registered; upda
 
 ### Queue ordering
 R-A1/R-A2/R-A3 are security/privacy/reliability-sensitive and form the first controlled batch. R-A4 may run separately if collision boundaries are clear. Do not overlap Atria remediation with Arena/16-view implementation on the same invariant.
+
+
+## 18-VIEW DISCOVERY / CHALLENGE MODEL — 2026-10-01
+
+مدل عملیاتی نهایی برای مواردی که نیاز به پوشش گسترده دارند:
+
+**ChatGPT Control Plane → Mission Envelope → Discovery Panel → Evidence Matrix → Atria Reproduce/Remediate → Hermes Independent Verify → ChatGPT Reconcile/Decide → Canonical Docs**
+
+### Composition
+- 11 Arena views: specialist/adversarial reasoning.
+- 5 ChatGPT views: architecture, security, backend/infra, frontend/intelligence/UX, QA/release/evidence.
+- Replit: blind repository-wide discovery.
+- Bolt: cross-layer architecture/contract challenge.
+
+### Common Task Envelope
+همهٔ اعضای فعال یک mission باید دقیقاً این موارد را مشترک دریافت کنند:
+1. question/mission؛
+2. exact current HEAD/SHA؛
+3. scope/non-scope؛
+4. evidence boundary؛
+5. invariants/acceptance criteria؛
+6. known limitations؛
+7. output contract.
+تنها reasoning strategy و زاویهٔ بررسی متفاوت است.
+
+### Evidence Matrix
+برای هر mission گسترده، یافته‌ها در چهار وضعیت تحلیلی جمع می‌شوند:
+- consensus signals؛
+- disagreement/contradiction؛
+- blind-spot candidates؛
+- evidence-backed findings.
+هیچ‌کدام از سه مورد اول بدون reproduction و evidence current-head به certification تبدیل نمی‌شود.
+
+### Cost / activation rule
+18-view panel پیش‌فرض هر mission نیست. فقط برای security/data-integrity/privacy، P0/P1، معماری مبهم، recurrence، evidence gap یا اختلاف معنادار فعال می‌شود. کوچک‌ترین subset مؤثر اولویت دارد و فقط در صورت نیاز به 18-view کامل گسترش می‌یابد.
+
+### Hard separation
+Replit و Bolt discovery-only هستند؛ Atria executor/remediator؛ Hermes verifier؛ ChatGPT final reconciler/decision-maker. هیچ رأی‌گیری، score یا تعداد agent جای evidence را نمی‌گیرد.
