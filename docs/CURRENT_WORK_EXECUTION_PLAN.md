@@ -917,3 +917,36 @@ R-A1/R-A2/R-A3 are security/privacy/reliability-sensitive and form the first con
 
 ### Hard separation
 Replit و Bolt discovery-only هستند؛ Atria executor/remediator؛ Hermes verifier؛ ChatGPT final reconciler/decision-maker. هیچ رأی‌گیری، score یا تعداد agent جای evidence را نمی‌گیرد.
+
+## AUTOMATIC VALUE CAPTURE / REPOSITORY SYNC — 2026-10-01
+
+این یک control-plane rule دائمی است: ارزش ماندگار نباید فقط در conversation باقی بماند.
+
+### Mandatory behavior
+در پایان هر تحلیل، mission، report reconciliation یا تصمیم مهم، ChatGPT باید ارزش جدید را شناسایی و **خودکار** به محل canonical مربوطه در repository منتقل کند؛ کاربر لازم نیست برای هر مورد جداگانه دستور «در مخزن ثبت کن» بدهد.
+
+### Capture triggers
+ثبت خودکار لازم است وقتی مورد جدید یکی از این‌ها باشد:
+1. invariant / reusable engineering rule؛
+2. root cause / recurring defect pattern / lesson؛
+3. mission result یا evidence boundary که بر تصمیم بعدی اثر می‌گذارد؛
+4. phase, gate, priority, ownership یا execution-order change؛
+5. capability/skill/tool integration decision؛
+6. Atria/Hermes/16-view operating rule یا verifier lesson؛
+7. current-head synchronization fact؛
+8. هر تصمیم یا واقعیتی که حذف شدنش باعث تکرار کار یا خطای تصمیم‌گیری شود.
+
+### Placement and minimality
+اولویت با **ویرایش سند canonical موجود** است. گزارش جدید فقط وقتی ساخته شود که نوع محتوا واقعاً سند مستقل بخواهد. هر سند جدید باید در `DOCS_INDEX.md` ثبت و به حداقل یک سند canonical دیگر متصل شود.
+
+### Delivery rule
+ثبت باید شامل حداقل context لازم، تاریخ، وضعیت و در صورت مرتبط بودن exact SHA / evidence boundary باشد. «ثبت شد» فقط وقتی مجاز است که تغییر واقعاً در remote repository نوشته شده باشد.
+
+### Control-plane check
+قبل از پایان هر mission این checklist اجرا شود:
+- [ ] ارزش ماندگار استخراج شد.
+- [ ] محل canonical درست انتخاب شد.
+- [ ] duplicate / contradiction با اسناد موجود بررسی شد.
+- [ ] status و evidence boundary روشن است.
+- [ ] remote repository synchronization انجام شد یا blocker صریح ثبت شد.
+
