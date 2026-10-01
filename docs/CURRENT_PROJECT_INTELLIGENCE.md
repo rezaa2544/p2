@@ -560,3 +560,28 @@ ChatGPT به‌عنوان Control Plane باید در هر پاسخ/mission ای
 
 ثبت repository به معنی certification نیست. هر claim همچنان تابع evidence hierarchy و current-HEAD rules است.
 
+
+
+## HERMES ENGINEERING UPGRADE — INFRASTRUCTURE / LEARNING EVIDENCE — 2026-10-02
+
+Latest Hermes report is recorded as **agent-reported evidence**, not repository certification. Hermes reported a successful Windows/Docker infrastructure bootstrap with 118 packages, 547/547 smoke tests, 35/35 build tests, 4/4 mutation tests, PostgreSQL migrations/tables brought up, and multiple infrastructure suites executed. These claims remain bounded to Hermes' reported environment/session until independently reproduced or otherwise evidenced on the current repository HEAD.
+
+### Durable engineering lessons
+- PostgreSQL migration 012 contains an internal COMMIT pattern that is incompatible with wrapping the migration in the Node pg client transaction model; the migration path therefore needs an explicit execution-contract distinction between transaction-wrapped migrations and psql/native execution.
+- A psql invocation that places the database/connection string as a positional argument before option flags can cause later tokens to be treated as extra arguments rather than options. PostgreSQL documents that a non-option argument is interpreted as the database name, while `-d` explicitly supplies the database/connection string; `ON_ERROR_STOP` is what makes script errors terminate with a non-zero status. citeturn0search0turn0search2
+- Migration/recovery tooling must test both **stderr/error visibility** and **process exit status**; printed SQL errors are not sufficient evidence that the automation layer observed failure.
+- Environment contamination between sessions can change test results. Clean-environment execution is therefore a reusable prerequisite for infrastructure/test claims.
+- Platform-specific filesystem/signal behavior must be separated from product defects and covered by explicit portability checks.
+- Date/day-dependent tests are a test-design defect candidate: tests should control/freeze time or explicitly encode the intended temporal fixture rather than depend on the host calendar.
+
+### Current unmerged Hermes work / findings
+Hermes reported local changes to `tools/migrate-ledger.js` and `scripts/run-all-tests.sh`, but explicitly stated that no change was pushed to main. Therefore these changes are **NOT current repository truth** and must not be treated as merged remediation.
+
+Reported migration fix: invoke psql with options before an explicit `-d <connection-string>`, so `ON_ERROR_STOP=1` is actually parsed. This is consistent with PostgreSQL's documented CLI semantics. citeturn0search2turn0search6
+
+Reported additional finding: two smoke tests are sensitive to the host day-of-week. This is recorded as a candidate test-integrity defect pending source/current-head verification.
+
+### Hermes learning/behavior signal
+Compared with earlier Hermes checkpoints, this report shows stronger evidence discipline: it explicitly distinguished environment/setup problems from project defects, identified a concrete root cause instead of stopping at a symptom, used controlled variants to isolate the psql argument-order behavior, reran regression suites after the local change, and disclosed that its fixes were not pushed. It also converted operational observations (environment leakage, migration execution contract, platform differences) into reusable lessons. This is a positive process change, but it is an **observed behavioral improvement from the report**, not a certification that Hermes is fully upgraded.
+
+The reported `168 broken references`, `98 skills`, and other inventory counts remain self-reported until independently checked against the actual workspace/repository.
