@@ -571,3 +571,8 @@ The canonical operating docs now include a capability-harvest layer derived from
 - ARENA_REGISTRY.md — adversarial challenge method and activation rules
 
 Rule: external repositories are knowledge/pattern sources unless a concrete integration decision explicitly promotes a capability. They do not override GitHub truth, current-head evidence, or the ChatGPT control plane.
+
+
+## External Blind Discovery Register — 2026-10-01
+
+Replit blind-audit findings are tracked through the canonical execution chain and must not become standalone source-of-truth documents. Current queue: **R-A1..R-A4**. See `docs/CURRENT_PROJECT_INTELLIGENCE.md` for the canonical finding summary and `docs/CURRENT_WORK_EXECUTION_PLAN.md` for execution order.
