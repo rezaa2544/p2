@@ -529,3 +529,34 @@ DISCOVER → NORMALIZE → DEDUPLICATE → REPRODUCE → ROOT-CAUSE → FIX → 
 
 ### Disagreement handling
 High agreement می‌تواند اولویت reproduction را بالا ببرد؛ high disagreement باید به بررسی عمیق‌تر و evidence بیشتر منجر شود؛ هیچ‌کدام به‌تنهایی حکم نهایی نیست.
+
+## AUTOMATIC REPOSITORY VALUE-CAPTURE CONTRACT — 2026-10-01
+
+هر بار که در جریان تحلیل، مأموریت، گزارش عامل‌ها، تحقیق، یا تصمیم‌گیری پروژه یک مورد **باارزش و ماندگار** شناسایی شود، باید آن را بدون انتظار برای دستور جداگانه، در مناسب‌ترین محل canonical مخزن ثبت و همگام کرد.
+
+### What counts as valuable
+- قانون/Invariant یا قاعده‌ای که در مأموریت‌های بعدی reusable است.
+- تصمیم معماری/اجرایی یا تغییر مهم در مدل عملیاتی.
+- finding، root cause، lesson، regression pattern یا anti-pattern که احتمال تکرار دارد.
+- evidence/provenance مهم، همراه با SHA و محدودیت اعتبار آن.
+- تغییر phase/gate/priority/ownership یا ترتیب مأموریت‌ها.
+- capability/skill/tooling که واقعاً برای Payesh ارزش عملیاتی پیدا کرده است.
+- اصلاح مهم در نقش عامل‌ها، قرارداد Atria/Hermes/16-view یا روش verification.
+- هر واقعیت جدیدی که برای جلوگیری از سردرگمی، دوباره‌کاری یا تصمیم اشتباه در آینده لازم است.
+
+### Placement rule
+محتوا باید **در جای مربوط به خودش** ثبت شود، نه در یک گزارش عمومی انباشته:
+- current truth / operating model → همین سند.
+- mission sequencing / next work → `CURRENT_WORK_EXECUTION_PLAN.md`.
+- execution prerequisites / reusable rules → `PREQUISITES.md`.
+- agent/view ownership → `ARENA_REGISTRY.md`.
+- roadmap/phase/gate changes → roadmap canonical.
+- defect/finding evidence → canonical audit/defect register موجود.
+- lessons/skills → existing lessons/skill canonical document.
+- فقط اگر هیچ محل canonical مناسب وجود ندارد، سند جدید ساخته شود و در `DOCS_INDEX.md` ثبت و حداقل یک ارجاع متقابل دریافت کند.
+
+### Automatic synchronization rule
+ChatGPT به‌عنوان Control Plane باید در هر پاسخ/mission این سؤال را internally بررسی کند: **«آیا چیزی هست که اگر فردا این گفتگو از دسترس خارج شود، برای ادامه صحیح پروژه لازم باشد؟»** اگر پاسخ مثبت است، آن knowledge باید همان زمان در repository canonical ثبت شود؛ در صورت امکان با SHA/evidence/reference.
+
+ثبت repository به معنی certification نیست. هر claim همچنان تابع evidence hierarchy و current-HEAD rules است.
+
