@@ -482,3 +482,23 @@ Agent mistake / false assumption
 Capability → Concrete Payesh use-case → Integration point → Security/operational risk → Overlap check → Measured value → Owner
 
 اگر این زنجیره کامل نشود، capability فقط در knowledge catalog می‌ماند و به dependency یا control-plane دوم تبدیل نمی‌شود.
+
+
+## EXTERNAL BLIND DISCOVERY INTEGRATION — REPLIT — 2026-10-01
+
+A read-only external blind audit was reviewed against pinned SHA `6152a48add2ba8197c7c122133d9e2859e90711f`. It is **discovery evidence only**, not certification. The audit had no live PostgreSQL/Redis environment; source/synthetic findings therefore require current-head reproduction before runtime promotion.
+
+### New candidate queue
+- **R-A1 — Class roster privacy/projection:** `GET /api/v1/classes/:id` may expose enrolled-student names and masked national-ID data to student/parent callers. **REVALIDATION_REQUIRED** pending route authorization, intended product contract, projection policy and live role-matrix verification.
+- **R-A2 — Redis Cluster recovery after retry exhaustion:** bounded cluster retries may leave the client unusable without recreation/recovery. **REVALIDATION_REQUIRED / STRONGLY_SUPPORTED**; requires isolated live cluster outage→recovery evidence.
+- **R-A3 — HA-only Redis configuration classification:** `REDIS_CLUSTER_NODES` / `REDIS_SENTINELS` classification differs between application production/shared-backend detection and Redis-module production detection, potentially enabling an unintended memory-fallback path. **REVALIDATION_REQUIRED**; requires configuration matrix and runtime boot/failure evidence.
+- **R-A4 — destructive test cleanup ownership:** broad `/tmp/payesh-*` cleanup in `scripts/run-all-tests.sh` can remove unrelated scratch directories. **SOURCE-CONFIRMED SAFETY DEFECT / remediation candidate**; narrow ownership/namespace and add a regression safety check.
+
+### Known repeats intentionally not duplicated
+Replit also flagged the existing office-scope weakness, conditional OTP-bypass configuration risk and CI/test-timeout gaps. These remain in existing defect/root-cause programs.
+
+### Required next controlled work
+Reproduce/classify R-A1..R-A4 first; fix only confirmed defects; add regression tests; preserve exact-SHA evidence. Because the queue includes privacy/security/Redis-recovery/test-integrity concerns, Hermes checkpoint verification is mandatory after material Atria remediation.
+
+### External-audit evidence rule
+External blind auditors are discovery layers, not certifiers. External severity labels or "confirmed" wording do not override the project's evidence hierarchy when live runtime evidence is absent.
