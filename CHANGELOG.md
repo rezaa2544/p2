@@ -2,6 +2,23 @@
 
 Material changes to the Payesh project are recorded here in reverse chronological order.
 
+## 2026-10-01
+
+### Fixed — B-PG rework after Hermes M12 (F-1/F-2/F-3)
+
+Hermes M12 returned `B-PG = FIXED-SCOPED` with three findings on HEAD `6152a48a`; this is the executor remediation.
+
+- **F-1 — fail-safe bounded PG timeouts (`server/infrastructure/bounded-ms.js`, new):** `PG_TIMEOUT_MS=0` made the timeout effectively unlimited (Hermes reproduced a live `>15000ms` hang). Root cause traced to three `pg`/`pg-pool` decision sites (`pg-pool/index.js:206` `if (!this.options.connectionTimeoutMillis)`, `pg/lib/client.js:167` `> 0`, `pg/lib/client.js:702` falsy `query_timeout`) combined with the JS truthy-string trap: `process.env.X || '3000'` does not fall back for `'0'`, and `parseInt('0')` / `parseInt('abc')` / `parseInt('-1')` all become unbounded via those falsy checks. All five production parse sites (`server/db.js` primary + ping, `tools/migrate-ledger.js`, `tools/partition-retention.js`, `tools/production-truth-gate.js` ×3) now go through one shared parser: `undefined / empty / NaN / <= 0 → safe bounded default`. The only path to unbounded is the explicit opt-in `PAYESH_PG_UNBOUNDED_PROBE=1`, **ignored under `NODE_ENV=production`** — fail-closed in hard production, mirroring `memoryFallbackAllowed()`.
+- **F-1 runtime probe (`tests/b-pg-timeout-failsafe.js`, new):** five config shapes (unset / `""` / `0` / `-1` / `abc`) boot a real server through a forwarding relay, then the relay freezes. Fixed tree: 30/30 checks pass, exit 0 — 0 client hangs, every response HTTP 503, slowest under 11s, all 5 shapes. LEGACY tree (`PAYESH_PG_UNBOUNDED_PROBE=1`): zero/negative/non-numeric hang 4/4 (`CLIENT_WATCHDOG_TIMEOUT`), exit 1. Note unset/empty were *never* broken (`X || '3000'` handled them) — the F-1 defect is the explicitly-invalid shapes; documented in the probe.
+- **F-2 — CI-visible probe wiring + NOT-RUN contract (`.github/workflows/node.js.yml`, all three B-PG probes):** the probes were glob-discovered by `scripts/run-all-tests.sh` but had **zero explicit CI references** (grep-confirmed). Now wired as four named `Critical orphan —` steps (3 probes + 1 negative test). Every probe prints a greppable `B-PG-PROBE VERDICT:` line — `PASS mode=FIXED | FAIL mode=FIXED | FAIL mode=LEGACY | NOT-RUN | ERROR` — and a harness crash exits 2, distinct from a real regression. PG-unreachable is a loud `NOT-RUN` + exit 1, never a silent green. The negative-test step asserts the LEGACY arm *must* exit non-zero and *must* print the FAIL verdict, and rejects a `timeout` kill (rc=124) as a false-green escape. Mutation-tested against two stand-ins (green→reject, hang→reject, real RED→pass).
+- **F-3 — canary SoT freshness gate (`server/infrastructure/phase6-canary-engine.js`):** `Math.max(0, parseInt(...))` yields `NaN` for non-numeric input, and all NaN comparisons are false — silently disabling the TTL/backoff gate that keeps `refreshCacheFromPg()` off the per-request hot path. Both fields now go through `boundedMs` (defaults 2000/30000).
+- **Midflight probe portability fix:** `migrateUp(client, {pgUrl:null})` still fell back to `PGURL`/`DATABASE_URL`, so on CI runners (where `PGURL` is set at job level and `psql` is installed) `usePsql` went true and the crash-injection wrapper never fired — a false RED. The probe now clears the URL env after parsing the admin connection, forcing the pg-client split path on any host; the precondition check was re-anchored to that invariant instead of "psql absent".
+- **Env doc corrections:** `.env.example` listed `PG_IDLE_TIMEOUT_MS` (read by nothing; `idleTimeoutMillis` is fixed 30000) and `DATABASE_READ_REPLICA_URLS` / `PG_REPLICA_POOL_MAX` (stale; live names are `READ_DATABASE_URL` / `READ_POOL_MAX`). Fixed in `.env.example`, `docs/PGBOUNCER_SETUP.md`, `docs/WEIGHTED_PARTITIONING.md`. Historical audit reports left untouched (frozen record).
+
+Pre-existing condition, **not** introduced here and **not** fixed (out of scope): `npm run lint` reports 1394 warnings against the frozen `--max-warnings 1379` baseline. The freeze was set under the old `.eslintrc.json`; commit `31372e60` (2026-09-30, "migrate eslintrc → flat config for ESLint 10") never re-baselined it. My contribution is warning-neutral (verified: 1394 with and without my two new files; tracked-file edits are warning-count-identical to HEAD).
+
+Evidence: `npm test` 547/547 + 31/31 API suites, exit 0; all six probe modes green/red as designed; eslint 0 errors on all changed files. See `docs/PREQUISITES.md` §135.
+
 ## 2026-09-30
 
 ### Fixed — B-PG: PostgreSQL blackhole resilience and mid-migration crash recovery

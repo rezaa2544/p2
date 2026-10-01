@@ -24,6 +24,13 @@
 const { Client } = require('pg');
 const { execFile } = require('child_process');
 const path = require('path');
+/* M12-F1: این ابزار در یک crontabِ واقعی اجرا می‌شود (infra/cron). بدونِ
+   کران، یک PGِ یخ‌زده cron را دائماً معطلِ فرآیندهایِ آویزان می‌کند. */
+const { boundedMs } = require('../server/infrastructure/bounded-ms');
+const RETENTION_TIMEOUT = {
+  connectionTimeoutMillis: boundedMs('PG_TIMEOUT_MS', 10000),
+  query_timeout: boundedMs('PAYESH_PG_QUERY_TIMEOUT_MS', 300000)
+};
 
 function parseArgs(argv) {
   const out = { apply: false, tables: ['grades', 'attendance'], keepYears: 5, pg: null, archiveDir: null };
@@ -53,7 +60,7 @@ const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\
   const args = parseArgs(process.argv);
   const year = new Date().getFullYear();
   const cutoff = year - args.keepYears; /* سال‌های <= cutoff حذف می‌شوند (نگهداریِ سال..سال-4) */
-  const c = new Client({ connectionString: args.pg });
+  const c = new Client(Object.assign({ connectionString: args.pg }, RETENTION_TIMEOUT));
   await c.connect();
   const log = (m) => console.log('[retention] ' + m);
 

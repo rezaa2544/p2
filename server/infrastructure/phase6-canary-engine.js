@@ -13,6 +13,7 @@
 const crypto = require('crypto');
 const gov = require('./phase6-governance');
 const authority = require('./authority');
+const { boundedMs } = require('./bounded-ms');
 
 const CANARY_STATES = Object.freeze({
   HEALTHY: 'HEALTHY',
@@ -145,10 +146,16 @@ class Phase6CanaryEngine {
        round-trip to PostgreSQL per request — which, against a blackholed PG,
        adds the full connection timeout to every single response. Any
        authority WRITE invalidates the cache and refreshes with force:true, so
-       these only bound the *read* path's staleness, never a write. */
-    this._sotCacheTtlMs = Math.max(0, parseInt(process.env.PAYESH_CANARY_SOT_TTL_MS || '2000', 10));
+       these only bound the *read* path's staleness, never a write.
+
+       M12-F3: `Math.max(0, parseInt(...))` برای NaN/empty/غیرعددی باز هم NaN
+       برمی‌گرداند (Math.max(0,NaN) ⇒ NaN) و همه‌ی مقایسه‌هایِ زیر false
+       می‌شوند — یعنی gate خاموش و هر درخواست یک round-tripِ همگام به PG
+       تبدیل می‌شود. boundedMs هر شکلِ نامعتبر را به defaultِ کران‌دار
+       فرو می‌برد (undefined/empty/NaN/<=0 ⇒ default). */
+    this._sotCacheTtlMs = boundedMs('PAYESH_CANARY_SOT_TTL_MS', 2000);
     this._sotRefreshFailedAt = 0;
-    this._sotRefreshBackoffMs = Math.max(0, parseInt(process.env.PAYESH_CANARY_SOT_BACKOFF_MS || '30000', 10));
+    this._sotRefreshBackoffMs = boundedMs('PAYESH_CANARY_SOT_BACKOFF_MS', 30000);
     this.initDefaultClusters();
   }
 

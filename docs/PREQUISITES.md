@@ -3013,3 +3013,83 @@ Evaluation harnesses should vary reasoning strategy while keeping task facts ide
 - performance claims are measured, not extrapolated;
 - false-green paths are fail-closed;
 - every material claim is current-head and provenance-bound.
+
+
+## 135. B-PG REWORK AFTER HERMES M12 — F-1 / F-2 / F-3 (2026-10-01)
+
+Hermes M12 به‌عنوانِ Independent Verifier رویِ HEAD `6152a48a` verdictِ `B-PG = FIXED-SCOPED` داد و سه finding برگرداند. این بخش recordِ executor-remediation آن سه finding است. هیچ‌کدام از نتیجه‌گیری‌های این بخش به‌جایِ verdictِ نهاییِ هرمس نیست — تأییدِ نهایی وظیفهٔ هرمس است.
+
+### 135.1 Scope و non-scope
+
+- **Scope:** fail-safe بودنِ تجزیهٔ تمامِ کران‌های زمانیِ production-ام PG (F-1)، CI-visible بودنِ پروب‌های B-PG با قراردادِ NOT-RUN (F-2)، و یکپارچه‌سازیِ canary SoT TTL/backoff در همان پارسر (F-3).
+- **Non-scope:** بازطراحیِ لایهٔ DB، تغییرِ migration framework، اصلاحِ baselineِ lint، و هر چیزی خارج از این سه finding. میزبانِ آزمون: همین جعبه با PG16 واقعی + Redis محلی.
+
+### 135.2 F-1 — کران‌های PG fail-safe نبودند (CONFIRMED DEFECT)
+
+**ریشهٔ دقیق:** سه نقطهٔ تصمیم در درایور تصمیم می‌گیرند «آیا کران اعمال شود یا نه» و هر سه با مقدارهای falsy رفتارِ «بدونِ کران» می‌دهند:
+
+| محل | شرط | نتیجهٔ falsy |
+|---|---|---|
+| `pg-pool/index.js:206` | `if (!this.options.connectionTimeoutMillis)` | acquire تا ابد معلق |
+| `pg/lib/client.js:167` | `if (this._connectionTimeoutMillis > 0)` | TCP connect بدونِ حد |
+| `pg/lib/client.js:702` | `const readTimeout = config.query_timeout \|\| ...` | read timeout خاموش |
+
+تنها کافی بود کاربر `PG_TIMEOUT_MS=0` بگذارد. تلهٔ واقعی ولی اینجاست: `process.env.X || '3000'` برای رشتهٔ `'0'` فالبک نمی‌دهد (رشتهٔ `"0"` در JS truthy است)، و `parseInt('0')=0`، `parseInt('abc')=NaN`، `parseInt('-1')=-1` — همه از همان مسیرِ falsy رد می‌شوند. پس unset/empty هرگز نشکسته بودند؛ شکست مخصوصِ مقدارهای صریحاً نامعتبر بود.
+
+**Fix:** یک پارسرِ مرکزیِ واحد `server/infrastructure/bounded-ms.js` — `undefined / empty / NaN / <= 0 → defaultِ کران‌دار`. تنها مسیرِ رسیدن به unbounded، opt-inِ صریحِ `PAYESH_PG_UNBOUNDED_PROBE=1` است که **در `NODE_ENV=production` نادیده گرفته می‌شود** (fail-closed در productionِ سخت، آینهٔ `memoryFallbackAllowed()` در db.js:120-122). هر پنج مسیرِ production از این پارسر می‌گذرند:
+
+| فایل | کران‌ها | پیش‌فرض |
+|---|---|---|
+| `server/db.js` | `connectionTimeoutMillis` (primary + read-replica)، `queryTimeoutMs`، `pingTimeoutMs`، `keepAliveInitialDelayMillis` | 3000 / 10000 / 2000 / 10000 |
+| `tools/migrate-ledger.js` | `connectionTimeoutMillis`، `query_timeout` | 10000 / 120000 |
+| `tools/partition-retention.js` | `RETENTION_TIMEOUT` | 10000 / 300000 |
+| `tools/production-truth-gate.js` (۳ سایت) | `GATE_PG_OPTS` | 10000 / 60000 |
+
+**پروبِ runtime** (`tests/b-pg-timeout-failsafe.js`): پنج shape — unset / `""` / `0` / `-1` / `abc`. سرور واقعی از یک forwarding relay بالا می‌آید، بعد relay یخ می‌زند. این proof از نوعِ **legacy simulation** است (بازتولید با پرچمِ محیطی)، نه legacy checkout.
+
+- **FIXED:** 30/30 checks PASS، exit 0 — 0 hangِ client، همهٔ responseها HTTP 503، کندترین زیر 11s، رویِ هر ۵ shape.
+- **LEGACY** (`PAYESH_PG_UNBOUNDED_PROBE=1`): zero/negative/non-numeric در ۴/۴ حالت hang می‌کنند (`CLIENT_WATCHDOG_TIMEOUT`)، verdict `FAIL mode=LEGACY broken-tree-hang-reproduced shapes=["zero","negative","non-numeric"]`، exit 1. unset/empty حتی pre-fix هم کران‌دار می‌ماندند — این نکته در خودِ پروب مستند شده تا proof مبهم نشود.
+
+### 135.3 F-2 — پروب‌ها در CI نامرئی بودند (CONFIRMED DEFECT)
+
+سه پروب با `scripts/run-all-tests.sh` به‌صورتِ glob کشف می‌شدند ولی **صفر ارجاعِ صریح در CI** داشتند (grep تأیید کرد). یعنی خروجیِ آن‌ها در CI قابلِ مشاهده نبود.
+
+**Fix — قراردادِ verdict:** هر پروب یک خطِ greppable چاپ می‌کند:
+
+```
+B-PG-PROBE VERDICT: PASS mode=FIXED
+B-PG-PROBE VERDICT: FAIL mode=FIXED failed=N
+B-PG-PROBE VERDICT: FAIL mode=LEGACY broken-tree-...-reproduced=...
+B-PG-PROBE VERDICT: NOT-RUN reason=...
+B-PG-PROBE VERDICT: ERROR harness-crash   → exit 2
+```
+
+PG-unreachable یک `NOT-RUN`ی با exit 1 است، هرگز سبزِ سایلنت. crashِ harness با exit 2 از رگرسیونِ واقعی متمایز می‌شود. `scripts/run-all-tests.sh` نیز `0 suites / 0 probes / all-skipped` را به‌عنوانِ موفقیت نمی‌پذیرد.
+
+**Fix — wiring:** چهار stepِ نام‌دارِ `Critical orphan —` در `.github/workflows/node.js.yml` (۳ پروب + ۱ negative test). negative test می‌گوید بازویِ LEGACY **باید** exit غیرصفر بدهد و **باید** خطِ FAIL را چاپ کند، و یک kill از `timeout` (rc=124) را به‌عنوانِ فرارِ false-green رد می‌کند. mutation-tested: green→reject، hang→reject، RED واقعی→pass.
+
+**Fix — portability پروبِ midflight:** `migrateUp(ctl, {pgUrl:null})` هنوز به `PGURL`/`DATABASE_URL` فالبک می‌زد (migrate-ledger.js:292-300)، پس رویِ CI runnerها (که `PGURL` در سطحِ job ست شده و psql نصب است) `usePsql` روشن می‌شد و crash-injection wrapper هیچ‌وقت اجرا نمی‌شد — یک false RED. پروب حالا بعد از parse کردنِ admin URL، متغیرهای URL env را پاک می‌کند تا مسیرِ pg-client رویِ هر میزبانی اجباری شود؛ precondition check هم به همان invariant باز-لنگر شد، نه به «نبودِ باینریِ psql».
+
+### 135.4 F-3 — canary SoT freshness gate (OPTIONAL / P3 — IMPLEMENTED)
+
+`Math.max(0, parseInt(...))` برای ورودیِ غیرعددی `NaN` می‌دهد، و تمامِ مقایسه‌های NaN برابرِ false هستند — یعنی TTL/backoff gate که `refreshCacheFromPg()` را از hot path نگه می‌داشت، سایلنت خاموش می‌شد. هر دو فیلد (`PAYESH_CANARY_SOT_TTL_MS`، `PAYESH_CANARY_SOT_BACKOFF_MS`) حالا از `boundedMs` می‌گذرند (پیش‌فرض 2000 / 30000). F-3 پیاده‌سازی شد، defer نشد.
+
+### 135.5 اصلاحاتِ مستنداتِ env
+
+`.env.example` سه نامِ مرده/قدیمی داشت: `PG_IDLE_TIMEOUT_MS` (هیچ کدی نمی‌خواند؛ `idleTimeoutMillis` ثابت 30000 است)، `DATABASE_READ_REPLICA_URLS` و `PG_REPLICA_POOL_MAX` (نام‌های قدیمی؛ اسم‌های زنده `READ_DATABASE_URL` / `READ_POOL_MAX` هستند). اصلاح در `.env.example`، `docs/PGBOUNCER_SETUP.md` و `docs/WEIGHTED_PARTITIONING.md`. reportهای تاریخیِ audit دست‌نخورده ماند (frozen record).
+
+### 135.6 Verification receipts
+
+| Artifact | نتیجه |
+|---|---|
+| `node tests/b-pg-health-blackhole.js` | 11/11 PASS، `VERDICT: PASS mode=FIXED`، exit 0 |
+| `PROBE_LEGACY=1 node tests/b-pg-health-blackhole.js` | 3/3 + `broken-tree-hang-reproduced=true`، exit 1 (92s) |
+| `node tests/b-pg-migration-midflight-kill.js` | 9/9 PASS، exit 0 |
+| `PROBE_LEGACY=1 node tests/b-pg-migration-midflight-kill.js` | 7/7 + `broken-tree-rerun-failure-reproduced`، exit 1 |
+| `node tests/b-pg-timeout-failsafe.js` | 30/30 PASS، exit 0 |
+| `PAYESH_PG_UNBOUNDED_PROBE=1 node tests/b-pg-timeout-failsafe.js` | 13/15 + hang در ۳ shape، exit 1 |
+| `npm test` | 547/547 + 31/31 API suites، exit 0 |
+| eslint رویِ فایل‌های تغییر‌یافته | 0 error؛ سهمِ این mission صفر warning |
+| negative-test harness (mutation) | green→reject، hang→reject، RED واقعی→pass |
+| js-yaml روی `node.js.yml` | 62 step، ۴ B-PG step حاضر |
+

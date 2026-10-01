@@ -164,18 +164,26 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
   console.log('B-PG-1 health-under-runtime-PG-blackhole probe  (PROBE_LEGACY=' + (LEGACY ? '1' : '0') + ')');
 
   /* ── setup: پایگاهِ دادهٔ موقت + زنجیرهٔ migration ─────────────────── */
+  /* F-2: این پروب فقط روی infra واقعی معنی دارد. اگر PG در دسترس نیست،
+   * یک verdict lineِ greppable و پرسر و صدا چاپ می‌کنیم و non-zero خارج
+   * می‌شویم — هرگز silent-green. این طرح، fail-loud است: سیگنال می‌دهد
+   * "این پروب اجرا نشد" را می‌توان از "این پروب FAIL شد" تشخیص داد. */
+  function notRun(reason) {
+    console.log('B-PG-PROBE VERDICT: NOT-RUN reason=' + String(reason).slice(0, 200));
+    console.log('  SETUP FAILED: ' + reason);
+  }
   const admin = new Client(adminOpts);
   try { await admin.connect(); }
   catch (e) {
-    console.log('  SETUP FAILED: cannot reach the PostgreSQL admin connection (' + e.message + ')');
-    console.log('  this probe needs a live PostgreSQL on ' + parsed.host + ':' + parsed.port + ' (set PAYESH_BPG_ADMIN_URL to override)');
+    notRun('cannot reach the PostgreSQL admin connection (' + e.message + ') — probe needs a live PostgreSQL on '
+      + parsed.host + ':' + parsed.port + ' (set PAYESH_BPG_ADMIN_URL to override)');
     process.exit(1);
   }
   try {
     await admin.query('DROP DATABASE IF EXISTS ' + PROBE_DB);
     await admin.query('CREATE DATABASE ' + PROBE_DB);
   } catch (e) {
-    console.log('  SETUP FAILED: cannot create scratch database ' + PROBE_DB + ' (' + e.message + ')');
+    notRun('cannot create scratch database ' + PROBE_DB + ' (' + e.message + ')');
     try { await admin.end(); } catch (_) {}
     process.exit(1);
   }
@@ -189,8 +197,7 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
       stdio: ['ignore', 'pipe', 'pipe']
     });
   } catch (e) {
-    console.log('  SETUP FAILED: migration chain did not apply to ' + PROBE_DB);
-    console.log('  ' + String(e.stderr || e.stdout || e.message).slice(0, 500));
+    notRun('migration chain did not apply to ' + PROBE_DB + ' — ' + String(e.stderr || e.stdout || e.message).slice(0, 300));
     try { await admin.connect(); await admin.query('DROP DATABASE IF EXISTS ' + PROBE_DB); await admin.end(); } catch (_) {}
     process.exit(1);
   }
@@ -219,8 +226,15 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
        پس از نابود شدنِ اولین کلاینتِ یخ‌زده، هر ping نیاز به یک اتصالِ تازه
        از میانِ blackhole دارد و همان connectionTimeoutMillis است که آن
        اتصالِ هرگزتکمیل‌نشدنی را می‌بندد. پس اگر connectionTimeoutMillis را
-       روشن نگه‌داریم، درختِ شکسته هم (به‌اشتباه) سبز می‌شود. */
+       روشن نگه‌داریم، درختِ شکسته هم (به‌اشتباه) سبز می‌شود.
+
+       M12-F1: بعد از اصلاح، مقدارِ '0' دیگر به pg نمی‌رسد — boundedMs آن را
+       به defaultِ کران‌دار تبدیل می‌کند. پس پروب از escape hatchِ صریح و
+       عمدی استفاده می‌کند: PAYESH_PG_UNBOUNDED_PROBE=1 (که در
+       NODE_ENV=production نادیده گرفته می‌شود). این مسیرِ LEGACY است،
+       نه یک config pathِ تولید. */
     Object.assign(env, {
+      PAYESH_PG_UNBOUNDED_PROBE: '1',
       PAYESH_PG_QUERY_TIMEOUT_MS: '0',
       PAYESH_PG_PING_TIMEOUT_MS: '0',
       PAYESH_PG_KEEPALIVE: '0',
@@ -351,19 +365,37 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
     console.log('\n  --- server log tail ---\n' + log.slice(-2200));
   }
   console.log('\n  ' + (results.length - failed.length) + '/' + results.length + ' checks passed');
-  if (failed.length) {
-    console.log('  FAILED: ' + failed.map((f) => f.name).join(' | '));
-    process.exit(1);
-  }
+  /* ترتیب مهم است: در حالتِ LEGACY، fail کردنِ یک چک می‌تواند یعنی «درختِ
+   * شکسته بازتولید نشد» — یعنی برعکسِ یک regression. پس شاخهٔ LEGACY باید
+   * قبل از شاخهٔ failed.length بیاید تا پیامِ verdict همیشه روشن باشد. */
   if (LEGACY) {
     /* پلاریتهٔ خروجی: درختِ شکسته باید exit≠0 بدهد تا اثباتِ RED ماشین-خوانا
        باشد. در حالتِ LEGACY سبز شدنِ همهٔ چک‌ها یعنی «باگ بازتولید شد»، نه
        «پروب سالم است» — پس پیامِ توضیحی می‌آید ولی خروج همچنان ۱ می‌ماند. */
-    console.log('  RED ON BROKEN TREE (expected — unbounded hang reproduced, B-PG-1 fix is load-bearing)');
+    const hangCheck = results.find((r) => /unbounded hang reproduced/.test(r.name));
+    const reproduced = !!(hangCheck && hangCheck.ok);
+    console.log('B-PG-PROBE VERDICT: FAIL mode=LEGACY broken-tree-hang-reproduced=' + reproduced);
+    if (reproduced) {
+      console.log('  RED ON BROKEN TREE (expected — unbounded hang reproduced, B-PG-1 fix is load-bearing)');
+    } else {
+      console.log('  WARNING: the broken tree did NOT reproduce the unbounded hang — the probe may be losing its load-bearing proof');
+      console.log('  FAILED: ' + failed.map((f) => f.name).join(' | '));
+    }
     process.exit(1);
   }
+  if (failed.length) {
+    /* F-2: verdict lineِ greppable — متمایز از NOT-RUN. این یعنی پروب واقعاً
+     * اجرا شد و یک regressionِ واقعی را دید. */
+    console.log('B-PG-PROBE VERDICT: FAIL mode=FIXED failed=' + failed.length);
+    console.log('  FAILED: ' + failed.map((f) => f.name).join(' | '));
+    process.exit(1);
+  }
+  console.log('B-PG-PROBE VERDICT: PASS mode=FIXED');
   console.log('  ALL GREEN — health/readiness are bounded and fail-closed under a runtime PG blackhole');
 })().catch((e) => {
+  /* خطایِ هارنس (نه regressionِ محصول) — کدِ متمایز ۲ تا اینکه CI بتواند
+   * آن را از FAIL واقعی جدا کند. همچنان non-zero. */
+  console.log('B-PG-PROBE VERDICT: ERROR harness-crash');
   console.error('PROBE ERROR:', e.stack || e);
   process.exit(2);
 });

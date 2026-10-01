@@ -50,6 +50,17 @@ const parsed = parseUrl(process.env.PAYESH_BPG_ADMIN_URL || process.env.PGURL ||
   || 'postgresql://postgres:123456@127.0.0.1:5432/postgres');
 const clientOpts = { host: parsed.host, port: parsed.port, user: parsed.user, password: parsed.password };
 
+/* B-PG-3/F-2: مسیرِ pg-client را اجباری می‌کنیم. PGURL/DATABASE_URL فقط برای
+ * parse کردنِ admin URL در لودِ ماژول لازم داشتیم؛ از این به بعد migrateUp و
+ * getAppliedMigrations از رویِ clientهایِ صریح با database=PROBE_DB کار می‌کنند.
+ * بدونِ این پاک‌سازی، روی میزبان‌هایی که psql نصب است (مثلِ runnerهای CI،
+ * که PGURL را در سطحِ job تنظیم می‌کنند) مقدارِ pgUrl غیر‌خالی می‌ماند و
+ * usePsql=true می‌شود — یعنی migrateUp از مسیرِ execِ psql می‌رود و wrapperِ
+ * تزریقِ crash هرگز اجرا نمی‌شود و پروب به‌جایِ تست کردنِ مسیرِ D-4،
+ * کاذب قرمز می‌شود. همه‌چیز از همین لحظه مشخص است. */
+delete process.env.PGURL;
+delete process.env.DATABASE_URL;
+
 /* ── شبیه‌سازیِ kill سختِ فرآیند ───────────────────────────────────
  * migrateUp فقط از client.query استفاده می‌کند، پس یک wrapper کافی است.
  * wrapper همه‌چیز را پاس می‌دهد تا ورژنِ KILL_VERSION: وقتی INSERT سطرِ
@@ -87,22 +98,43 @@ async function recreateDb() {
 (async () => {
   console.log('B-PG-3 mid-migration crash-recovery probe  (PROBE_LEGACY=' + (LEGACY ? '1' : '0') + ')');
 
+  /* F-2: قراردادِ verdictِ greppable. هر مسیرِ خروجِ زودهنگام باید خودش را
+   * به‌صورتِ NOT-RUN/FAIL معرفی کند تا runner و CI هرگز نتوانند یک پروبِ
+   * اجرا نشده را به‌عنوانِ سبز گزارش کنند. */
+  function notRun(reason) {
+    console.log('B-PG-PROBE VERDICT: NOT-RUN reason=' + String(reason).slice(0, 200));
+  }
+
   const files = discoverMigrationFiles();
   const killFile = files.find((f) => f.version === KILL_VERSION);
-  if (!killFile) { console.log('  SETUP FAILED: migration ' + KILL_VERSION + ' not found'); process.exit(1); }
+  if (!killFile) {
+    notRun('migration ' + KILL_VERSION + ' not found in the migrations directory');
+    console.log('  SETUP FAILED: migration ' + KILL_VERSION + ' not found');
+    process.exit(1);
+  }
 
   /* پیش‌نیاز: psql روی این میزبان غایب است — وگرنه مسیرِ psql اجرا می‌شود و
      این پروب مسیرِ pg-client را تست نمی‌کند. */
   let psqlAbsent = false;
   try { require('child_process').execFileSync('psql', ['--version'], { stdio: 'ignore' }); }
   catch (e) { psqlAbsent = true; }
-  check('precondition: psql binary absent — probe exercises the pg-client split path', psqlAbsent,
-    psqlAbsent ? '' : 'psql is on PATH; the pg-client recovery path would not run');
+  /* F-2: متغیرهای URL در لودِ ماژول پاک شدند (بالا)، پس pgUrl در migrateUp
+   * همیشه undefined است و usePssl رویِ هر میزبانی false می‌ماند — حتی رویِ
+   * runnerهای CI که psql نصب است. این check خودِ آن راست‌آزمایی می‌کند. */
+  check('precondition: pg-client split path forced (PGURL/DATABASE_URL absent from env, so usePsql stays false even where psql is installed)',
+    !process.env.PGURL && !process.env.DATABASE_URL,
+    (!process.env.PGURL && !process.env.DATABASE_URL) ? ''
+      : 'URL env still present — the psql path could take over: PGURL=' + String(process.env.PGURL) + ' DATABASE_URL=' + String(process.env.DATABASE_URL));
+  if (!psqlAbsent) {
+    console.log('  note: psql IS installed on this host — harmless, the URL env is cleared so the pg-client path is forced');
+  }
 
   /* ── SETUP: scratch DB ── */
   const admin = new Client(Object.assign({}, clientOpts, { database: 'postgres' }));
   try { await admin.connect(); }
   catch (e) {
+    notRun('cannot connect to postgres maintenance db (' + e.message
+      + ') — probe needs a live PostgreSQL cluster (PGURL/DATABASE_URL/PAYESH_BPG_ADMIN_URL)');
     console.log('  SETUP FAILED: cannot connect to postgres maintenance db (' + e.message + ')');
     console.log('  This probe needs a live PostgreSQL cluster (PGURL/DATABASE_URL/PAYESH_BPG_ADMIN_URL).');
     process.exit(1);
@@ -124,6 +156,8 @@ async function recreateDb() {
     if (!ctlOk) {
       try { const a = new Client(Object.assign({}, clientOpts, { database: 'postgres' })); await a.connect(); await dropDb(a); await a.end(); } catch (_) {}
       console.log('\n  ' + results.filter((r) => r.ok).length + '/' + results.length + ' checks passed');
+      console.log('B-PG-PROBE VERDICT: FAIL mode=' + (LEGACY ? 'LEGACY' : 'FIXED')
+        + ' reason=control migration chain failed on a fresh database (' + ctlErr + ')');
       process.exit(1);
     }
   }
@@ -251,17 +285,21 @@ async function recreateDb() {
   console.log('\n  ' + (results.length - failed.length) + '/' + results.length + ' checks passed');
   if (failed.length) {
     console.log('  FAILED: ' + failed.map((f) => f.name).join(' | '));
+    console.log('B-PG-PROBE VERDICT: FAIL mode=' + (LEGACY ? 'LEGACY' : 'FIXED') + ' failed=' + failed.length);
     process.exit(1);
   }
   if (LEGACY) {
     /* پلاریتهٔ خروجی: درختِ شکسته باید exit≠0 بدهد تا اثباتِ RED ماشین-خوانا
-       باشد. در حالتِ LEGACY سبز شدنِ چک‌ها یعنی «باگ بازتولید شد»، نه «پروب
-       سالم است» — پس پیامِ توضیحی می‌آید ولی خروج همچنان ۱ می‌ماند. */
+       باشد. در حالتِ LEGACY سبز شدنِ چک‌ها یعنی «باگ بازتولید شد»، نه
+       «پروب سالم است» — پس پیامِ توضیحی می‌آید ولی خروج همچنان ۱ می‌ماند. */
+    console.log('B-PG-PROBE VERDICT: FAIL mode=LEGACY broken-tree-rerun-failure-reproduced');
     console.log('  RED ON BROKEN TREE (expected — pre-D-4 detection gate cannot recover on a psql-absent host)');
     process.exit(1);
   }
+  console.log('B-PG-PROBE VERDICT: PASS mode=FIXED');
   console.log('  ALL GREEN — a mid-migration kill on the pg-client path is recovered on rerun with the correct checksum');
 })().catch((e) => {
+  console.error('B-PG-PROBE VERDICT: ERROR harness-crash');
   console.error('PROBE ERROR:', e.stack || e);
   process.exit(2);
 });

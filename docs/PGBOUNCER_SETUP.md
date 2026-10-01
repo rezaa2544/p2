@@ -125,7 +125,8 @@ PGBOUNCER_POOL_MODE=transaction
 PG_POOL_MIN=0
 PG_POOL_MAX=20
 PG_TIMEOUT_MS=3000
-PG_IDLE_TIMEOUT_MS=10000
+# توجه: PG_IDLE_TIMEOUT_MS خوانده نمی‌شود — idleTimeoutMillis رویِ ۳۰۰۰۰ ثابت
+# است. کران‌های PG همگی fail-safe تجزیه می‌شوند (server/infrastructure/bounded-ms.js).
 ```
 
 `server/db.js` همچنان از `pg.Pool` استفاده می‌کند. وقتی `PGBOUNCER=1` یا پورت `6432` در `DATABASE_URL` دیده شود، تنظیمات سازگار با PgBouncer فعال می‌شود:

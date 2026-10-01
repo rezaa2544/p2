@@ -33,6 +33,17 @@ const metrics = require('./metrics');
 /* آستانهٔ «کوئریِ کند» — فقط برای شمارش، نه برای تغییرِ رفتار. */
 const DB_SLOW_MS = (Number(process.env.PAYESH_DB_SLOW_MS) > 0)
   ? Number(process.env.PAYESH_DB_SLOW_MS) : 250;
+
+/* B-PG-REWORK/M12-F1 — کران‌های میلی‌ثانیه‌ایِ PG از یک parserِ مشترکِ fail-safe
+ * می‌گذرند (server/infrastructure/bounded-ms.js). قانون: undefined/empty/NaN/<=0
+ * ⇒ defaultِ کران‌دار، هرگز unlimited. به نقلِ جایی: pg سه جا کران را فقط با
+ * مقدارِ positive می‌شناسد (pg-pool:206 `!connectionTimeoutMillis`،
+ * client.js:167 `> 0`، client.js:702 `query_timeout || ...`) و `parseInt('0')`
+ * دقیقاً همان مقادیری می‌دهد که درایور آن‌ها را «بدونِ کران» می‌فهمد.
+ * تابعِ مشترک همچنین escape hatchِ LEGACY (PAYESH_PG_UNBOUNDED_PROBE، فقطِ
+ * غیرِ production) را نگه می‌دارد تا پروب بتواند درختِ pre-fix را بازتولید کند. */
+const { boundedMs } = require('./infrastructure/bounded-ms');
+
 function dbSeconds(startNs) {
   try { return Number(process.hrtime.bigint() - startNs) / 1e9; }
   catch (e) { return 0; }
@@ -66,7 +77,9 @@ const config = {
   connectionString: process.env.DATABASE_URL || null,
   min: parseInt(process.env.PG_POOL_MIN || '2', 10),
   max: parseInt(process.env.PG_POOL_MAX || '20', 10),
-  connectionTimeoutMillis: parseInt(process.env.PG_TIMEOUT_MS || process.env.PG_TIMEOUT || '3000', 10),
+  /* M12-F1: هر سه کران از مسیرِ boundedMs می‌گذرند، پس هیچ
+     undefined/empty/NaN/0/منفی نمی‌تواند pg را به حالتِ بدونِ کران ببرد. */
+  connectionTimeoutMillis: boundedMs('PG_TIMEOUT_MS', 3000, 'PG_TIMEOUT'),
   idleTimeoutMillis: 30000,
   /* B-PG-1 — query-level bound. connectionTimeoutMillis only covers
      *establishing* a connection; an already-leased client whose socket stays
@@ -78,10 +91,10 @@ const config = {
      health probes (symmetric with the Redis arm's commandTimeout in
      server/redis.js); queryTimeoutMs is the last-resort cap for every other
      request-scoped query. Both are env-overridable. */
-  queryTimeoutMs: parseInt(process.env.PAYESH_PG_QUERY_TIMEOUT_MS || process.env.PG_QUERY_TIMEOUT_MS || '10000', 10),
-  pingTimeoutMs: parseInt(process.env.PAYESH_PG_PING_TIMEOUT_MS || '2000', 10),
+  queryTimeoutMs: boundedMs('PAYESH_PG_QUERY_TIMEOUT_MS', 10000, 'PG_QUERY_TIMEOUT_MS'),
+  pingTimeoutMs: boundedMs('PAYESH_PG_PING_TIMEOUT_MS', 2000),
   keepAlive: process.env.PAYESH_PG_KEEPALIVE !== '0',
-  keepAliveInitialDelayMillis: parseInt(process.env.PAYESH_PG_KEEPALIVE_DELAY_MS || '10000', 10),
+  keepAliveInitialDelayMillis: boundedMs('PAYESH_PG_KEEPALIVE_DELAY_MS', 10000),
   /* Wave 10 — read replica (optional). When READ_DATABASE_URL is present a
      second read-only pool is opened and heavy GET-list reads route to it. */
   readConnectionString: process.env.READ_DATABASE_URL || null,

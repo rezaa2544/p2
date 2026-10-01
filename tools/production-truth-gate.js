@@ -14,6 +14,14 @@ const { spawn, spawnSync, execFileSync } = require('child_process');
 const { Client } = require('pg');
 const pgOutage = require('../tests/pg-outage-control');
 const gov = require('../server/infrastructure/phase6-governance');
+/* M12-F1: این gate در CI سبزِ لازم است (strict-verification.yml) و خودش
+   چند Client می‌سازد. هر کدام باید کران‌دار باشد، وگرنه یک PGِ یخ‌زده
+  CI را hang می‌دهد نه fail. */
+const { boundedMs } = require('../server/infrastructure/bounded-ms');
+const GATE_PG_OPTS = {
+  connectionTimeoutMillis: boundedMs('PG_TIMEOUT_MS', 10000),
+  query_timeout: boundedMs('PAYESH_PG_QUERY_TIMEOUT_MS', 60000)
+};
 
 const ROOT = path.join(__dirname, '..');
 const results = [];
@@ -73,7 +81,7 @@ function boot(port, env) {
 function kill9(proc) { try { if (proc) proc.kill('SIGKILL'); } catch (e) {} }
 
 async function pgOne(url, sql, params) {
-  const c = new Client({ connectionString: url });
+  const c = new Client(Object.assign({ connectionString: url }, GATE_PG_OPTS));
   await c.connect();
   const r = await c.query(sql, params || []);
   await c.end();
@@ -200,7 +208,7 @@ function walkJs(dir, visit, root) {
   chk('G2', 'هر migration دارای BEGIN و COMMIT است', txOk, txBad.join(',') || 'all transactional');
 
   const MIG = 'payesh_ptgmig';
-  const adm = new Client({ connectionString: BASE_URL });
+  const adm = new Client(Object.assign({ connectionString: BASE_URL }, GATE_PG_OPTS));
   await adm.connect();
   await adm.query('SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()', [MIG]).catch(() => {});
   await adm.query('DROP DATABASE IF EXISTS ' + MIG);
@@ -239,7 +247,7 @@ function walkJs(dir, visit, root) {
   /* ════════════ GATE 3 + 4 runtime / chaos ════════════ */
   console.log('\n════ GATE 3/4 — Runtime + Chaos');
   const DB = 'payesh_ptg';
-  const adm2 = new Client({ connectionString: BASE_URL });
+  const adm2 = new Client(Object.assign({ connectionString: BASE_URL }, GATE_PG_OPTS));
   await adm2.connect();
   await adm2.query('SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()', [DB]).catch(() => {});
   await adm2.query('DROP DATABASE IF EXISTS ' + DB);

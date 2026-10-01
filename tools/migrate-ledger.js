@@ -587,12 +587,20 @@ async function getStatus(client) {
 
 if (require.main === module) {
   const { Client } = require('pg');
+  /* M12-F1: همین مسیرِ production (CI + DEPLOYMENT_GUIDE rollback) باید
+     کران‌دار باشد. بدونِ این دو، یک PGِ یخ‌زده این ابزار را برای همیشه
+     معطل می‌کند (pg هر دو فیلد را فقط با مقدارِ positive می‌شناسد). */
+  const { boundedMs } = require('../server/infrastructure/bounded-ms');
   const pgUrl = process.env.DATABASE_URL || process.env.PGURL;
   if (!pgUrl) {
     console.error('FATAL: DATABASE_URL or PGURL environment variable is required');
     process.exit(1);
   }
-  const client = new Client({ connectionString: pgUrl });
+  const client = new Client({
+    connectionString: pgUrl,
+    connectionTimeoutMillis: boundedMs('PG_TIMEOUT_MS', 10000),
+    query_timeout: boundedMs('PAYESH_PG_QUERY_TIMEOUT_MS', 120000)
+  });
   const command = process.argv[2] || 'up';
 
   (async () => {

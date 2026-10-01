@@ -120,8 +120,10 @@ await db.query(
 PAYESH_WEIGHTED_PARTITIONING=1
 PAYESH_HEAVY_SCHOOL_THRESHOLD=1000
 PAYESH_SHARDS=primary-a:1,primary-b:1,primary-c:1,heavy-a:4
-DATABASE_READ_REPLICA_URLS=postgresql://payesh_ro:***@replica-a:6432/payesh,postgresql://payesh_ro:***@replica-b:6432/payesh
-PG_REPLICA_POOL_MAX=10
+# poolِ read-replica با READ_DATABASE_URL ساخته می‌شود (DATABASE_READ_REPLICA_URLS
+# و PG_REPLICA_POOL_MAX نام‌های قدیمی‌اند و کدی آن‌ها را نمی‌خواند).
+READ_DATABASE_URL=postgresql://payesh_ro:***@replica-a:6432/payesh
+READ_POOL_MAX=10
 ```
 
 فرمت JSON هم برای shardها پشتیبانی می‌شود:
