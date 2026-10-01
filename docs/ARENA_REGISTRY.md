@@ -110,3 +110,21 @@ External blind auditors are a **discovery layer** around the existing Atria/Herm
 For the Replit audit pinned to `6152a48add2ba8197c7c122133d9e2859e90711f`, the active candidate queue is R-A1..R-A4: class roster privacy/projection; Redis Cluster recovery after retry exhaustion; HA-only Redis cluster/sentinel classification/fallback; and destructive test-cleanup ownership.
 
 No external auditor can certify these findings. If an item remains disputed or high-impact after Atria reproduction, activate a targeted 16-view/Arena challenge rather than broad duplication.
+
+
+## 18-VIEW PANEL EXTENSION — 2026-10-01
+
+The Arena registry now recognizes two external discovery roles alongside the existing 16-view network.
+
+| Actor | Role | Authority | Primary scope |
+|---|---|---|---|
+| Replit | BLIND-DISCOVERY-AUDITOR | Discovery only | repository-wide independent defect discovery |
+| Bolt | CROSS-LAYER-ARCHITECTURE-CHALLENGER | Discovery/challenge only | cross-layer contracts and architecture gaps |
+
+The resulting **18-view panel** is activated selectively. All active reviewers receive one identical mission/context envelope and exact current SHA. Strategy and perspective may differ; facts, scope and acceptance criteria may not.
+
+The panel is not a voting body. Outputs are reconciled into an evidence matrix and then routed through reproduction, remediation and Hermes verification. Neither Replit nor Bolt can certify, close, or promote a gate.
+
+**Canonical chain:** Atria EXECUTE → Hermes VERIFY → targeted 16-view / Replit / Bolt challenge → ChatGPT RECONCILE/DECIDE.
+
+When the issue is critical or disputed, all 18 views may be activated. Otherwise use the smallest orthogonal subset that can materially increase information gain.
