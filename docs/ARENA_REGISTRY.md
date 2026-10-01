@@ -99,3 +99,14 @@ When a challenge is activated, the challenge packet may use:
 
 These are orthogonal helpers. None can certify the result. The final chain remains:
 Atria EXECUTE → Hermes VERIFY → targeted challenge/helpers → Hermes RE-VERIFY when material → ChatGPT RECONCILE/DECIDE.
+
+
+## EXTERNAL BLIND DISCOVERY OVERLAY — 2026-10-01
+
+External blind auditors are a **discovery layer** around the existing Atria/Hermes/Arena system:
+
+**Blind audit → deduplicate → Atria reproduce/remediate → Hermes independently verify → ChatGPT reconcile/decide.**
+
+For the Replit audit pinned to `6152a48add2ba8197c7c122133d9e2859e90711f`, the active candidate queue is R-A1..R-A4: class roster privacy/projection; Redis Cluster recovery after retry exhaustion; HA-only Redis cluster/sentinel classification/fallback; and destructive test-cleanup ownership.
+
+No external auditor can certify these findings. If an item remains disputed or high-impact after Atria reproduction, activate a targeted 16-view/Arena challenge rather than broad duplication.
