@@ -977,3 +977,33 @@ Then, subject to results and collision boundaries:
 - B-04, B-05, B-06, B-03, R-A1, R-A3, R-A4, B-07.
 
 External findings are candidates, not verified defects. Atria owns remediation only after controlled reproduction confirms the invariant failure; Hermes independently verifies material fixes; ChatGPT performs final reconciliation.
+
+
+## HERMES MATURITY GATE + MANDATORY HANDOFF LOOP — 2026-10-02
+
+The M12 B-PG verification established the current operating maturity of Hermes sufficiently for normal Payesh work to proceed, while preserving independent verification and continuous self-audit.
+
+### Mandatory chain
+**ChatGPT (Control Plane) → Atria (Execute/Remediate/Discover) → Hermes (Independent Verify) → ChatGPT (Reconcile/Decide) → Next Mission**.
+
+Atria must state the Hermes handoff in every final report. Hermes must return its verification result to ChatGPT. ChatGPT is the final reconciler/decision-maker. This handoff is mandatory and must not be skipped for convenience.
+
+### Hermes verification lessons now treated as reusable gates
+1. Never verify from a stale local HEAD; bind all material claims to the correct current repository SHA.
+2. Verify implementation and regression protection separately.
+3. For critical probes, test both fixed behavior and a broken/legacy arm where false-green is plausible.
+4. Distinguish live runtime, static source, synthetic, historical and environment evidence.
+5. Use discriminating experiments when two execution paths or hypotheses could explain the same symptom.
+6. Record environment-specific defects separately from product defects, but do not discard reproducible path failures.
+7. A successful implementation without regression coverage remains a coverage gap, not a complete safety property.
+
+### Immediate M12 follow-up candidates
+- Add regression protection for F-3 canary TTL/backoff invalid values and wire it into CI.
+- Assess/migrate tools/delta-load-test.js to boundedMs.
+- Reproduce and remediate the non-psql migration-012 execution-path defect on supported platforms.
+- Consider a configurable B-PG probe port for local portability without weakening CI.
+
+These are follow-up engineering items; they do not alter the already verified F-1/F-2 verdicts.
+
+### Permanent process-analyzer rule
+Every mission must end with an explicit check for Atria/Hermes/reviewer weaknesses: wrong SHA, unsupported claim, insufficient evidence, false-green exposure, missed alternate path, incomplete regression, scope error, ambiguous reporting, or repeated failure to apply an existing lesson. New recurring weaknesses must be converted into reusable project methodology and measured on subsequent missions.
