@@ -3158,3 +3158,47 @@ A recent Hermes infrastructure session adds reusable verification lessons:
 - local agent fixes are not project fixes until repository synchronization is evidenced.
 
 These are process/verification prerequisites. They do not promote Hermes' session report or its local fixes to VERIFIED status.
+
+
+## 136. HERMES INDEPENDENT-VERIFICATION MATURITY / HANDOFF CONTRACT — 2026-10-02
+
+### 136.1 Current maturity state
+Hermes has demonstrated sufficient operational maturity for the Payesh execution loop through an independent M12 B-PG verification. The evidence included correct current-HEAD selection after detecting a stale local checkout, live PostgreSQL runtime probes, legacy/broken behavior reproduction, CI/false-green inspection, discriminating experiments, and explicit separation of implementation verification from regression-coverage gaps.
+
+This is a readiness/maturity signal, not a blanket certification. Hermes remains subject to independent reconciliation by ChatGPT on every material mission.
+
+### 136.2 Mandatory handoff chain
+The project execution chain is permanently:
+**ChatGPT → Atria → Hermes → ChatGPT**.
+
+- Atria executes, remediates, discovers and reports.
+- Hermes independently verifies and challenges Atria's claims.
+- Hermes must return its verification report to ChatGPT.
+- ChatGPT reconciles the report against the current repository and decides closure/status/next mission.
+
+No report may silently skip the next link. No Atria or Hermes report alone constitutes final project closure.
+
+### 136.3 Hermes verification gates learned from M12
+For material verification, Hermes should explicitly:
+- bind evidence to the correct current SHA;
+- distinguish target SHA from local workspace/branch SHA;
+- verify source, runtime, failure/recovery and regression dimensions separately;
+- challenge false-green paths with negative/broken-tree tests where applicable;
+- use discriminating experiments to isolate competing hypotheses;
+- classify environment/platform-specific behavior separately from product defects while preserving reproducible failures;
+- mark implementation as verified without claiming regression protection when dedicated coverage is absent;
+- disclose limitations and unmerged local changes explicitly.
+
+### 136.4 Permanent agent self-analysis
+Atria, Hermes and any reviewer must continuously inspect their own process. When a weakness appears, record:
+**agent → weakness → evidence → root cause → reusable rule/checklist → next application → recurrence result**.
+
+A repeated weakness is a process defect even if the product code remains correct. Such a weakness must be promoted into the appropriate canonical methodology/skill/checklist when it is durable.
+
+### 136.5 M12 open coverage/follow-up signals
+- F-3 implementation is verified but lacks dedicated regression/CI protection.
+- tools/delta-load-test.js bypasses boundedMs outside production.
+- tools/migrate-ledger.js non-psql migration-012 path has a reproducible platform/execution-contract issue.
+- B-PG probes use a fixed local port 5432; consider an environment override for portability.
+
+These are follow-up signals from Hermes' verification and are not by themselves final closure decisions for broader project defects.
