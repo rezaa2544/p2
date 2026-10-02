@@ -257,3 +257,22 @@ Replit R-A1..R-A4 remain the canonical external blind-discovery queue. Bolt F-05
 
 ### Execution lock
 First controlled reproduction batch should prioritize B-01, B-02 and R-A2 because they are P1 and require different runtime evidence. No external report is a closure or certification. All items remain subject to current-HEAD reproduction and Hermes verification.
+
+
+## 2026-10-02 — Hermes M12 B-PG independent verification receipt
+
+Hermes independently verified Atria's M12 B-PG rework against origin/main at `5712020b5cd3b35e584082b11cd9ad530e5116a0` after detecting that its original local checkout was 505 commits behind. Verification therefore used a clean copy derived from the correct origin/main rather than the stale local HEAD.
+
+### Verified
+- **F-1 PG timeout bounding — VERIFIED:** live PostgreSQL 17, 30/30 fixed checks; legacy broken behavior reproduced for zero/negative/non-numeric values; production escape-hatch behavior checked.
+- **F-2 B-PG CI wiring / false-green defense — VERIFIED:** explicit critical-orphan CI wiring, verdict contract, NOT-RUN/ERROR handling, negative legacy arm, and live 11/11 + 9/9 + 30/30 probe results.
+
+### Verified implementation, open coverage gap
+- **F-3 canary TTL/backoff — VERIFIED as implementation; REVALIDATION/COVERAGE GAP:** runtime behavior is bounded and boolean under invalid inputs, but there is no dedicated regression test and no dedicated CI step protecting it. It must not be described as regression-protected until coverage exists.
+
+### New follow-up candidates from Hermes
+- **H-M12-01 P3 — delta-load-test bounded-ms bypass:** non-production harness still parses PG_TIMEOUT_MS directly; migrate to boundedMs for invariant consistency.
+- **H-M12-02 P2 candidate — migration-012 non-psql path:** on supported platforms without psql in PATH, the Node path wraps an internally-committing procedure in an explicit transaction and reproducibly fails. Requires current-head reproduction and platform-contract decision.
+- **H-M12-03 P3 — B-PG probe portability:** probes hard-code port 5432; consider a safe environment override for local execution while preserving CI defaults.
+
+These follow-ups are discovery/revalidation candidates, not final closure decisions. They enter the normal Atria remediation → Hermes verification → ChatGPT reconciliation chain.
