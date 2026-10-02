@@ -601,3 +601,29 @@ Canonical detailed reconciliation: `docs/audit/EXTERNAL_AUDIT_RECONCILIATION_202
 ### Current control-plane order
 **External discovery → deduplicate → controlled reproduction → Atria remediation → Hermes independent verification → ChatGPT reconcile/decide.**
 No external auditor can close a finding.
+
+
+## HERMES MATURITY / M12 INDEPENDENT VERIFICATION — 2026-10-02
+
+Hermes completed the independent verification of Atria's B-PG M12 rework on repository `origin/main` at `5712020b5cd3b35e584082b11cd9ad530e5116a0`. The key process result is that Hermes detected a stale local HEAD (505 commits behind origin/main), rejected it as an invalid verification basis, created a clean working copy from origin/main, and bound its evidence to the correct repository state.
+
+### Verification result
+- F-1 PG timeout bounding: **VERIFIED** — live PostgreSQL 17, 30/30 fixed checks; legacy broken behavior reproduced for zero/negative/non-numeric inputs; production escape hatch behavior checked.
+- F-2 B-PG CI wiring / false-green defense: **VERIFIED** — explicit critical-orphan CI steps, greppable verdict contract, NOT-RUN/ERROR semantics, negative legacy arm, and 11/11 + 9/9 + 30/30 live probe results.
+- F-3 canary TTL/backoff handling: **VERIFIED as implementation**, but **coverage gap remains** — no dedicated regression test and no dedicated CI step currently protects TTL/backoff invalid-value behavior.
+
+### Additional discoveries from the verification
+- `tools/delta-load-test.js` still parses `PG_TIMEOUT_MS` directly; it is a non-production test harness but should converge on `boundedMs` for invariant consistency.
+- `tools/migrate-ledger.js` has a Windows/macOS/no-psql execution-path incompatibility for migration 012 because the non-psql path wraps a procedure containing an internal COMMIT in an explicit transaction. This is a reproducible environment/path defect candidate and needs controlled remediation.
+- B-PG probes hard-code port 5432, reducing local portability; CI is unaffected. An environment override should be considered.
+
+### Hermes process-learning signal
+This verification is strong evidence of mature verification behavior: source/current-HEAD binding, independent reproduction, controlled discriminating experiments, false-green defense, explicit evidence boundaries, discovery of out-of-scope risks, and refusal to treat a working implementation as regression-protected when coverage is absent. This is a **maturity signal, not a certification that Hermes can never fail**.
+
+### Permanent handoff contract
+The operational chain is mandatory and must remain unbroken:
+**ChatGPT → Atria → Hermes → ChatGPT**.
+Atria's final report must explicitly instruct that it is handed to Hermes; Hermes must return its independent verification report to ChatGPT; ChatGPT performs final repository reconciliation and decides the next mission. No agent report alone closes a mission.
+
+### Permanent agent analyzer
+During every mission, the control plane and agents must analyze not only Payesh defects but also their own process weaknesses. Any recurring reasoning/evidence/workflow weakness must become a reusable rule/checklist/skill, be applied on the next matching mission, and be checked for recurrence. Agent weakness records must distinguish new, recurring, corrected, and unresolved process defects.
