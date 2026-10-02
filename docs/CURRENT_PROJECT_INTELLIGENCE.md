@@ -482,3 +482,106 @@ Agent mistake / false assumption
 Capability → Concrete Payesh use-case → Integration point → Security/operational risk → Overlap check → Measured value → Owner
 
 اگر این زنجیره کامل نشود، capability فقط در knowledge catalog می‌ماند و به dependency یا control-plane دوم تبدیل نمی‌شود.
+
+
+## EXTERNAL BLIND DISCOVERY INTEGRATION — REPLIT — 2026-10-01
+
+A read-only external blind audit was reviewed against pinned SHA `6152a48add2ba8197c7c122133d9e2859e90711f`. It is **discovery evidence only**, not certification. The audit had no live PostgreSQL/Redis environment; source/synthetic findings therefore require current-head reproduction before runtime promotion.
+
+### New candidate queue
+- **R-A1 — Class roster privacy/projection:** `GET /api/v1/classes/:id` may expose enrolled-student names and masked national-ID data to student/parent callers. **REVALIDATION_REQUIRED** pending route authorization, intended product contract, projection policy and live role-matrix verification.
+- **R-A2 — Redis Cluster recovery after retry exhaustion:** bounded cluster retries may leave the client unusable without recreation/recovery. **REVALIDATION_REQUIRED / STRONGLY_SUPPORTED**; requires isolated live cluster outage→recovery evidence.
+- **R-A3 — HA-only Redis configuration classification:** `REDIS_CLUSTER_NODES` / `REDIS_SENTINELS` classification differs between application production/shared-backend detection and Redis-module production detection, potentially enabling an unintended memory-fallback path. **REVALIDATION_REQUIRED**; requires configuration matrix and runtime boot/failure evidence.
+- **R-A4 — destructive test cleanup ownership:** broad `/tmp/payesh-*` cleanup in `scripts/run-all-tests.sh` can remove unrelated scratch directories. **SOURCE-CONFIRMED SAFETY DEFECT / remediation candidate**; narrow ownership/namespace and add a regression safety check.
+
+### Known repeats intentionally not duplicated
+Replit also flagged the existing office-scope weakness, conditional OTP-bypass configuration risk and CI/test-timeout gaps. These remain in existing defect/root-cause programs.
+
+### Required next controlled work
+Reproduce/classify R-A1..R-A4 first; fix only confirmed defects; add regression tests; preserve exact-SHA evidence. Because the queue includes privacy/security/Redis-recovery/test-integrity concerns, Hermes checkpoint verification is mandatory after material Atria remediation.
+
+### External-audit evidence rule
+External blind auditors are discovery layers, not certifiers. External severity labels or "confirmed" wording do not override the project's evidence hierarchy when live runtime evidence is absent.
+
+
+## 18-VIEW DISCOVERY PANEL — REPLIT + BOLT — 2026-10-01
+
+برای افزایش استقلال کشف نقص، دو auditor بیرونی به شبکهٔ کشف اضافه شدند. این دو «عامل رأی‌دهنده» یا certifier نیستند؛ هر دو discovery-only هستند.
+
+### نقش‌های رسمی
+- **Replit — BLIND-DISCOVERY-AUDITOR:** ممیزی مستقلِ repository بدون اتکا به گزارش‌های قبلی در مرحلهٔ blind؛ تمرکز بر کشف نقص‌های پنهان، مسیرهای جایگزین، configuration contradictions، security/privacy، reliability/recovery، false-green و cross-layer gaps.
+- **Bolt — CROSS-LAYER-ARCHITECTURE-CHALLENGER:** چالش مستقلِ قرارداد بین لایه‌ها؛ تمرکز بر Route → Middleware → Policy → Service → DB/Redis → Worker/Queue → Cache → Observability → CI/Test و کشف شکاف‌هایی که در یک لایه منفرد دیده نمی‌شوند.
+
+### شبکهٔ 18-view
+وقتی یک موضوع مهم به بررسی گسترده نیاز دارد، 11 Arena + 5 ChatGPT views + Replit + Bolt می‌توانند یک **18-view Discovery Panel** تشکیل دهند. همهٔ reviewers یک Task Envelope یکسان دریافت می‌کنند؛ فقط زاویهٔ reasoning متفاوت است.
+
+18-view به معنی «18 رأی» نیست. نتیجه از Evidence Matrix، reproduction، current-HEAD validation و independent verification به‌دست می‌آید. consensus صرفاً signal است و جای evidence را نمی‌گیرد.
+
+### Activation modes
+- **Normal:** ChatGPT → Atria → Hermes.
+- **Deep Investigation:** Atria/Hermes + Replit/Bolt + subset هدفمند از 16-view.
+- **Critical / Disputed:** هر 18 view با همان task envelope؛ سپس deduplication، reproduction، Atria remediation و Hermes verification.
+
+### Separation of duties
+Replit/Bolt در blind discovery حق certify، close defect یا تغییر repository را ندارند. Finding آن‌ها باید به:
+DISCOVER → NORMALIZE → DEDUPLICATE → REPRODUCE → ROOT-CAUSE → FIX → REGRESSION → HERMES VERIFY
+برود.
+
+### Disagreement handling
+High agreement می‌تواند اولویت reproduction را بالا ببرد؛ high disagreement باید به بررسی عمیق‌تر و evidence بیشتر منجر شود؛ هیچ‌کدام به‌تنهایی حکم نهایی نیست.
+
+## AUTOMATIC REPOSITORY VALUE-CAPTURE CONTRACT — 2026-10-01
+
+هر بار که در جریان تحلیل، مأموریت، گزارش عامل‌ها، تحقیق، یا تصمیم‌گیری پروژه یک مورد **باارزش و ماندگار** شناسایی شود، باید آن را بدون انتظار برای دستور جداگانه، در مناسب‌ترین محل canonical مخزن ثبت و همگام کرد.
+
+### What counts as valuable
+- قانون/Invariant یا قاعده‌ای که در مأموریت‌های بعدی reusable است.
+- تصمیم معماری/اجرایی یا تغییر مهم در مدل عملیاتی.
+- finding، root cause، lesson، regression pattern یا anti-pattern که احتمال تکرار دارد.
+- evidence/provenance مهم، همراه با SHA و محدودیت اعتبار آن.
+- تغییر phase/gate/priority/ownership یا ترتیب مأموریت‌ها.
+- capability/skill/tooling که واقعاً برای Payesh ارزش عملیاتی پیدا کرده است.
+- اصلاح مهم در نقش عامل‌ها، قرارداد Atria/Hermes/16-view یا روش verification.
+- هر واقعیت جدیدی که برای جلوگیری از سردرگمی، دوباره‌کاری یا تصمیم اشتباه در آینده لازم است.
+
+### Placement rule
+محتوا باید **در جای مربوط به خودش** ثبت شود، نه در یک گزارش عمومی انباشته:
+- current truth / operating model → همین سند.
+- mission sequencing / next work → `CURRENT_WORK_EXECUTION_PLAN.md`.
+- execution prerequisites / reusable rules → `PREQUISITES.md`.
+- agent/view ownership → `ARENA_REGISTRY.md`.
+- roadmap/phase/gate changes → roadmap canonical.
+- defect/finding evidence → canonical audit/defect register موجود.
+- lessons/skills → existing lessons/skill canonical document.
+- فقط اگر هیچ محل canonical مناسب وجود ندارد، سند جدید ساخته شود و در `DOCS_INDEX.md` ثبت و حداقل یک ارجاع متقابل دریافت کند.
+
+### Automatic synchronization rule
+ChatGPT به‌عنوان Control Plane باید در هر پاسخ/mission این سؤال را internally بررسی کند: **«آیا چیزی هست که اگر فردا این گفتگو از دسترس خارج شود، برای ادامه صحیح پروژه لازم باشد؟»** اگر پاسخ مثبت است، آن knowledge باید همان زمان در repository canonical ثبت شود؛ در صورت امکان با SHA/evidence/reference.
+
+ثبت repository به معنی certification نیست. هر claim همچنان تابع evidence hierarchy و current-HEAD rules است.
+
+
+
+## HERMES ENGINEERING UPGRADE — INFRASTRUCTURE / LEARNING EVIDENCE — 2026-10-02
+
+Latest Hermes report is recorded as **agent-reported evidence**, not repository certification. Hermes reported a successful Windows/Docker infrastructure bootstrap with 118 packages, 547/547 smoke tests, 35/35 build tests, 4/4 mutation tests, PostgreSQL migrations/tables brought up, and multiple infrastructure suites executed. These claims remain bounded to Hermes' reported environment/session until independently reproduced or otherwise evidenced on the current repository HEAD.
+
+### Durable engineering lessons
+- PostgreSQL migration 012 contains an internal COMMIT pattern that is incompatible with wrapping the migration in the Node pg client transaction model; the migration path therefore needs an explicit execution-contract distinction between transaction-wrapped migrations and psql/native execution.
+- A psql invocation that places the database/connection string as a positional argument before option flags can cause later tokens to be treated as extra arguments rather than options. PostgreSQL documents that a non-option argument is interpreted as the database name, while `-d` explicitly supplies the database/connection string; `ON_ERROR_STOP` is what makes script errors terminate with a non-zero status. citeturn0search0turn0search2
+- Migration/recovery tooling must test both **stderr/error visibility** and **process exit status**; printed SQL errors are not sufficient evidence that the automation layer observed failure.
+- Environment contamination between sessions can change test results. Clean-environment execution is therefore a reusable prerequisite for infrastructure/test claims.
+- Platform-specific filesystem/signal behavior must be separated from product defects and covered by explicit portability checks.
+- Date/day-dependent tests are a test-design defect candidate: tests should control/freeze time or explicitly encode the intended temporal fixture rather than depend on the host calendar.
+
+### Current unmerged Hermes work / findings
+Hermes reported local changes to `tools/migrate-ledger.js` and `scripts/run-all-tests.sh`, but explicitly stated that no change was pushed to main. Therefore these changes are **NOT current repository truth** and must not be treated as merged remediation.
+
+Reported migration fix: invoke psql with options before an explicit `-d <connection-string>`, so `ON_ERROR_STOP=1` is actually parsed. This is consistent with PostgreSQL's documented CLI semantics. citeturn0search2turn0search6
+
+Reported additional finding: two smoke tests are sensitive to the host day-of-week. This is recorded as a candidate test-integrity defect pending source/current-head verification.
+
+### Hermes learning/behavior signal
+Compared with earlier Hermes checkpoints, this report shows stronger evidence discipline: it explicitly distinguished environment/setup problems from project defects, identified a concrete root cause instead of stopping at a symptom, used controlled variants to isolate the psql argument-order behavior, reran regression suites after the local change, and disclosed that its fixes were not pushed. It also converted operational observations (environment leakage, migration execution contract, platform differences) into reusable lessons. This is a positive process change, but it is an **observed behavioral improvement from the report**, not a certification that Hermes is fully upgraded.
+
+The reported `168 broken references`, `98 skills`, and other inventory counts remain self-reported until independently checked against the actual workspace/repository.

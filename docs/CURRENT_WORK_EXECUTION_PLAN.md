@@ -849,3 +849,116 @@ scope closed + current-head bound + failure behavior checked + false-green check
 - Scientific Skills: برای analytics/research/evidence-heavy intelligence missions.
 - Cybersecurity Skills: برای security review، threat-informed verification و defensive playbooks.
 - Harness catalog: برای periodic capability discovery و ارتقای harness، نه برای ایجاد dependency.
+
+
+## NEXT DISCOVERY QUEUE — REPLIT BLIND AUDIT — 2026-10-01
+
+A read-only external blind audit produced four non-duplicate candidate areas. They are a **future controlled remediation/verification queue**, not closed defects.
+
+### Mission R-A — reproduce before repair
+**Owner:** Atria executor; **Verifier:** Hermes; **Final authority:** ChatGPT.
+
+1. **R-A1 Class roster privacy/projection** — trace student/parent authorization, school/class ownership, response projection and intended privacy contract; reproduce with the real role matrix before changing behavior.
+2. **R-A2 Redis Cluster recovery** — reproduce retry exhaustion, client state, application error handling and recovery/recreation after Redis becomes healthy; prefer isolated live cluster evidence.
+3. **R-A3 HA-only Redis classification/fallback** — build a matrix for URL, cluster-node and sentinel modes; verify boot gating, production classification, Redis initialization failure and memory fallback on positive/negative paths.
+4. **R-A4 test cleanup safety** — verify ownership of `/tmp/payesh-*`; make cleanup run-owned and add a regression proving unrelated scratch data survives.
+
+### Required mission contract
+- Freeze/report actual current HEAD before execution.
+- Reproduce/classify each item as `CONFIRMED / FALSE POSITIVE / CONDITIONAL / REVALIDATION_REQUIRED` before editing.
+- Fix only confirmed defects or explicitly approved hardening.
+- Add regression coverage for every accepted fix.
+- Exercise alternate paths/configurations, not only the reported path.
+- Preserve timeout/no-hang and false-green defenses.
+- Separate source, runtime, environment and limitation evidence.
+- No broad certification follows from this mission alone.
+- Hermes independently verifies material remediation on the same current HEAD.
+
+### Existing-known-finding rule
+Office scope, conditional OTP bypass and CI timeout are already registered; update existing records/evidence instead of creating duplicates.
+
+### Queue ordering
+R-A1/R-A2/R-A3 are security/privacy/reliability-sensitive and form the first controlled batch. R-A4 may run separately if collision boundaries are clear. Do not overlap Atria remediation with Arena/16-view implementation on the same invariant.
+
+
+## 18-VIEW DISCOVERY / CHALLENGE MODEL — 2026-10-01
+
+مدل عملیاتی نهایی برای مواردی که نیاز به پوشش گسترده دارند:
+
+**ChatGPT Control Plane → Mission Envelope → Discovery Panel → Evidence Matrix → Atria Reproduce/Remediate → Hermes Independent Verify → ChatGPT Reconcile/Decide → Canonical Docs**
+
+### Composition
+- 11 Arena views: specialist/adversarial reasoning.
+- 5 ChatGPT views: architecture, security, backend/infra, frontend/intelligence/UX, QA/release/evidence.
+- Replit: blind repository-wide discovery.
+- Bolt: cross-layer architecture/contract challenge.
+
+### Common Task Envelope
+همهٔ اعضای فعال یک mission باید دقیقاً این موارد را مشترک دریافت کنند:
+1. question/mission؛
+2. exact current HEAD/SHA؛
+3. scope/non-scope؛
+4. evidence boundary؛
+5. invariants/acceptance criteria؛
+6. known limitations؛
+7. output contract.
+تنها reasoning strategy و زاویهٔ بررسی متفاوت است.
+
+### Evidence Matrix
+برای هر mission گسترده، یافته‌ها در چهار وضعیت تحلیلی جمع می‌شوند:
+- consensus signals؛
+- disagreement/contradiction؛
+- blind-spot candidates؛
+- evidence-backed findings.
+هیچ‌کدام از سه مورد اول بدون reproduction و evidence current-head به certification تبدیل نمی‌شود.
+
+### Cost / activation rule
+18-view panel پیش‌فرض هر mission نیست. فقط برای security/data-integrity/privacy، P0/P1، معماری مبهم، recurrence، evidence gap یا اختلاف معنادار فعال می‌شود. کوچک‌ترین subset مؤثر اولویت دارد و فقط در صورت نیاز به 18-view کامل گسترش می‌یابد.
+
+### Hard separation
+Replit و Bolt discovery-only هستند؛ Atria executor/remediator؛ Hermes verifier؛ ChatGPT final reconciler/decision-maker. هیچ رأی‌گیری، score یا تعداد agent جای evidence را نمی‌گیرد.
+
+## AUTOMATIC VALUE CAPTURE / REPOSITORY SYNC — 2026-10-01
+
+این یک control-plane rule دائمی است: ارزش ماندگار نباید فقط در conversation باقی بماند.
+
+### Mandatory behavior
+در پایان هر تحلیل، mission، report reconciliation یا تصمیم مهم، ChatGPT باید ارزش جدید را شناسایی و **خودکار** به محل canonical مربوطه در repository منتقل کند؛ کاربر لازم نیست برای هر مورد جداگانه دستور «در مخزن ثبت کن» بدهد.
+
+### Capture triggers
+ثبت خودکار لازم است وقتی مورد جدید یکی از این‌ها باشد:
+1. invariant / reusable engineering rule؛
+2. root cause / recurring defect pattern / lesson؛
+3. mission result یا evidence boundary که بر تصمیم بعدی اثر می‌گذارد؛
+4. phase, gate, priority, ownership یا execution-order change؛
+5. capability/skill/tool integration decision؛
+6. Atria/Hermes/16-view operating rule یا verifier lesson؛
+7. current-head synchronization fact؛
+8. هر تصمیم یا واقعیتی که حذف شدنش باعث تکرار کار یا خطای تصمیم‌گیری شود.
+
+### Placement and minimality
+اولویت با **ویرایش سند canonical موجود** است. گزارش جدید فقط وقتی ساخته شود که نوع محتوا واقعاً سند مستقل بخواهد. هر سند جدید باید در `DOCS_INDEX.md` ثبت و به حداقل یک سند canonical دیگر متصل شود.
+
+### Delivery rule
+ثبت باید شامل حداقل context لازم، تاریخ، وضعیت و در صورت مرتبط بودن exact SHA / evidence boundary باشد. «ثبت شد» فقط وقتی مجاز است که تغییر واقعاً در remote repository نوشته شده باشد.
+
+### Control-plane check
+قبل از پایان هر mission این checklist اجرا شود:
+- [ ] ارزش ماندگار استخراج شد.
+- [ ] محل canonical درست انتخاب شد.
+- [ ] duplicate / contradiction با اسناد موجود بررسی شد.
+- [ ] status و evidence boundary روشن است.
+- [ ] remote repository synchronization انجام شد یا blocker صریح ثبت شد.
+
+
+
+## HERMES FOLLOW-UP / CURRENT LEARNING SIGNAL — 2026-10-02
+
+Hermes' latest infrastructure session produced a new controlled follow-up queue:
+1. Verify migration-012 execution contract and the reported psql exit-code/option-order defect on current main.
+2. Verify the reported migration-012 crisis-recovery failure and its remediation path.
+3. Verify the day-of-week-sensitive smoke tests and replace calendar dependence with deterministic time fixtures if confirmed.
+4. Re-run affected infrastructure suites under a clean environment and record platform-specific limitations separately.
+5. Treat Hermes' local `tools/migrate-ledger.js` and `scripts/run-all-tests.sh` edits as unmerged until a repository commit proves otherwise.
+
+No remediation is considered current until it is present on the repository current HEAD and passes the normal Atria → Hermes → ChatGPT evidence chain.

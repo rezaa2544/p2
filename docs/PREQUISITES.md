@@ -3093,3 +3093,68 @@ PG-unreachable یک `NOT-RUN`ی با exit 1 است، هرگز سبزِ سایل�
 | negative-test harness (mutation) | green→reject، hang→reject، RED واقعی→pass |
 | js-yaml روی `node.js.yml` | 62 step، ۴ B-PG step حاضر |
 
+## EXTERNAL BLIND AUDIT / DISCOVERY PREREQUISITES — 2026-10-01
+
+External repository audits are **candidate discovery evidence**, never certification. Before promotion: pin audited SHA/environment; distinguish static, synthetic and live evidence; reproduce material findings on current main; deduplicate against canonical registers; require Hermes verification for privacy/security/tenant/Redis-recovery/data-integrity/test-integrity findings; retain explicit false-positive/conditional dispositions where useful.
+
+For the Replit audit pinned to `6152a48add2ba8197c7c122133d9e2859e90711f`, no live PG/Redis infrastructure was available. Therefore R-A2/R-A3 require runtime revalidation and R-A1 requires product-contract/role-matrix verification. R-A4 is source-confirmed as a cleanup-safety concern and should receive bounded regression coverage.
+
+
+## EXTERNAL BLIND AUDIT + 18-VIEW PANEL CONTRACT — 2026-10-01
+
+### Replit
+**Role:** BLIND-DISCOVERY-AUDITOR  
+**Authority:** discovery only  
+**Default mode:** read-only, independent of prior reports during blind phase  
+**Primary value:** repository-wide hidden defect discovery and alternate-path/configuration analysis.
+
+### Bolt
+**Role:** CROSS-LAYER-ARCHITECTURE-CHALLENGER  
+**Authority:** discovery/challenge only  
+**Default mode:** read-only, independent challenge  
+**Primary value:** detecting contract gaps across route/auth/policy/service/data/cache/worker/observability/test boundaries.
+
+### 18-view challenge rules
+1. Identical task envelope for every active reviewer.
+2. Current HEAD is pinned before analysis.
+3. Static, synthetic and live evidence must be labeled separately.
+4. Historical reports are not current proof.
+5. Reviewer count is not evidence strength.
+6. Findings from external auditors must be reproduced before promotion.
+7. Security/privacy/tenant/Redis-recovery/data-integrity/test-integrity findings require Hermes verification after material remediation.
+8. No blind auditor may directly close a defect or certify a gate.
+9. Disagreement is a signal for investigation, not a vote.
+10. Keep the smallest effective reviewer set; activate all 18 only when information gain justifies the cost.
+
+### Standard panel pipeline
+**DISCOVER → NORMALIZE → DEDUPLICATE → CONTRADICTION REVIEW → REPRODUCE → ROOT-CAUSE → REMEDIATE → REGRESSION → HERMES VERIFY → CHATGPT RECONCILE/DECIDE**
+
+### Evidence statuses
+External discovery may use: **CONFIRMED / LIKELY / CONDITIONAL / POSSIBLE / HYPOTHESIS / FALSE POSITIVE**. Project closure uses the canonical execution statuses only: **VERIFIED / FIXED-SCOPED / REVALIDATION_REQUIRED / NOT VERIFIED / UNKNOWN / BLOCKED / FAIL**.
+
+## AUTOMATIC KNOWLEDGE-PERSISTENCE PREREQUISITE — 2026-10-01
+
+Conversation is not the project memory of record. Any reusable project knowledge discovered during execution must be persisted to the repository at the earliest appropriate point.
+
+**Required behavior:** ChatGPT/control plane automatically captures durable value and places it in the correct canonical document. No separate user command is required.
+
+**Minimum capture set:** invariants, root causes, recurring lessons, important evidence boundaries, mission/phase/gate changes, ownership changes, reusable skills, capability decisions, and operating-contract changes.
+
+**Placement:** update an existing canonical source first; create a new document only when necessary, then register it in `DOCS_INDEX.md` and add a cross-reference.
+
+**Evidence rule:** persistence records knowledge; it does not certify it. Current-HEAD evidence, runtime proof and verification status remain authoritative.
+
+
+
+## HERMES LEARNING / ENGINEERING-DISCIPLINE PREREQUISITE — 2026-10-02
+
+A recent Hermes infrastructure session adds reusable verification lessons:
+- clean-environment execution is required when environment variables can leak between sessions;
+- migration tooling must validate process exit status, not only visible SQL errors;
+- PostgreSQL CLI option ordering/explicit `-d` connection semantics must be tested on supported platforms;
+- migration recovery must test partial-state and already-applied branches;
+- platform-specific filesystem/signal behavior must be classified separately from product defects;
+- date-sensitive tests must use deterministic temporal fixtures;
+- local agent fixes are not project fixes until repository synchronization is evidenced.
+
+These are process/verification prerequisites. They do not promote Hermes' session report or its local fixes to VERIFIED status.
