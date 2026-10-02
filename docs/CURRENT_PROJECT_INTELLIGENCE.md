@@ -585,3 +585,19 @@ Reported additional finding: two smoke tests are sensitive to the host day-of-we
 Compared with earlier Hermes checkpoints, this report shows stronger evidence discipline: it explicitly distinguished environment/setup problems from project defects, identified a concrete root cause instead of stopping at a symptom, used controlled variants to isolate the psql argument-order behavior, reran regression suites after the local change, and disclosed that its fixes were not pushed. It also converted operational observations (environment leakage, migration execution contract, platform differences) into reusable lessons. This is a positive process change, but it is an **observed behavioral improvement from the report**, not a certification that Hermes is fully upgraded.
 
 The reported `168 broken references`, `98 skills`, and other inventory counts remain self-reported until independently checked against the actual workspace/repository.
+
+
+## EXTERNAL AUDIT RECONCILIATION — 2026-10-02
+
+Current main HEAD: `a8e5772767d2bd4166864aa86033252fc…` (exact: `a8e5772767d2bd4166864aa86033252adccdfb27`). Replit and Bolt audited earlier ancestor SHAs; current-main comparison shows only documentation changes since the Bolt snapshot, and Replit likewise found no source/test/workflow changes since its pinned audit. Their source-level findings therefore remain relevant unless separately dispositioned.
+
+Canonical detailed reconciliation: `docs/audit/EXTERNAL_AUDIT_RECONCILIATION_2026-10-02.md`.
+
+### External queue status
+- Replit: R-A1 class projection, R-A2 Redis Cluster recovery, R-A3 HA-only Redis configuration, R-A4 run-owned temp cleanup — discovery/revalidation only.
+- New Bolt B-01/B-02/B-03/B-04/B-05/B-06/B-07 are registered in the Master Defect Priority queue as revalidation candidates; none is VERIFIED.
+- Bolt F-05/F-08 are deduplicated into existing tenant/office and OTP families; Bolt F-10 remains a low-priority observation.
+
+### Current control-plane order
+**External discovery → deduplicate → controlled reproduction → Atria remediation → Hermes independent verification → ChatGPT reconcile/decide.**
+No external auditor can close a finding.
