@@ -235,3 +235,25 @@ Canonical status remains **HARDENING / RECONCILIATION — NOT VERIFIED**.
 **HARDENING / RE-AUDIT — NOT VERIFIED / NOT CERTIFIED**
 
 قانون deduplication: N-01..N-35/PUB-01 و یافته‌های مشابه تاریخی نباید دوباره به‌عنوان defect جدید شمرده شوند؛ فقط اگر current-head evidence آن‌ها را باز کند، به‌عنوان regression/reopen ثبت شوند.
+
+
+## 2026-10-02 — Replit + Bolt external-audit reconciliation
+
+Canonical detailed report: `docs/audit/EXTERNAL_AUDIT_RECONCILIATION_2026-10-02.md`.
+
+Both external reports were reconciled against current `main` HEAD `a8e5772767d2bd4166864aa86033252adccdfb27`. The audited code snapshots remain applicable because the post-audit deltas are documentation-only.
+
+### New/additive queue
+- **B-01 P1 — OPEN / REVALIDATION_REQUIRED:** Redis outage during a write can abort cache invalidation before L1/L2 cleanup and the route can swallow the cache error; possible stale-cache window after Redis recovery.
+- **B-02 P1 — OPEN / REVALIDATION_REQUIRED:** direct PostgreSQL role/school mutation can leave user bootstrap cache keyed by user ID serving old role-scoped data; conditional on direct PG mutation being an operationally supported path.
+- **B-03 P2 — REVALIDATION_REQUIRED:** PG→memory fallback returns successful responses without a client-visible stale/source signal; extend existing A-03 rather than duplicate it.
+- **B-04 P2 — REVALIDATION_REQUIRED:** local revocation journal is not inherently cross-instance durable in containerized deployments; deployment storage contract must be verified first.
+- **B-05 P2 — REVALIDATION_REQUIRED:** health-index reads the in-memory mirror rather than PostgreSQL in PG-live mode; possible wrong health score when mirror is stale/truncated.
+- **B-06 P2 — REVALIDATION_REQUIRED:** PG_POOL_MIN/MAX still use bare parseInt after B-PG timeout hardening; malformed configuration can produce NaN semantics.
+- **B-07 P3 — REVALIDATION_REQUIRED:** shutdown does not explicitly stop outbox worker before dependency close; controlled shutdown race test required.
+
+### Existing findings updated, not duplicated
+Replit R-A1..R-A4 remain the canonical external blind-discovery queue. Bolt F-05 folds into existing tenant/office revalidation; Bolt F-08 folds into existing OTP bypass with a rate-limit interaction note; Bolt F-10 remains a low-priority conservative-readiness observation.
+
+### Execution lock
+First controlled reproduction batch should prioritize B-01, B-02 and R-A2 because they are P1 and require different runtime evidence. No external report is a closure or certification. All items remain subject to current-HEAD reproduction and Hermes verification.
