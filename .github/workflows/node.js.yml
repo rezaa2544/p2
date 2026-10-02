@@ -212,6 +212,31 @@ jobs:
           cat "$out"; exit 1
         fi
         echo "LEGACY arm correctly RED (exit $rc) — the B-PG-1 timeout fix stays load-bearing"
+    # F-3 regression coverage: the canary SoT TTL/backoff knobs must stay
+    # fail-safe against every invalid env shape. Same greppable verdict
+    # contract; no live PG needed — the probe drives the engine in-process
+    # and observes gate behaviour through the AUTHORITY_UNAVAILABLE branch.
+    - name: Critical orphan — B-PG canary SoT TTL/backoff bounds (F-3 regression coverage)
+      run: timeout 180 node tests/b-pg-canary-sot-bounds.js
+    # F-3 negative test: the LEGACY arm reproduces the pre-fix dead gates
+    # (NaN/0 ⇒ every comparison false ⇒ a synchronous PG round-trip per
+    # request), so it MUST exit non-zero. This step fails only if that arm
+    # goes green — i.e. if the probe stops being load-bearing.
+    - name: Critical orphan — B-PG canary SoT negative test, LEGACY arm must stay RED
+      run: |
+        set -u
+        out="$(mktemp)"
+        timeout 180 env PAYESH_PG_UNBOUNDED_PROBE=1 node tests/b-pg-canary-sot-bounds.js >"$out" 2>&1; rc=$?
+        if [ "$rc" -eq 124 ]; then
+          echo 'NEGATIVE TEST FAILED: LEGACY arm exceeded the 180s bound (hung past its own watchdog)'; cat "$out"; exit 1
+        fi
+        grep -q 'B-PG-PROBE VERDICT: FAIL mode=LEGACY' "$out" \
+          || { echo 'NEGATIVE TEST FAILED: LEGACY arm produced no FAIL verdict line'; cat "$out"; exit 1; }
+        if [ "$rc" -eq 0 ]; then
+          echo 'NEGATIVE TEST FAILED: LEGACY arm went GREEN — the probe is no longer load-bearing'
+          cat "$out"; exit 1
+        fi
+        echo "LEGACY arm correctly RED (exit $rc) — the F-3 canary TTL/backoff fix stays load-bearing"
     - name: PostgreSQL Migration Ledger verification (E3 live PG)
       run: |
         export DATABASE_URL="$PGURL"

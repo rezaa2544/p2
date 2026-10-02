@@ -998,10 +998,10 @@ Atria must state the Hermes handoff in every final report. Hermes must return it
 7. A successful implementation without regression coverage remains a coverage gap, not a complete safety property.
 
 ### Immediate M12 follow-up candidates
-- Add regression protection for F-3 canary TTL/backoff invalid values and wire it into CI.
-- Assess/migrate tools/delta-load-test.js to boundedMs.
-- Reproduce and remediate the non-psql migration-012 execution-path defect on supported platforms.
-- Consider a configurable B-PG probe port for local portability without weakening CI.
+- ~~Add regression protection for F-3 canary TTL/backoff invalid values and wire it into CI.~~ **DONE (Atria, mission M13-F3)** — `tests/b-pg-canary-sot-bounds.js`: 40/40 FIXED-arm checks, 5 invalid shapes (unset/empty/zero/negative/non-numeric), gate-level observability through the `AUTHORITY_UNAVAILABLE` branch, LEGACY arm verified RED, mutation-tested (15 fails on the pre-fix `parseInt` tree), wired as a critical-orphan CI step plus a dedicated negative test, registered in `CRITICAL_ORPHANS`. Awaiting Hermes independent verification.
+- ~~Assess/migrate tools/delta-load-test.js to boundedMs.~~ **DONE (Atria, mission M13-F3)** — the last `Number(X || N)` PG-ms parse site now routes through `boundedMs('PG_TIMEOUT_MS', 5000)`. Awaiting Hermes independent verification.
+- Reproduce and remediate the non-psql migration-012 execution-path defect on supported platforms. ← **next candidate** (H-M12-02, P2)
+- Consider a configurable B-PG probe port for local portability without weakening CI. (H-M12-03, P3)
 
 These are follow-up engineering items; they do not alter the already verified F-1/F-2 verdicts.
 

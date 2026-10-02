@@ -152,10 +152,16 @@ async function liveRun(args) {
   if (!cs) { console.error('DATABASE_URL تنظیم نشده (یا --database-url بدهید).'); process.exit(1); }
 
   const { cols, sinceISO, plan } = buildPlan(args);
+  /* M12-F1 / H-M12-01: این آخرین جایی بود که یک کرانِ میلی‌ثانیه‌ایِ PG با
+   * `Number(X || N)` خوانده می‌شد. همان پارادوکس: رشتهٔ '0' truthy است ولی
+   * به connectionTimeoutMillis=0 می‌شود و pg آن را به‌معنایِ «بدونِ کران»
+   * می‌فهمد — یعنی یک misconfig خاموش، این ابزار را hang-open می‌کرد. حالا
+   * از همان boundedMs عبور می‌کند که کران‌هایِ production را می‌سازد. */
+  const { boundedMs } = require('../server/infrastructure/bounded-ms');
   const pool = new pg.Pool({
     connectionString: cs,
     max: Number(process.env.PG_POOL_MAX || 20),
-    connectionTimeoutMillis: Number(process.env.PG_TIMEOUT_MS || 5000)
+    connectionTimeoutMillis: boundedMs('PG_TIMEOUT_MS', 5000)
   });
 
   console.log('── LIVE (PostgreSQL واقعی) ────────────────────────────────');

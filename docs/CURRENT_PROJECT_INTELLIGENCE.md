@@ -610,10 +610,10 @@ Hermes completed the independent verification of Atria's B-PG M12 rework on repo
 ### Verification result
 - F-1 PG timeout bounding: **VERIFIED** — live PostgreSQL 17, 30/30 fixed checks; legacy broken behavior reproduced for zero/negative/non-numeric inputs; production escape hatch behavior checked.
 - F-2 B-PG CI wiring / false-green defense: **VERIFIED** — explicit critical-orphan CI steps, greppable verdict contract, NOT-RUN/ERROR semantics, negative legacy arm, and 11/11 + 9/9 + 30/30 live probe results.
-- F-3 canary TTL/backoff handling: **VERIFIED as implementation**, but **coverage gap remains** — no dedicated regression test and no dedicated CI step currently protects TTL/backoff invalid-value behavior.
+- F-3 canary TTL/backoff handling: **VERIFIED as implementation** (Hermes, `5712020b`). The coverage gap Hermes recorded is now closed by Atria: dedicated regression test `tests/b-pg-canary-sot-bounds.js` (40/40, FIXED arm) plus a dedicated CI step and a LEGACY negative arm that stays RED. Status: **FIXED-SCOPED, awaiting Hermes independent verification** — not VERIFIED until Hermes re-verifies against the new HEAD.
 
 ### Additional discoveries from the verification
-- `tools/delta-load-test.js` still parses `PG_TIMEOUT_MS` directly; it is a non-production test harness but should converge on `boundedMs` for invariant consistency.
+- `tools/delta-load-test.js` still parses `PG_TIMEOUT_MS` directly; it is a non-production test harness but should converge on `boundedMs` for invariant consistency. → **Addressed (Atria)**: `tools/delta-load-test.js` now routes `connectionTimeoutMillis` through `boundedMs('PG_TIMEOUT_MS', 5000)` — the last `Number(X || N)` PG-ms parse site in the repo. Status: FIXED-SCOPED, awaiting Hermes independent verification.
 - `tools/migrate-ledger.js` has a Windows/macOS/no-psql execution-path incompatibility for migration 012 because the non-psql path wraps a procedure containing an internal COMMIT in an explicit transaction. This is a reproducible environment/path defect candidate and needs controlled remediation.
 - B-PG probes hard-code port 5432, reducing local portability; CI is unaffected. An environment override should be considered.
 
