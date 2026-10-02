@@ -962,3 +962,18 @@ Hermes' latest infrastructure session produced a new controlled follow-up queue:
 5. Treat Hermes' local `tools/migrate-ledger.js` and `scripts/run-all-tests.sh` edits as unmerged until a repository commit proves otherwise.
 
 No remediation is considered current until it is present on the repository current HEAD and passes the normal Atria → Hermes → ChatGPT evidence chain.
+
+
+## 2026-10-02 — External blind-audit reproduction gate
+
+Before broad certification advances, the external Replit/Bolt discovery queue must be reconciled through controlled reproduction. Canonical detail: `docs/audit/EXTERNAL_AUDIT_RECONCILIATION_2026-10-02.md`.
+
+### First controlled batch
+1. B-01 P1 — Redis outage during write / cache invalidation / recovery.
+2. B-02 P1 — direct PG role/school mutation / bootstrap cache.
+3. R-A2 P1 — Redis Cluster retry exhaustion / recovery.
+
+Then, subject to results and collision boundaries:
+- B-04, B-05, B-06, B-03, R-A1, R-A3, R-A4, B-07.
+
+External findings are candidates, not verified defects. Atria owns remediation only after controlled reproduction confirms the invariant failure; Hermes independently verifies material fixes; ChatGPT performs final reconciliation.
