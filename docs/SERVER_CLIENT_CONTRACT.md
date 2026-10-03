@@ -90,6 +90,22 @@
 - کدهای per-op نمونه: `duplicate_ignored` (idempotency) · `validation_failed` · `conflict_preserved`
   (+ `conflict_id` — مجموعه‌های نسخه‌دار: grades/attendance/discipline؛ سطرِ `sync_conflicts` برای
   داوری با `base_version`/`server_version`/`incoming`) · `stale_base` (مجموعه‌های ساختاری).
+- **دو سطحِ رد و چرا `HTTP 200` به‌معنایِ پذیرش نیست (M14-A01):** گیت‌هایِ push به دو دسته تقسیم
+  می‌شوند و هر کدام HTTP status متفاوتی دارند — این تمایز بارِ امنیتی دارد و تنها مرجعِ
+  پذیرش/ردِ یک op، `results[].ok` است، نه کدِ وضعیتِ HTTP:
+
+  | سطح | چه چیزی رد می‌شود | HTTP | کدها |
+  |---|---|---|---|
+  | **دسته (batch)** | پاکتِ خراب، جعلِ هویت/مدرسه (`by`/`user_id`/`school_id` ⊥ نشست)، خارجِ محدوده (`inScope`)، استثنایِ فیلدِ IEP/DROP، گاردِ dropout | **403** `{ok:false, code, results:[{uid,ok:false,code}]}` | `malformed_op` · `forged_by` · `user_mismatch` · `school_mismatch` · `out_of_scope` · `role_denied` (فقطِ dropout-whitelist) |
+  | **عملیات (per-op)** | ماتریسِ مجوزِ مدل (`canOp` در `fieldGate`)، فیلدِ بی‌مجاز، مقدارِ نامعتبر، تعارضِ OCC | **200** `{ok:true, results:[{uid,ok:false,code,…}]}` | `role_denied` (ماتریسِ نقش×مجموعه×عمل) · `field_denied` · `validation_failed` · `stale_base` · `duplicate_ignored` |
+
+  بنابراین یک op که نقشِ آن رویِ آن collection/op بی‌مجاز است (مثلاً teacher → `report_logs`
+  که در `authz/write-perms.json` فقط `["manager","counselor","edu_office","superadmin"]` است)
+  با `HTTP 200` و `results[0].ok:false, code:"role_denied"` پاسخ داده می‌شود و **هرگز نوشته
+  نمی‌شود** — همان ردی که یک opِ خارجِ محدوده با `HTTP 403` می‌دهد، فقط در لایهٔ متفاوت.
+  یک ابزارِ خارجی که فقط `status === 200` را بررسی کند این ردِّ واقعی را به‌جایِ پذیرش
+  می‌بیند. تأییدِ کاملِ این رفتار: `tests/a01-report-logs-repro.js` (۴۰ چکِ دوجهته + کنترلِ
+  مثبتِ زنده‌بودنِ write-check + جهشِ `A01_MUTATE=VULN`).
 - سنجهٔ تعارض (فاز ۲): `payesh_sync_conflict_detection_seconds{outcome=conflict|stale|clean}` +
   `payesh_sync_conflicts_total{collection}` روی `/metrics`.
 

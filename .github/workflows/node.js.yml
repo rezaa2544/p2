@@ -134,6 +134,21 @@ jobs:
         else
           echo "✅ vulnerable predicate correctly failed the suite (negative proof alive)"
         fi
+    # M14-A01 (P1 claim): teacher → sync/report_logs ins. The claim expects
+    # HTTP 403 but /api/sync is a batch API whose contract returns 200 with a
+    # per-op verdict (sync.js:865 per-op denial + sync.js:1398 batch 200).
+    # The load-bearing signal is the per-op denial + the record never being
+    # written; a positive-control canary proves the store write-check is
+    # alive first, so the no-write assertion cannot be a false green.
+    - name: M14-A01 sync/report_logs teacher denial (batch contract)
+      run: |
+        node tests/a01-report-logs-repro.js
+        if A01_MUTATE=VULN node tests/a01-report-logs-repro.js; then
+          echo "❌ vulnerable predicate did NOT fail the suite (false green)"
+          exit 1
+        else
+          echo "✅ vulnerable predicate correctly failed the suite (negative proof alive)"
+        fi
     - name: Performance harness — false-green regression
       run: node tests/capacity-saturation-probe.js
 
