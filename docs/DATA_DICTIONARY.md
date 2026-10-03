@@ -14,8 +14,8 @@
 | نام پایگاه‌داده | `payesh` (پیش‌فرض استقرار) |
 | موتور | PostgreSQL 16 (`infra/postgres/Dockerfile`) + افزونه‌های `uuid-ossp`, `btree_gist` |
 | تعداد جدول‌ها | **93** (۸۶ کلکسیون دامنه + ۶ زیرساختی/داخلی) |
-| تعداد کل ستون‌ها | **932** |
-| تعداد کلید خارجی | **72** |
+| تعداد کل ستون‌ها | **935** |
+| تعداد کلید خارجی | **71** |
 | تعداد ایندکس | **206** |
 | ستون نسخه (OCC) | ۹ جدول: `attendance`، `classes`، `discipline`، `enrollments`، `grades`، `schedule`، `schools`، `subjects`، `users` |
 | ایزولاسیون مستأجر | ستون `school_id` + FK آبشاری به `schools(id)` — تأیید مرکزی در `tools/check-authz.js` |
@@ -3452,7 +3452,7 @@ INITIALLY DEFERRED`اند تا همگام‌سازی دسته‌ای چندجد�
 
 | نام | نوع | نال‌پذیر | پیش‌فرض | توضیح | ایندکس |
 |---|---|---|---|---|---|
-| `id` | BIGINT | — (PK) | — | کلید اصلی | — |
+| `id` | BIGINT | — (PK) | IDENTITY | کلید اصلی | — |
 | `type` | VARCHAR(64) | خیر | — | — | — |
 | `collection` | VARCHAR(64) | بله | — | — | — |
 | `record_id` | BIGINT | بله | — | — | — |
@@ -3464,6 +3464,8 @@ INITIALLY DEFERRED`اند تا همگام‌سازی دسته‌ای چندجد�
 | `last_error` | TEXT | بله | — | — | — |
 | `created_at` | TIMESTAMPTZ | خیر | NOW() | زمان ایجاد | — |
 | `processed_at` | TIMESTAMPTZ | بله | — | — | — |
+| `processing_at` | TIMESTAMPTZ | بله | — | — | — |
+| `processing_token` | TEXT | بله | — | — | — |
 
 **قیدها:**
 
@@ -3495,7 +3497,9 @@ INITIALLY DEFERRED`اند تا همگام‌سازی دسته‌ای چندجد�
   "retry_count": 0,
   "last_error": null,
   "created_at": "2026-09-10T08:00:00Z",
-  "processed_at": null
+  "processed_at": null,
+  "processing_at": "2026-09-10T07:30:00Z",
+  "processing_token": "…"
 }
 ```
 
@@ -3776,15 +3780,16 @@ INITIALLY DEFERRED`اند تا همگام‌سازی دسته‌ای چندجد�
 |---|---|---|---|---|---|
 | `created_at` | TIMESTAMPTZ | بله | — | زمان ایجاد | — |
 | `id` | INTEGER | — (PK) | IDENTITY | کلید اصلی | — |
-| `required` | VARCHAR(255) | بله | — | — | — |
+| `required` | INTEGER | بله | — | — | — |
 | `school_id` | INTEGER | بله | — | مستأجر | idx_staff_posts_school_id |
 | `subject_id` | INTEGER | بله | — | — | — |
 | `updated_at` | TIMESTAMPTZ | بله | — | زمان آخرین تغییر | — |
+| `version` | INTEGER | خیر | 1 | OCC — نسخهٔ رکورد | — |
 
 **قیدها:**
 
 - **PK:** `id`
-- **FK:** `school_id` ← `schools(id)` (ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED)
+- **FK:** —
 - **UNIQUE:** —
 - **CHECK:** —
 
@@ -3801,10 +3806,11 @@ INITIALLY DEFERRED`اند تا همگام‌سازی دسته‌ای چندجد�
 {
   "created_at": "2026-09-10T07:30:00Z",
   "id": 1,
-  "required": "…",
+  "required": 0,
   "school_id": 1,
   "subject_id": 2,
-  "updated_at": "2026-09-10T07:30:00Z"
+  "updated_at": "2026-09-10T07:30:00Z",
+  "version": 0
 }
 ```
 

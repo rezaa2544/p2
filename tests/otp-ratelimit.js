@@ -86,7 +86,14 @@ async function boot(port, extraEnv, dir, storeName) {
     PAYESH_STORE: path.join(d, storeName || 's.json'),
     PAYESH_AUDIT: path.join(d, 'a-' + port + '.log'),
     PAYESH_KEY: path.join(d, 'k-' + port + '.key'),
-    PAYESH_DEMO_CODE: '1'
+    PAYESH_DEMO_CODE: '1',
+    /* A-02: هر نمونه کلیدِ JWT خودش را می‌سازد، و pepperِ OTP در غیابِ
+       PAYESH_OTP_PEPPER همان کلید است. بدون یک pepperِ مشترک، کدی که
+       نمونهٔ A هش می‌کند روی نمونهٔ B تأیید نمی‌شود — و تستِ R8c
+       (کدِ مشترکِ بین‌نمونه‌ای) پیش از این فقط به‌خاطرِ bypassِ 0000
+       سبز می‌شد. pepperِ صریحِ مشترک، رفتارِ واقعیِ استقرار را شبیه‌سازی
+       می‌کند. */
+    PAYESH_OTP_PEPPER: 'otp-ratelimit-shared-pepper'
   }, extraEnv || {});
   if (env.PAYESH_STORE_CONTENT) {
     fs.writeFileSync(env.PAYESH_STORE, env.PAYESH_STORE_CONTENT);
