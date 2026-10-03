@@ -135,20 +135,37 @@ const users = [
 (async function main(){
   console.log('P1-1 phone-auth — unit (file-mode / fake-PG / pg-mem)\n');
 
-  /* ══ DEV OTP — موقت: 0000 فقط خارج از production ══ */
+  /* ══ DEV OTP — 0000 فقط با opt-in صریح (A-02) ══
+     bypass دیگر به‌طور پیش‌فرض در هر محیطِ غیر-production روشن نیست؛
+     فقط PAYESH_DEV_OTP_BYPASS=1 آن را فعال می‌کند. چون predicate در
+     module-scope ارزیابی می‌شود، اینجا یک instance تازه با envِ صریح
+     require می‌گیریم تا بقیهٔ suite تحت تأثیر قرار نگیرد (P1b کدِ ۶ رقمی
+     می‌خواهد). باقیِ فایل به createAuth اصلی (bypass خاموش) وصل است. */
   {
-    const auth = createAuth(mkCtx({ users: JSON.parse(JSON.stringify(users)) }, null));
-    const sc = await sendCode(auth, '09123456789');
-    chk('DEV OTP 0000: send-code کد ثابت 0000 را در dev برمی‌گرداند',
-        sc.statusCode === 200 && sc.body && sc.body.demo_code === '0000');
-    const l = await login(auth, '09123456789', '0000', '0011111111');
-    chk('DEV OTP 0000: ورود بدون send-code در محیط غیرproduction',
-        l.statusCode === 200 && l.body.ok === true && l.body.user && l.body.user.id === 3,
-        JSON.stringify(l.body).slice(0, 100));
+    const savedBypass = process.env.PAYESH_DEV_OTP_BYPASS;
+    const authResolved = require.resolve('../server/auth');
+    process.env.PAYESH_DEV_OTP_BYPASS = '1';
+    delete require.cache[authResolved];
+    const createAuthDev = require('../server/auth').createAuth;
+    try {
+      const auth = createAuthDev(mkCtx({ users: JSON.parse(JSON.stringify(users)) }, null));
+      const sc = await sendCode(auth, '09123456789');
+      chk('DEV OTP 0000: send-code با opt-inِ صریح کد ثابت 0000 را برمی‌گرداند',
+          sc.statusCode === 200 && sc.body && sc.body.demo_code === '0000');
+      const l = await login(auth, '09123456789', '0000', '0011111111');
+      chk('DEV OTP 0000: ورود بدون send-code با opt-inِ صریح',
+          l.statusCode === 200 && l.body.ok === true && l.body.user && l.body.user.id === 3,
+          JSON.stringify(l.body).slice(0, 100));
+    } finally {
+      if (savedBypass === undefined) delete process.env.PAYESH_DEV_OTP_BYPASS;
+      else process.env.PAYESH_DEV_OTP_BYPASS = savedBypass;
+      delete require.cache[authResolved];
+      require('../server/auth'); /* بازگرداندنِ cache برای بلوک‌های بعدی */
+    }
     const src = fs.readFileSync(AUTH_SRC_PATH, 'utf8');
-    chk('DEV OTP 0000: گارد production و کلید خاموش‌سازی وجود دارد',
+    chk('DEV OTP 0000: گارد production و predicateِ opt-in وجود دارد',
         src.indexOf('const IS_PROD = process.env.NODE_ENV === \'production\' || process.env.PAYESH_ENV === \'production\';') !== -1 &&
-        src.indexOf('process.env.PAYESH_DEV_OTP_BYPASS !== \'0\'') !== -1 &&
+        src.indexOf("process.env.PAYESH_DEV_OTP_BYPASS === '1'") !== -1 &&
         src.indexOf("code === '0000'") !== -1);
   }
 

@@ -215,9 +215,14 @@ function createAuth(ctx){
   const IP_LOGIN_MAX = _lim(process.env.PAYESH_LOGIN_IP_LIMIT, 10); /* logins / window per IP */
   const PHONE_LOGIN_MAX = _lim(process.env.PAYESH_LOGIN_PHONE_LIMIT, 50); /* logins / window per phone (P0 #6) */
   const LOGIN_TRIES_MAX = _lim(process.env.PAYESH_LOGIN_TRIES, 5);  /* wrong codes before code dies */
-  /* TEMP DEV ACCESS: 0000 bypasses OTP only outside production. Set PAYESH_DEV_OTP_BYPASS=0 to disable. */
+  /* A-02 (P1): the dev OTP bypass must be an EXPLICIT opt-in.
+     Previously it was enabled by default in every non-production deployment
+     (!IS_PROD), so NODE_ENV unset + PAYESH_ENV unset left the door open and
+     any caller could log in with 0000. Now only the literal value "1" turns
+     it on; unset, empty, "0", "false", "true", "yes" or any other string
+     keeps it OFF, and production always has it off regardless. */
   const IS_PROD = process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production';
-  const DEV_OTP_BYPASS = !IS_PROD && process.env.PAYESH_DEV_OTP_BYPASS !== '0';
+  const DEV_OTP_BYPASS = !IS_PROD && process.env.PAYESH_DEV_OTP_BYPASS === '1';
   
   const { clientIp: auditClientIp } = require('./audit');
   function clientIp(req){

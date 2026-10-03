@@ -285,9 +285,15 @@ function freezeManifest() {
 
   const files = listMd(DOCS).filter((f) => f !== selfName).sort();
   const rows = files.map((f) => {
+    /* A-02 session: hash the LF-normalised text, not the raw on-disk bytes.
+       .gitattributes pins *.md to eol=lf so the committed content — and
+       therefore the frozen hashes — are LF on every platform, but a stale
+       Windows working tree can still hold CRLF copies of files git already
+       considers unmodified. Hashing raw bytes there would rewrite every
+       row of the manifest and break --check on any LF checkout (CI). */
     const h = LIVE_DOCS.includes(f) && prev[f]
       ? prev[f]
-      : crypto.createHash('sha256').update(fs.readFileSync(path.join(DOCS, f))).digest('hex');
+      : crypto.createHash('sha256').update(fs.readFileSync(path.join(DOCS, f), 'utf8').replace(/\r\n/g, '\n')).digest('hex');
     return `| \`${f}\` | \`sha256:${h}\` |`;
   });
   return { rel, p, count: rows.length, table: rows.join('\n') };

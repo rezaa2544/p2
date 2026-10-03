@@ -121,6 +121,19 @@ jobs:
       run: node tests/sync-dlq-retry.js
     - name: Critical orphan — read-replica recovery
       run: node tests/db-replica-recovery.js
+    # A-02 (P1): the dev OTP bypass must be an explicit opt-in. Runs the
+    # suite AND its vulnerable-predicate mutation (A02_MUTATE=VULN); the
+    # mutated run MUST fail — a green mutation would mean the negative
+    # proof is dead (false green).
+    - name: A-02 dev OTP bypass predicate (opt-in only)
+      run: |
+        node tests/a02-dev-otp-bypass.js
+        if A02_MUTATE=VULN node tests/a02-dev-otp-bypass.js; then
+          echo "❌ vulnerable predicate did NOT fail the suite (false green)"
+          exit 1
+        else
+          echo "✅ vulnerable predicate correctly failed the suite (negative proof alive)"
+        fi
     - name: Performance harness — false-green regression
       run: node tests/capacity-saturation-probe.js
 
