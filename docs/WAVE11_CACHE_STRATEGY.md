@@ -43,6 +43,7 @@ single-flight ──► build (خوانش از store/PG) ──► نوشت L1 +
 | **sync** (opsِ کلاینت) | هر op (از قبل) — `invalidateCollection(op.c, op.data.school_id)` |
 | **sync** (opsِ کلاینت، `users`) | هر op — به‌علاوه `invalidateUser(op.id)` برای خودِ کاربرِ تغییریافته (M14-B02؛ پایین) |
 | **REST routes** (این دور) | هر ۱۶ نقطه نوشت: attendance/classes/grades/students/users — ins + upd + del |
+| **REST `/users` upd** | به‌علاوه `invalidateUser(target.id)` برای خودِ کاربرِ تغییریافته (M14-B02-H02؛ پایین) |
 
 > **M14-B02 — چرا `users` نیاز به ابطالِ اضافیِ هدفمند دارد.** ورودیِ
 > bootstrap هر کاربر، هنگامِ ساخته‌شدن زیرِ مدرسه‌ای که در آن لحظه معتبر
@@ -56,9 +57,28 @@ single-flight ──► build (خوانش از store/PG) ──► نوشت L1 +
 > روی شناسهٔ کاربر عمل می‌کند: L1ِ محلی + کلیدِ L2ِ مشترک + رویدادِ pubsub
 > بین‌نمونه‌ای را همزمان می‌بندد، بدونِ آنکه کشِ سایر کاربرانِ آن مدرسه
 > را خراب کند. همانندِ بقیهٔ مسیرها، پس از commitِ PG اجرا می‌شود (قرارداد
-> B6) و خطای Redis فقط audit می‌شود (fail-audited). `REST /users` نیازی به
-> این ابطال ندارد: allowlistِ فیلدهایش (`full_name/phone/.../field`) هرگز
-> `role` یا `school_id` را شامل نمی‌شود.
+> B6) و خطای Redis فقط audit می‌شود (fail-audited).
+>
+> **M14-B02-H02 — چرا مسیرِ REST `/users` upd هم `invalidateUser` می‌زند
+> (defense-in-depth).** allowlistِ فیلدهای این مسیر (`full_name/phone/
+> national_id/active/status/grade_level/field`) هرگز `role` یا `school_id`
+> را شامل نمی‌شود — یعنی برخلافِ مسیرِ sync، اینجا **انتقالیِ مدرسه‌ای
+> رخ نمی‌دهد** و `invalidateCollection('users', target.school_id)` در
+> شرایطِ عادی کاملاً کافی است. ولی `getBootstrapCache` ورودیِ L1 را
+> **بدونِ epoch-check** برمی‌گرداند (cache.js:156) و L2 را بر اساسِ
+> `school.id`ِ **داخلِ پاکت** اعتبارسنجی می‌کند (cache.js:174) — نه بر
+> اساسِ برچسبِ بیرونی. پس اگر ورودیِ یک کاربر، از یک انتقالِ **قدیمی‌تر**
+> (مسیرِ sync، پیش از اصلاحِ M14-B02) زیرِ برچسبِ مدرسهٔ قدیمی نشسته
+> باشد، `invalidateCollection(users, school_فعلی)` آن را **پیدا نمی‌کند**
+> (L1-scan روی school_idِ فعلی می‌گردد؛ epoch validation هم مدرسهٔ داخلِ
+> پاکت را می‌بیند) و داده تا انقضایِ کاملِ TTL کهنه سرو می‌شود.
+> `invalidateUser(target.id)` مستقل از مدرسه، خودِ شناسهٔ کاربر را هدف
+> می‌گیرد و این شکافِ stale-tag را صریحاً می‌بندد. علاوه بر این،
+> invariantِ معماری را یکپارچه می‌کند: **هر mutation موفقِ کاربر ⇒ کشِ
+> bootstrapِ همان کاربر منقضی**، در هر دو مسیرِ نوشت. فقط پس از commitِ
+> PG + store اجرا می‌شود (مسیرِ شکست در users.js:263 زودتر return
+> می‌کند؛ cache در نوشتِ ناموفق invalidate نمی‌شود)؛ فقط همان کاربر را
+> هدف می‌گیرد و کشِ سایر کاربرانِ مدرسه دست‌نخورده می‌ماند.
 
 رویدادها از channel `payesh:pubsub:inval` به **همهٔ نمونه‌ها** منتشر
 می‌شوند (user/school/all). انقضایِ کامل:

@@ -271,6 +271,18 @@ function createUserRoutes(ctx) {
     else { if (!Array.isArray(store.users)) store.users = []; store.users.push(next); }
     markDirty();
     cache.invalidateCollection('users', target.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
+    /* M14-B02-H02 — انقضایِ هدفمندِ کشِ bootstrapِ خودِ کاربرِ تغییریافته.
+       invalidateCollection بالا مدرسهٔ *فعلیِ* target را پاک می‌کند (epoch +
+       L1-scan + purgeSchoolL2). ولی getBootstrapCache ورودیِ L1 را *بدون*
+       epoch-check برمی‌گرداند (cache.js:156) و L2 را بر اساسِ school.idِ
+       *داخلِ پاکت* اعتبارسنجی می‌کند (cache.js:174) — پس اگر ورودی زیرِ
+       برچسبِ مدرسهٔ قدیمی نشسته باشد (انتقالِ قبلی که stale مانده)،
+       invalidateCollection(school_فعلی) آن را نمی‌یابد. invalidateUser
+       مستقل از مدرسه، خودِ userId را هدف می‌گیرد و invariant را صریحاً
+       می‌بندد: هر mutation موفقِ کاربر ⇒ کشِ bootstrapِ همان کاربر منقضی.
+       فقط پس از کامیتِ DB + store اجرا می‌شود (مسیرِ شکست در line 263
+       زودتر return می‌کند)؛ همان الگوی fire-and-forget + catchnoop. */
+    cache.invalidateUser(target.id).catch(() => {}); /* M14-B02-H02 */
 
     audit('user_updated', { user_id: user.id, target_user_id: target.id });
     return { status: 200, body: { ok: true, data: projectUserByRole(cached || next, user.role, isSelf) } };
