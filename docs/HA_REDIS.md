@@ -29,9 +29,17 @@ sentinel-1/2/3 :26379 (quorum=2, down-after=5000, failover-timeout=15000)
 3. `REDIS_URL` standalone (dev)
 
 رمز فقط از `REDIS_PASSWORD` یا داخل URL؛ retry/reconnectِ sentinel-aware با
-`retryStrategy` محدود (۵ تلاش) پیاده شده است — پس پس از failover،
-برنامه **بی‌ریبوت** به masterِ نو مهاجرت می‌کند. تستِ این رفتار در
-`tests/api/cache.test.js` و مانورِ §۴ پایین ثبت می‌شود.
+`retryStrategy` **نامحدود و backoffِ سقف‌دار** پیاده شده است (قراردادِ
+یکسان برایِ standalone/cluster/sentinel در `server/redis.js` — M14-C01).
+توضیح: strategy هرگز `null` برنمی‌گرداند، زیرا non-number در ioredis یعنی
+تسلیمِ دائمی (`status='end'`) و فقط restartِ فرایند بازیابی می‌کرد. با
+backoffِ سقف‌دارِ ≤۱.۵s (sentinel) / ≤۲s (cluster)، هر قطعیِ کوتاه خودکار
+بازیابی می‌شود و پس از failover (~۵–۱۵ث) برنامه **بی‌ریبوت** به masterِ نو
+مهاجرت می‌کند. توجه: اگر سرور در قطعی بی‌پاسخ بمانَد، هر فرمانِ منفرد با
+`commandTimeout` محدود می‌شود، ولی خودِ اتصال هرگز رها نمی‌شود.
+تستِ این رفتار در `tests/m14-c01-retry-exhaustion.js` (لایهٔ قرارداد +
+blackhole واقعی + negative proof با `C01_MUTATE=VULN`) و `tests/api/cache.test.js`
+و مانورِ §۴ پایین ثبت می‌شود.
 
 ## ۳) شروعِ سریع
 

@@ -123,7 +123,13 @@ function buildRedisConfig(env) {
         redisOptions: Object.assign({}, base, password ? { password } : {}),
         scaleReads: 'master', /* سازگاری خواندن؛ شمارنده‌ها نباید کهنه خوانده شوند */
         clusterRetryStrategy: (times) => {
-          if (times > 3) return null;
+          /* M14-C01: هرگز null برنمی‌گرداند. بازگشتِ null در ioredis کلاینتِ
+             کلاستر را به setStatus('end') + flushQueue می‌برد (همان رفتاری که
+             standalone قبل از Phase-2 remediationِ بالا داشت) — یعنی هر قطعیِ
+             کوتاه‌تر از ۴ ثانیه کلِ کلاینت را برای همیشه می‌کشت و فقط restartِ
+             فرایند بازش می‌گرداند. اکنون بازتصالِ دائمی با backoffِ سقف‌دار
+             (≤۲s) همسان با standalone: failoverهای چندثانیه‌ای به‌صورت خودکار
+             بازیابی می‌شوند. (reproduction: tests/m14-c01-retry-exhaustion.js) */
           return Math.min(times * 300, 2000);
         }
       }
@@ -143,7 +149,13 @@ function buildRedisConfig(env) {
       sentinelOptions: {
         connectTimeout: 2000,
         retryStrategy: (times) => {
-          if (times > 5) return null;
+          /* M14-C01: هرگز null برنمی‌گرداند — همان قراردادِ standalone و
+             کلاسترِ بالا. بازگشتِ null در SentinelConnector پیام «All sentinels
+             are unreachable and retry is disabled» و status='end'ِ دائمی
+             می‌دهد. قبلاً سقف ۶ تلاش (~۵.۲۵s) بود، در حالی که خودِ failoverِ
+             sentinel مطابقِ HA_REDIS.md تا ۱۵s طول می‌کشد — پس در هر failoverِ
+             واقعی کلاینت جان می‌داد. اکنون تا پایانِ قطعی تلاش می‌کند.
+             (reproduction: tests/m14-c01-retry-exhaustion.js) */
           return Math.min(times * 250, 1500);
         }
       }

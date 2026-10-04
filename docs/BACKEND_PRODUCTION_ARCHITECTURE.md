@@ -200,6 +200,13 @@ redis.on('error', (err) => console.error('❌ خطای Redis:', err));
 module.exports = redis;
 ```
 
+> **قراردادِ retry (M14-C01):** `retryStrategy` باید **هرگز** مقدارِ
+> non-number (مثل `null`) برنگرداند — در ioredis این یعنی تسلیمِ دائمی
+> (`status='end'`) و فقط restartِ فرایست بازیابی می‌کند. پیاده‌سازیِ
+> واقعی در `server/redis.js` این قرارداد را برایِ standalone/cluster/sentinel
+> یکسان نگه می‌دارد: backoffِ سقف‌دار، بازتصالِ نامحدود. تست:
+> `tests/m14-c01-retry-exhaustion.js`.
+
 ---
 
 ## ۶. صف پردازش ناهمگام و صف پیام‌های مرده (Worker Queue & DLQ Architecture - بند ۶)
