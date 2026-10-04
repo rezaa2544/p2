@@ -1045,6 +1045,16 @@ function createSync(ctx){
        undo پیش از حلقهٔ اعتبارسنجی ساخته می‌شود و همان حلقه‌ها در آن ثبت
        می‌کنند. */
     const mirror = [];    const invQueue = [];   /* B6: Redis invalidations deferred until after the PG commit */
+    /* M14-B02: صفِ جداگانهٔ کاربرانِ تغییریافته. ورودیِ بوت‌استرپِ هر کاربر
+       زیرِ مدرسه‌ای tag/index/epoch می‌شود که در زمانِ ساخت معتبر بوده —
+       fieldGate فقط به actorهای school_id==null (superadmin/edu_office)
+       اجازهٔ انتقالِ مدرسه می‌دهد، پس invQueue (که op.data.school_id،
+       یعنی مدرسهٔ جدید را هدف می‌گیرد) هرگز ورودیِ کاربرِ منتقل‌شده را
+       زیرِ مدرسهٔ قدیمی لمس نمی‌کند و تا TTL کامل (L1 ۶۰s / L2 ۳۰۰s)
+       دادهٔ کهنه سرو می‌شد. invalidateUser مستقیماً روی شناسهٔ کاربر عمل
+       می‌کند: L1 محلی + کلیدِ L2 مشترک + رویدادِ pubsub بین‌نمونه‌ای را
+       همزمان می‌بندد، بدونِ آنکه کشِ سایر کاربرانِ مدرسه را خراب کند. */
+    const userInvQueue = new Set();   /* M14-B02: per-user bootstrap invalidation, target = the changed user id */
    /* P1-14: opsِ آینه با شناسه‌هایِ اعمال‌شدهٔ سرور */
     for(const op of apply){
       /* S2-1 (موج ۴): ادعایِ اتمیکِ uid — حتماً پیش از اعمال. بررسی در
@@ -1147,6 +1157,15 @@ function createSync(ctx){
          are queued here, fired right after persistOpsBatch commits. */
       if (!invQueue.some((iv) => iv[0] === op.c && iv[1] === (op.data && op.data.school_id))) {
         invQueue.push([op.c, op.data && op.data.school_id]);
+      }
+      /* M14-B02: برایِ مجموعهٔ users، خودِ کاربرِ تغییریافته هم در صف قرار
+         می‌گیرد. شناسه از همان مسیری حل می‌شود که findForApply بالا استفاده
+         می‌کند (op.id، با fallback روی op.data.id) تا با رکوردِ اعمال‌شده
+         یکسان باشد. ins یک کاربرِ کاملاً جدید است که ورودیِ کشی ندارد، اما
+         ثبتِ آن بی‌ضرر است و del هم با همین شناسه پوشش داده می‌شود. */
+      if (op.c === 'users') {
+        const tuid = op.id != null ? op.id : (op.data && op.data.id);
+        if (tuid != null) userInvQueue.add(Number(tuid));
       }
       /* P1-14: آینه این‌جا نیست — پس از حلقه، یک‌جا و اتمیک (persistOpsBatch) */
     }
@@ -1341,6 +1360,18 @@ function createSync(ctx){
     for (const invq of invQueue) {
       cache.invalidateCollection(invq[0], invq[1]).catch((invErr) => {
         try { audit('sync_invalidate_failed', { user_id: s.id, collection: invq[0], error: String((invErr && invErr.message) || invErr) }); } catch (_) {}
+      });
+    }
+    /* M14-B02: ابطالِ هدفمندِ هر کاربرِ تغییریافته، بعد از commit (همان
+       قراردادِ B6 بالا). invalidateUser مستقیماً شناسهٔ کاربر را هدف می‌گیرد
+       تا با انتقالِ مدرسه، ورودیِ cache او — که زیرِ مدرسهٔ قدیمی نشسته —
+       حذف شود. ترتیب بعد از invalidateCollection بی‌اهمیت است: کلیدها
+       مستقل‌اند. خطای Redis فقط audit می‌شود (fail-audited، نه fail-open):
+       پاسخ بی‌تغییر می‌ماند و invalidateUserِ نمونهٔ دیگر از طریقِ pubsub
+       یا انقضایِ TTL خودترمیم می‌شود. */
+    for (const uid of userInvQueue) {
+      cache.invalidateUser(uid).catch((invErr) => {
+        try { audit('sync_invalidate_failed', { user_id: s.id, collection: 'users', target_user_id: uid, error: String((invErr && invErr.message) || invErr) }); } catch (_) {}
       });
     }
     /* Wave 1: uids are marked only after the authority committed (store AND cache),

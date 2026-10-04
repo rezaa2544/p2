@@ -41,7 +41,24 @@ single-flight ──► build (خوانش از store/PG) ──► نوشت L1 +
 | مسیر | پوشش |
 |---|---|
 | **sync** (opsِ کلاینت) | هر op (از قبل) — `invalidateCollection(op.c, op.data.school_id)` |
+| **sync** (opsِ کلاینت، `users`) | هر op — به‌علاوه `invalidateUser(op.id)` برای خودِ کاربرِ تغییریافته (M14-B02؛ پایین) |
 | **REST routes** (این دور) | هر ۱۶ نقطه نوشت: attendance/classes/grades/students/users — ins + upd + del |
+
+> **M14-B02 — چرا `users` نیاز به ابطالِ اضافیِ هدفمند دارد.** ورودیِ
+> bootstrap هر کاربر، هنگامِ ساخته‌شدن زیرِ مدرسه‌ای که در آن لحظه معتبر
+> بوده tag/index/epoch می‌شود (`schoolId = data.school.id` در
+> `setBootstrapCache`). `invalidateCollection(col, schoolId)` مدرسهٔ
+> **جدید** را هدف می‌گیرد (`op.data.school_id`)، ولی fieldGate فقط به
+> actorهای `school_id == null` (superadmin/edu_office) اجازهٔ انتقالِ
+> کاربر بینِ مدارس را می‌دهد — یعنی ورودیِ کاربرِ منتقل‌شده زیرِ مدرسهٔ
+> **قدیم** نشسته و epochِ مدرسهٔ قدیم bump نمی‌شود، تا انقضایِ کاملِ TTL
+> (L1 ۶۰s / L2 ۳۰۰s) دادهٔ کهنه سرو می‌شد. `invalidateUser(userId)` مستقیماً
+> روی شناسهٔ کاربر عمل می‌کند: L1ِ محلی + کلیدِ L2ِ مشترک + رویدادِ pubsub
+> بین‌نمونه‌ای را همزمان می‌بندد، بدونِ آنکه کشِ سایر کاربرانِ آن مدرسه
+> را خراب کند. همانندِ بقیهٔ مسیرها، پس از commitِ PG اجرا می‌شود (قرارداد
+> B6) و خطای Redis فقط audit می‌شود (fail-audited). `REST /users` نیازی به
+> این ابطال ندارد: allowlistِ فیلدهایش (`full_name/phone/.../field`) هرگز
+> `role` یا `school_id` را شامل نمی‌شود.
 
 رویدادها از channel `payesh:pubsub:inval` به **همهٔ نمونه‌ها** منتشر
 می‌شوند (user/school/all). انقضایِ کامل:
