@@ -1065,3 +1065,80 @@ These are follow-up engineering items; they do not alter the already verified F-
 
 ### Permanent process-analyzer rule
 Every mission must end with an explicit check for Atria/Hermes/reviewer weaknesses: wrong SHA, unsupported claim, insufficient evidence, false-green exposure, missed alternate path, incomplete regression, scope error, ambiguous reporting, or repeated failure to apply an existing lesson. New recurring weaknesses must be converted into reusable project methodology and measured on subsequent missions.
+
+# M15 — SYSTEM READINESS / ARCHITECTURE UPDATE — 2026-10-05
+
+**فرض تصمیم معماری:** از این نقطه برای طراحی، فرض می‌کنیم معماری فعلی به سقف عملی خود رسیده است. بنابراین M15 فقط hardening جزئی نیست؛ **نسخه ارتقایافته معماری برای peak-load، 10M+ scale، کمترین tail latency و کمترین فشار cascading** است.
+
+**Canonical audit:** `docs/audit/PAYESH_SYSTEM_SCALE_RELIABILITY_GAP_AUDIT_2026-10-05.md`  
+**Execution issue:** GitHub Issue #434  
+**Audit registration commit:** `e9e9feadaddba95aaaf4a5d5a4a5fbf1bee08e18`
+
+## M15 target architecture
+```
+Users
+  ↓
+Edge / Load Balancer / Rate & Admission Control
+  ↓
+Payesh API instances
+  ├─ AuthZ / Tenant Policy
+  ├─ Bounded request budgets
+  └─ PACMA
+       ├─ L1 bounded cache
+       ├─ L2 Redis / hot-key protection
+       ├─ single-flight / SWR where safe
+       └─ durable invalidation / outbox
+  ↓
+PostgreSQL authoritative SoT
+  ├─ global connection budget
+  ├─ query/index/transaction budgets
+  └─ read/write capacity policy
+  ↓
+Bounded Queues / Workers
+  ├─ per-tenant fairness
+  ├─ retry + exponential backoff + jitter
+  ├─ DLQ / retention
+  └─ overload backpressure
+  ↓
+Independent Observability Plane
+  ├─ metrics
+  ├─ traces
+  ├─ structured logs
+  ├─ rotation / compression / retention
+  └─ monitoring-of-monitoring
+```
+
+## M15 execution queue — mandatory order
+1. **M15-01 READINESS DISCOVERY / CURRENT-HEAD INVENTORY — P0:** hot paths, DB pools, expensive queries, cache policy, sync/pull, queues/workers, logging, client storage, dependency boundaries; measured baseline/resource budgets.
+2. **M15-02 GLOBAL CAPACITY MODEL — P0:** workload classes, peak concurrency, throughput, p50/p95/p99, CPU/RAM/heap/GC/event-loop, DB/Redis/queue budgets, tenant fairness and saturation thresholds.
+3. **M15-03 DATABASE SCALE ARCHITECTURE — P0:** global connection budget, query/index remediation, transaction budgets, pool-wait telemetry, read capacity, explicit PgBouncer/read-replica/partition/sharding decision gate.
+4. **M15-04 SYNC/PULL SCALE & BACKPRESSURE — P0:** batch/cost/concurrency limits, tenant budgets, idempotency/conflict cost, response bounds, overload protection.
+5. **M15-05 PACMA v2 — P0:** durable cross-instance invalidation/outbox, admission, hot-key protection, bounded L1, Redis capacity policy, safe single-flight/SWR, tenant-aware budgets, replay/idempotency/backlog controls.
+6. **M15-06 QUEUE / WORKER RESOURCE ARCHITECTURE — P1:** depth/age/concurrency/retry/DLQ/retention/fairness bounds, backpressure, jittered retry.
+7. **M15-07 OBSERVABILITY PRODUCTION ARCHITECTURE — P1:** independent monitoring failure domain, metrics/logs/traces, monitoring-of-monitoring, bounded cardinality, async structured logging, rotation/compression/retention, disk protection, sink-outage behavior.
+8. **M15-08 EVENT-LOOP / HEAVY-WORK ISOLATION — P1:** eliminate/bound synchronous hot-path work, validate worker fallbacks, isolate exports/reports/backups.
+9. **M15-09 TENANT / RESOURCE FAIRNESS — P1:** global + tenant + endpoint admission for requests/queues/workers/DB/cache; noisy-neighbor proof.
+10. **M15-10 CONFIGURATION SAFETY — P1:** one bounded config schema/parser, startup validation, fail-closed unsafe production values.
+11. **M15-11 LOAD / SPIKE / SOAK / CHAOS / RECOVERY — P0 GATE:** peak, burst, soak, dependency outage/recovery, queue backlog, worker loss, disk/log pressure, cold cache and multi-instance invalidation.
+12. **M15-12 INDEPENDENT CERTIFICATION — FINAL GATE:** Hermes exact-current-HEAD verification; targeted 16-view for disputed/critical cross-layer findings; ChatGPT final reconciliation.
+
+## Architecture decision policy
+- **Assume current architecture has reached its limit for planning purposes.**
+- Prefer evolution of the existing modular architecture where measured bottlenecks can be solved without a new distributed boundary.
+- If evidence requires new scale/failure boundaries, the design may introduce read replicas, PgBouncer, Redis Cluster/hot-key strategy, dedicated worker pools, CDN/object storage, partitioning/sharding, or selective service extraction.
+- Microservices/Kubernetes/service mesh are **not automatic answers**; they require measured bottleneck + explicit operational/failure-domain justification.
+- PostgreSQL remains authoritative SoT.
+- No 10M+ readiness claim without measured current-HEAD evidence.
+
+## Cross-session synchronization contract
+Every new ChatGPT/Hermes session MUST read:
+1. `docs/CURRENT_PROJECT_INTELLIGENCE.md`
+2. `docs/CURRENT_WORK_EXECUTION_PLAN.md`
+3. `docs/PREQUISITES.md`
+4. `docs/audit/PAYESH_SYSTEM_SCALE_RELIABILITY_GAP_AUDIT_2026-10-05.md`
+5. GitHub current `main` SHA
+6. Issue #434
+
+Then reconcile the queue against current HEAD before proposing work. Historical reports never override current-head truth.
+
+**M15 status:** OPEN / ARCHITECTURE UPGRADE IN QUEUE / NOT IMPLEMENTED / NOT CERTIFIED.
