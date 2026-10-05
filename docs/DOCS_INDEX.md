@@ -582,3 +582,12 @@ Replit blind-audit findings are tracked through the canonical execution chain an
 
 The repository is the durable project memory. During every material analysis or mission, newly discovered reusable value must be persisted automatically in the appropriate canonical document; the user does not need to issue a separate save-to-repository command. Prefer existing canonical documents and create a new document only when no suitable home exists. This rule is operationally defined in `CURRENT_PROJECT_INTELLIGENCE.md`, `CURRENT_WORK_EXECUTION_PLAN.md`, and `PREQUISITES.md`.
 
+
+
+## 2026-10-05 — M15 System Readiness Architecture
+- `docs/audit/PAYESH_SYSTEM_SCALE_RELIABILITY_GAP_AUDIT_2026-10-05.md` — جامع‌ترین ممیزی شکاف‌های معماری سرعت، مقیاس، فشار و قابلیت اطمینان؛ مرجع findingها و اولویت‌ها.
+- `docs/CURRENT_WORK_EXECUTION_PLAN.md` — M15 execution queue و target architecture.
+- `docs/CURRENT_PROJECT_INTELLIGENCE.md` — current architecture intelligence و cross-session handoff.
+- `docs/PAYESH_ADAPTIVE_CACHE_ARCHITECTURE.md` — PACMA v2 integration.
+- `docs/PAYESH_OBSERVABILITY_OPERATIONS_ARCHITECTURE.md` — independent observability integration.
+- GitHub Issue #434 — implementation tracking for M15.
