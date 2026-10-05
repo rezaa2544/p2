@@ -8,7 +8,7 @@
 
 **نسخهٔ قفل:** ۱.۰.۰-rc44 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۳ | **مالک:** همگراییِ قفل پس از بازپایه روی main — چت ۶ (Arena)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۴۷۷ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۴۷۸ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
@@ -62,7 +62,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۴۷۷)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۴۷۸)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -195,12 +195,12 @@
 | `DOCS_FREEZE_v1.0.0-rc8.md` | `sha256:361dfe21c653239ddad6873c394c454a5b2bdc1deb067f32de0686f08d96a205` |
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:36bf496d42732300a7872e76e6a3ce64dca6d52ed20eb1d9621fdce63f3d4169` |
-| `DOCS_INDEX.md` | `sha256:3424c7a589465aaef2872ae4228e7ebb3f1ce5fd11058a989af634996da864be` |
-| `DOCS_METRICS.md` | `sha256:41fb9cd65d91ac124bc5ef94f54c320149985cb7e106f0d362f0a1910ccef938` |
+| `DOCS_INDEX.md` | `sha256:f1854968dd0226d0eccb7bd8cd967d71779270f238f90eb24d7ac9347d31d3a2` |
+| `DOCS_METRICS.md` | `sha256:5fe7761f95996a825560303884fd4b4fa1bca0a1df59e9f9706ecee2c51816f0` |
 | `DOCUMENTATION_GOVERNANCE.md` | `sha256:01a5156c69ff0572f2b49dc2ce31453fdf59bfe30cec1a17f2d70a1dd4cfd3fd` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:2dad3fd45b7a7fc57712b125812d4b2b04c95fccba5c95c72d05dbcf2aefcf9d` |
-| `DOCUMENTATION_MAP.md` | `sha256:84f5cc8b85e2fce0736c768ef654c452838c49120b61f504300fa5ae8e6f91d7` |
+| `DOCUMENTATION_MAP.md` | `sha256:402f3b668d1e4f4d33c5324fe303bda893258182818ae140ce49b0a62c4242a8` |
 | `DR_RUNBOOK.md` | `sha256:eba33f0ad562941cf8aea2087dae1318628708cb37b1330aa0bc1cb34c81cc89` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
@@ -292,6 +292,7 @@
 | `PARALLEL_FAILOVER_EXECUTION_PROTOCOL.md` | `sha256:4ef52d5ba91a1f4bc2a5ba0d2c20d5cf360f85a47a05a6ee29ee51610240587b` |
 | `PARENT_360_AUDIT.md` | `sha256:8f902d56b3b166afb8052429ecdb7f2ceb4501ac88338e20f9b4964189a3136f` |
 | `PARENT_360_MODEL.md` | `sha256:14c52e1d8589f6f1b93bafe58733eb31cb54fb7438053e602a33c0781c32de7e` |
+| `PAYESH_ADAPTIVE_CACHE_ARCHITECTURE.md` | `sha256:e8235b4fe31b7573eca94098ce3edbe3d1eb16808a27d34577ed458c2fede61a` |
 | `PEN_TEST_CHECKLIST.md` | `sha256:47135b9aec8b21a6e02bbb75de89bbe5289968077c6cb1ba76d9e511f17b2059` |
 | `PERFORMANCE_BENCHMARKS.md` | `sha256:0b38bacf5e44f941b5f668fa8efc8a804a8b5dd06505587ad2d7888bd2f7e15e` |
 | `PERFORMANCE_OPTIMIZATION_GUIDE.md` | `sha256:263eb7bcf0fdc32ec8ea1e64d7a671a56c09b8befc30e74f1ef40cbdf0172fda` |
@@ -494,7 +495,7 @@
 | `TEACHER_EVIDENCE_MODEL.md` | `sha256:125498ab231ac993c3c6deab55356594b4b1a7d37478f076bc76a51d20943c24` |
 | `TESTING_GUIDE.md` | `sha256:a825d5bfda2d0704f0df539d17926ffac13eb788080083eb5e8f9b8ceeee6e65` |
 | `TEST_CI_PARITY_CONTRACT.md` | `sha256:2b128e2a960bd2ae9bdcabea24170874a97a54ab865404661a0acd70c3f4c51a` |
-| `TEST_COVERAGE_REPORT.md` | `sha256:0b4877b9132140bb5068b3bdd29fe9f7a8cdb3e0d43cf56afff341cd4f193e80` |
+| `TEST_COVERAGE_REPORT.md` | `sha256:2a205099bef6d36f7d38d9644365850ac5b49fe4f8f436ade457ce629fa011f8` |
 | `THIRD_PARTY_LICENSES.md` | `sha256:0440f94b6395ee2fab1b2a34d9c8e3d5141887c1c276b4327c5d134317a33a08` |
 | `THREAT_MODEL.md` | `sha256:2d93966da760fec407778e27e9ef85033f95efffe71d1135dd849f6780d966f0` |
 | `TRACING_SETUP.md` | `sha256:6d17e75b8cc28763db6d7d7c9310d587fb3419c15a2d1dbf2f9e938881040099` |

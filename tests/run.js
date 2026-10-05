@@ -285,6 +285,38 @@ test('نامِ تابعِ سطحِ‌بالا در همهٔ ماژول‌ها ی
   assert(dups.length === 0, 'تعریفِ تکراریِ تابعِ سطحِ بالا:\n     ' + dups.join('\n     '));
 });
 
+// ───────────────────────────── قفل مستندات (M14-B01-FREEZE)
+/* سه بار اتفاق افتاد که کامیت، تعداد فایل‌های تست را تغییر داد ولی
+   مانیفست قفل مستندات به‌روز نشد. `run-all-tests.sh` این را در CI
+   می‌گیرد، ولی `npm test` — مسیری که قبل از هر کامیت محلی اجرا می‌شود —
+   نمی‌گرفت. این نگهبان همان شمارش را در `npm test` اجرا می‌کند تا
+   drift قبل از کامیت قرمز شود، نه بعد از push.
+   شمارش از `git ls-files` می‌آید تا فایل‌های untracked (مثل scratch)
+   باعث false-negative نشوند — قفل بر آنچه tracked است بسته می‌شود. */
+group('قفل مستندات');
+test('تعداد فایل‌های تست با مانیفست قفل برابر است', () => {
+  let out;
+  try {
+    out = execFileSync('git', ['ls-files', 'tests'], { cwd: ROOT, encoding: 'utf8' });
+  } catch (e) {
+    assert(false, 'git ls-files ناموفق — این تست به گیت نیاز دارد: ' + String(e.message).slice(0, 140));
+    return;
+  }
+  const all = out.split('\n').filter(Boolean);
+  const rootN = all.filter((f) => /^tests\/[^/]+\.js$/.test(f)).length;
+  const apiN = all.filter((f) => /^tests\/api\/[^/]+\.js$/.test(f)).length;
+  const total = rootN + apiN;
+  const report = read(path.join(ROOT, 'docs/TEST_COVERAGE_REPORT.md'));
+  const m = report.match(/^\| \*\*کل فایل‌های تست\*\* \| \*\*([۰-۹]+)\*\* \(([۰-۹]+) در `tests\/` \+ ([۰-۹]+) در `tests\/api\/`\) \|/m);
+  assert(m, 'ردیف «کل فایل‌های تست» در docs/TEST_COVERAGE_REPORT.md پیدا نشد');
+  const unfa = (s) => Number(String(s).replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+  assert(unfa(m[1]) === total,
+    `قفل ${m[1]} می‌گوید ولی ${total} فایل تست روی دیسک است — ` +
+    '`node tools/docs-stats-sync.js --freeze` را اجرا کن و commit کن');
+  assert(unfa(m[2]) === rootN, `قفل ${m[2]} می‌گوید ولی ${rootN} فایل در tests/ است`);
+  assert(unfa(m[3]) === apiN, `قفل ${m[3]} می‌گوید ولی ${apiN} فایل در tests/api/ است`);
+});
+
 // ───────────────────────────── نحو JavaScript
 group('صحت نحوی');
 
