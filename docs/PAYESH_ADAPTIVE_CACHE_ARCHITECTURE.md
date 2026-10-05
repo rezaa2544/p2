@@ -544,3 +544,17 @@ Atria implementation → Hermes independent verification → targeted 16-view ch
 - `docs/ARCHITECTURE_EVOLUTION_ROADMAP.md`
 
 این سند جایگزین اسناد ظرفیت/مقیاس موجود نیست؛ لایه مدیریت Cache را به آنها متصل می‌کند.
+
+## M15 SYSTEM-READINESS V2 UPDATE — 2026-10-05
+
+**Architectural assumption:** for M15 planning, the existing architecture is treated as having reached its practical limit. This document is therefore a design upgrade, not merely a hardening checklist.
+
+### Required integration with system-scale architecture
+- Global resource budgets and admission control must protect this layer from upstream bursts.
+- Tenant/noisy-neighbor budgets are mandatory.
+- Every expensive path needs p95/p99, saturation and failure metrics.
+- Any fallback must be bounded, observable and unable to create a feedback loop.
+- Current-head load/soak/chaos evidence is required before scale certification.
+- Canonical execution queue: `docs/CURRENT_WORK_EXECUTION_PLAN.md` → M15.
+- Canonical gap audit: `docs/audit/PAYESH_SYSTEM_SCALE_RELIABILITY_GAP_AUDIT_2026-10-05.md`.
+- Status remains **DESIGN/UPGRADE QUEUED — NOT IMPLEMENTED/CERTIFIED** until the M15 execution gates pass.
