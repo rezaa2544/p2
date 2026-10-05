@@ -345,6 +345,64 @@ CI / RUNTIME EVIDENCE:
 این ترتیب تا Architecture Review صریح تغییر نمی‌کند.
 
 
+
+## Architecture Track — M15 Observability & Operations
+
+### M15-OBSERVABILITY-ARCHITECTURE — PLANNED
+**هدف:** طراحی و سپس پیاده‌سازی یک معماری observability مستقل برای پایش production در مقیاس 10M+.
+
+#### M15-MONITORING
+- Monitoring server/cluster مستقل از application servers
+- Metrics collection, health checks, SLO/SLA, alerting
+- مستقل‌بودن failure domain مانیتورینگ از Payesh
+- CPU/RAM/disk/network/process/event-loop/DB/Redis/queue/cache/application metrics
+- alert escalation و retention
+- monitoring-of-monitoring
+
+#### M15-LOGGING
+- Structured logs
+- Central log aggregation
+- correlation/request/trace IDs
+- security/audit separation
+- retention و access policy
+- remote shipping با تحمل قطعی مقصد
+
+#### M15-LOG-ROTATION
+- size/time based rotation
+- compression
+- retention policy
+- bounded local disk usage
+- safe handling during rotation
+- protection against disk exhaustion
+- remote archival/aggregation
+- recovery after log sink outage
+
+#### Architecture target
+```
+Payesh Servers
+   ├── metrics ───────────────► Independent Monitoring Cluster
+   ├── structured logs ───────► Log Collector / Aggregator
+   └── traces ────────────────► Observability Backend
+                                      │
+                                      ▼
+                              Alert / SLO Engine
+                                      │
+                                      ▼
+                               Operator / On-call
+```
+
+**اصل:** اگر application server سقوط کند، monitoring باید همچنان قادر به تشخیص و گزارش آن باشد.
+
+**ترتیب:** Discovery → Architecture Design → Hermes Review → ChatGPT Approval → Implementation → Failure/Recovery Tests → Load/Soak → Independent Verification.
+
+**قید:** وجود health endpoint یا چند metric در application به‌تنهایی «Monitoring Architecture» محسوب نمی‌شود. Log rotation نیز فقط وجود logger یا حذف فایل قدیمی نیست؛ باید retention، compression، disk protection و recovery اثبات شود.
+
+**Definition of Done:** معماری مستقل، failure-domain isolation، metrics/log/tracing contracts، retention policy، alert matrix، disk-protection، recovery evidence و current-HEAD independent verification.
+
+### M15-CACHE-ARCHITECTURE — PLANNED
+مرجع canonical: `docs/PAYESH_ADAPTIVE_CACHE_ARCHITECTURE.md`
+
+
 ## Architecture Evolution Track — execution policy
 
 Canonical detail: docs/ARCHITECTURE_EVOLUTION_ROADMAP.md
