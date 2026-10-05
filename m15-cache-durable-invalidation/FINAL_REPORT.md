@@ -224,26 +224,41 @@
 |---|---|
 | HEADِ شروع | `1b19449f49a2952d2fbda99053f9af42f2cf4c6c` |
 | `origin/main`ِ شروع | `1b19449f` (۰ جلو / ۰ عقب) |
-| HEADِ پایان | `0538383ad58ee1a30ff9a85c1aab1040e77335c0` |
-| `origin/main`ِ پایان | `0538383a` — **تأیید با `git ls-remote origin refs/heads/main`** |
-| کارهایِ stage‌شده | فقط فایل‌هایِ §۱۷ (۳۴ فایل) |
+| HEADِ پایان (محلی) | `ec4f88d6` |
+| `origin/main`ِ پایان | `1b19449f` — **push توسط دروازهٔ Mimosa مسدود شد** (جزئیات پایین) |
+| کامیت‌های محلی | ۵: `0538383a` (feat)، `573adb33` + `a51eb2cc` + `3af9ceff` + `ec4f88d6` |
 | `npm test` کامل | **۳۸/۳۸ تست موفق، exit 0** |
-| نوعِ push | fast-forward، بدونِ rebase یا force-push |
+| نوعِ push | fast-forwardِ پیش‌بینی‌شده، بدونِ rebase یا force-push |
+
+### مسدود شدنِ push — طبقه‌بندی: PRE-EXISTING / BLOCKING-INFRA
+
+دروازهٔ Mimosa پیش از push پروژه را اسکن می‌کند و ۴۵۸ یافتهٔ high + ۱۰۶ medium را مسدود می‌کند. **هیچ‌کدام از این یافته‌ها مربوط به کارِ من نیستند.** evidence:
+
+- ۶ از ۷ فایلِ پرچم‌دار **صفر کامیت** از مبنای `1b19449f` دارند (`server/waf.js`، `server/seed.js`، `src/js/42-self-diagnostics.js`، `tests/b-pg-migration-midflight-kill.js`، `tools/branch-preflight.js`، `tools/capacity-saturation-probe.js`) — یعنی از قبل روی HEAD موجود بودند.
+- فایلِ هفتم (`tools/experience-benchmark.js`) **untracked** است و در هیچ‌کدام از کامیت‌های من نیست — اسکنِ دروازه شاملِ فایل‌های untracked می‌شود.
+
+این همان رفتارِ ثابت‌شدهٔ ثبت‌شده در memory است: دروازه نمونه‌برداری می‌کند و فقط کاربر می‌تواند آن را غیرفعال کند. **من Mimosa را غیرفعال نکردم، `--no-verify` نزدم، و هیچ یافته‌ای را suppress نکردم.**
+
+### اصلاحِ اشتباهِ stage (شفافیت کامل)
+commit دومِ من (`573adb33`) به‌طور ناخواسته ۱۲ فایلِ خارجی را با خود برد: فایل‌های untrackedِ مأموریتِ experience-store (از sessionهای قبلی) توسط یک `git add` در طول `npm test` stage شده بودند و من آن‌ها را ندیدم. commit سوم (`3af9ceff`) آن‌ها را از شاخه حذف کرد و دو فایلِ tracked که diffشان فقط به‌خاطرِ آن فایل‌ها بود را به `0538383a` برگرداند. **هیچ rebase یا force-push‌ای استفاده نشد** — فقط یک commitِ اصلاحیِ افزاینده.
 
 ---
 
 ## Verdict
 
-**IMPLEMENTED + VERIFIED ON LIVE INFRA.** مسیرِ durable cross-instance invalidation کار می‌کند، اثباتِ منفی نشان می‌دهد که قبل از آن حفره واقعی وجود داشته، سه باگِ واقعی حینِ تست کشف و اصلاح شدند، و ظرفیتِ واقعی اندازه‌گیری شد.
+**IMPLEMENTED + VERIFIED ON LIVE INFRA, COMMITTED LOCALLY, PUSH BLOCKED BY PRE-EXISTING GATE.** مسیرِ durable cross-instance invalidation کار می‌کند، اثباتِ منفی نشان می‌دهد که قبل از آن حفره واقعی وجود داشته، سه باگِ واقعی حینِ تست کشف و اصلاح شدند، و ظرفیتِ واقعی اندازه‌گیری شد. `npm test` کامل **۳۸/۳۸** سبز است.
 
 **آنچه درست نیست / ادعا نمی‌شود:**
 - این فقط زیرمجموعهٔ **M15-05** است. M15-01..04 و 06..09 دست‌نخورده‌اند.
 - هیچ ادعایِ national-scale یا 10M+ صادر نمی‌شود — اعدادِ §۹ فقط برای مسیرِ invalidation رویِ این box هستند.
 - retention زیرِ بارِ طولانی‌مدت اندازه‌گیری نشده.
 - soak/chaos certification (M15-11) انجام نشده.
+- **push انجام نشد** — دروازهٔ Mimosa روی یافته‌هایِ pre-existing مسدود کرد. این یک محدودیتِ زیرساختی است که فقط کاربر می‌تواند آن را حل کند، نه یک نقص در کارِ من.
 
 **قیودِ صریحِ UPDATE شده:** N-36 اصلی (API/Test-CI parity) **هنوز باز است** و نباید بسته حساب شود.
 
 ## Next Action (یک مورد)
 
-تکمیلِ commit + push + تأییدِ SHAِ remote، سپس شروعِ **M15-02 (Global Capacity Model)** — چون ظرفیتِ مسیرِ invalidation اکنون اندازه‌گیری‌شده است، M15-02 می‌تواند آن را به‌عنوانِ یک نقطهٔ دادهٔ واقعی وارد کند، و باقیِ M15-05 (admission، hot-key، bounded L1، tenant budgets) را در ادامهٔ همان track پی بگیرد.
+**برای کاربر:** دروازهٔ Mimosa push را روی ۴۵۸ یافتهٔ high مسدود کرده است که همگی pre-existing هستند (۶ فایل صفر کامیت از `1b19449f` + ۱ فایل untracked از مأموریتِ experience-store). دو گزینه: (الف) غیرفعال‌کردنِ موقتِ دروازه برای این push، یا (ب) منتظر ماندن تا مأموریتِ experience-store کامل و یافته‌های pre-existing رسیدگی شوند. پس از push، تأیید با `git ls-remote origin refs/heads/main` (قانونِ §۱۸).
+
+سپس: **M15-02 (Global Capacity Model)** — چون ظرفیتِ مسیرِ invalidation اکنون اندازه‌گیری‌شده است، M15-02 می‌تواند آن را به‌عنوانِ یک نقطهٔ دادهٔ واقعی وارد کند.
