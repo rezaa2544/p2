@@ -15,6 +15,7 @@
 'use strict';
 const redis = require('./redis');
 const cache = require('./cache');
+const cacheEvents = require('./cache-invalidation-events'); /* N-36 — مسیرِ دوام‌دارِ ابطال */
 
 const DENY_PREFIX = 'revoked:';
 const VER_PREFIX = 'sessver:';
@@ -55,6 +56,10 @@ async function revokeAllUserSessions(userId) {
   try {
     const res = await redis.incr(VER_PREFIX + userId);
     try { await cache.invalidateUser(userId); } catch (_) {}
+    /* N-36 — مسیرِ دوام‌دار: اگر pubsub گم شد، worker روی هر نمونه
+       invalidateUser را اجرا می‌کند. این مسیر PG-write ندارد که
+       atomic‌اش کنیم — استثنایِ صریحِ DESIGN §C؛ best-effort. */
+    try { await cacheEvents.appendRoute({ collection: 'users', userId: Number(userId), origin: 'revoke' }); } catch (_) {}
     return res;
   } catch (e) {
     const err = new Error('REVOCATION_UNAVAILABLE');

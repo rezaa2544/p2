@@ -303,9 +303,13 @@ All application nodes
 
 این مسیر باید idempotent، retryable و observable باشد.
 
+> **وضعیت (۲۰۲۶-۱۰-۰۴): سطح ۳ پیاده‌سازی و رویِ PG/Redis زنده verify شد.** رویدادهای `cache.user_changed` / `cache.school_changed` / `cache.collection_changed` در `server_outbox` نوشته می‌شوند و هر instance آن‌ها را برای L1/L2 خودش بازپخش می‌کند. سه ویژگیِ الزامیِ بالا اکنون دارایِ تستِ واقعی هستند: idempotency (F6)، retry/DLQ (F15)، observability (۶ metric، بخش ۱۳). جزئیات در `m15-cache-durable-invalidation/`.
+
 ### M14-B01 lesson
 
 `pendingInvalidations` فعلی یک safety mechanism مفید است، اما process-local بودن آن NF-1 است و **راه‌حل نهایی multi-instance durability نیست**.
+
+> **رفع (۲۰۲۶-۱۰-۰۴): NF-1 بسته شد.** مسیرِ دوام‌دارِ بالا (`server_outbox` + per-instance watermark در PG) اکنون همان ضمانتی را می‌دهد که `pendingInvalidations` فقط به‌صورتِ تک‌نمونه‌ای می‌داد. `pendingInvalidations` به‌عنوانِ safety mechanism محلی **حفظ شد** و حذف نشد — حالا لایهٔ آخرِ دفاعی است، نه تنها لایهٔ تنها.
 
 ---
 
@@ -558,3 +562,35 @@ Atria implementation → Hermes independent verification → targeted 16-view ch
 - Canonical execution queue: `docs/CURRENT_WORK_EXECUTION_PLAN.md` → M15.
 - Canonical gap audit: `docs/audit/PAYESH_SYSTEM_SCALE_RELIABILITY_GAP_AUDIT_2026-10-05.md`.
 - Status remains **DESIGN/UPGRADE QUEUED — NOT IMPLEMENTED/CERTIFIED** until the M15 execution gates pass.
+
+## M15-05 DURABLE INVALIDATION — IMPLEMENTATION RECORD — 2026-10-04
+
+این بخش فقط مسیرِ durable invalidation را پوشش می‌دهد. بقیهٔ M15 (admission، hot-key، bounded L1، single-flight، tenant budgets، soak certification) **هنوز باز است** و وضعیتِ کلیِ سند بالا تغییری نکرده است.
+
+### تصمیماتِ معماری که در پیاده‌سازی گرفته شدند
+1. **Replicate-to-all، نه competing-consumer.** ابطالِ کش idempotent است و باید رویِ **هر** نمونه اجرا شود؛ پس `FOR UPDATE SKIP LOCKED` (claim) عمداً استفاده نشد. به جای آن، هر instance یک **watermarkِ اختصاصی** در `server_outbox_watermark` دارد و فقط رویدادهای بعد از watermarkِ خودش را می‌خواند. این تصمیم، یادداشتِ قدیمیِ MULTI_INSTANCE_AUDIT (row G: «handlerِ سراسری باید claim توزیع‌شده بگیرد») را **نقض می‌کند** — claim کردن اینجا غلط بود، زیرا رویداد را فقط یک نمونه مصرف می‌کرد.
+2. **user-scope epoch (بخشِ ۸ مأموریت).** پکتِ L2 حالا `ue` دارد. قبل از این، انتقالِ کاربر بینِ مدارس می‌توانست کشِ bootstrap را کهنه نگه دارد (حفرهٔ M14-B02 از زاویهٔ دیگر).
+3. **آینهٔ RAM از PG عقب نمی‌افتد.** اگر insertِ رویداد داخلِ تراکنشِ فراخوان رول‌بک شود، رویداد از آینهٔ محلی هم برداشته می‌شود (بخشِ ۶: commit بدونِ event غیرممکن).
+4. **fail-closed برای scope ناشناخته:** رویدادِ cache با scope ناشناخته به DLQ می‌رود، نه ابطالِ سراسریِ کور.
+5. **Redis outage ≠ retry burn.** اگر handler خطای `REDIS_UNAVAILABLE` بدهد، رویداد علامت نمی‌خورد و retry_count افزایش نمی‌یابد؛ cursor ثابت می‌ماند تا تیکِ بعدی.
+
+### سه باگِ واقعی که حینِ تست کشف شدند
+| # | باگ | اثر |
+|---|---|---|
+| ۱ | شاخهٔ حافظهٔ `fetchReplicateBatch` به id sort نمی‌کرد | ordering invariant فقط روی PG برقرار بود |
+| ۲ | رویداد در رول‌بک یتیم می‌ماند | commit بدونِ event ممکن بود (نقضِ بخش ۶) |
+| ۳ | `mark()` در مسیرِ unguarded ۶ پارامتر می‌فرستاد ولی SQL ۵ تا می‌خواست (SQLSTATE 08P01) | خطا در try/catch بلعیده می‌شد → status برای همیشه `pending` |
+
+باگِ سوم بدونِ probing مستقیمِ PG زنده قابل‌مشاهده نبود — consuming throughput از ۲۰/s به ۷۳۱/s پرید. تستِ **F21** به‌عنوانِ regression guard دائمی اضافه شد.
+
+### شواهدِ اندازه‌گیری‌شده (PG زنده)
+- produce **۵۱۱/s**، consume **۷۳۱/s**، latency تک‌رویداد **۵ms**
+- ۶۰/۶۰ تست (۲۰ سناریوی شکست + F21) در سه اجرای متوالی پایدار
+- دو instance واقعی روی PG + Redis زنده (F20)
+- اثباتِ منفی: `CACHE_DURABLE_VULN=1` نشان می‌دهد بدونِ consumer، کش کهنه می‌ماند
+- ۶ metric همگی روی ماژول‌های واقعی verify شدند (قبل از اصلاح، declare نشده بودند و drop می‌شدند)
+
+### محدودیت‌های شناخته‌شده
+- مسیرِ دوام‌دار به PG وابسته است. بدونِ `DATABASE_URL`، تست‌های PG به‌درستی **NOT-RUN** می‌شوند.
+- ظرفیتِ بالا فقط برای مسیرِ invalidation است؛ هیچ ادعایی دربارهٔ کلِ سیستم تحت peak-load صادر نشده است.
+- `server_outbox` هنوز partition نشده؛ OUTBOX_CAP فقط آینهٔ RAM را محدود می‌کرد و retention (reapProcessed) اینک به آن اضافه شده اما اندازه‌گیریِ retention زیرِ بارِ طولانی‌مدت هنوز انجام نشده.

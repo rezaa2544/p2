@@ -1016,23 +1016,32 @@ async function persistOpsBatchWithClient(client, ops) {
 }
 
 /**
- * P1-14: atomic multi-record mirror — all ops in ONE transaction (all-or-nothing).
+ * Persist a batch of ops in one transaction.
+ * @param {Array} ops
+ * @param {Function} [hook] N-36: async (client) => {} executed INSIDE the
+ *   transaction after the ops, on the same client — used to append an outbox
+ *   row atomically with the commit. A hook throw rolls the whole transaction
+ *   back, so a committed mutation can never exist without its event.
  * Memory fallback: PG mirror is skipped (the JSON store is the source of truth there).
  * THROWS on failure (after ROLLBACK) so the caller can audit / mark for retry.
  */
-async function persistOpsBatch(ops) {
+async function persistOpsBatch(ops, hook) {
   const list = ops || [];
   if (!isPostgres()) {
     /* F1 (chaos-drill #185): در production با DATABASE_URL، skipِ بی‌صدایِ
-       آینه = ackِ 200ی که هرگز به PG نمی‌رسد ⇒ THROW تا sync.js همان مسیرِ
+       آینه = ackِ ۲۰۰ی که هرگز به PG نمی‌رسد ⇒ THROW تا sync.js همان مسیرِ
        رسمیِ sync_mirror_failed/503 + rollback را برود (کلاینت retry می‌کند). */
     if (pgExpected()) {
       throw new Error('PostgreSQL expected in production but not connected — refusing silent memory ack (F1)');
     }
+    /* N-36: در حالتِ حافظه، hook قبل از بازگشت اجرا می‌شود؛ پرش آن، همان
+       قراردادِ pg-live را می‌دهد (نوشت بدونِ رویداد ممکن نیست). */
+    if (typeof hook === 'function') await hook(null);
     return { ok: true, driver: 'memory', count: list.length };
   }
   return await transaction(async (client) => {
     const r = await persistOpsBatchWithClient(client, list);
+    if (typeof hook === 'function') await hook(client);
     r.driver = 'postgres';
     return r;
   });
@@ -1041,9 +1050,12 @@ async function persistOpsBatch(ops) {
 /** Sync-only transaction: claim all UIDs before any mutation or derived effect.
  * Sorted advisory locks serialize independent processes without deadlocks from
  * reversed batch UID order. Claim and data commit/rollback together.
+ * @param {Function} [hook] N-36: async (client) => {} executed inside the
+ *   transaction — the cache-invalidation outbox append goes here so the event
+ *   commits (or rolls back) with the sync batch.
  */
-async function persistSyncBatch(ops) {
-  if (!isPostgres()) return persistOpsBatch(ops);
+async function persistSyncBatch(ops, hook) {
+  if (!isPostgres()) return persistOpsBatch(ops, hook);
   const uids = [...new Set((ops || []).filter(op => op && op.uid).map(op => String(op.uid)))].sort();
   return transaction(async client => {
     for (const uid of uids) {
@@ -1053,6 +1065,7 @@ async function persistSyncBatch(ops) {
     }
     const result = await persistOpsBatchWithClient(client, (ops || []).map(op => op && op.uid && op.t === 'ins' ? { ...op, insertOnly: true } : op));
     for (const uid of uids) await client.query('INSERT INTO server_processed_uids(uid,processed_at) VALUES($1,NOW()) ON CONFLICT(uid) DO NOTHING', [uid]);
+    if (typeof hook === 'function') await hook(client);
     return result;
   });
 }

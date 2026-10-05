@@ -125,10 +125,98 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
     }
   }
 
+  /* N-36 / M15-05 — یک دور پردازشِ رویدادهایِ cache.* (replicate-to-all).
+     برخلافِ tick بالا، این رویدادها claim نمی‌شوند: هر نمونه باید L1/L2
+     خودش را ابطال کند، پس همهٔ نمونه‌ها آن‌ها را می‌خوانند و هر کدام
+     watermarkِ اختصاصیِ خودش را جلو می‌برد.
+     - مکان‌نما فقط پس از موفقیت جلو می‌رود ⇒ ordering حفظ می‌شود (I11) و
+       یک رویدادِ لخته‌شده، مکان‌نما را نگه می‌دارد.
+     - قطعیِ ردیس: رویداد نقص ندارد — retry_count مصرف نمی‌شود و مکان‌نما
+       ثابت می‌ماند تا تیکِ بعدی دوباره امتحان کند (I7: بدون retry storm).
+     - سم (poison): پس از سقفِ تلاش به DLQ می‌رود و مکان‌نما از آن عبور
+       می‌کند — یک رویدادِ نامعتبر نباید ابطالِ بقیه را برای هم قفل کند. */
+  async function tickReplicate() {
+    if (running) return { processed: 0, failedDelta: 0, skippedBusy: true };
+    running = true;
+    let processed = 0, failedDelta = 0;
+    try {
+      let events = [];
+      if (outbox && typeof outbox.fetchReplicateBatch === 'function') {
+        try { events = await outbox.fetchReplicateBatch(); } catch (_) { events = []; }
+      }
+      let lastOkId = 0;
+      for (const evt of events) {
+        const id = Number(evt.id);
+        if (!Number.isFinite(id)) continue;
+        const h = handlerFor(evt);
+        if (!h) {
+          /* scope ناشناخته — fail-closed: به DLQ، نه تخریبِ دستیِ کش */
+          if (outbox && typeof outbox.moveToDlq === 'function') {
+            try { await outbox.moveToDlq(evt, 'no handler for ' + String(evt.type), null, Number(evt.retry_count) || maxRetries); } catch (_) {}
+          }
+          lastOkId = id;
+          failedDelta++;
+          metrics.inc('payesh_cache_outbox_events_processed_total', { outcome: 'dead_letter' });
+          continue;
+        }
+        try {
+          await h(evt);
+          lastOkId = id;
+          processed++;
+          metrics.inc('payesh_cache_outbox_events_processed_total', { outcome: 'processed' });
+          /* first-writer-wins: نمونهٔ دیگر ممکن است قبلاً processed کرده باشد. */
+          if (outbox && typeof outbox.mark === 'function') {
+            try {
+              await outbox.mark(id, { status: 'processed', processed_at: new Date().toISOString(), last_error: null }, null);
+            } catch (_) {}
+          }
+        } catch (err) {
+          const rc = (Number(evt.retry_count) || 0) + 1;
+          const errMsg = (err && (err.message || err.code)) || 'error';
+          const redisDown = !!(err && (err.code === 'REDIS_UNAVAILABLE'
+            || /REDIS_UNAVAILABLE/i.test(String((err && err.message) || ''))));
+          if (redisDown) {
+            /* ردیس قطع است — رویداد نقص ندارد؛ مکان‌نما ثابت، retry سوزانده
+               نمی‌شود. تیکِ بعدی دوباره امتحان می‌کند. */
+            metrics.inc('payesh_cache_outbox_redis_unavailable_total');
+            break;
+          }
+          if (rc >= maxRetries) {
+            if (outbox && typeof outbox.moveToDlq === 'function') {
+              try {
+                const dlq = await outbox.moveToDlq(evt, errMsg, null, rc);
+                if (dlq && dlq.ok) { lastOkId = id; failedDelta++; }
+              } catch (_) {}
+            } else { lastOkId = id; failedDelta++; }
+            metrics.inc('payesh_cache_outbox_events_processed_total', { outcome: 'dead_letter' });
+            continue;
+          }
+          /* قابلِ تلاشِ مجدد: علامت کن و sticky بمان */
+          if (outbox && typeof outbox.mark === 'function') {
+            try { await outbox.mark(id, { status: 'pending', retry_count: rc, last_error: errMsg }, null); } catch (_) {}
+          }
+          metrics.inc('payesh_cache_outbox_events_processed_total', { outcome: 'retried' });
+          break;
+        }
+      }
+      if (lastOkId > 0 && outbox && typeof outbox.advanceWatermark === 'function') {
+        await outbox.advanceWatermark(lastOkId);
+      }
+      return { processed, failedDelta };
+    } finally {
+      running = false;
+    }
+  }
+
   function start() {
     if (timer) return;
     lastTickAt = Date.now();
-    timer = setInterval(() => { tick().catch(() => {}); }, intervalMs);
+    timer = setInterval(() => {
+      tick().catch(() => {});
+      if (!process.env.PAYESH_CACHE_DURABLE_INVALIDATION || process.env.PAYESH_CACHE_DURABLE_INVALIDATION !== 'off') {
+        tickReplicate().catch(() => {});
+      }
+    }, intervalMs);
     if (timer.unref) timer.unref();
   }
 
@@ -153,7 +241,7 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
     };
   }
 
-  return { start, stop, tick, isHealthy, health };
+  return { start, stop, tick, tickReplicate, isHealthy, health };
 }
 
 module.exports = { createWorker };

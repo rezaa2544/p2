@@ -110,12 +110,20 @@ async function main() {
       }
     });
     const res = await deleter.softDelete('users', { id: 5 }, { actor: { id: 2 } });
-    chk('O5a حذف نرم انجام شد و رویداد با مهار مدرسه ثبت شد',
-      res.ok === true && store.outbox.length === 1 && store.outbox[0].payload.school_id === 3);
+    /* N-36: حذفِ کاربر حالا دو رویداد می‌سازد — users.deleted (کارگرِ
+       رقابتی) و cache.user_changed (replicate-to-all). این افزایش عمدی
+       است؛ رویدادِ حذف هنوز مهارِ مدرسه را دارد. */
+    const delEvt = store.outbox.find(e => e.type === 'users.deleted');
+    chk('O5a حذف نرم انجام شد و رویدادِ حذف با مهارِ مدرسه ثبت شد',
+      res.ok === true && !!delEvt && delEvt.payload.school_id === 3);
+    chk('O5a2 N-36 حذفِ کاربر رویدادِ ابطالِ scope:user هم ساخت',
+      store.outbox.some(e => e.type === 'cache.user_changed' && e.payload.user_id === 5 && e.payload.scope === 'user'));
     await worker.tick();
     chk('O5b کارگر کشِ مدرسهٔ رکوردِ حذف‌شده را باطل کرد',
       invalidated.length === 1 && invalidated[0][0] === 'users' && invalidated[0][1] === 3
-      && store.outbox[0].status === 'processed');
+      && delEvt.status === 'processed');
+    chk('O5b2 N-36 رویدادِ cache.* بدونِ handlerِ replicate دست‌نخورده ماند',
+      store.outbox.some(e => e.type === 'cache.user_changed' && e.status === 'pending'));
   }
 
   /* O6 — آینهٔ پستگرس با دی‌بی جعلی */

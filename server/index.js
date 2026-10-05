@@ -851,9 +851,15 @@ const conflicts = createConflicts({ store, db, audit, sessionFrom: auth.sessionF
 /* ── Phase 3: RESTful Resource Routes ─────────────────────────────── */
 /* P0-17: صندوق برون‌مرزی + سرویس حذف واحد (سنگ‌قبر به‌جای اسپلایسِ خام) */
 const outbox = createOutbox({ store, db });
+/* N-36 / M15-05 — outbox پس از sync ساخته می‌شود؛ تزریقِ دیررس. */
+if (typeof sync.setOutbox === 'function') sync.setOutbox(outbox);
+const cacheEvents = require('./cache-invalidation-events');
+cacheEvents.setOutbox(outbox);
 const deleter = createDeleteService({ store, db, markDirty, outbox });
 /* ویو ۸ — کارگرِ صندوق رویدادها: کارهای پس از حذف (مثل باطل‌کردن کش)
-   از مسیر درخواست بیرون می‌افتد و به‌صورت ناهم‌زمان با تلاشِ مجدد اجرا می‌شود. */
+   از مسیر درخواست بیرون می‌افتد و به‌صورت ناهم‌زمان با تلاشِ مجدد اجرا می‌شود.
+   N-36 / M15-05 — handlerهایِ cache.* مسیرِ replicate-to-all هستند:
+   هر نمونه آن‌ها را برای L1/L2 خودش اجرا می‌کند (claim نمی‌شوند). */
 const worker = createWorker({
   store, outbox,
   handlers: {
@@ -862,6 +868,27 @@ const worker = createWorker({
       if (sid != null && typeof cache.invalidateCollection === 'function') {
         await cache.invalidateCollection(evt.collection, sid);
       }
+    },
+    /* N-36 — ابطالِ دوام‌دار. این handlerها همین عملیاتی را می‌کنند که
+       fast path (Pub/Sub) انجام می‌دهد، پس idempotent‌اند و رسیدنِ هر دو
+       مسیر بی‌ضرر است. scope از payload خوانده می‌شود و ناشناخته = شکست
+       (fail-closed)، نه سقوط به ابطالِ سراسری. */
+    'cache.user_changed': async (evt) => {
+      const uid = evt.payload && evt.payload.user_id;
+      if (uid == null || !Number.isFinite(Number(uid))) {
+        const e = new Error('cache.user_changed: missing user_id'); throw e;
+      }
+      await cache.invalidateUser(Number(uid));
+    },
+    'cache.school_changed': async (evt) => {
+      const sid = evt.payload && evt.payload.school_id;
+      if (sid == null || !Number.isFinite(Number(sid))) {
+        const e = new Error('cache.school_changed: missing school_id'); throw e;
+      }
+      await cache.invalidateSchool(Number(sid));
+    },
+    'cache.collection_changed': async (evt) => {
+      await cache.invalidateCollection(evt.collection);
     }
   },
   intervalMs: Number(process.env.PAYESH_WORKER_INTERVAL_MS || 1000),
@@ -879,6 +906,22 @@ dbReady.then(async () => {
     else if (rp && rp.ok === false) console.warn('[outbox] pending replay failed (will stay best-effort):', rp.error);
   } catch (e) { console.warn('[outbox] pending replay error:', String((e && e.message) || e).slice(0, 140)); }
 });
+/* N-36 §۹ — نگه‌داریِ صفِ دوام‌دار. OUTBOX_CAP فقط آینهٔ درون‌حافظه‌ای را
+   محدود می‌کرد؛ جدولِ PG بی‌کران بود. رویدادهایِ processed فقط پس از اینکه
+   *هر* نمونهٔ شناخته‌شده از آن‌ها گذشته باشد حذف می‌شوند (قراردادِ
+   watermark-floor در outbox.reapProcessed). throttle شده تا مسیرِ درخواست
+   و tickِ کارگر را شلوغ نکند. */
+const RETENTION_INTERVAL_S = Number(process.env.PAYESH_OUTBOX_RETENTION_INTERVAL_S) > 0
+  ? Number(process.env.PAYESH_OUTBOX_RETENTION_INTERVAL_S) : 300;
+let lastReapAt = 0;
+setInterval(() => {
+  if (!db || typeof db.isPostgres !== 'function' || !db.isPostgres()) return;
+  if (Date.now() - lastReapAt < RETENTION_INTERVAL_S * 1000) return;
+  lastReapAt = Date.now();
+  outbox.reapProcessed().then((n) => {
+    if (n > 0) metrics.inc('payesh_cache_outbox_retention_deleted_total', {}, n);
+  }).catch(() => {});
+}, 60000).unref();
 const studentRoutes = createStudentRoutes({ store, db, audit, markDirty, ids, deleter });
 const classRoutes = createClassRoutes({ store, db, audit, markDirty, ids, deleter });
 const attendanceRoutes = createAttendanceRoutes({ store, db, audit, markDirty, ids, deleter });

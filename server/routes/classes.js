@@ -14,6 +14,7 @@ const policy = require('../policy'); /* Wave 5 — مدلِ یکتای مجوز 
 const { checkOcc, bump, recordRejectedConflict } = require('../occ'); /* P0-18 + B4 */
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { buildClassesList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */const cache = require('../cache'); /* Wave 11 */
+const cacheEvents = require('../cache-invalidation-events'); /* N-36 — رویدادِ ابطالِ دوام‌دار */
 
 function createClassRoutes(ctx) {
   const store = ctx.store;
@@ -203,7 +204,8 @@ function createClassRoutes(ctx) {
        PG failure returns here with the store still clean (memory mode: no-op). */
     try {
       if (db && typeof db.persistOpsBatch === 'function') {
-        await db.persistOpsBatch([{ c: 'classes', t: 'ins', data: newClass }]);
+        await db.persistOpsBatch([{ c: 'classes', t: 'ins', data: newClass }],
+          async (client) => cacheEvents.appendRoute({ collection: 'classes', schoolId: newClass.school_id, actorId: user && user.id, client, origin: 'rest' }));
       } else if (db && typeof db.persistOp === 'function') {
         await db.persistOp({ c: 'classes', t: 'ins', data: newClass });
       }
@@ -262,7 +264,8 @@ function createClassRoutes(ctx) {
     const base = body.base_version !== undefined ? body.base_version : body.version;
     try {
       if (db && typeof db.persistOpsBatch === 'function') {
-        await db.persistOpsBatch([{ c: 'classes', t: 'upd', id: cls.id, data: next, base_version: base }]);
+        await db.persistOpsBatch([{ c: 'classes', t: 'upd', id: cls.id, data: next, base_version: base }],
+          async (client) => cacheEvents.appendRoute({ collection: 'classes', schoolId: cls.school_id, actorId: user && user.id, client, origin: 'rest' }));
       } else if (db) {
         await db.persistOp({ c: 'classes', t: 'upd', data: next });
       }

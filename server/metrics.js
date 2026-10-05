@@ -525,6 +525,18 @@ function declareAll(r) {
   /* ── Queue / worker ── */
   r.gauge('payesh_outbox_depth', 'Pending outbox events (async queue depth).', ['status']);
   r.counter('payesh_worker_events_total', 'Worker event processing outcome.', ['outcome']);
+  /* N-36 / M15-05 — durable cache invalidation. همهٔ شاخص‌ها باید
+     اینجا declare شوند وگرنه inc()/set() آن‌ها را در سکوت drop می‌کند
+     (bumpDrop) و بخش ۱۳ مأموریت روی کاغذ سبز می‌ماند. برچسب‌ها از یک
+     مجموعهٔ بسته می‌آیند تا cardinality بی‌کران نشود (دقت: scope و
+     outcome فقط مقادیرِ شناخته‌شده می‌گیرند، tenant_label هرگز
+     school_id خام نیست). */
+  r.counter('payesh_cache_outbox_events_produced_total', 'Durable cache-invalidation events appended to the outbox.', ['scope']);
+  r.counter('payesh_cache_outbox_events_processed_total', 'Replicate-to-all worker outcomes for cache events.', ['outcome']);
+  r.counter('payesh_cache_outbox_redis_unavailable_total', 'Cache-replicate ticks blocked by Redis outage (no retry burn).', []);
+  r.counter('payesh_cache_outbox_retention_deleted_total', 'Processed outbox rows reaped by the retention sweeper.', []);
+  r.gauge('payesh_cache_outbox_backlog_depth', 'Cache.* events past this instance watermark (catch-up remaining).', []);
+  r.gauge('payesh_cache_outbox_oldest_age_seconds', 'Age in seconds of the oldest unreplicated cache event.', []);
   /* ── Runtime ── */
   r.gauge('payesh_node_heap_used_bytes', 'Node heap used.', []);
   r.gauge('payesh_node_heap_total_bytes', 'Node heap total.', []);
@@ -620,6 +632,20 @@ async function publishRuntimeProbes() {
       }
       const r = await _safe(() => dbMod.query("SELECT count(*)::int AS n FROM server_outbox WHERE status = 'pending'"), null);
       registry.set('payesh_sync_queue_depth', [], r && r.rows && r.rows[0] ? Number(r.rows[0].n) : 0);
+      /* N-36: backlog و قدیمی‌ترینِ رویدادِ پردازش‌نشده برای این نمونه.
+         این دو gauge فقط در PG معنی دارند (watermark در PG است). در
+         حالتِ memory، replicateBacklog از store__outbox_wm می‌خواند. */
+      try {
+        const obxMod = await _safe(() => require('./outbox'), null);
+        if (obxMod && typeof obxMod.activeBacklog === 'function') {
+          const b = await _safe(() => obxMod.activeBacklog(), null);
+          if (b) {
+            registry.set('payesh_cache_outbox_backlog_depth', [], Number(b.depth) || 0);
+            registry.set('payesh_cache_outbox_oldest_age_seconds', [],
+              b.oldest ? Math.max(0, (Date.now() - new Date(b.oldest).getTime()) / 1000) : 0);
+          }
+        }
+      } catch (e) {}
     } else {
       registry.set('payesh_db_up', [], 1); /* memory mode: process-local, inline flush */
       registry.set('payesh_sync_queue_depth', [], 0);

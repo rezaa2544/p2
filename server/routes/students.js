@@ -15,6 +15,7 @@ const { checkOcc, bump, recordRejectedConflict } = require('../occ'); /* P0-18 +
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { projectUserByRole } = require('../middleware/projection');
 const { buildStudentsList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */const cache = require('../cache'); /* Wave 11 */
+const cacheEvents = require('../cache-invalidation-events'); /* N-36 — رویدادِ ابطالِ دوام‌دار */
 
 function createStudentRoutes(ctx) {
   const store = ctx.store;
@@ -170,8 +171,10 @@ function createStudentRoutes(ctx) {
     try {
       if (db && typeof db.persistOpsBatch === 'function') {
         /* Wave 2: مسیر حیاتی ثبت دانش‌آموز در آینهٔ PostgreSQL اتمیک است
-           (transaction در db.persistOpsBatch)؛ در حالت JSON memory همان رفتار قبلی حفظ می‌شود. */
-        await db.persistOpsBatch([{ c: 'users', t: 'ins', data: newStudent }]);
+           (transaction در db.persistOpsBatch)؛ در حالت JSON memory همان رفتار قبلی حفظ می‌شود.
+           N-36 — رویدادِ ابطال در همان تراکنش؛ پرش ⇒ رول‌بک. */
+        await db.persistOpsBatch([{ c: 'users', t: 'ins', data: newStudent }],
+          async (client) => cacheEvents.appendRoute({ collection: 'users', schoolId: newStudent.school_id, userId: newStudent.id, actorId: user && user.id, client, origin: 'rest' }));
       } else if (db && typeof db.persistOp === 'function') {
         await db.persistOp({ c: 'users', t: 'ins', data: newStudent });
       }
@@ -224,7 +227,8 @@ function createStudentRoutes(ctx) {
       const baseT = body.base_version !== undefined ? body.base_version : body.version;
       try {
         if (db && typeof db.persistOpsBatch === 'function') {
-          await db.persistOpsBatch([{ c: 'users', t: 'upd', id: student.id, data: next, base_version: baseT }]);
+          await db.persistOpsBatch([{ c: 'users', t: 'upd', id: student.id, data: next, base_version: baseT }],
+            async (client) => cacheEvents.appendRoute({ collection: 'users', schoolId: student.school_id, userId: student.id, actorId: user && user.id, client, origin: 'rest' }));
         } else if (db) {
           await db.persistOp({ c: 'users', t: 'upd', data: next });
         }
@@ -235,7 +239,7 @@ function createStudentRoutes(ctx) {
       const cachedT = (store.users || []).find(u => u.id === Number(id));
       if (cachedT) Object.assign(cachedT, next);
       markDirty();
-      cache.invalidateCollection('users', student.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
+      cache.invalidateCollection('users', student.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت (fast path) */
       audit('student_iep_updated', { user_id: user.id, student_id: student.id });
       return { status: 200, body: { ok: true, data: projectUserByRole(cachedT || next, user.role) } };
     }
@@ -253,9 +257,10 @@ function createStudentRoutes(ctx) {
 
     const base = body.base_version !== undefined ? body.base_version : body.version;
     try {
-      if (db && typeof db.persistOpsBatch === 'function') {
-        await db.persistOpsBatch([{ c: 'users', t: 'upd', id: student.id, data: next, base_version: base }]);
-      } else if (db) {
+        if (db && typeof db.persistOpsBatch === 'function') {
+          await db.persistOpsBatch([{ c: 'users', t: 'upd', id: student.id, data: next, base_version: base }],
+            async (client) => cacheEvents.appendRoute({ collection: 'users', schoolId: student.school_id, userId: student.id, actorId: user && user.id, client, origin: 'rest' }));
+        } else if (db) {
         await db.persistOp({ c: 'users', t: 'upd', data: next });
       }
     } catch (e) {

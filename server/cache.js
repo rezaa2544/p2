@@ -24,6 +24,11 @@ const INVAL_CHANNEL = 'payesh:pubsub:inval';
 const EPOCH_GLOBAL_KEY = 'payesh:cache:epoch:global';
 const EPOCH_TTL_SECONDS = 3600;
 const epochSchoolKey = (schoolId) => `payesh:cache:epoch:school:${Number(schoolId)}`;
+/* N-36 §۸ — epochِ دامنهٔ کاربر. بدونِ این کلید، یک بازنویسیٔ دیرهنگام
+   (build که قبل از ابطال شروع شده و پس از آن تمام می‌شود) می‌تواند ورودیِ
+   L2 را با جفتِ epochِ *تازه* دوباره بنویسد و دادهٔ کهنه تا پایانِ TTL
+   زنده نگه دارد — همان حفره‌ای که W11-2 برای مدرسه/سراسری بست. */
+const epochUserKey = (userId) => `payesh:cache:epoch:user:${Number(userId)}`;
 function newEpoch() {
   return Date.now().toString(36) + ':' + crypto.randomUUID();
 }
@@ -238,7 +243,12 @@ async function getBootstrapCache(userId) {
         }
         const curSe = schoolId != null ? await redis.get(epochSchoolKey(schoolId)) : null;
         const curGe = await redis.get(EPOCH_GLOBAL_KEY);
-        if ((parsed.se || null) !== (curSe || null) || (parsed.ge || null) !== (curGe || null)) {
+        /* N-36 §۸: جفتِ epochِ کاربر هم اعتبارسنجی می‌شود. legacy (بی‌`ue`)
+           همانندِ legacyِ se/ge پذیرفته است — تنها اگر کسی این کاربر را
+           ابطال نکرده باشد (curUe هم null است). */
+        const curUe = await redis.get(epochUserKey(parsed.data && parsed.data.user ? parsed.data.user.id : userId));
+        if ((parsed.se || null) !== (curSe || null) || (parsed.ge || null) !== (curGe || null)
+            || (parsed.ue || null) !== (curUe || null)) {
           metrics.inc('payesh_cache_lookups_total', { layer: 'l2_redis', outcome: 'miss' }); /* ویو ۱۴: کهنه‌خوان = miss */
           return null;   /* ابطال‌شده پس از نوشتن — کهنه نخوان */
         }
@@ -268,10 +278,13 @@ async function setBootstrapCache(userId, data, ttlSeconds = 300) {
   const schoolId = data && data.school ? data.school.id : null;
   l1Set(userId, data, schoolId);
   /* W11-2: جفتِ جاریِ epoch در پاکتِ L2 دوخته می‌شود (خوانشِ بعدی اعتبارسنجی
-     می‌کند). در خطایِ ردیس می‌پراند — مثلِ خودِ set امروز (fail-closed). */
+     می‌کند). در خطایِ ردیس می‌پراند — مثلِ خودِ set امروز (fail-closed).
+     N-36 §۸: جفتِ epochِ کاربر هم دوخته می‌شود تا بازنویسیِ دیرهنگامِ یک
+     buildِ کهنه قابل تشخیص باشد. */
   const se = schoolId != null ? await redis.get(epochSchoolKey(schoolId)) : null;
   const ge = await redis.get(EPOCH_GLOBAL_KEY);
-  await redis.set(key, JSON.stringify({ __epoch_env: 1, data, se: se || null, ge: ge || null }), 'EX', ttlSeconds);
+  const ue = await redis.get(epochUserKey(userId));
+  await redis.set(key, JSON.stringify({ __epoch_env: 1, data, se: se || null, ge: ge || null, ue: ue || null }), 'EX', ttlSeconds);
   /* Wave 11: عضویت در ایندکسِ مدرسه برای انقضایِ کامل. The set itself
      needs a TTL too; otherwise expired bootstrap keys leave user ids in
      Redis/memory forever and every later invalidation scans stale members. */
@@ -294,6 +307,10 @@ async function invalidateUser(userId, _replay) {
   localUserBootstrapCache.delete(Number(userId));
   const key = `payesh:cache:bootstrap:${userId}`;
   try {
+    /* N-36 §۸: اول epochِ کاربر (دوام‌دار) — حتی اگر del/publish بعدی
+       بپرند، هر پاکتِ L2 که با جفتِ قدیمی نوشته شده از این لحظه کهنه‌خوان
+       نمی‌شود. همان ترتیبی که invalidateSchool برای مدرسه رعایت می‌کند. */
+    await redis.set(epochUserKey(userId), newEpoch(), 'EX', EPOCH_TTL_SECONDS);
     await redis.del(key);
     await redis.publish(INVAL_CHANNEL, { type: 'user', user_id: Number(userId) });
   } catch (e) {

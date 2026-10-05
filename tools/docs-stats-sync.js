@@ -39,6 +39,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const DOCS = path.join(ROOT, 'docs');
@@ -139,10 +140,25 @@ function truth() {
     else { subs[e.name] = n; subTotal += n; }
   }
 
-  const testsRoot = fs.readdirSync(path.join(ROOT, 'tests')).filter((f) => f.endsWith('.js')).length;
+  /* شمارشِ تست‌ها باید با نگهبانِ قفل (`tests/run.js`) یک منبع داشته باشد:
+     آن نگهبان `git ls-files tests` را می‌شمرد، نه دیسک را. اگر اینجا از
+     fs.readdirSync استفاده کنیم، یک فایلِ untracked (مثل scratchِ یک
+     مأموریتِ دیگر) شمارِ قفل را بالا می‌برد و نگهبان پیش از هر کامیت
+     قرمز می‌شود — drift بی‌دلیل. پس همان منبعِ رسمی. */
+  const gitTests = (() => {
+    try {
+      const out = execFileSync('git', ['ls-files', 'tests'], { cwd: ROOT, encoding: 'utf8' });
+      return out.split('\n').filter(Boolean);
+    } catch (e) { return null; }
+  })();
+  const testsRoot = gitTests
+    ? gitTests.filter((f) => /^tests\/[^/]+\.js$/.test(f)).length
+    : fs.readdirSync(path.join(ROOT, 'tests')).filter((f) => f.endsWith('.js')).length;
   const apiDir = path.join(ROOT, 'tests', 'api');
-  const testsApi = fs.existsSync(apiDir)
-    ? fs.readdirSync(apiDir).filter((f) => f.endsWith('.js')).length : 0;
+  const testsApi = gitTests
+    ? gitTests.filter((f) => /^tests\/api\/[^/]+\.js$/.test(f)).length
+    : (fs.existsSync(apiDir)
+      ? fs.readdirSync(apiDir).filter((f) => f.endsWith('.js')).length : 0);
 
   /* تست‌های تو‌در‌تویِ غیرِ api. شمارِ رسمی (= آنچه tests/test-coverage-report-coverage.js
      می‌سنجد) فقط tests/ و tests/api/ است؛ این‌ها عمداً بیرون آن تعریف‌اند، ولی باید

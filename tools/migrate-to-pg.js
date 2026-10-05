@@ -483,6 +483,14 @@ function generateMigrationSQL(store) {
 
       for (const row of chunk) {
         const valArr = fields.map(f => {
+          /* N-36-infrastructure: ستونِ `version` در DDL به‌صورت
+             `INTEGER NOT NULL DEFAULT 1` تعریف می‌شود، اما ارسالِ
+             NULL صریح در INSERT حتی با وجودِ DEFAULT قانونِ NOT NULL
+             را نقض می‌کند. دادهٔ seed قدیمی فاقد این فیلد است؛ NULL
+             را به همان مقدارِ پیش‌فرضِ ستون (1) تبدیل می‌کنیم تا
+             مهاجرت روی seed قدیمی و PG زنده کار کند (بدون آن، تستِ
+             دو-نمونه‌ای واقعی روی PG زنده باز نمی‌شود). */
+          if (f === 'version' && (row[f] === undefined || row[f] === null)) return '1';
           const type = getColumnType(col, f, row[f]);
           return escapeSqlVal(row[f], type);
         });

@@ -15,6 +15,7 @@ const { paginateArray, parsePaginationParams } = require('../middleware/paginati
 const { buildAttendanceList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */
 const { inScope: syncInScope } = require('../sync'); /* BUG-4: سیاستِ واحد با sync (نه موازی) */
 const cache = require('../cache'); /* Wave 11 */
+const cacheEvents = require('../cache-invalidation-events'); /* N-36 — رویدادِ ابطالِ دوام‌دار */
 
 function createAttendanceRoutes(ctx) {
   const store = ctx.store;
@@ -160,8 +161,10 @@ const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.scho
     try {
       if (db && typeof db.persistOpsBatch === 'function') {
         /* Wave 2: مسیر حیاتی ثبت حضور (قابل استفاده برای ثبت گروهی با چند op)
-           از transaction مشترک db.persistOpsBatch عبور می‌کند. */
-        await db.persistOpsBatch([{ c: 'attendance', t: 'ins', data: newRecord }]);
+           از transaction مشترک db.persistOpsBatch عبور می‌کند.
+           N-36 — رویدادِ ابطال در همان تراکنش؛ پرش ⇒ رول‌بک. */
+        await db.persistOpsBatch([{ c: 'attendance', t: 'ins', data: newRecord }],
+          async (client) => cacheEvents.appendRoute({ collection: 'attendance', schoolId: newRecord.school_id, actorId: user && user.id, client, origin: 'rest' }));
       } else if (db && typeof db.persistOp === 'function') {
         await db.persistOp({ c: 'attendance', t: 'ins', data: newRecord });
       }
@@ -226,7 +229,8 @@ const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.scho
     const base = body.base_version !== undefined ? body.base_version : body.version;
     try {
       if (db && typeof db.persistOpsBatch === 'function') {
-        await db.persistOpsBatch([{ c: 'attendance', t: 'upd', id: rec.id, data: next, base_version: base }]);
+        await db.persistOpsBatch([{ c: 'attendance', t: 'upd', id: rec.id, data: next, base_version: base }],
+          async (client) => cacheEvents.appendRoute({ collection: 'attendance', schoolId: rec.school_id, actorId: user && user.id, client, origin: 'rest' }));
       } else if (db) {
         await db.persistOp({ c: 'attendance', t: 'upd', data: next });
       }

@@ -13,6 +13,7 @@
 'use strict';
 
 const COLLECTIONS = new Set(['attendance', 'classes', 'grades', 'users']);
+const cacheEvents = require('./cache-invalidation-events'); /* N-36 — رویدادِ ابطالِ دوامِ کاربر */
 
 function createDeleteService({ store, db, markDirty, outbox }) {
   if (!Array.isArray(store.tombstones)) store.tombstones = [];
@@ -81,6 +82,13 @@ function createDeleteService({ store, db, markDirty, outbox }) {
         await db.transaction(async (client) => {
           await db.persistOpWithClient(client, delOp);
           if (outbox) await outbox.append(evt, client);
+          /* N-36 — حذفِ کاربر هم یک رویدادِ ابطالِ scope:user در همان
+             تراکنش می‌سازد. handlerِ cache.user_changed رویِ هر نمونه
+             invalidateUser را اجرا می‌کند (del + epoch:user + publish). */
+          if (outbox && collection === 'users' && Number.isFinite(delId)) {
+            await cacheEvents.appendDurable(outbox,
+              cacheEvents.userChanged(delId, meta.actor ? meta.actor.id : null, evt.version, 'delete'), client);
+          }
         });
       } catch (txErr) {
         if (txErr && txErr.code === 'occ_conflict') {
@@ -136,6 +144,11 @@ function createDeleteService({ store, db, markDirty, outbox }) {
        رویداد درونِ تراکنشِ بالاتر نشسته است) */
     if (!pgLive && outbox) {
       await outbox.append(evt);
+      /* N-36 — حالتِ حافظه: همان رویدادِ ابطالِ کاربر */
+      if (collection === 'users' && Number.isFinite(delId)) {
+        await cacheEvents.appendDurable(outbox,
+          cacheEvents.userChanged(delId, meta.actor ? meta.actor.id : null, evt.version, 'delete'), undefined);
+      }
     }
 
     if (typeof meta.audit === 'function') {

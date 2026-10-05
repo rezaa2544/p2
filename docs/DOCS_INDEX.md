@@ -48,7 +48,7 @@
 **راهنمای وضعیت:** ✅ کامل و مرجعِ معتبر · 🟡 زنده/در انتظار رویداد بیرونی · ⚪ منجمد (تاریخی — به‌عنوان مرجع استفاده نشود)
 
 ### ۲.۱ استراتژی و برنامه‌ریزی
-| `PAYESH_ADAPTIVE_CACHE_ARCHITECTURE.md` | معماری یکپارچه مدیریت تطبیقی کش برای مقیاس ۱۰M+؛ L1/L2، policy، invalidation، consistency و capacity | 🟡 پیشنهادی/در طراحی | ۲۰۲۶-۱۰-۰۵ |
+| `PAYESH_ADAPTIVE_CACHE_ARCHITECTURE.md` | معماری یکپارچه مدیریت تطبیقی کش برای مقیاس ۱۰M+؛ L1/L2، policy، invalidation، consistency و capacity | 🟡 طراحی + بخشِ durable invalidation پیاده‌شده | ۲۰۲۶-۱۰-۰۴ |
 
 | سند | توضیح یک‌خطی | وضعیت | آخرین به‌روزرسانی |
 |---|---|---|---|
@@ -591,3 +591,10 @@ The repository is the durable project memory. During every material analysis or 
 - `docs/PAYESH_ADAPTIVE_CACHE_ARCHITECTURE.md` — PACMA v2 integration.
 - `docs/PAYESH_OBSERVABILITY_OPERATIONS_ARCHITECTURE.md` — independent observability integration.
 - GitHub Issue #434 — implementation tracking for M15.
+
+## 2026-10-04 — M15-05 Durable Cross-Instance Cache Invalidation (IMPLEMENTED)
+- `m15-cache-durable-invalidation/DESIGN.md` — طراحیِ ۲۰ بخشیِ مأموریت (A–O + ۲۰ قانون).
+- `tests/m15-durable-invalidation.js` — ۶۰ تست (۲۰ سناریوی شکست + F21 regression guard) روی PG/Redis زنده.
+- `tools/m15-outbox-capacity.js` — اندازه‌گیریِ ظرفیتِ واقعی: produce ۵۱۱/s، consume ۷۳۱/s، latency ۵ms.
+- به‌روزرسانی شد: `CURRENT_PROJECT_INTELLIGENCE.md`، `CURRENT_WORK_EXECUTION_PLAN.md`، `PAYESH_ADAPTIVE_CACHE_ARCHITECTURE.md`، `MULTI_INSTANCE_AUDIT.md`، و رفعِ ابهامِ N-36 در `control-plane/ATRIA_MISSION_M13_F3_FINAL_REPORT.md`.
+- **توجهِ نام‌گذاری:** شناسهٔ N-36 دو معنا دارد. N-36 اصلی (API/Test-CI parity، در گزارشِ M13-F3) **هنوز باز است**. این مأموریت از شناسهٔ اصلی **M15-CACHE-PACMA / M15-05** استفاده می‌کند.

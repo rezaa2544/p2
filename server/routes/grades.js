@@ -15,6 +15,7 @@ const { paginateArray, parsePaginationParams } = require('../middleware/paginati
 const { buildGradesList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */
 const { inScope: syncInScope } = require('../sync'); /* BUG-4: سیاستِ واحد با sync (نه موازی) */
 const cache = require('../cache'); /* Wave 11 */
+const cacheEvents = require('../cache-invalidation-events'); /* N-36 — رویدادِ ابطالِ دوام‌دار */
 
 function createGradeRoutes(ctx) {
   const store = ctx.store;
@@ -186,8 +187,10 @@ const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.scho
        PG failure returns here with the store still clean (memory mode: no-op). */
     try {
       if (db && typeof db.persistOpsBatch === 'function') {
-        /* Wave 2: مسیر حیاتی ثبت نمره از transaction مشترک db.persistOpsBatch عبور می‌کند. */
-        await db.persistOpsBatch([{ c: 'grades', t: 'ins', data: newGrade }]);
+        /* Wave 2: مسیر حیاتی ثبت نمره از transaction مشترک db.persistOpsBatch عبور می‌کند.
+           N-36 — رویدادِ ابطال در همان تراکنش؛ پرش ⇒ رول‌بک. */
+        await db.persistOpsBatch([{ c: 'grades', t: 'ins', data: newGrade }],
+          async (client) => cacheEvents.appendRoute({ collection: 'grades', schoolId: newGrade.school_id, actorId: user && user.id, client, origin: 'rest' }));
       } else if (db && typeof db.persistOp === 'function') {
         await db.persistOp({ c: 'grades', t: 'ins', data: newGrade });
       }
@@ -250,7 +253,8 @@ async function updateGrade(req, id, body) {
     const base = body.base_version !== undefined ? body.base_version : body.version;
     try {
       if (db && typeof db.persistOpsBatch === 'function') {
-        await db.persistOpsBatch([{ c: 'grades', t: 'upd', id: grade.id, data: next, base_version: base }]);
+        await db.persistOpsBatch([{ c: 'grades', t: 'upd', id: grade.id, data: next, base_version: base }],
+          async (client) => cacheEvents.appendRoute({ collection: 'grades', schoolId: grade.school_id, actorId: user && user.id, client, origin: 'rest' }));
       } else if (db) {
         await db.persistOp({ c: 'grades', t: 'upd', data: next });
       }

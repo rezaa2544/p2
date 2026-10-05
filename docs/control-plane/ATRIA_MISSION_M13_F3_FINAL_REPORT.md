@@ -74,6 +74,7 @@ arm که درخت pre-fix را شبیه‌سازی می‌کند باید RED ب
 
 ### ۱۹. defectهای تازه کشف‌شده (برای Control Plane)
 - **N-36:** parity contract شمارش API suites — ۳۰ hardcoded در برابر ۳۱ flat + ۱ nested (`tests/api/phase5-pilot/index.test.js`). P6a/P6c را اگرچه قرمز نگه می‌دارد، نامعتبر نیست.
+  - **رفعِ ابهامِ نام‌گذاری (۲۰۲۶-۱۰-۰۴):** شناسهٔ **N-36** بعداً توسط Control Plane برای مأموریتِ دیگری دوباره استفاده شد — **N-36 / M15-CACHE-PACMA / M15-05: Durable Cross-Instance Cache Invalidation** (پیاده‌سازی‌شده، گزارشِ نهایی در `m15-cache-durable-invalidation/`). این مورد (API/Test-CI parity) **همان N-36 اصلی** است و هنوز **باز / اجرانشده** باقی می‌ماند. از این پس برای جلوگیری از برخورد، مأموریتِ کش از شناسهٔ اصلی **M15-CACHE-PACMA** استفاده می‌کند و این defect اینجا با نام کامل **N-36 (API/Test-CI parity)** ثبت می‌شود. هیچ‌کدام از دو معنا یکی نیستند و نباید روی هم نوشته شوند.
 - **N-37:** docs-stats staleness از `f9339dd3` (در این سشن اصلاح شد).
 - **N-38:** `DOCS_HEALTH_REPORT.md` committed مربوط به ۲۰۲۶-۰۹-۱۷ است در حالی که درخت ۵۸۴ سند دارد (۳۶۰ پویش‌شده). هارنس آن را بازتولید می‌کند اما commit نشده.
 - **N-39:** `DATA_DICTIONARY.md` committed ستونهای `processing_at`/`processing_token` را ندارد در حالی که migrationها آنها را اضافه کرده‌اند (docs-debt).

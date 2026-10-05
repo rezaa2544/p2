@@ -19,6 +19,16 @@ const crypto = require('crypto');
 
 const OUTBOX_CAP = 1000;
 
+/* N-36: آخرین outbox ساخته‌شده برای publishRuntimeProbes(). درست نیست
+   که چند نمونه داشته باشیم و metrics فقط یکی را ببیند، ولی در هر
+   پروسه فقط یک outbox واقعی ساخته می‌شود (index.js) و probe همین
+   را می‌خواند. تست‌ها پروسهٔ جدا دارند. */
+let _activeOutbox = null;
+function activeBacklog() {
+  if (!_activeOutbox || typeof _activeOutbox.replicateBacklog !== 'function') return { depth: 0, oldest: null };
+  return _activeOutbox.replicateBacklog();
+}
+
 function createOutbox({ store, db }) {
   if (!Array.isArray(store.outbox)) store.outbox = [];
 
@@ -112,8 +122,18 @@ function createOutbox({ store, db }) {
         } else { throw e; }
       }
     };
+    /* N-36 §۶ (atomicity): push پیش از insert است (آینهٔ RAM سریع‌تر از
+       شبکه است)، ولی اگر insert داخلِ تراکنشِ فراخوان رول‌بک شود،
+       رویدادِ یتیم در آینهٔ محلی می‌ماند — یعنی commit بدونِ event
+       م mogelijk و آینه از PG جلو می‌افتد. در شکست، رویداد را برمی‌داریم. */
+    const rollbackMirror = (e) => {
+      const ix = store.outbox.indexOf(evt);
+      if (ix > -1) store.outbox.splice(ix, 1);
+      throw e;
+    };
     if (client) {
-      await insertOnce(client); /* Wave1-W: داخل تراکنش */
+      try { await insertOnce(client); /* Wave1-W: داخل تراکنش */ }
+      catch (e) { rollbackMirror(e); }
       return evt;
     }
     if (isPg()) {
@@ -151,8 +171,9 @@ function createOutbox({ store, db }) {
           id, String(patch.status || 'pending'),
           patch.retry_count != null ? Number(patch.retry_count) : null,
           patch.last_error != null ? String(patch.last_error) : null,
-          patch.processed_at || null, guarded ? String(leaseToken) : null
+          patch.processed_at || null
         ];
+        if (guarded) params.push(String(leaseToken));
         const r = await db.query(
           `UPDATE server_outbox
              SET status = $2, retry_count = COALESCE($3, retry_count), last_error = $4, processed_at = $5,
@@ -182,9 +203,9 @@ function createOutbox({ store, db }) {
           patch.last_error !== undefined
             ? (patch.last_error != null ? String(patch.last_error) : null)
             : (evt.last_error != null ? String(evt.last_error) : null),
-          patch.processed_at !== undefined ? (patch.processed_at || null) : (evt.processed_at || null),
-          guarded ? String(leaseToken) : null
+          patch.processed_at !== undefined ? (patch.processed_at || null) : (evt.processed_at || null)
         ];
+        if (guarded) params.push(String(leaseToken));
         const r = await db.query(
           `UPDATE server_outbox
              SET status = $2, retry_count = $3, last_error = $4, processed_at = $5,
@@ -235,8 +256,9 @@ function createOutbox({ store, db }) {
       const r = await db.query(
         `SELECT id, type, collection, record_id, actor_id, version, payload, created_at, retry_count, last_error, processing_token
            FROM server_outbox
-           WHERE status = 'pending'
-              OR (status = 'processing' AND (processing_at IS NULL OR processing_at < NOW() - ($2 * INTERVAL '1 second')))
+           WHERE (status = 'pending'
+                  OR (status = 'processing' AND (processing_at IS NULL OR processing_at < NOW() - ($2 * INTERVAL '1 second'))))
+             AND type NOT LIKE 'cache.%'
            ORDER BY id ASC LIMIT $1;`, [OUTBOX_CAP, leaseSeconds]);
       rows = (r && r.rows) || [];
     } catch (e) {
@@ -277,8 +299,9 @@ function createOutbox({ store, db }) {
         const res = await client.query(
           `WITH claimed AS (
              SELECT id FROM server_outbox
-             WHERE status = 'pending'
-                OR (status = 'processing' AND (processing_at IS NULL OR processing_at < NOW() - ($2 * INTERVAL '1 second')))
+             WHERE (status = 'pending'
+                OR (status = 'processing' AND (processing_at IS NULL OR processing_at < NOW() - ($2 * INTERVAL '1 second'))))
+               AND type NOT LIKE 'cache.%'
              ORDER BY id ASC
              LIMIT $1
              FOR UPDATE SKIP LOCKED
@@ -298,8 +321,9 @@ function createOutbox({ store, db }) {
       const res = await q.query(
         `WITH claimed AS (
            SELECT id FROM server_outbox
-           WHERE status = 'pending'
-              OR (status = 'processing' AND (processing_at IS NULL OR processing_at < NOW() - ($2 * INTERVAL '1 second')))
+           WHERE (status = 'pending'
+              OR (status = 'processing' AND (processing_at IS NULL OR processing_at < NOW() - ($2 * INTERVAL '1 second'))))
+             AND type NOT LIKE 'cache.%'
            ORDER BY id ASC
            LIMIT $1
            FOR UPDATE SKIP LOCKED
@@ -314,9 +338,13 @@ function createOutbox({ store, db }) {
       return (res && res.rows) || [];
     }
     // Memory mode: reclaim only stale processing claims; fresh claims remain owned.
+    // N-36: cache.* events are excluded — they follow the replicate-to-all path.
     const leaseMs = (Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) > 0 ? Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) : 60) * 1000;
     const now = Date.now();
-    const pending = (store.outbox || []).filter(e => e.status === 'pending' || (e.status === 'processing' && (!e.processing_at || now - Number(e.processing_at) >= leaseMs))).slice(0, limit);
+    const pending = (store.outbox || [])
+      .filter(e => !String(e && e.type || '').startsWith('cache.'))
+      .filter(e => e.status === 'pending' || (e.status === 'processing' && (!e.processing_at || now - Number(e.processing_at) >= leaseMs)))
+      .slice(0, limit);
     for (const e of pending) {
       e.status = 'processing';
       e.processing_at = Date.now();
@@ -409,7 +437,131 @@ function createOutbox({ store, db }) {
     }
   }
 
-  return { append, mark, depth, replayPendingFromPg, fetchPendingBatch, moveToDlq, cap: OUTBOX_CAP };
+  /* ════════════════════════════════════════════════════════════════
+     N-36 / M15-05 — مسیرِ بازپخشِ دوام‌دار (replicate-to-all)
+     ───────────────────────────────────────────────────────────────
+     رویدادهای `cache.*` برخلافِ `*.deleted` مصرف‌کنندهٔ رقابتی نیستند:
+     هر نمونه باید L1/L2 خودش را ابطال کند. اگر یک نمونه آن‌ها را claim
+     می‌کرد (SKIP LOCKED)، فقط L1ِ همان نمونه پاک می‌شد و بقیه تا TTL
+     کهنه می‌ماندند — دقیقاً همان حفره‌ای که این مأموریت می‌بندد. پس
+     claim‌ی در کار نیست: هر نمونه یک watermark اختصاصی و **دوام‌دار در
+     PG** دارد و فقط رویدادهایِ بعد از نشانِ خودش را می‌خواند. handlerها
+     idempotentاند (del + epoch + publish همگی آخرین‌نویسنده برنده)، پس
+     اجرای دوباره در هر نمونه و پس از هر ری‌استارت بی‌ضرر است.
+     watermark در PG نه در Redis: نقطهٔ ازسرگیری هم از قطعیِ ردیس و هم
+     از ری‌استارتِ خودِ نمونه جان سالم به در می‌برد (I4 + I16). */
+  const REPL_BATCH_DEFAULT = Number(process.env.PAYESH_CACHE_REPLICATE_BATCH) > 0
+    ? Number(process.env.PAYESH_CACHE_REPLICATE_BATCH) : 50;
+  const os = require('os');
+  const INSTANCE_ID = String(process.env.PAYESH_INSTANCE_ID
+    || (os.hostname() + ':' + process.pid)).slice(0, 128);
+
+  async function readWatermark() {
+    if (!isPg()) return Number(store.__outbox_wm) || 0;
+    try {
+      const r = await db.query(
+        'SELECT last_id FROM server_outbox_watermark WHERE instance_id = $1;', [INSTANCE_ID]);
+      if (r && r.rows && r.rows.length) return Number(r.rows[0].last_id) || 0;
+    } catch (e) { /* جدول هنوز نیست — از صفر */ }
+    return 0;
+  }
+
+  async function advanceWatermark(lastId) {
+    const n = Number(lastId);
+    if (!Number.isFinite(n) || n <= 0) return false;
+    if (!isPg()) {
+      store.__outbox_wm = Math.max(Number(store.__outbox_wm) || 0, n);
+      return true;
+    }
+    try {
+      await db.query(
+        `INSERT INTO server_outbox_watermark (instance_id, last_id, updated_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (instance_id)
+         DO UPDATE SET last_id = GREATEST(server_outbox_watermark.last_id, EXCLUDED.last_id),
+                       updated_at = NOW();`,
+        [INSTANCE_ID, n]);
+      return true;
+    } catch (e) { /* بهترین تلاش — idempotencyِ handler جلوی اشتباه را می‌گیرد */ }
+    return false;
+  }
+
+  /** اسکنِ بدونِ claimِ رویدادهایِ cache.* پس از watermarkِ این نمونه. */
+  async function fetchReplicateBatch(batchSize) {
+    const limit = Math.min(500, Math.max(1, Number(batchSize) || REPL_BATCH_DEFAULT));
+    const wm = await readWatermark();
+    if (isPg()) {
+      try {
+        const r = await db.query(
+          `SELECT id, type, collection, record_id, actor_id, version, payload, retry_count, last_error
+             FROM server_outbox
+            WHERE type LIKE 'cache.%' AND id > $1
+            ORDER BY id ASC LIMIT $2;`, [wm, limit]);
+        return (r && r.rows) || [];
+      } catch (e) { return []; }
+    }
+    return (store.outbox || [])
+      .filter((e) => String(e && e.type || '').startsWith('cache.') && Number(e.id) > wm)
+      /* N-36: شاخهٔ پستگرس `ORDER BY id ASC` دارد — شاخهٔ حافظه باید
+         همان نظم را حفظ کند وگرنه رویدادها به ترتیبِ درجِ آرایه
+         (که ممکن است بر اثرِ splice/CAP بر هم بخورد) خوانده می‌شوند
+         و ordering invariant (I11) فقط روی PG برقرار می‌ماند. */
+      .sort((a, b) => Number(a.id) - Number(b.id))
+      .slice(0, limit);
+  }
+
+  /** تعداد رویدادهایِ cache.* که هنوز به watermarkِ این نمونه نرسیده‌اند. */
+  async function replicateBacklog() {
+    const wm = await readWatermark();
+    if (isPg()) {
+      try {
+        const r = await db.query(
+          `SELECT COUNT(*)::int AS n, COALESCE(MIN(created_at), NULL) AS oldest
+             FROM server_outbox WHERE type LIKE 'cache.%' AND id > $1;`, [wm]);
+        const row = (r && r.rows && r.rows[0]) || {};
+        return { depth: Number(row.n) || 0, oldest: row.oldest || null };
+      } catch (e) { return { depth: 0, oldest: null }; }
+    }
+    const rows = (store.outbox || []).filter((e) => String(e && e.type || '').startsWith('cache.') && Number(e.id) > wm);
+    /* در حالتِ حافظه append() فیلد `at` را می‌نویسد (معادلِ created_at در PG). */
+    const oldest = rows.length ? (rows[0].created_at || rows[0].at || null) : null;
+    return { depth: rows.length, oldest };
+  }
+
+  /**
+   * Section 9 — نگه‌داریِ صف. OUTBOX_CAP فقط آینهٔ درون‌حافظه‌ای را محدود
+   * می‌کرد؛ خودِ جدولِ PG بی‌کران بود. رویدادهایِ processed فقط وقتی حذف
+   * می‌شوند که **هر نمونهٔ شناخته‌شده** از آن‌ها گذشته باشد (id <= MIN(last_id
+   * از watermarkها) — یک نمونهٔ تازه‌بوت‌شده با watermarkِ صفر، حذف را تا
+   * برابر شدن صبر می‌کند). مرزِ زمانی اضافی هم بر اساسِ processed_at.
+   * @param {number} [maxAgeSeconds] پیش‌فرض PAYESH_OUTBOX_RETENTION_SECONDS یا ۶ ساعت
+   * @returns {Promise<number>} تعدادِ ردیفِ حذف‌شده */
+  async function reapProcessed(maxAgeSeconds) {
+    if (!isPg()) return 0;
+    const age = Number(maxAgeSeconds) > 0
+      ? Number(maxAgeSeconds)
+      : (Number(process.env.PAYESH_OUTBOX_RETENTION_SECONDS) > 0
+          ? Number(process.env.PAYESH_OUTBOX_RETENTION_SECONDS)
+          : 6 * 3600);
+    try {
+      const r = await db.query(
+        `DELETE FROM server_outbox
+          WHERE status = 'processed'
+            AND id <= (SELECT COALESCE(MIN(last_id), 0) FROM server_outbox_watermark)
+            AND processed_at < NOW() - ($1 * INTERVAL '1 second');`, [age]);
+      return (r && Number(r.rowCount)) || 0;
+    } catch (e) { return 0; }
+  }
+
+  /* N-36: ثبتِ این نمونه برای activeBacklog() (metrics probe). آخرین
+     نمونه برنده است — در هر پروسه فقط یک outbox واقعی ساخته می‌شود. */
+  const api = { append, mark, depth, replayPendingFromPg, fetchPendingBatch, moveToDlq,
+    /* N-36 / M15-05 */
+    fetchReplicateBatch, advanceWatermark, readWatermark, replicateBacklog,
+    reapProcessed, instanceId: () => INSTANCE_ID,
+    cap: OUTBOX_CAP };
+  _activeOutbox = api;
+  return api;
 }
 
-module.exports = { createOutbox };
+module.exports = { createOutbox, activeBacklog };

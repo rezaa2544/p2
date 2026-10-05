@@ -12,6 +12,12 @@
 
 const { validate, validateSyncEnvelope, validateSyncData } = require('./validate');
 const cache = require('./cache');
+/* N-36 / M15-05 — رویدادهایِ ابطالِ دوام‌دار. _outbox توسط index.js پس از
+   ساختِ outbox تزریق می‌شود (setOutbox) چون createSync قبل از createOutbox
+   صدا زده می‌شود. */
+const cacheEvents = require('./cache-invalidation-events');
+let _outbox = null;
+function setOutbox(o){ _outbox = o; }
 /* ویو ۱۴ (Observability) — شمارِ تعارض‌هایِ همگام‌سازی (سیگنالِ OCC). */
 const metrics = require('./metrics');
 
@@ -1251,7 +1257,21 @@ function createSync(ctx){
     let mirrorFailed = false;
     if(batchAll.length && db && typeof db.persistOpsBatch === 'function'){
       try{
-        await (typeof db.persistSyncBatch === 'function' ? db.persistSyncBatch(batchAll) : db.persistOpsBatch(batchAll));
+        /* N-36 / M15-05 — رویدادهایِ ابطالِ دوام‌دار در همانِ تراکنشِ PG
+           نوشته می‌شوند (hook روی همان client). اگر append پر بپرد، کلِ
+           تراکنش رول‌بک می‌شود ⇒ commit بدونِ رویداد غیرممکن است. این
+           جایگزینِ publish-only نیست — Pub/Sub همچنان fast path است؛ این
+           ضمانتِ دوام‌دار است. invQueue/userInvQueue در همان حلقهٔ اعمال
+           (post-commit firing، قرارداد B6) ساخته شده‌اند. */
+        const evts = cacheEvents.fromInvQueueList(invQueue, userInvQueue,
+          s && s.id, store.__server_version, 'sync');
+        await (typeof db.persistSyncBatch === 'function'
+          ? db.persistSyncBatch(batchAll, evts.length ? async (client) => {
+              for (const ev of evts) await cacheEvents.appendDurable(_outbox, ev, client);
+            } : undefined)
+          : db.persistOpsBatch(batchAll, evts.length ? async (client) => {
+              for (const ev of evts) await cacheEvents.appendDurable(_outbox, ev, client);
+            } : undefined));
       }catch(mirrorErr){
         const why = String((mirrorErr && mirrorErr.message) || mirrorErr);
         if (mirrorErr && mirrorErr.code === 'record_exists') {
@@ -1443,4 +1463,4 @@ function createSync(ctx){
   }
   return { apiSync: syncAfterPending, canWrite, inScope };
 }
-module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, virtualDayOfflineBasis, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED };
+module.exports = { createSync, setOutbox, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, virtualDayOfflineBasis, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED };

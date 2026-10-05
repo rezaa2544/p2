@@ -15,6 +15,7 @@ const { checkOcc, bump, recordRejectedConflict } = require('../occ'); /* P0-18 +
 const { paginateArray, parsePaginationParams } = require('../middleware/pagination');
 const { projectUserByRole } = require('../middleware/projection');
 const { buildUsersList, executePagedList } = require('../dbquery'); /* Wave 3 (chat2) */const cache = require('../cache'); /* Wave 11 */
+const cacheEvents = require('../cache-invalidation-events'); /* N-36 — رویدادِ ابطالِ دوام‌دار */
 
 const ROLE_LEVEL = { student: 0, parent: 1, driver: 1, counselor: 3, teacher: 3, edu_office: 3, manager: 4, superadmin: 5 };
 
@@ -169,7 +170,9 @@ function createUserRoutes(ctx) {
        PG failure returns here with the store still clean (memory mode: no-op). */
     try {
       if (db && typeof db.persistOpsBatch === 'function') {
-        await db.persistOpsBatch([{ c: 'users', t: 'ins', data: newUser }]);
+        /* N-36 — رویدادِ ابطال در همان تراکنشِ insert؛ پرش ⇒ رول‌بک */
+        await db.persistOpsBatch([{ c: 'users', t: 'ins', data: newUser }],
+          async (client) => cacheEvents.appendRoute({ collection: 'users', schoolId: newUser.school_id, userId: newUser.id, actorId: user && user.id, client, origin: 'rest' }));
       } else if (db && typeof db.persistOp === 'function') {
         await db.persistOp({ c: 'users', t: 'ins', data: newUser });
       }
@@ -179,7 +182,7 @@ function createUserRoutes(ctx) {
     store.users.push(newUser);
     markDirty();
 
-      cache.invalidateCollection('users', newUser.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت */
+      cache.invalidateCollection('users', newUser.school_id).catch(() => {}); /* Wave 11: انقضایِ کش پس از نوشت (fast path) */
     audit('user_created', { user_id: user.id, target_user_id: newUser.id, role: newUser.role, school_id: schoolId });
     return { status: 201, body: { ok: true, data: projectUserByRole(newUser, user.role) } };
   }
@@ -256,7 +259,15 @@ function createUserRoutes(ctx) {
     const base = body.base_version !== undefined ? body.base_version : body.version;
     try {
       if (db && typeof db.persistOpsBatch === 'function') {
-        await db.persistOpsBatch([{ c: 'users', t: 'upd', id: target.id, data: next, base_version: base }]);
+        await db.persistOpsBatch([{ c: 'users', t: 'upd', id: target.id, data: next, base_version: base }],
+          /* N-36 — رویداد در همان تراکنش. M14-B02: انتقالِ مدرسه هم
+             مدرسهٔ قدیم را باید ابطال کند (ورودی زیرِ مدرسهٔ قدیمی نشسته). */
+          async (client) => {
+            await cacheEvents.appendRoute({ collection: 'users', schoolId: next.school_id, userId: target.id, actorId: user && user.id, client, origin: 'rest' });
+            if (target.school_id != null && Number(target.school_id) !== Number(next.school_id)) {
+              await cacheEvents.appendRoute({ collection: 'users', schoolId: target.school_id, actorId: user && user.id, client, origin: 'rest' });
+            }
+          });
       } else if (db) {
         await db.persistOp({ c: 'users', t: 'upd', data: next });
       }

@@ -1113,7 +1113,7 @@ Independent Observability Plane
 2. **M15-02 GLOBAL CAPACITY MODEL — P0:** workload classes, peak concurrency, throughput, p50/p95/p99, CPU/RAM/heap/GC/event-loop, DB/Redis/queue budgets, tenant fairness and saturation thresholds.
 3. **M15-03 DATABASE SCALE ARCHITECTURE — P0:** global connection budget, query/index remediation, transaction budgets, pool-wait telemetry, read capacity, explicit PgBouncer/read-replica/partition/sharding decision gate.
 4. **M15-04 SYNC/PULL SCALE & BACKPRESSURE — P0:** batch/cost/concurrency limits, tenant budgets, idempotency/conflict cost, response bounds, overload protection.
-5. **M15-05 PACMA v2 — P0:** durable cross-instance invalidation/outbox, admission, hot-key protection, bounded L1, Redis capacity policy, safe single-flight/SWR, tenant-aware budgets, replay/idempotency/backlog controls.
+5. **M15-05 PACMA v2 — P0:** durable cross-instance invalidation/outbox, admission, hot-key protection, bounded L1, Redis capacity policy, safe single-flight/SWR, tenant-aware budgets, replay/idempotency/backlog controls. **→ وضعیت (۲۰۲۶-۱۰-۰۴): بخشِ «durable cross-instance invalidation/outbox + replay/idempotency/backlog controls» پیاده و رویِ PG/Redis زنده verify شد (۶۰/۶۰ تست، produce ۵۱۱/s، consume ۷۳۱/s، latency ۵ms). بقیهٔ این آیتم (admission، hot-key، bounded L1، single-flight، tenant budgets) هنوز باز است.**
 6. **M15-06 QUEUE / WORKER RESOURCE ARCHITECTURE — P1:** depth/age/concurrency/retry/DLQ/retention/fairness bounds, backpressure, jittered retry.
 7. **M15-07 OBSERVABILITY PRODUCTION ARCHITECTURE — P1:** independent monitoring failure domain, metrics/logs/traces, monitoring-of-monitoring, bounded cardinality, async structured logging, rotation/compression/retention, disk protection, sink-outage behavior.
 8. **M15-08 EVENT-LOOP / HEAVY-WORK ISOLATION — P1:** eliminate/bound synchronous hot-path work, validate worker fallbacks, isolate exports/reports/backups.
@@ -1142,3 +1142,4 @@ Every new ChatGPT/Hermes session MUST read:
 Then reconcile the queue against current HEAD before proposing work. Historical reports never override current-head truth.
 
 **M15 status:** OPEN / ARCHITECTURE UPGRADE IN QUEUE / NOT IMPLEMENTED / NOT CERTIFIED.
+**M15-05 (durable invalidation sub-item) status:** IMPLEMENTED + VERIFIED ON LIVE INFRA (2026-10-04). هیچ ادعای scale برای کلِ سیستم صادر نشده — ظرفیتِ اندازه‌گیری‌شده فقط مسیرِ invalidation را پوشش می‌دهد.

@@ -663,6 +663,28 @@ During every mission, the control plane and agents must analyze not only Payesh 
 
 ### Status
 **M15 = OPEN / ARCHITECTURE UPGRADE IN QUEUE / NOT IMPLEMENTED / NOT CERTIFIED.**
+**M15-05 (PACMA v2 / durable cross-instance invalidation) = IMPLEMENTED + VERIFIED ON LIVE INFRA — 2026-10-04.** بقیهٔ M15 هنوز باز است.
 
 ### Mandatory cross-session handoff
 New ChatGPT/Hermes sessions must read CURRENT_PROJECT_INTELLIGENCE, CURRENT_WORK_EXECUTION_PLAN, PREQUISITES, the M15 audit, current GitHub main SHA, and Issue #434 before selecting a mission. Historical PASS/VERIFIED reports cannot override current-head truth.
+
+## M15-05 / M15-CACHE-PACMA — DURABLE CROSS-INSTANCE CACHE INVALIDATION — 2026-10-04
+
+### What changed
+- **مسیرِ دوام‌دارِ ابطال:** رویدادهای `cache.user_changed` / `cache.school_changed` / `cache.collection_changed` حالا داخلِ `server_outbox` (PG) نوشته می‌شوند و هر instance آن‌ها را برای L1/L2 خودش بازپخش می‌کند (replicate-to-all، بدونِ claim).
+- **user-scope epoch (بخشِ ۸):** پکتِ L2 حالا `ue` (user epoch) دارد؛ `invalidateUser` هم `payesh:cache:epoch:user:<id>` را جلو می‌برد. قبل از این، انتقالِ کاربر بینِ مدارس می‌توانست کشِ bootstrap را کهنه نگه دارد.
+- **آینهٔ محلیِ outbox دیگر یتیم نمی‌ماند:** اگر insert داخلِ تراکنش رول‌بک شود، رویداد از آینهٔ RAM هم برداشته می‌شود (بخشِ ۶ — atomicity).
+- **سه باگِ واقعی حینِ تست کشف و اصلاح شد:** (۱) نبودِ `ORDER BY id` در شاخهٔ حافظهٔ `fetchReplicateBatch` (ordering invariant فقط روی PG برقرار بود)؛ (۲) رهاشدنِ رویداد یتیم در رول‌بک؛ (۳) **ارسالِ ۶ پارامتر به یک prepared statementی که ۵ تا می‌خواست** در مسیرِ unguardedِ `mark()` — خطا در try/catch بلعیده می‌شد و status برای همیشه `pending` می‌ماند. تستِ F21 به‌عنوانِ regression guard دائمی برای سومی اضافه شد.
+
+### Measured evidence (زنده، نه ادعا)
+- **ظرفیت (بخشِ ۹):** produce **۵۱۱ رویداد/ثانیه**، consume **۷۳۱ رویداد/ثانیه**، latency تک‌رویداد **۵ms** — روی PG زنده (دادهٔ خام در `tools/m15-outbox-capacity.js`).
+- **تست‌ها:** `tests/m15-durable-invalidation.js` — **۶۰ PASS / ۰ FAIL / ۰ NOT-RUN** شاملِ ۲۰ سناریوی شکست + F21 regression guard. سه اجرای متوالی پایدار.
+- **دو نمونهٔ واقعی:** F20 روی PG + Redis زنده با دو INSTANCE_ID جدا (watermark اختصاصی) اجرا شد.
+- **اثباتِ منفی (بخشِ ۱۲):** `CACHE_DURABLE_VULN=1` ثابت می‌کند که بدونِ consumerِ دوام‌دار، کشِ مدرسهٔ ۲۰۰ ابطال نمی‌شود.
+- **Observability (بخشِ ۱۳):** ۶ metric همگی روی ماژول‌های واقعی verify شدند که series واقعی ثبت می‌کنند (قبلاً declare نشده بودند و `inc()` آن‌ها را در سکوت drop می‌کرد). شاملِ `redis_unavailable_total` که با `retry_count 0→0` نشان داد retry نمی‌سوزد.
+
+### وابستگی‌های زیرساختی
+PG زنده برای شاخهٔ دوام‌دار الزامی است. بدونِ `DATABASE_URL`، F10/F20 به‌درستی **NOT-RUN** گزارش می‌دهند (نه PASS). همهٔ تست‌ها هم روی PG زنده و هم روی حالتِ حافظه اجرا می‌شوند.
+
+### مالی از M15 که هنوز باز است
+M15-01..04 و 06..09 (admission، budgets، event-loop isolation، soak certification و غیره) دست‌نخورده‌اند. ظرفیتِ اندازه‌گیری‌شدهٔ بالا **فقط** برای مسیرِ invalidation است و هیچ ادعایی دربارهٔ کلِ سیستم تحت peak-load نیست.

@@ -39,6 +39,7 @@ This is an architecture/readiness audit, not a certification. A design or source
 7. **Cache architecture still needs durable cross-instance invalidation**
    - M14-B01 fixed same-process pending invalidation but confirmed process-local residual staleness (NF-1).
    - Action: durable invalidation/outbox, replay, idempotency, bounded backlog, cross-instance proof. PACMA must implement this rather than merely document it.
+   - **UPDATE 2026-10-04 — RESOLVED (M15-05 / M15-CACHE-PACMA):** تمامِ چهارجزءِ Action پیاده و رویِ PG/Redis زنده verify شد: durable outbox (`server_outbox` + handlerهایِ `cache.*`)، replay (boot-time + tick)، idempotency (F6 + first-writer-wins)، bounded backlog (per-instance watermark + `reapProcessed` retention)، cross-instance proof (F20: دو INSTANCE_ID واقعی روی PG/Redis زنده). NF-1 بسته شد. ظرفیتِ اندازه‌گیری‌شده: produce ۵۱۱/s، consume ۷۳۱/s، latency ۵ms. این finding **بسته شدنه با evidence** است، نه با سند. بقیهٔ M15 هنوز باز است.
 
 8. **Redis hot-key and cluster behavior needs capacity proof**
    - Redis Cluster cannot spread one hot key across shards.
