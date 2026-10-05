@@ -2,7 +2,7 @@
 /**
  * tools/verify-agent-skills.js — راستی‌آزمایی جامع فریم‌ورک مهارت‌های هوش مصنوعی (AI Skills)
  * 
- * بررسی وجود و سلامت ۸ مهارت رسمی مهندسی:
+ * بررسی وجود و سلامت ۷ مهارت رسمی مهندسی:
  *  ۱. interview-me (addyosmani/agent-skills)
  *  ۲. agent-watchdog (BuilderIO/skills)
  *  ۳. plan-arbiter (BuilderIO/skills)
@@ -10,7 +10,6 @@
  *  ۵. verification-before-completion (obra/superpowers)
  *  ۶. frontend-design (anthropics/skills)
  *  ۷. read-the-damn-docs (BuilderIO/skills)
- *  ۸. payesh-engineering-experience (internal/payesh)
  */
 'use strict';
 
@@ -56,11 +55,6 @@ const EXPECTED_SKILLS = [
     name: 'read-the-damn-docs',
     repo: 'BuilderIO/skills',
     purpose: 'مطالعه مستندات موثق و قراردادهای رسمی قبل از حدس زدن'
-  },
-  {
-    name: 'payesh-engineering-experience',
-    repo: 'internal/payesh',
-    purpose: 'بازیابی تجربهٔ مهندسی تأییدشدهٔ Payesh قبل از استدلال (leakage-controlled)'
   }
 ];
 
@@ -97,7 +91,7 @@ function verifyAgentSkills() {
   console.log('\n▸ ارزیابی ارتباطات و کشف‌پذیری مهارت‌ها:');
   const discoveredDirs = fs.readdirSync(SKILLS_DIR).filter(d => fs.statSync(path.join(SKILLS_DIR, d)).isDirectory());
   assert.strictEqual(discoveredDirs.length, EXPECTED_SKILLS.length, `تعداد مهارت‌های کشف‌شده (${discoveredDirs.length}) با تعداد مورد انتظار (${EXPECTED_SKILLS.length}) تطابق ندارد.`);
-  console.log(`  ✅ هر ${EXPECTED_SKILLS.length} مهارت رسمی با موفقیت کشف و راستی‌آزمایی شدند.`);
+  console.log(`  ✅ هر ۷ مهارت رسمی با موفقیت کشف و راستی‌آزمایی شدند.`);
 
   console.log('\n───────────────────────────────────────────────────────────────────');
   console.log(`نتیجه: ${passed}/${EXPECTED_SKILLS.length} مهارت رسمی هوش مصنوعی فعال و معتبر هستند ✅`);
