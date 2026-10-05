@@ -27,6 +27,56 @@ const epochSchoolKey = (schoolId) => `payesh:cache:epoch:school:${Number(schoolI
 function newEpoch() {
   return Date.now().toString(36) + ':' + crypto.randomUUID();
 }
+/* M14-B01 — ابطالِ ازدست‌رفته در قطعیِ ردیس. وقتی ردیس قطع است، del/
+   publish/بستنِ epoch همه می‌پرند؛ ورودیِ L2 زنده می‌ماند و چون epoch هم
+   نرسیده بسته شود، پس از بازیابی پاکتِ کهنه اعتبارسنجی را رد نمی‌کند و
+   مقدارِ قدیمی سرو می‌شود (epochِ فعلی همان epochِ قدیمی است). اکنون
+   ابطالِ ناموفق در همین فرایند ثبت می‌شود و تا replayِ موفق، هر خوانشِ
+   کاربر/مدرسهٔ معوق اجباراً miss می‌خورد (rebuild از DB — همیشه درست). */
+const PENDING_CAP = 2000;   /* قطعیِ طولانی ⇒ تشدید به «همه miss» (fail-safe، حافظهٔ کران‌دار) */
+const pendingInvalidations = { users: new Set(), schools: new Set(), all: false };
+const B01_VULN = process.env.B01_MUTATE === 'VULN'; /* negative-proof: رفتارِ پیشین بازتولید می‌شود */
+function recordPending(kind, id) {
+  if (kind === 'all') { pendingInvalidations.all = true; return; }
+  if (pendingInvalidations.all) return;   /* تشدیدِ فعال: ثبتِ جزئی بی‌فایده است */
+  const set = kind === 'user' ? pendingInvalidations.users : pendingInvalidations.schools;
+  set.add(Number(id));
+  if (pendingInvalidations.users.size + pendingInvalidations.schools.size > PENDING_CAP) {
+    /* تشدید: بیش از سقف ⇒ یک ابطالِ سراسری همه را می‌بندد و حافظه را
+       خالی می‌کند (epochِ سراسری، هر پاکتِ L2 را کهنه می‌کند). */
+    pendingInvalidations.all = true;
+    pendingInvalidations.users.clear();
+    pendingInvalidations.schools.clear();
+  }
+}
+function pendingUserBlocks(uid) {
+  return !B01_VULN && (pendingInvalidations.all || pendingInvalidations.users.has(Number(uid)));
+}
+function pendingSchoolBlocks(schoolId) {
+  return !B01_VULN && schoolId != null && pendingInvalidations.schools.has(Number(schoolId));
+}
+/* ابطال‌هایِ معوق را دوباره اجرا می‌کند (del + epoch + publish). هر بار
+   فقط تا نخستین شکست پیش می‌رود؛ بقیه برای فرصتِ بعد می‌مانند. عملیات‌ها
+   idempotentند پس هم‌زمانیِ فراخوانِ read و تایمر بی‌ضرر است. */
+async function replayPendingInvalidations() {
+  if (B01_VULN) return;   /* negative-proof: جهانِ پیشین (بی‌forced-miss، بی‌replay) */
+  if (!pendingInvalidations.all && !pendingInvalidations.users.size && !pendingInvalidations.schools.size) return;
+  if (!redis.isRedis()) return;                 /* هنوز قطع است — معوق می‌ماند */
+  try {
+    for (const uid of Array.from(pendingInvalidations.users)) {
+      await invalidateUser(uid, true);          /* _replay: دوباره ثبت نمی‌شود */
+      pendingInvalidations.users.delete(uid);
+    }
+    for (const sid of Array.from(pendingInvalidations.schools)) {
+      await invalidateSchool(sid, true);
+      pendingInvalidations.schools.delete(sid);
+    }
+    if (pendingInvalidations.all) {
+      await invalidateCollection('__replay__', null, true);
+      pendingInvalidations.all = false;
+    }
+  } catch (e) { /* هنوز ناپایدار است — در فرصتِ بعد دوباره */ }
+}
 /* Wave 11 — قواعدِ کش:
    L1: حافظهٔ فرایند، LRU با سقف (PAYESH_CACHE_L1_MAX، پیش‌فرض ۱۰٬۰۰۰) +
    TTLِ ۶۰s برای هر ورودی. L2: Redis، TTL = TTLِ منطقِ کلید (bootstrap ۵دقیقه).
@@ -152,8 +202,16 @@ async function purgeSchoolL2(schoolId) {
  * @param {number} userId 
  */
 async function getBootstrapCache(userId) {
+  const uid = Number(userId);
+  /* M14-B01: ابطالِ معوق — تا replayِ موفق، کاربرِ معوق اجباراً miss
+     می‌خورد. این بررسی پیش از هر تماسِ ردیسی است، پس حتی در قطعیِ کامل
+     هم کهنه نمی‌خواند. */
+  if (pendingUserBlocks(uid)) {
+    await replayPendingInvalidations();
+    if (pendingUserBlocks(uid)) return null;   /* هنوز معوق: rebuild از DB */
+  }
   // L1 Check (LRU + TTL 60s)
-  const local = l1Get(userId);
+  const local = l1Get(uid);
   if (local) {
     l1Hits++;
     /* ویو ۱۴ — نرخِ برخوردِ کش (لایهٔ حافظهٔ محلی) */
@@ -172,6 +230,12 @@ async function getBootstrapCache(userId) {
          از استقرار — حداکثر ۵ دقیقه عمر دارد) همان‌طور پذیرفته می‌شود. */
       if (parsed && parsed.__epoch_env === 1) {
         const schoolId = parsed.data && parsed.data.school ? parsed.data.school.id : null;
+        /* M14-B01: ابطالِ معوقِ مدرسه — کلیدِ L2 هنوز زنده است و epochِ
+           فعلی همچنان جفتِ قدیمی را تأیید می‌کند. */
+        if (pendingSchoolBlocks(schoolId)) {
+          await replayPendingInvalidations();
+          if (pendingSchoolBlocks(schoolId)) return null;
+        }
         const curSe = schoolId != null ? await redis.get(epochSchoolKey(schoolId)) : null;
         const curGe = await redis.get(EPOCH_GLOBAL_KEY);
         if ((parsed.se || null) !== (curSe || null) || (parsed.ge || null) !== (curGe || null)) {
@@ -226,30 +290,45 @@ async function setBootstrapCache(userId, data, ttlSeconds = 300) {
  * Invalidate a single user's cache
  * @param {number} userId 
  */
-async function invalidateUser(userId) {
+async function invalidateUser(userId, _replay) {
   localUserBootstrapCache.delete(Number(userId));
   const key = `payesh:cache:bootstrap:${userId}`;
-  await redis.del(key);
-  await redis.publish(INVAL_CHANNEL, { type: 'user', user_id: Number(userId) });
+  try {
+    await redis.del(key);
+    await redis.publish(INVAL_CHANNEL, { type: 'user', user_id: Number(userId) });
+  } catch (e) {
+    /* M14-B01: قطعیِ ردیس ⇒ ابطال ناقص ماند (publish نرسید، کلید زنده است).
+       معوقش کن تا خوانشِ بعدی اجباراً miss بخورد و بازیابیِ ردیس آن را
+       replay کند. */
+    if (!_replay) recordPending('user', userId);
+    throw e;
+  }
 }
 
 /**
  * Invalidate all cached data for a specific school
  * @param {number} schoolId 
  */
-async function invalidateSchool(schoolId) {
+async function invalidateSchool(schoolId, _replay) {
   if (!schoolId) return;
-  /* W11-2: اول epoch (بادوام، تک‌کلید) — حتی اگر publish بعدی بپرد، L2
-     از این لحظه کهنه‌خوان نمی‌شود؛ L1 نمونه‌هایِ دیگر حداکثر ۶۰ ثانیه
-     (TTL خودشان) عقب می‌ماند و بعد با L2-miss خودترمیم می‌شود. */
-  await redis.set(epochSchoolKey(schoolId), newEpoch(), 'EX', EPOCH_TTL_SECONDS);
+  /* M14-B01: L1 محلی همیشه پاک می‌شود — حتی اگر ردیسِ بعدی قطع باشد؛
+     وگرنه ابطالِ ناموفق، ورودیِ L1 را در همین نمونهِ زنده نگه می‌داشت. */
   for (const [uid, item] of Array.from(localUserBootstrapCache.entries())) {
     if (item.school_id === Number(schoolId)) {
       localUserBootstrapCache.delete(uid);
     }
   }
-  await purgeSchoolL2(Number(schoolId));
-  await redis.publish(INVAL_CHANNEL, { type: 'school', school_id: Number(schoolId) });
+  try {
+    /* W11-2: اول epoch (بادوام، تک‌کلید) — حتی اگر publish بعدی بپرد، L2
+       از این لحظه کهنه‌خوان نمی‌شود؛ L1 نمونه‌هایِ دیگر حداکثر ۶۰ ثانیه
+       (TTL خودشان) عقب می‌ماند و بعد با L2-miss خودترمیم می‌شود. */
+    await redis.set(epochSchoolKey(schoolId), newEpoch(), 'EX', EPOCH_TTL_SECONDS);
+    await purgeSchoolL2(Number(schoolId));
+    await redis.publish(INVAL_CHANNEL, { type: 'school', school_id: Number(schoolId) });
+  } catch (e) {
+    if (!_replay) recordPending('school', schoolId);
+    throw e;
+  }
 }
 
 /**
@@ -257,17 +336,23 @@ async function invalidateSchool(schoolId) {
  * @param {string} collection 
  * @param {number} [schoolId] 
  */
-async function invalidateCollection(collection, schoolId) {
+async function invalidateCollection(collection, schoolId, _replay) {
   /* ویو ۱۴ — برچسبِ scope از مجموعهٔ بسته (school/global) می‌آید؛ نامِ
      collection وارد label نمی‌شود تا cardinality کران‌دار بماند. */
   metrics.inc('payesh_cache_invalidations_total', { scope: schoolId ? 'school' : 'global' });
   if (schoolId) {
-    await invalidateSchool(schoolId);
+    await invalidateSchool(schoolId, _replay);
   } else {
-    /* W11-2: ابطالِ سراسری هم L2 را می‌پوشاند (همان حفره، مقیاسِ کل) */
-    await redis.set(EPOCH_GLOBAL_KEY, newEpoch(), 'EX', EPOCH_TTL_SECONDS);
+    /* M14-B01: L1 محلی همیشه پاک می‌شود — حتی اگر ردیسِ بعدی قطع باشد. */
     localUserBootstrapCache.clear();
-    await redis.publish(INVAL_CHANNEL, { type: 'all', collection });
+    try {
+      /* W11-2: ابطالِ سراسری هم L2 را می‌پوشاند (همان حفره، مقیاسِ کل) */
+      await redis.set(EPOCH_GLOBAL_KEY, newEpoch(), 'EX', EPOCH_TTL_SECONDS);
+      await redis.publish(INVAL_CHANNEL, { type: 'all', collection });
+    } catch (e) {
+      if (!_replay) recordPending('all');
+      throw e;
+    }
   }
 }
 
@@ -306,6 +391,20 @@ function __l1ForTests() {
 }
 function __inflightForTests() {
   return inflight.size;
+}
+/* M14-B01: مشاهدهٔ ابطال‌هایِ معوق برای آزمون (همان رویهٔ __l1ForTests). */
+function __b01PendingForTests() {
+  return {
+    get users() { return pendingInvalidations.users.size; },
+    get schools() { return pendingInvalidations.schools.size; },
+    get all() { return pendingInvalidations.all; },
+    replay: () => replayPendingInvalidations(),
+    clear: () => {
+      pendingInvalidations.users.clear();
+      pendingInvalidations.schools.clear();
+      pendingInvalidations.all = false;
+    }
+  };
 }
 
 /**
@@ -423,6 +522,14 @@ function setL1MaxEntries(n) {
   return l1MaxEntries;
 }
 
+/* M14-B01: replayِ دوره‌ای — حتی بدونِ ترافیک، ظرفِ ۲ ثانیهٔ بازیابیِ ردیس
+   ابطال‌هایِ معوق تخلیه می‌شوند (بقیهٔ نمونه‌ها تا رسیدنِ pubsubِ این
+   replay را TTL می‌بندد). unref: مانعِ خروجِ تمیزِ فرایند نمی‌شود —
+   همان الگوی cleanExpiredMem در redis.js. */
+setInterval(() => {
+  replayPendingInvalidations().catch(() => {});
+}, 2000).unref();
+
 module.exports = {
   init,
   getBootstrapCache,
@@ -440,4 +547,5 @@ module.exports = {
   withSingleFlight,
   stats,
   __l1ForTests,
-  __inflightForTests};
+  __inflightForTests,
+  __b01PendingForTests};
