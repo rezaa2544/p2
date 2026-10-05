@@ -8,7 +8,7 @@
 
 **نسخهٔ قفل:** ۱.۰.۰-rc44 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۳ | **مالک:** همگراییِ قفل پس از بازپایه روی main — چت ۶ (Arena)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۴۷۸ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۴۷۹ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
@@ -62,7 +62,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۴۷۸)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۴۷۹)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -124,7 +124,7 @@
 | `CONFLICT_MODEL_DESIGN.md` | `sha256:be53b0a4086abd9477b6fc5ef98df04b8b850707ba13726f33f358e96d6f4ff1` |
 | `COST_ENVELOPE.md` | `sha256:78453b381cd0e011e45472169f4b9ff7d0178823847c406c8973204f61649733` |
 | `CURRENT_PROJECT_INTELLIGENCE.md` | `sha256:6b0df3e00c078eb8acb91ebbe80569040cd6599209548188ce7b85587d2c9af3` |
-| `CURRENT_WORK_EXECUTION_PLAN.md` | `sha256:be5288ee74bf8895eab2b9253ec0e22efa98c64f40bec9d1a29239ff8e24fa30` |
+| `CURRENT_WORK_EXECUTION_PLAN.md` | `sha256:ecaa3fc58b7419979546890289426f83a29351205e8c150c2b19bd3a24482fa5` |
 | `D1_OFFICE_LEVEL_DESIGN.md` | `sha256:53a2df6084391671432592150dd86cdcdb6f4359aa1752c824ce9f52211e0af8` |
 | `D2_DRAFT.md` | `sha256:f62d2eff0772ce15393ed679e56ccfc3af174f702990109f479a0a81f3eb5349` |
 | `D3_DRAFT.md` | `sha256:a4bdb239a1dd6610c8319c842c3274929acd203e854585b7bbf6806ee0a6fa92` |
@@ -196,11 +196,11 @@
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:36bf496d42732300a7872e76e6a3ce64dca6d52ed20eb1d9621fdce63f3d4169` |
 | `DOCS_INDEX.md` | `sha256:f1854968dd0226d0eccb7bd8cd967d71779270f238f90eb24d7ac9347d31d3a2` |
-| `DOCS_METRICS.md` | `sha256:5fe7761f95996a825560303884fd4b4fa1bca0a1df59e9f9706ecee2c51816f0` |
+| `DOCS_METRICS.md` | `sha256:c4a00667005a41cda355ed7192b4b12ec0b69fd3519908917604ac27cf03065f` |
 | `DOCUMENTATION_GOVERNANCE.md` | `sha256:01a5156c69ff0572f2b49dc2ce31453fdf59bfe30cec1a17f2d70a1dd4cfd3fd` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:2dad3fd45b7a7fc57712b125812d4b2b04c95fccba5c95c72d05dbcf2aefcf9d` |
-| `DOCUMENTATION_MAP.md` | `sha256:402f3b668d1e4f4d33c5324fe303bda893258182818ae140ce49b0a62c4242a8` |
+| `DOCUMENTATION_MAP.md` | `sha256:76de7327d6ccefac56e3c810de5fbd4ea541c9747212124b41374da8474c137d` |
 | `DR_RUNBOOK.md` | `sha256:eba33f0ad562941cf8aea2087dae1318628708cb37b1330aa0bc1cb34c81cc89` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
@@ -293,6 +293,7 @@
 | `PARENT_360_AUDIT.md` | `sha256:8f902d56b3b166afb8052429ecdb7f2ceb4501ac88338e20f9b4964189a3136f` |
 | `PARENT_360_MODEL.md` | `sha256:14c52e1d8589f6f1b93bafe58733eb31cb54fb7438053e602a33c0781c32de7e` |
 | `PAYESH_ADAPTIVE_CACHE_ARCHITECTURE.md` | `sha256:e8235b4fe31b7573eca94098ce3edbe3d1eb16808a27d34577ed458c2fede61a` |
+| `PAYESH_OBSERVABILITY_OPERATIONS_ARCHITECTURE.md` | `sha256:06eabee3f9c82c927c812afdb9f74580b24f5e2fea9154b4b7b911d4d03f6c37` |
 | `PEN_TEST_CHECKLIST.md` | `sha256:47135b9aec8b21a6e02bbb75de89bbe5289968077c6cb1ba76d9e511f17b2059` |
 | `PERFORMANCE_BENCHMARKS.md` | `sha256:0b38bacf5e44f941b5f668fa8efc8a804a8b5dd06505587ad2d7888bd2f7e15e` |
 | `PERFORMANCE_OPTIMIZATION_GUIDE.md` | `sha256:263eb7bcf0fdc32ec8ea1e64d7a671a56c09b8befc30e74f1ef40cbdf0172fda` |
