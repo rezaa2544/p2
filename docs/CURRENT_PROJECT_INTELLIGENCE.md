@@ -627,3 +627,42 @@ Atria's final report must explicitly instruct that it is handed to Hermes; Herme
 
 ### Permanent agent analyzer
 During every mission, the control plane and agents must analyze not only Payesh defects but also their own process weaknesses. Any recurring reasoning/evidence/workflow weakness must become a reusable rule/checklist/skill, be applied on the next matching mission, and be checked for recurrence. Agent weakness records must distinguish new, recurring, corrected, and unresolved process defects.
+
+## M15 SYSTEM READINESS / ARCHITECTURE UPGRADE — 2026-10-05
+
+### Decision
+برای برنامه‌ریزی M15 فرض می‌شود معماری فعلی به مرز عملی خود رسیده است. هدف، ارتقای معماری برای peak-load/10M+، کمینه‌کردن p99، فشار DB/Redis/CPU/RAM/Disk و جلوگیری از cascading failure است. این **فرض طراحی** است و به معنی اثبات ظرفیت فعلی نیست.
+
+### Canonical sources
+- Audit: `docs/audit/PAYESH_SYSTEM_SCALE_RELIABILITY_GAP_AUDIT_2026-10-05.md`
+- Execution queue: `docs/CURRENT_WORK_EXECUTION_PLAN.md` → M15
+- GitHub Issue: #434
+- Registration commits: audit `e9e9fead...`; execution-plan update `11621ebec428600f38136b204f16c9d224dddb6a`
+
+### Architecture layers to be treated as one system
+1. Edge/admission/rate control
+2. API/authz/tenant policy
+3. PACMA L1/L2 cache + durable invalidation
+4. PostgreSQL authoritative SoT + global connection/query/transaction budgets
+5. bounded queues/workers + retry/backpressure/fairness
+6. event-loop/heavy-work isolation
+7. independent observability/monitoring/logging/rotation
+8. load/soak/chaos/recovery certification
+
+### Newly registered systemic risks
+- DB connection/concurrency budget is global across all instances.
+- Hot-key pressure can defeat Redis horizontal distribution.
+- Memory-store fallback must not become a production authoritative data plane.
+- Sync/pull can amplify one request into many DB/cache/policy operations.
+- Queue growth + retry can form a positive feedback loop.
+- Logging/telemetry can itself consume event-loop, CPU, network or disk.
+- Worker fallback can reintroduce main-thread blocking.
+- Tenant isolation must include resource/noisy-neighbor isolation.
+- Configuration parser failures can silently disable safety controls.
+- 10M+ readiness requires measured capacity evidence, not test counts or documentation.
+
+### Status
+**M15 = OPEN / ARCHITECTURE UPGRADE IN QUEUE / NOT IMPLEMENTED / NOT CERTIFIED.**
+
+### Mandatory cross-session handoff
+New ChatGPT/Hermes sessions must read CURRENT_PROJECT_INTELLIGENCE, CURRENT_WORK_EXECUTION_PLAN, PREQUISITES, the M15 audit, current GitHub main SHA, and Issue #434 before selecting a mission. Historical PASS/VERIFIED reports cannot override current-head truth.
