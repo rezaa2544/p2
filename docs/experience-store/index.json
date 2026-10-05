@@ -1,0 +1,127 @@
+{
+ "false": [
+  "PEES-FG-001",
+  "PEES-FG-002",
+  "PEES-FG-003",
+  "PEES-TI-002",
+  "TEST-PERSIST-001",
+  "TEST-SUP-1",
+  "TEST-BND-1"
+ ],
+ "green": [
+  "PEES-FG-001",
+  "PEES-FG-002",
+  "PEES-FG-003",
+  "PEES-TI-002",
+  "TEST-PERSIST-001",
+  "TEST-SUP-1",
+  "TEST-BND-1"
+ ],
+ "pattern": [
+  "PEES-FG-001",
+  "PEES-FG-002",
+  "PEES-FG-003",
+  "PEES-TI-002",
+  "PEES-RC-002",
+  "PEES-BND-001",
+  "TEST-PERSIST-001",
+  "TEST-SUP-1",
+  "TEST-BND-1"
+ ],
+ "fake-backend-not-false-green": [
+  "PEES-FG-002"
+ ],
+ "low": [
+  "PEES-FG-002"
+ ],
+ "loginAs-null-while-passing": [
+  "PEES-FG-003"
+ ],
+ "high": [
+  "PEES-FG-003",
+  "PEES-TI-001",
+  "PEES-TI-002",
+  "PEES-RC-001",
+  "PEES-SC-002"
+ ],
+ "ci": [
+  "PEES-TI-001"
+ ],
+ "test": [
+  "PEES-TI-001"
+ ],
+ "integrity": [
+  "PEES-TI-001"
+ ],
+ "lesson": [
+  "PEES-TI-001",
+  "PEES-PR-001",
+  "PEES-SC-001",
+  "PEES-SC-002"
+ ],
+ "ci-differs-from-local": [
+  "PEES-TI-001"
+ ],
+ "unguarded-exit-wait-on-dead-child": [
+  "PEES-TI-002"
+ ],
+ "successful": [
+  "PEES-RC-001"
+ ],
+ "verification": [
+  "PEES-RC-001",
+  "PEES-RC-002",
+  "PEES-BND-001"
+ ],
+ "approach": [
+  "PEES-RC-001"
+ ],
+ "source-level-call-site-evidence": [
+  "PEES-RC-001"
+ ],
+ "head-bound-fact-finding": [
+  "PEES-RC-002"
+ ],
+ "medium": [
+  "PEES-RC-002",
+  "PEES-PR-001",
+  "PEES-PR-002",
+  "PEES-SC-001",
+  "PEES-BND-001"
+ ],
+ "scope": [
+  "PEES-PR-001"
+ ],
+ "discipline": [
+  "PEES-PR-001"
+ ],
+ "read-only-audit-discipline": [
+  "PEES-PR-001"
+ ],
+ "process": [
+  "PEES-PR-002"
+ ],
+ "failure": [
+  "PEES-PR-002"
+ ],
+ "tool-iteration-cap-truncation": [
+  "PEES-PR-002"
+ ],
+ "self": [
+  "PEES-SC-001",
+  "PEES-SC-002"
+ ],
+ "critique": [
+  "PEES-SC-001",
+  "PEES-SC-002"
+ ],
+ "overcounting-sessions": [
+  "PEES-SC-001"
+ ],
+ "detection-vs-commission-confusion": [
+  "PEES-SC-002"
+ ],
+ "sha-bound": [
+  "PEES-BND-001"
+ ]
+}

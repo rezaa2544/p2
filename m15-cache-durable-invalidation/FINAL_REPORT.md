@@ -199,7 +199,8 @@
 | `tests/wave11-cache.js` | ۳۵/۳۵ |
 | `tests/sync-cache-errors.js` | ۷/۷ |
 | `tests/phase2-outbox-failover.js` (PG زنده) | ۱۰ سبز |
-| `npm test` کامل | [در §۱۸] |
+| `npm test` کامل | **۳۸/۳۸ PASS, exit 0** |
+| `tests/m15-durable-invalidation.js` رویِ HEADِ تمیز | **۶۰/۶۰** (با PG+Redis زنده)؛ بدونِ REDIS_URL → ۵۲ pass + ۱ NOT-RUN (رفتارِ درست) |
 
 ## ۱۷. فایل‌هایِ تغییر یافته
 
@@ -223,8 +224,11 @@
 |---|---|
 | HEADِ شروع | `1b19449f49a2952d2fbda99053f9af42f2cf4c6c` |
 | `origin/main`ِ شروع | `1b19449f` (۰ جلو / ۰ عقب) |
-| کارهایِ stage‌شده | فقط فایل‌هایِ §۱۷ |
-| `npm test` کامل | [پس از commit در §۱۸-ب ثبت می‌شود] |
+| HEADِ پایان | `0538383ad58ee1a30ff9a85c1aab1040e77335c0` |
+| `origin/main`ِ پایان | `0538383a` — **تأیید با `git ls-remote origin refs/heads/main`** |
+| کارهایِ stage‌شده | فقط فایل‌هایِ §۱۷ (۳۴ فایل) |
+| `npm test` کامل | **۳۸/۳۸ تست موفق، exit 0** |
+| نوعِ push | fast-forward، بدونِ rebase یا force-push |
 
 ---
 
