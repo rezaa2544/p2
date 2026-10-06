@@ -41,6 +41,9 @@ server/data/jwt.key
 .claude/memory.db
 .claude-flow/
 
+# task-observer — state داخلی agent (تجربه‌ها)؛ بخشی از source پروژه نیست
+skill-observations/
+
 # Wave 18 — دادهٔ آزمایشیِ مقیاسِ ملی (حجم‌دار؛ هرگز commit نشود)
 data/national/
 # Wave 19 — خروجیِ تست‌هایِ آشوب (حجم‌دار/پویا؛ هرگز commit نشود)
