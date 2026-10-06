@@ -80,6 +80,11 @@ hands you a benchmark solution.
   false accusations.
 - **A capped session is UNCERTAIN.** A session that hit the tool-iteration cap
   did not complete; its summary is not an outcome.
+- **QUARANTINED experience is not guidance.** An experience screened as
+  `QUARANTINED` (e.g. SHA-bound at a HEAD that has since moved) must never
+  enter a prompt even if its lifecycle status is VERIFIED. Retrieval filters
+  on `leakage_level === 'SAFE'`; a placeholder or stale record carrying
+  VERIFIED is still poison.
 
 ## Forbidden
 - Quoting a RAW (unverified) experience as fact.
