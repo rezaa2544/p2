@@ -226,3 +226,23 @@ No 10M+ capacity claim without load/soak evidence.
 - Canonical execution queue: `docs/CURRENT_WORK_EXECUTION_PLAN.md` → M15.
 - Canonical gap audit: `docs/audit/PAYESH_SYSTEM_SCALE_RELIABILITY_GAP_AUDIT_2026-10-05.md`.
 - Status remains **DESIGN/UPGRADE QUEUED — NOT IMPLEMENTED/CERTIFIED** until the M15 execution gates pass.
+
+## M15 V2 OBSERVABILITY RECONCILIATION — 2026-10-06
+
+**Bound HEAD:** `1b19449f49a2952d2fbda99053f9af42f2cf4c6c`. **Status: DESIGN INTEGRATED — NOT VERIFIED.** Queue: M15-14 (plane), M15-13 (event-loop/log safety), M15-16 (deployment), M15-19 (game days). Rule: **observability must never become an application failure.**
+
+### Invariants added
+- Telemetry is **bounded, async, lossy, non-blocking, fail-open**; drop priority debug < info < warn < error; dropped counts are themselves metrics.
+- **Cardinality budget:** no tenant/user/URL-id labels on metrics (tenant only as top-N in logs/analytics/traces); trace sampling tail-based (keep errors/slow).
+- **Independence** means separate host/network/deploy path from the app plus **external black-box probes** and a **dead-man's switch**; a single separate server is not HA (unchanged from §5).
+- Event-loop delay (`monitorEventLoopDelay`) is an SLI and an admission input; TARGET p99 < 50–100 ms is a target, not a fact.
+- Audit/security logs keep a stronger durability class than operational logs.
+
+### What exists (static inspection; deployment NOT evidenced; sweep PARTIAL)
+`infra/observability/` (prometheus, alertmanager, loki, promtail, otelcol, grafana, 11 alert rules), `infra/tracing/` (jaeger dev/prod, tail-sampling collector), OpenTelemetry dependencies in `package.json`, custom metrics module `server/metrics.js` (no `prom-client`; label-name filtering, no cardinality cap), event-loop lag as timer-drift gauge only (`metrics.js:700-711`), `/api/liveness` vs `/api/readiness` split, graceful drain.
+**Not found:** dead-man's switch, black-box probes, monitoring-of-monitoring, log shipper wiring from the app, async audit by default (`PAYESH_AUDIT_ASYNC=1` opt-in; default `appendFileSync`, `audit.js:185-195`), outbox/DLQ true depth and age metrics (`outbox.js:209-219` reads a 1000-cap RAM mirror), pool-wait histogram, L1 eviction and invalidation-lag metrics.
+
+### Acceptance for M15-14 (additions to §13)
+Kill the monitoring plane → app SLO unchanged; kill the app → external alert fires; flood labels → series count stays within budget and drop counter rises; log sink down → bounded disk, no request impact; disk-full drill (`infra/wal-drill` covers PG WAL only, not app/log disk).
+
+Status line: **Observability V2 = DESIGN INTEGRATED / NOT IMPLEMENTED / NOT VERIFIED.**

@@ -594,3 +594,34 @@ Atria implementation → Hermes independent verification → targeted 16-view ch
 - مسیرِ دوام‌دار به PG وابسته است. بدونِ `DATABASE_URL`، تست‌های PG به‌درستی **NOT-RUN** می‌شوند.
 - ظرفیتِ بالا فقط برای مسیرِ invalidation است؛ هیچ ادعایی دربارهٔ کلِ سیستم تحت peak-load صادر نشده است.
 - `server_outbox` هنوز partition نشده؛ OUTBOX_CAP فقط آینهٔ RAM را محدود می‌کرد و retention (reapProcessed) اینک به آن اضافه شده اما اندازه‌گیریِ retention زیرِ بارِ طولانی‌مدت هنوز انجام نشده.
+
+## M15 V2 PACMA-LITE RECONCILIATION — 2026-10-06
+
+**Bound HEAD:** inspected at `1b19449…`, re-verified against `bb0b5fa` after rebase (the *Baseline HEAD* `ae78f34…` at the top of this file is historical). **Status: DESIGN SIMPLIFIED; the durable-invalidation sub-path is IMPLEMENTED upstream (see the 2026-10-04 record above — E3, implementer-reported, not independently verified); the rest of PACMA-lite is NOT IMPLEMENTED.** Principle: **simpler cache > smarter cache.** Queue: M15-07 (PACMA-lite), M15-08 (Redis roles), M15-09 (NF-1 invalidation).
+
+### What the code actually has (static inspection)
+Only the **bootstrap payload** is cached (L1 `Map` bounded by *entry count* 2048, fixed 60 s TTL; L2 `payesh:cache:bootstrap:<userId>`). Epoch validation exists for school/global scope **inside the value** (L2 only) and, since `0538383`, a user-epoch (`cache.js:31,286-287`); fast-path invalidation is still Redis pub/sub fire-and-forget with process-local `pendingInvalidations` (cap 2000, `cache.js:42`) as fallback; **the durable path now exists**: cache.* events in `server_outbox`, per-instance watermark, replicate-to-all consumer (`worker.js:138`, `outbox.js:490`, migration 026). Single-flight is per-process and used once. **Not present:** TTL jitter, max object size, per-tenant budget, negative cache, hot-key detection, versioned keys, SWR, write-behind. Refs: `server/cache.js`, `server/routes/bootstrap.js:253-276`, `server/redis.js`.
+
+### Scope decision (PACMA → PACMA-lite)
+Order of adoption: (1) bytes-bounded L1 with max object size · (2) short TTL + jitter · (3) versioned-key L2 (tenant-aware keys) · (4) tenant-aware keys incl. school scope in the key (today key is user-only; isolation relies on globally unique user ids) · (5) distributed single-flight **only** for proven hot keys · (6) negative caching where safe · (7) admission by cost/frequency · (8) stale-if-error only for allowlisted non-sensitive classes.
+- **Generic SWR: removed from default scope** (forbidden for authz-sensitive state; not implemented today).
+- **Write-behind for authoritative data: FORBIDDEN** (confirmed, none in code).
+- Cache Policy Registry (§7): keep only fields that a class actually uses; do not build the full schema ahead of need.
+- No new cached resource class without a measured DB-cost benefit (M15-02).
+
+### Invalidation: the two designs, after upstream implemented (B) (M15-09 = verify + decide; never add a third)
+| | (A) Versioned keys / epoch-in-key | (B) Durable outbox invalidation stream |
+|---|---|---|
+| Builds on | existing school/global epoch (`cache.js:26,239-244`) | existing outbox + worker |
+| Adds | key-level version, L1 epoch check | new event types, consumers, replay, backlog control |
+| Failure | stale until epoch read; bounded by TTL | backlog = staleness; needs bounded escalation |
+| Complexity | low | high |
+**State at bb0b5fa:** (B) is built and a user-epoch (a slice of (A)) was added. Remaining decisions for M15-09: (1) independent verification of (B) (multi-instance, Redis outage, rollback, replay, retention under soak); (2) whether key-level versioning is still worth its cost — default **no** unless verification shows L1/L2 staleness gaps; (3) `server_outbox` partitioning and watermark-floor retention under long soak (acknowledged as unmeasured upstream). §10 "durable invalidation" and workstream M15-CACHE-04 are **superseded by M15-09 in the V2 queue**; kept as design context.
+
+### Redis
+Role separation (CACHE / RATE-LIMIT / SESSION-REVOCATION-OTP / LOCK-IDEMPOTENCY) is REQUIRED as an architecture decision; implementation only after repo + capacity evidence (M15-08). Repo contradiction to resolve: infra `noeviction` vs `docs/CACHE_STRATEGY_DESIGN.md` `allkeys-lru`.
+
+### Metrics gaps (from code)
+Missing: L1 eviction counter, invalidation lag, pending-invalidation gauge, Redis memory/eviction from server. `payesh_cache_invalidations_total` only counts `invalidateCollection`.
+
+Status line: **PACMA = DESIGN SIMPLIFIED; durable invalidation IMPLEMENTED (E3, not independently verified); remainder NOT IMPLEMENTED; NOT CERTIFIED.** Workstream ids M15-CACHE-01..09 map into M15-07/08/09/14/18.
