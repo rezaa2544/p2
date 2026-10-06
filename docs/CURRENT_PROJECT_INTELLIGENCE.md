@@ -688,3 +688,29 @@ PG زنده برای شاخهٔ دوام‌دار الزامی است. بدون�
 
 ### مالی از M15 که هنوز باز است
 M15-01..04 و 06..09 (admission، budgets، event-loop isolation، soak certification و غیره) دست‌نخورده‌اند. ظرفیتِ اندازه‌گیری‌شدهٔ بالا **فقط** برای مسیرِ invalidation است و هیچ ادعایی دربارهٔ کلِ سیستم تحت peak-load نیست.
+
+## M15 V2 — ARCHITECTURE UPGRADE INTEGRATION — 2026-10-06
+
+**Bound HEAD:** `1b19449f49a2952d2fbda99053f9af42f2cf4c6c`. **Status: ARCHITECTURE UPGRADED — DESIGN INTEGRATED (documents only). M15 = OPEN / NOT IMPLEMENTED / NOT CERTIFIED.**
+
+### Verdict and principle
+Independent adversarial 10M+ critique: **verdict D** — structural upgrade of parts, *not* a rewrite, *not* microservices. Principle: **MEASURE → PROVE → SCALE.** Canonical V2 architecture, invariants, technology decisions, 25-item queue (M15-01..25, full fields), dependency graph and handoff: `docs/CURRENT_WORK_EXECUTION_PLAN.md` → "M15 V2". Recommendation-by-recommendation status and repo-vs-critique discrepancies: Gap Audit → "V2 Reconciliation". No duplicate architecture document was created.
+
+### Facts learned from the repository that change the picture (static inspection, not runtime)
+1. Tenant key is `school_id` (73/95 tables; 22 lack it); IDs are per-table integers; no RLS; no composite FKs → shard/cell readiness is a real design task (M15-06).
+2. Login has **no passwords** (OTP) — password-hash CPU concerns are N/A; per-request `sessionFrom` I/O is the real auth cost.
+3. Outbox is a sound PG-table design (SKIP LOCKED + lease + fencing); gaps are retention, telemetry, fairness, handler loops — not the absence of a broker.
+4. Retry has **no jitter, budget or deadline anywhere** and client reconnect is immediate → sync storm is the top P0 risk.
+5. Redis is one client/keyspace/policy; infra (`noeviction`) contradicts `CACHE_STRATEGY_DESIGN.md` (`allkeys-lru`).
+6. Admission/load shedding does not exist (event-loop lag is only observed); `nationalCapacityGate` uses static ceilings.
+7. Official capacity model (`CAPACITY_MODEL.md`: 2.5M concurrent, ~20k RPS) differs from the critique's illustrative numbers; reconcile in M15-02.
+8. Observability configs and backup tooling exist but have **no deployment/measured-RPO-RTO evidence**.
+
+### Label correction — N-36
+**N-36 = API/Test-CI parity contract**, not cache invalidation. The invalidation residual is **NF-1 / M14-B01**. Queue item M15-09 is therefore "NF-1 invalidation reconciliation". N-36's completion state at current HEAD was not verified here.
+
+### Blockers
+EXTERNAL (Rule 8): documentation update prepared as a local commit/patch because the authoring session had no push access to `rezaa2544/p2`; Issue #434 not updated. OWNER DECISION: ID strategy, staging environment, off-site backup target.
+
+### Next missions
+M15-02 (capacity baseline, E3) with parallel M15-17 (config safety) and M15-12 (retry/deadline standard).

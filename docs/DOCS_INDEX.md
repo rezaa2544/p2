@@ -598,3 +598,11 @@ The repository is the durable project memory. During every material analysis or 
 - `tools/m15-outbox-capacity.js` — اندازه‌گیریِ ظرفیتِ واقعی: produce ۵۱۱/s، consume ۷۳۱/s، latency ۵ms.
 - به‌روزرسانی شد: `CURRENT_PROJECT_INTELLIGENCE.md`، `CURRENT_WORK_EXECUTION_PLAN.md`، `PAYESH_ADAPTIVE_CACHE_ARCHITECTURE.md`، `MULTI_INSTANCE_AUDIT.md`، و رفعِ ابهامِ N-36 در `control-plane/ATRIA_MISSION_M13_F3_FINAL_REPORT.md`.
 - **توجهِ نام‌گذاری:** شناسهٔ N-36 دو معنا دارد. N-36 اصلی (API/Test-CI parity، در گزارشِ M13-F3) **هنوز باز است**. این مأموریت از شناسهٔ اصلی **M15-CACHE-PACMA / M15-05** استفاده می‌کند.
+
+## 2026-10-06 — M15 V2 Architecture Upgrade (design integrated; not implemented)
+- `docs/CURRENT_WORK_EXECUTION_PLAN.md` → "M15 V2" — canonical V2 architecture, invariants, technology decisions, 25-item queue (M15-01..25), dependency graph, N-36 reconciliation, handoff. Supersedes the V1 12-item M15 queue (mapping in §6).
+- `docs/audit/PAYESH_SYSTEM_SCALE_RELIABILITY_GAP_AUDIT_2026-10-05.md` → "V2 Reconciliation" — critique vs actual repository, recommendation status register, findings V2-F01..V2-F20.
+- `docs/CURRENT_PROJECT_INTELLIGENCE.md` → "M15 V2 — Architecture Upgrade Integration".
+- `docs/PREQUISITES.md` → "M15 V2 Architecture Prerequisites".
+- `docs/PAYESH_ADAPTIVE_CACHE_ARCHITECTURE.md` → "M15 V2 PACMA-lite reconciliation"; `docs/PAYESH_OBSERVABILITY_OPERATIONS_ARCHITECTURE.md` → "M15 V2 observability reconciliation".
+- No new standalone architecture document was created (single-source rule).

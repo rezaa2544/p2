@@ -1108,7 +1108,7 @@ Independent Observability Plane
   └─ monitoring-of-monitoring
 ```
 
-## M15 execution queue — mandatory order
+## M15 execution queue (V1, 12 items) — SUPERSEDED 2026-10-06 by the M15 V2 queue below (mapping table in V2 §6; Issue #434 references remain valid via that mapping)
 1. **M15-01 READINESS DISCOVERY / CURRENT-HEAD INVENTORY — P0:** hot paths, DB pools, expensive queries, cache policy, sync/pull, queues/workers, logging, client storage, dependency boundaries; measured baseline/resource budgets.
 2. **M15-02 GLOBAL CAPACITY MODEL — P0:** workload classes, peak concurrency, throughput, p50/p95/p99, CPU/RAM/heap/GC/event-loop, DB/Redis/queue budgets, tenant fairness and saturation thresholds.
 3. **M15-03 DATABASE SCALE ARCHITECTURE — P0:** global connection budget, query/index remediation, transaction budgets, pool-wait telemetry, read capacity, explicit PgBouncer/read-replica/partition/sharding decision gate.
@@ -1143,3 +1143,210 @@ Then reconcile the queue against current HEAD before proposing work. Historical 
 
 **M15 status:** OPEN / ARCHITECTURE UPGRADE IN QUEUE / NOT IMPLEMENTED / NOT CERTIFIED.
 **M15-05 (durable invalidation sub-item) status:** IMPLEMENTED + VERIFIED ON LIVE INFRA (2026-10-04). هیچ ادعای scale برای کلِ سیستم صادر نشده — ظرفیتِ اندازه‌گیری‌شده فقط مسیرِ invalidation را پوشش می‌دهد.
+
+
+
+---
+
+# M15 V2 — PAYESH ARCHITECTURE V2 / 10M+ CELL-READY — 2026-10-06
+
+**Bound HEAD:** `1b19449f49a2952d2fbda99053f9af42f2cf4c6c` (before this documentation commit).
+**Architecture status:** `ARCHITECTURE UPGRADED — DESIGN INTEGRATED` (documents only). **Nothing in V2 is implemented or certified by this update.** No PRODUCTION-READY / 10M+ claim.
+**Source:** independent adversarial critique (verdict **D**: structural upgrade, NOT a rewrite, NOT premature microservices), reconciled against the actual repository in `docs/audit/PAYESH_SYSTEM_SCALE_RELIABILITY_GAP_AUDIT_2026-10-05.md` → "V2 Reconciliation". Principle: **MEASURE → PROVE → SCALE** (not GUESS → REWRITE → HOPE).
+
+## 1. Version record
+| | |
+|---|---|
+| **Previous (V1)** | Modular monolith (`server/`), PostgreSQL SoT + in-process memory mirror, one shared Redis (cache+rate-limit+OTP+revocation+pub/sub+locks+idempotency), PG-table outbox polled in-process, nginx single upstream. |
+| **New (V2)** | V1 + tenant-aware admission/fairness, shard-/cell-ready data model, PACMA-lite, role-separated Redis, bounded/fair queues, retry/deadline standard, sync-storm defence, independent observability plane, measured backup/DR, progressive deployment, central config safety, evidence gates. |
+| **Changed assumptions** | (a) "Architecture reached practical limit" stays a *planning assumption*, not proof. (b) Critique capacity figures are ILLUSTRATIVE; `docs/CAPACITY_MODEL.md` (2.5M concurrent / ~20k RPS peak) stays official until M15-02 reconciles. (c) Tenant key is `school_id`, not `tenant_id`; IDs are per-table integers. (d) Auth has no passwords. (e) N-36 is NOT cache invalidation (see §7). |
+| **Implemented** | Only pre-existing V1 capabilities (see Gap Audit register "Impl" column). V2 adds none. |
+| **Planned** | M15-01..M15-25 below. |
+| **Conditional** | Read replicas, broker, Redis Cluster, Kubernetes, CQRS, selective services, dedicated cell, sharding. |
+| **Evidence required** | Primary write ceiling, replica need, shard threshold, restore time, RPO/RTO, real peak mix, queue throughput. |
+
+## 2. Canonical target architecture (V2)
+```
+Users / Clients  (offline-first; backoff + FULL JITTER; idempotency keys; version header)
+  ↓
+DNS / Anycast / CDN / WAF / DDoS                      [CONDITIONAL — infra evidence required]
+  ↓
+HA Edge LB  (outlier detection, slow-start, draining; nginx today = single upstream)
+  ↓
+Tenant-aware Rate Limit   (school/user/device/endpoint; NAT-safe; per-endpoint fail mode)
+  ↓
+Priority-based Admission  (P0 critical · P1 core · P2 reports · P3 export/batch; fast, bounded, NO DB I/O, adaptive on event-loop lag)
+  ↓
+Global Tenant Directory / Router   (school → cell; read-mostly, locally cached, versioned, failure-aware)  [architecture boundary only]
+  ↓
+┌───────────────────────────── CELL (CELL-READY, one-cell today) ─────────────────────────────┐
+│ Stateless API pool: Auth · AuthZ (single policy contract) · Tenant isolation · Admission    │
+│                     Event-loop protection (monitorEventLoopDelay SLI) · payload/row caps    │
+│ PACMA-lite: bounded L1 (bytes) · short TTL+jitter · versioned-key L2 · tenant-aware keys    │
+│             controlled single-flight · negative cache · stale-if-error only where safe      │
+│             NO generic SWR · NO write-behind for authoritative data                          │
+│ Redis roles separated: CACHE | RATE-LIMIT | SESSION/REVOCATION/OTP | LOCK/IDEMPOTENCY      │
+│ PgBouncer (transaction mode; no session state) → PostgreSQL Primary (SoT)                   │
+│     ├ Read replicas [CONDITIONAL]  ├ Partitioned large tables  ├ WAL/PITR  └ shard-ready    │
+│ Bounded queue (PG outbox today; broker CONDITIONAL) → Fair worker pools P0 / P1 / P3        │
+│ Transactional Outbox → poller (SKIP LOCKED) / CDC [CONDITIONAL] → idempotent consumers      │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
+          ↓ async · lossy · bounded · non-blocking (OBSERVABILITY MUST NEVER BECOME AN APP FAILURE)
+Independent Observability Plane  (metrics · logs · traces · black-box probes · dead-man · cardinality budget)
+          ↓
+Backup / WAL / PITR / DR Plane  (immutable + off-site; warm standby; restore drill; measured RPO/RTO)
+```
+
+## 3. Architecture invariants (binding)
+1. **One tenant/workload failure must not consume the whole system** (cell = blast-radius boundary; quotas in every layer: edge, API, DB, cache, queue, worker, export, sync).
+2. **Client load is part of system load** — sync storm = **P0 risk**.
+3. **Retry amplification must be prevented**: single designated retry layer, retry budget, exponential backoff + full jitter, deadline propagation, idempotency key, no retry on permanent errors.
+4. **Queue-collapse loop is an invariant to prevent** (Traffic↑→Queue↑→Worker overload→Timeout→Retry↑→Queue↑↑→Memory↑→GC↑→Latency↑→Timeout↑): bounded depth AND age, age-shedding, retry budget, adaptive worker concurrency, pull-based memory guard.
+5. **Simpler cache > smarter cache.** Order: bounded L1 → short TTL → versioned-key L2 → tenant-aware keys → distributed single-flight only where justified → negative cache → admission → stale-if-error only where safe. Write-behind for authoritative data **FORBIDDEN**. Generic SWR forbidden by default.
+6. **PostgreSQL is the only authoritative store;** memory is bounded cache/materialization with an explicit degraded-mode contract.
+7. **Observability is bounded, async, lossy, non-blocking.**
+8. **Backup without restore drill = UNVERIFIED.**
+9. **Configuration is schema-validated, bounded, fail-fast, versioned, auditable** (hard bounds on pool, timeout, concurrency, queue size, memory, retry).
+10. **Scale-out (replica/broker/Redis Cluster/shard/cell expansion) is evidence-driven.** DO NOT SHARD NOW WITHOUT CAPACITY EVIDENCE. DO NOT INTRODUCE A BROKER BECAUSE IT LOOKS MORE SCALABLE.
+11. Targets are targets, not facts: e.g. event-loop p99 < 50–100 ms is a **TARGET**; Load Test sets the real value.
+12. Every scenario is `DESIGNED / NOT VERIFIED` until executed.
+
+## 4. Technology decisions
+| Item | Decision | Condition |
+|---|---|---|
+| Modular Monolith + Workers | **KEEP** | — |
+| Selective services (heavy reporting/export, sync gateway, notification, telemetry ingestion) | **CONDITIONAL** | measured resource profile + failure-domain need |
+| Full microservices · Service Mesh · Event Sourcing | **NOT NOW** | — |
+| Kubernetes · CQRS · Broker · Read replicas · Sharding · Cell expansion | **CONDITIONAL / FUTURE** | evidence per M15-21/22/23/24 |
+| Password-hash offload | **NOT_APPLICABLE** | no passwords in this system |
+| Per-tenant unit | `school_id` (office/province hierarchy exists → candidate cell key, EVIDENCE_REQUIRED) | M15-06/22 |
+
+## 5. M15 V2 execution queue (25 items)
+Common fields per item: **ID · Priority · Objective · Dependencies · Current status · Acceptance · Evidence required · Blocking · Next actor.** Roles unchanged: ChatGPT = Control Plane / final decision; Hermes = Architecture Lead + independent verification (may NOT issue final certification alone); Atria = executor/implementer. Each executable mission must also carry a Rule 15/16 five-task contract. "Current status" below means state at HEAD 1b19449 + this docs update.
+
+**M15-01 — Current-head architecture reconciliation · P0**
+- Objective: compare architecture docs with actual repo; keep register current. Deps: none.
+- Status: **STATIC PART DONE (2026-10-06, Gap Audit "V2 Reconciliation")**; runtime inventory (hot paths by RPS, query plans) PENDING; observability/DR sweep PARTIAL.
+- Acceptance: register covers every layer with file:line; re-run on each new HEAD. Evidence: file:line + SHA. Blocking: none. Next: Atria (runtime inventory) → Hermes verify.
+
+**M15-02 — Capacity baseline & model · P0**
+- Objective: measured single-box baseline (RPS/latency/CPU/RAM/DB/Redis/queue/event-loop) and a V2 capacity model for NORMAL/PEAK/EXTREME at 10M registered users; reconcile with `docs/CAPACITY_MODEL.md` (2.5M concurrent/20k RPS) and with `nationalCapacityGate` ceilings; critique figures stay ILLUSTRATIVE.
+- Deps: M15-01. Status: NOT STARTED (CAPACITY_WORKLOAD_MODEL = NOT-RUN). Acceptance: model lists all 20 dimensions (users, DAU, concurrency, RPS, R/W, payload, DB QPS, Redis QPS, queue rate, worker concurrency, CPU, RAM, GC, loop lag, network, disk, WAL, replication lag, hit rate, tenant skew, sync burst) with MEASURED/ASSUMED labels. Evidence: E3 runs bound to SHA, commands, env. Blocking: staging multi-node (for E4 only). Next: Atria.
+
+**M15-03 — Tenant isolation & fairness · P0**
+- Objective: AuthZ single contract (close `pull.js` separate filter), school-aware cache keys, per-tenant/device quotas, noisy-neighbor protection; tiers STANDARD/LARGE/DEDICATED.
+- Deps: M15-02. Status: PARTIAL (policy.js shared REST/sync/SQL; quotas modeled not enforced; sync limit per user). Acceptance: adversarial tenant matrix on current HEAD passes (REST/sync/pull/cache/worker); one school at 100× cannot degrade others in test. Evidence: negative/IDOR tests + load test. Blocking: M15-04 signals. Next: Atria → Hermes.
+
+**M15-04 — Admission & load shedding · P0**
+- Objective: P0–P3 classes; fast, bounded, no DB I/O, adaptive (event-loop lag, in-flight); shed from P3 up; per-endpoint rate-limit fail mode (OTP/login fail-closed, sync/pull evaluate fail-to-local); NAT-safe limits; fix XFF trust (V2-F10).
+- Deps: M15-02, M15-13 (loop-delay signal). Status: NOT FOUND (static national gate only). Acceptance: under CPU saturation P3/P2 shed first and P0 latency SLO holds; 503/429 carry Retry-After. Evidence: spike test. Next: Atria.
+
+**M15-05 — DB scale hardening · P0**
+- Objective: global connection budget (`instances×pool` vs `max_connections`), PgBouncer-compatibility (remove session advisory locks V2-F01), server-side `statement_timeout`/`idle_in_transaction`/`lock_timeout`, query/transaction budget, pool-wait histogram, bound `readCollection`/boot hydration (V2-F14), tenant-prefixed index review, partition outbox/log tables, vacuum/bloat monitoring.
+- Deps: M15-02, M15-17 (bounded pool config). Status: PARTIAL (pool, keyset, partitioning mig 012, replica read, pgbackrest config exist). Acceptance: budget calculator + boot check; EXPLAIN ANALYZE on top endpoints at national cardinalities; no unbounded hot-path SELECT. Evidence: plans + load. Blocking: none. Next: Atria.
+
+**M15-06 — Shard/cell-ready data model · P0/P1**
+- Objective: audit and close: `school_id` on all tenant-owned tables (22 lack it), composite `(school_id,id)` references or documented alternative, ID strategy decision (per-table integer vs global), no cross-tenant tx/FK assumptions, tenant-addressable queries, global `payesh_chg_seq` impact (V2-F19). **Design only; no sharding.**
+- Deps: M15-05. Status: NOT READY (see Gap Audit D1/V2-F13). Acceptance: written cross-tenant dependency audit + migration plan with rollback (Rule 23). Evidence: schema scan script + review. Blocking: owner decision on ID strategy. Next: Hermes (design) → ChatGPT decision.
+
+**M15-07 — PACMA-lite / cache simplification · P0**
+- Objective: cut PACMA design to PACMA-lite: byte-bounded L1, TTL jitter, max object size, per-tenant budget, versioned-key L2, negative cache, distributed single-flight only for proven hot keys, stale-if-error only for allowlisted classes; cache-policy registry minimal. Bootstrap cache is the only cached resource today — decide whether more classes earn their cost.
+- Deps: M15-03, M15-05. Status: PARTIAL (bounded-by-count L1, epoch-in-value, per-process single-flight). Acceptance: policy per class; stampede/hot-key/Redis-down tests; no authz-sensitive stale. Next: Atria.
+
+**M15-08 — Redis role separation · P1**
+- Objective: separate failure domain/policy for CACHE (volatile, eviction) vs RATE-LIMIT vs SESSION/REVOCATION/OTP (authoritative-ish, noeviction) vs LOCK/IDEMPOTENCY; unify key prefixes; resolve `noeviction` vs `allkeys-lru` contradiction (V2-F07); hot-key/cluster hash-tag policy.
+- Deps: M15-02, M15-07. Status: NOT FOUND (single client/keyspace). **Implementation only after repo + capacity evidence.** Acceptance: per-role config, outage drills per role. Next: Atria.
+
+**M15-09 — NF-1 invalidation reconciliation (formerly mislabelled "N-36") · P0/P1**
+- Objective: choose ONE primary mechanism: (A) extend existing school/global epoch into key-level versions + L1 epoch check (simple, no new transport), (B) durable outbox-driven invalidation stream for create/update. **Do not implement both.** Working recommendation (DESIGN_REQUIRED, not decided): (A) as default, (B) only for authorization-critical classes if evidence shows pub/sub loss matters; `pendingInvalidations` process-local residual (NF-1) retired by whichever is chosen.
+- Deps: M15-07. Status: M14-B01 done same-process; NF-1 open. Acceptance: cross-instance staleness bound proven with 2+ instances incl. Redis outage/restart. Evidence: multi-instance E3 test. Next: Hermes (design comparison) → ChatGPT decision → Atria.
+
+**M15-10 — Queue/worker anti-collapse · P0**
+- Objective: retention/cleanup/partition for `server_outbox`, DLQ, `sms_log`, `notify_queue`, `server_processed_uids`, tombstones (V2-F03); unhandled-event loop fix (V2-F04); true depth/oldest-age/DLQ gauges (V2-F05); configurable batch; per-tenant fairness + priority lanes; lease heartbeat; await in-flight tick on shutdown; DLQ replay tool (V2-F16); poison classification (permanent vs transient).
+- Deps: M15-05, M15-12. Status: PARTIAL (SKIP LOCKED + lease + fencing + atomic DLQ + max attempts exist). Acceptance: queue-collapse loop test shows bounded depth/age/RAM; age-shedding works. Next: Atria.
+
+**M15-11 — Sync storm defence · P0**
+- Objective: client full-jitter backoff, randomized resync, no immediate retry on `online`, coordinate page/SW retry counters (V2-F06), per-school/device limits on push and pull, pull rate limit, client version-skew handling, `storage.persist()` + eviction detection, DLQ-loss policy (V2-F12), tombstone retention policy. Keep existing cursor/idempotency/OCC design.
+- Deps: M15-02, M15-12. Status: protocol strong in code; herd controls NOT FOUND. Acceptance: result-release / reconnect-storm scenario keeps server inside budget. Next: Atria.
+
+**M15-12 — Retry/timeout/deadline standard · P0**
+- Objective: one doc + shared helper: designated retry layer, retry budget (≤ configured % of traffic), exponential backoff + full jitter, deadline propagation header, no retry for permanent errors, circuit breakers for PG/Redis/SMS. Deps: M15-01. Status: NOT FOUND (no jitter/budget/deadline anywhere). Acceptance: amplification test shows ≤ 1.1× extra load under 100% dependency failure. Next: Hermes (standard) → Atria.
+
+**M15-13 — Event-loop / payload safety · P0**
+- Objective: `monitorEventLoopDelay` as SLI and as admission input; payload/row caps everywhere; stream large responses; no large `JSON.stringify` on critical path; async audit/logging by default (V2-F18); verify worker fallbacks are bounded; `UV_THREADPOOL_SIZE` decision; memory/GC guard. Deps: M15-01. Status: PARTIAL. Acceptance: loop-delay p99 recorded under load; TARGET < 50–100 ms (not a fact). Next: Atria.
+
+**M15-14 — Observability plane · P1**
+- Objective: prove independent failure domain (separate host/network/deploy), dead-man's switch, black-box probes, monitoring-of-monitoring, cardinality budget on custom metrics, log shipping with bounded lossy buffers, rotation/compression/retention, audit-log durability class. Deps: M15-13. Status: CONFIG PRESENT (`infra/observability`, `infra/tracing`, 11 alerts) / DEPLOYMENT UNPROVEN / dead-man NOT FOUND. Acceptance: kill monitoring → app unaffected; kill app → alert fires externally. Next: Atria → Hermes.
+
+**M15-15 — Backup / DR design & automation · P0**
+- Objective: WAL archive + PITR + immutable + off-site copy + warm standby decision; documented RPO/RTO as **TARGET/TBD** until measured. Deps: M15-05. Status: tools/config present (pgbackrest, pitr scripts); NOT VERIFIED. Acceptance: runbook + automation; **backup without restore drill = UNVERIFIED**. Next: Atria.
+
+**M15-16 — Progressive deployment · P1**
+- Objective: canary, progressive rollout, connection draining, cache warm-up, expand→migrate→contract, feature flags/kill switch, auto-rollback on SLO breach, scheduled pre-scale for school peaks. Deps: M15-14. Status: PARTIAL (drain/readiness exist). Next: Atria.
+
+**M15-17 — Configuration safety · P1 (execute early; unblocks M15-05)**
+- Objective: one bounded config schema/parser, boot validation, hard bounds, secret-safety, drift detection; close the ~12 unbounded sites (V2-F08). Deps: M15-01. Status: PARTIAL (`boundedMs`: 6 sites). Acceptance: NaN/0/negative for any listed env fails boot or clamps with audit; regression tests (Rule 12). Next: Atria.
+
+**M15-18 — Load / spike / soak · P0**
+- Objective: 10M-modelled workloads incl. result-release peak, cold cache, sync storm. Deps: M15-02..M15-13, M15-17. Status: NOT RUN at national scale. Acceptance: E3 minimum, E4 where claimed; SHA/env/command recorded. Blocking: multi-node staging. Next: Atria → Hermes.
+
+**M15-19 — Chaos / game days · P0**
+- Objective: execute failure matrix (PG slow/down, Redis down/partition, cache flush & warm-up storm, queue backlog, worker crash, retry storm, disk/CPU/RAM pressure, loop starvation, network partition, deployment failure, replica lag, invalidation backlog, hot key, tenant overload, sync storm). Each: Detect→Contain→Degrade→Recover→Verify. Until executed: **DESIGNED / NOT VERIFIED.** Deps: M15-18. Next: Atria → Hermes.
+
+**M15-20 — Restore / failover drill · P0**
+- Objective: real PG+Redis restore and failover with measured RPO/RTO/MTTA/MTTR (closes Ground Truth RT2-03). Deps: M15-15. Blocking: **EXTERNAL BLOCKER / OWNER DECISION** (infrastructure). Next: owner + Atria.
+
+**M15-21 — Broker decision · P1 (CONDITIONAL)**
+- Objective: evidence-driven PG-outbox vs NATS JetStream / RabbitMQ Quorum / Kafka. Inputs: throughput, message rate, retention, replay, durability, ordering, tenant fairness, operational capability. Deps: M15-10, M15-18. Default: stay on PG outbox. Next: Hermes → ChatGPT.
+
+**M15-22 — Cell architecture readiness · P1**
+- Objective: Tenant Directory boundary, cell capacity/blast radius, `school→cell` routing contract; output = CELL-READY prerequisites. Deps: M15-06, M15-03. Status: NOT FOUND. Next: Hermes (design).
+
+**M15-23 — Read-replica & CQRS decision · P1 (CONDITIONAL)**
+- Objective: decide only if read pressure evidenced; define read-your-writes policy for `queryRead()`. Deps: M15-18. Status: PARTIAL (`queryRead` exists, async replication). Next: Hermes.
+
+**M15-24 — Shard/cell decision · P0 (gate)**
+- Objective: decide only after **measured write ceiling + restore time**. Deps: M15-18, M15-20, M15-06. Default: DO NOT SHARD. Next: ChatGPT.
+
+**M15-25 — Final 10M+ certification · P0 (final gate)**
+- Objective: certification only with current-HEAD evidence for load, spike, soak, chaos, restore, security, tenant isolation, fairness, observability, plus Strict Verification Gate (ChatGPT + Arena + Atria) and Hermes independent verification. **Hermes may not certify alone.** Deps: all. Status: NOT STARTED. Next: ChatGPT.
+
+## 6. Mapping from V1 queue (Issue #434) to V2
+V1-01→V2-01 · V1-02→V2-02 · V1-03→V2-05 (+06,15) · V1-04→V2-11 · V1-05→V2-07 (+09) · V1-06→V2-10 · V1-07→V2-14 · V1-08→V2-13 · V1-09→V2-03 (+04) · V1-10→V2-17 · V1-11→V2-18 (+19,20) · V1-12→V2-25. New in V2: 08, 12, 16, 21, 22, 23, 24.
+
+## 7. N-36 reconciliation
+- Repository fact: **N-36 = API/Test-CI parity contract** (API-suite count: 30 hard-coded vs 31 flat + 1 nested in `tests/api/phase5-pilot/index.test.js`), selected as the next mission after M13-F3 (`docs/control-plane/ATRIA_MISSION_M13_F3_FINAL_REPORT.md:76,102,158`). Its completion state at current HEAD was **not verified** in this mission (shallow clone).
+- The cache-invalidation residual is **NF-1** (M14-B01). Instruction text that tied "N-36" to invalidation is a labelling error; it is recorded here, not silently reused.
+- Interaction: N-36 touches test/CI counts only; M15 items that add API suites or CI gates (M15-18/19) must keep the N-36 parity contract green. No other overlap found.
+
+## 8. Dependency graph (adjusted by repository evidence)
+```
+M15-01 ─► M15-02 ─┬─► M15-03 ──────────────┐
+   │              ├─► M15-04 ◄── M15-13     │
+   │              └─► M15-05 ◄── M15-17     │
+   ├─► M15-12 ─► M15-11                     │
+   ├─► M15-13 ─► M15-14 ─► M15-16           │
+   └─► M15-17                               │
+M15-05 ─► M15-06 ─► M15-22                  │
+M15-03 + M15-05 ─► M15-07 ─┬─► M15-08       │
+                           └─► M15-09       │
+M15-05 + M15-12 ─► M15-10                   │
+M15-05 ─► M15-15 ─► M15-20                  │
+{02,03,04,05,07,10,11,13,17} ─► M15-18 ─► M15-19
+M15-10 + M15-18 ─► M15-21 · M15-18 ─► M15-23
+M15-18 + M15-20 + M15-06 ─► M15-24
+ALL ─► M15-25
+```
+Adjustments vs the requested order: **M15-13 (loop-delay signal) precedes adaptive M15-04**; **M15-17 (bounded config) precedes M15-05** (NaN/0 pool size, `db.js:78,79`); **M15-12/M15-11 (jitter/retry) are cheap, P0 and independent of DB** and may run in parallel with M15-03/05 once M15-01/02 exist; M15-09 follows M15-07 (design choice depends on cache scope).
+
+## 9. First executable missions
+1. **M15-02 Capacity baseline** (E3, single box) — everything depends on it.
+2. In parallel (independent scopes, Rule 26 sync required): **M15-17 Configuration safety** (smallest, unblocks M15-05) and **M15-12 Retry/deadline standard** (design + helper).
+
+## 10. Open blockers
+- **EXTERNAL BLOCKER (Rule 8):** this documentation update could not be pushed from the authoring session (Claude GitHub App not installed on `rezaa2544/p2`); it was prepared as a local commit/patch. GitHub Issue #434 could not be updated for the same reason.
+- OWNER DECISION: global-ID vs composite `(school_id,id)` strategy (M15-06); staging multi-node environment (M15-18/20); off-site/immutable backup target (M15-15).
+
+## 11. Cross-session handoff (read this first in a new session)
+Current architecture = V1 code at HEAD 1b19449 (+ docs). Target = V2 above. Implemented = V1 only. Planned = M15-01..25. Conditional = replica/broker/Cluster/k8s/CQRS/shard/cell. Evidence-required = write ceiling, shard threshold, restore time, RPO/RTO, true peak mix. Current mission = M15-01 (static reconciliation complete, runtime pending). Next mission = M15-02 (+ M15-17/M15-12 parallel). Blocker = push access, owner decisions above. Status line: **M15 = OPEN / V2 DESIGN INTEGRATED / NOT IMPLEMENTED / NOT CERTIFIED.**
+

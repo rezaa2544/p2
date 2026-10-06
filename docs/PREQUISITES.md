@@ -3202,3 +3202,18 @@ A repeated weakness is a process defect even if the product code remains correct
 - B-PG probes use a fixed local port 5432; consider an environment override for portability.
 
 These are follow-up signals from Hermes' verification and are not by themselves final closure decisions for broader project defects.
+
+## M15 V2 ARCHITECTURE PREREQUISITES — 2026-10-06
+
+Applies to any agent selecting an M15 mission. Canonical queue and invariants: `docs/CURRENT_WORK_EXECUTION_PLAN.md` → "M15 V2"; finding register: `docs/audit/PAYESH_SYSTEM_SCALE_RELIABILITY_GAP_AUDIT_2026-10-05.md` → "V2 Reconciliation".
+
+1. **Read first:** CURRENT_PROJECT_INTELLIGENCE → CURRENT_WORK_EXECUTION_PLAN (M15 V2 §1–§11) → Gap Audit V2 Reconciliation → PACMA and Observability docs → current `origin/main` SHA → Issue #434. Bind every claim to the exact SHA.
+2. **No false implementation claims.** A recommendation is one of CONFIRMED / PARTIALLY_CONFIRMED / DESIGN_REQUIRED / EVIDENCE_REQUIRED / CONDITIONAL / NOT_APPLICABLE / REJECTED_WITH_REASON; "Implemented" requires code evidence at current HEAD; "Verified" requires Rule 5/15 evidence; "production-ready" is never claimed from document updates.
+3. **Evidence-driven scale-out.** PgBouncer app-compat, read replicas, Redis Cluster/role separation, broker, Kubernetes, CQRS, cell, shard: architecture decision recorded ≠ implementation ≠ validation. DO NOT SHARD without a measured write ceiling and restore time; DO NOT add a broker because it looks scalable.
+4. **Forbidden by default:** write-behind for authoritative data; generic stale-while-revalidate; authz decisions from cache; microservices/service mesh/event sourcing without a measured boundary; raising TTL to hide invalidation bugs.
+5. **Invalidation design:** choose one primary mechanism (M15-09); never ship both competing designs.
+6. **Terminology guard:** N-36 = API/Test-CI parity contract; cache invalidation residual = NF-1.
+7. **Numbers:** critique capacity figures are ILLUSTRATIVE ASSUMPTIONS; official model = `docs/CAPACITY_MODEL.md` until M15-02 reconciles; event-loop p99 < 50–100 ms is a TARGET.
+8. **Backup:** backup without restore drill = UNVERIFIED; RPO/RTO = TARGET/TBD until measured.
+9. **Scenario status:** any failure/chaos scenario not executed on current HEAD = DESIGNED / NOT VERIFIED.
+10. **Client load is system load:** any change to sync/pull/retry must state its jitter/backoff/limit behaviour and keep the N-36 parity contract green.
