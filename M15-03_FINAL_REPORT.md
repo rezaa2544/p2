@@ -319,9 +319,19 @@ pool max=20، connectionTimeout=3000ms (تنظیماتِ production). دیتاب
 | مورد | مقدار |
 |---|---|
 | HEAD شروع | `bb0b5fa65a0aab8ecc7570b2a16227f29f98b6c1` (== origin/main) |
-| HEAD پایانی | `5f543efc7d30c74541fc47bc084bb9bac3e38531` |
-| commit | `M15-03: aggregate push-down for school-intelligence` |
-| فایل‌های commit شده | دقیقاً ۷ فایل (همان‌های §۱۶) |
+| commit کارِ M15-03 | `5f543efc7d30c74541fc47bc084bb9bac3e38531` — **۷ فایل، دقیقاً همان‌های §۱۶** |
+| HEAD پایانی | `b1c8ea544403c45eb0fde4cc7f1cc54925005a68` (شاملِ commitِ یک sessionِ موازی، زیر) |
+| فایل‌های M15-03 | همگی در `5f543efc` commit شده‌اند — کامل و دست‌نخورده |
 | فایل‌های pre-existing | `FINAL_REPORT_FA.md`, `migrations/026*`, `server/cache-invalidation-events.js`, `tools/m15-outbox-capacity.js` — **دست‌نخورده باقی ماندند**، در commit نیستند |
-| untracked که commit نشدند | `.zcode/`, `.mimosa/`, `.inplace-mutant-manifest.json`, `m14-b01-*`, `tools/experience-*.js` — هرگز stage نمی‌شوند |
-| push | انجام نشد (§۱۷ push را اجباری نمی‌داند) |
+| untracked که commit نشدند | `.zcode/`, `.mimosa/`, `.inplace-mutant-manifest.json`, `m14-b01-*` — هرگز stage نمی‌شوند |
+| push | انجام نشد (§۱۷ push را اجباری نمی‌داند)؛ origin/main همچنان `bb0b5fa6` است |
+
+**Parallel-session race (§۲۴ — جدی گرفته شد):** در حینِ commit، یک sessionِ موازی روی همین repo فعال بود. reflog:
+```
+b1c8ea54  commit (amend): feat: PEB v2 benchmark runner …   ← amendِ من
+6a6d05c3  commit: feat: PEB v2 benchmark runner …           ← sessionِ موازی
+5f543efc  commit: M15-03: aggregate push-down …             ← commitِ M15-03 من
+```
+دنبالهٔ رویداد: `git add M15-03_FINAL_REPORT.md` ویرایشِ گزارش را stage کرد → sessionِ موازی `6a6d05c3` را commit کرد و گزارشِ stage شدهٔ من را هم به همراهِ فایل‌های `tools/peb-runner-v2.js` و `tools/experience-benchmark-cases.js` داخلِ commit خود برد → دستورِ `--amend`ِ من آن را به `b1c8ea54` تبدیل کرد.
+
+**تأثیر:** commitِ اصلیِ M15-03 (`5f543efc`) دست‌نخورده است و همهٔ ۷ فایل را در بر دارد. تنها بخشِ خارج از scope که داخلِ commitِ موازی افتاد، همین ویرایشِ این گزارش بود — که محتوایش مالِ M15-03 است و در شاخهٔ main باقی می‌ماند. هیچ کدِ M15-03 با فایل‌هایِ sessionِ دیگر قاطی نشد. تاریخچه بازنویسی نشد و force-push‌ای در کار نیست.
