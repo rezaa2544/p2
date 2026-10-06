@@ -60,6 +60,9 @@ docs/_search-index.json
 .claude/proven-config.json
 .claude/.proven-config-version
 node_modules
+
+# task-observer — وضعیت داخلی agent (تجربه‌ها) — هرگز کامیت نشود
+skill-observations/
 # پسماندِ مسیرِ جایگزینِ push — این‌ها خروجی‌اند، نه ورودیِ مخزن
 *.bundle
 *.tar.gz
