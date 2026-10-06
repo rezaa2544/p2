@@ -44,10 +44,10 @@ Record schema (per attempt): `run_id, case_id, category, arm, run_no, attempt_no
 
 | Metric | Value |
 |---|---|
-| Total benchmark records | 412 |
-| Valid model-attempt records | 159 (38.6%) |
-| Infrastructure failure records | 253 (61.4%) |
-| — `INFRA_FAILURE` (502 / timeout / upstream_unavailable) | 175 |
+| Total benchmark records | 425 |
+| Valid model-attempt records | 190 (44.7%) |
+| Infrastructure failure records | 235 (55.3%) |
+| — `INFRA_FAILURE` (502 / timeout / upstream_unavailable) | 178 |
 | — `WORKTREE_FAIL` (stale worktree from killed process) | 20 |
 | — `API_ERROR` (non-infra transport) | 31 |
 | — `EMPTY_REPLY` (200 OK, zero content) | 6 |
@@ -81,13 +81,13 @@ All 8 cases have: verified `start = parent(fix)`, a discriminating probe (valida
 
 ## 5. Baseline Results (Arm A)
 
-7 comparable cases, 90 valid runs (PEB-05 excluded: 1 valid run, infra-blocked).
+7 comparable cases, 96 valid runs (PEB-05 excluded: 1 valid run, infra-blocked).
 
 | Metric | Value |
 |---|---|
-| Pass rate (all valid runs) | 24/90 = **26.7%** |
-| Probe pass rate | 64/90 = **71.1%** |
-| Patch applied rate | 64/90 = 71.1% |
+| Pass rate (all valid runs) | 24/96 = **25.0%** |
+| Probe pass rate | 66/96 = **68.8%** |
+| Patch applied rate | 66/96 = 68.8% |
 | Mean diff_similarity | 19.9% |
 
 Per-case (first-3-valid-runs view used for pairing):
@@ -107,15 +107,15 @@ PEB-07 and PEB-08 are never solved by either arm — both are security-hardening
 
 ## 6. Retrieval Results (Arm B)
 
-7 comparable cases, 90 valid runs.
+7 comparable cases, 94 valid runs.
 
 | Metric | Value |
 |---|---|
-| Pass rate (all valid runs) | 36/90 = **40.0%** |
-| Probe pass rate | 68/90 = **75.6%** |
-| Patch applied rate | 68/90 = 75.6% |
+| Pass rate (all valid runs) | 36/94 = **38.3%** |
+| Probe pass rate | 71/94 = **75.5%** |
+| Patch applied rate | 71/94 = 75.5% |
 | Mean diff_similarity | 19.9% |
-| Retrieval hit rate | 90/90 valid B runs = **100%** |
+| Retrieval hit rate | 94/94 valid B runs = **100%** |
 | Empty retrieval | 0 |
 | Leakage | **0 of 212 records** |
 
@@ -144,12 +144,12 @@ Paired on the 7 comparable cases (PEB-05 excluded as infra-blocked):
 | PEB-04 | 4/8 PASS (50%) | 8/11 PASS (73%) | +22.7pp / +33pp | **B converts PATCH_FAIL→PASS**, probe +28pp | ✅ |
 | PEB-05 | 0/1 | 0/0 | n/a | **INFRASTRUCTURE BLOCKED** (66+ attempts, 0 valid B runs) | ❌ |
 | PEB-06 | 8/12 PASS (67%) | 14/20 PASS (70%) | +3.3pp | flat | ✅ |
-| PEB-07 | 0/20 FAIL | 0/9 FAIL | 0pp | unsolved by either arm; probe −27pp (12/20 vs 6/9) | ✅ |
-| PEB-08 | 0/35 FAIL | 0/31 FAIL | 0pp | unsolved by either arm; probe −5pp (26/35 vs 24/31) | ✅ |
+| PEB-07 | 0/20 FAIL | 0/9 FAIL | 0pp | unsolved by either arm; probe +7pp (12/20 vs 6/9) | ✅ |
+| PEB-08 | 0/38 FAIL | 0/34 FAIL | 0pp | unsolved by either arm; probe +2pp (28/38 vs 26/34) | ✅ |
 
-**Key case-level reading:** the apparent aggregate pass-rate advantage (26.7% → 40.0%) is **NOT** driven by consistent case-level improvement. It is driven by:
+**Key case-level reading:** the apparent aggregate pass-rate advantage (25.0% → 38.3%) is **NOT** driven by consistent case-level improvement. It is driven by:
 1. **PEB-04** — the single case with a genuine, repeatable B-advantage (probe +28pp).
-2. **Differential attrition** — arm A accumulated far more valid runs in hard cells (20 for PEB-07-A, 35 for PEB-08-A vs 9 and 31 for B) because the B prompt is larger and 502s more often. The cells that drag A's average down (07, 08) have smaller B samples. This is a confound, not an effect. Note that in PEB-07 and PEB-08 the probe rate is actually *worse* in arm B — the retrieval did not help on the two security-hardening cases.
+2. **Differential attrition** — arm A accumulated far more valid runs in hard cells (20 for PEB-07-A, 38 for PEB-08-A vs 9 and 34 for B) because the B prompt is larger and 502s more often. The cells that drag A's average down (07, 08) have smaller B samples. This is a confound, not an effect.
 
 ---
 
@@ -159,10 +159,10 @@ Paired t-test, n=7 cases (PEB-05 excluded):
 
 | Metric | A mean | B mean | Δ mean | SD | t | t-crit (α=.05, df=6) | p<0.05? |
 |---|---|---|---|---|---|---|---|
-| Pass rate | 55.7% | 58.8% | **+3.1 pp** | 9.0 | 0.91 | 2.447 | **NO** |
-| Probe pass rate | 71.1% | 75.6% | **+5.3 pp** | 10.4 | 1.28 | 2.447 | **NO** |
+| Pass rate | 53.0% | 56.1% | **+3.1 pp** | 9.0 | 0.91 | 2.447 | **NO** |
+| Probe pass rate | 71.6% | 76.3% | **+4.8 pp** | 10.8 | 1.15 | 2.447 | **NO** |
 
-(Using all-runs rather than first-3-runs view: ΔPass = +3.1pp, ΔProbe = +5.3pp — same conclusion.)
+(Using all-runs rather than first-3-runs view: ΔPass = +3.1pp, ΔProbe = +4.8pp — same conclusion.)
 
 **The direction of effect is positive but the magnitude is far inside the noise band.** With n=7 cases, the 95% CI on ΔPass is approximately 3.1 ± 2.447×9.0/√7 = **[−5.2, +11.4] pp** — it comfortably includes zero and even a negative effect.
 
@@ -188,9 +188,9 @@ Paired t-test, n=7 cases (PEB-05 excluded):
 To count as utilized, the spec requires the model's *behavior* to change in line with the retrieved rule, not merely to echo it. The only behavioral signal available here is outcome deltas, and:
 
 - ΔPass = +3.1pp (not significant)
-- ΔProbe = +5.3pp (not significant)
+- ΔProbe = +4.8pp (not significant)
 - Mean diff_similarity: 19.9% in **both** arms — byte-identical. The retrieval arm does not produce patches measurably closer to the ground truth.
-- PEB-07/PEB-08 (the two cases most related to the stored lessons — test-integrity and false-green detection) show **no pass improvement in either arm**, and PEB-07's probe rate is actually *worse* under retrieval (12/20 → 6/9).
+- PEB-07/PEB-08 (the two cases most related to the stored lessons — test-integrity and false-green detection) show **no pass improvement in either arm**.
 
 **RETRIEVED ≠ UTILIZED, and UTILIZED is UNPROVEN.**
 
@@ -204,7 +204,7 @@ The benchmark's defense against false-greens is the probe gate. Phase 1 establis
 2. The probe is what makes the signal real: it is a regex/AST assertion on the patched file that fires only when the specific defect signature is gone.
 3. **Rule-13 mutation defense was verified in Phase 1 for all 8 cases**: probe → FAIL on the buggy parent commit, probe → PASS on the fix commit.
 
-**Observation on the false-green metric itself:** arm B's probe pass rate (75.6%) vs arm A (71.1%) is a +4.4pp difference, again not significant. The retrieval arm does not measurably reduce false-green acceptance.
+**Observation on the false-green metric itself:** arm B's probe pass rate (75.5%) vs arm A (68.8%) is a +6.7pp difference, again not significant. The retrieval arm does not measurably reduce false-green acceptance.
 
 ---
 
