@@ -1,9 +1,11 @@
 ---
 name: Payesh defect / security / reliability issue
-about: Track a concrete code, security, performance, data-integrity, or operational defect
+about: Track a concrete code, security, performance, data-integrity, or operational
+  defect
 title: "[DEFECT] "
-labels: ""
-assignees: ""
+labels: ''
+assignees: ''
+
 ---
 
 ## Finding
