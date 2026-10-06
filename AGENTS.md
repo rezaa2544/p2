@@ -29,3 +29,49 @@
 Current HEAD، tests/CI، documentation، roadmap و origin/main را دوباره بررسی کن و SHA نهایی را ثبت کن.
 
 Historical reports منبع truth نیستند؛ فقط evidence تاریخی‌اند.
+
+---
+
+## Atria Operating Model — OpenCode bootstrap (added 2026-10-06)
+
+پروتکل کامل ۱۰-فازهٔ Mission و قالب گزارش استاندارد در skill
+`payesh-mission` (`.claude/skills/payesh-mission/SKILL.md`) ثبت شده است.
+
+**نقش‌ها:** Atria = Executor/Remediator (inspect → diagnose → implement →
+test → measure → document → report؛ تصمیم‌گیر نهایی **نیست**) ·
+ChatGPT = Control Plane (priority، mission definition، scope، تصمیم نهایی،
+reconcile گزارش‌ها) · Hermes = Independent Verification Engine (گزارش Atria
+را کورکورانه قبول نمی‌کند؛ repository را مستقل بررسی می‌کند) ·
+16-view network = selective adversarial/discovery review — فقط برای معماری
+حساس، security، tenant isolation، correctness بحرانی، disputed findings.
+
+**قوانین اجرایی:**
+- **قانون طلایی:** REPORT = PROOF نیست. هر ادعا: CLAIM → EVIDENCE →
+  REPRODUCTION → CURRENT HEAD → VERIFICATION.
+- **Current HEAD Rule:** هر finding نسبت به CURRENT HEAD ارزیابی می‌شود؛
+  PASS تاریخی برای SHA قدیمی بدون re-verify معتبر نیست.
+- **False-Green Law:** NOT-RUN ≠ PASS · NO-OP ≠ PASS · TEST EXISTS ≠
+  TEST VALID · EXIT 0 ≠ AUTOMATIC PROOF.
+- **Negative Proof اجباری:** کد را عمداً جهش بده؛ test باید FAIL کند؛
+  اگر جهش هم سبز ماند TEST INVALID است.
+- **Scope Discipline:** finding خارج از scope را ثبت + severity + target
+  mission کن؛ بدون اجازه scope گسترش نده.
+- **Parallel Session Safety:** فرض نکن workspace فقط متعلق به توست؛
+  قبل از commit `git status` ببین؛ race/conflict را REPORT کن —
+  force-push و تاریخ‌نویسی ممنوع.
+- **Status Vocabulary (فقط):** VERIFIED · FIXED-SCOPED ·
+  REVALIDATION_REQUIRED · NOT VERIFIED · UNKNOWN · BLOCKED · FAIL.
+
+**Experience Learning (task-observer):** در شروع هر session skill
+`task-observer` را invoke کن و مشاهدات قابل تعمیم را در
+`skill-observations/log.md` ثبت کن (internal agent state — در
+`.gitignore` است، جزو source پروژه نیست).
+
+**هشدار هویت N-36:** شناسهٔ N-36 دو معنا دارد و نباید قاطی شود:
+N-36 اصلی = API/Test-CI parity contract (باز / اجرانشده)؛
+N-36 / M15-CACHE-PACMA / M15-05 = durable cross-instance cache
+invalidation (IMPLEMENTED + VERIFIED on live PG/Redis — 2026-10-04).
+
+**وضعیت روز project** در `docs/CURRENT_PROJECT_INTELLIGENCE.md` و
+`docs/CURRENT_WORK_EXECUTION_PLAN.md` است — آن دو source of truth
+وضعیت‌اند، نه این فایل.

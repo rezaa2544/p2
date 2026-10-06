@@ -1,3 +1,16 @@
+# OpenCode/Atria Bootstrap Reconciliation — 2026-10-06
+
+**Mission:** P0 bootstrap reconciliation + current-head synchronization · **Owner:** Atria (executor) · **Control Plane:** ChatGPT · **HEAD:** `bb0b5fa6` = `origin/main`
+**Before:** stale clone on `feat/a11y-rebuild` @ `24cc5e1` (old line; merge-base `458867e`; 977 local-only vs 3064 remote-only commits) → synced via `checkout main` + `reset --hard origin/main` (no tracked work lost; old line preserved on `feat/a11y-rebuild` + `feat/agents-md-activation` @ `081448a`).
+
+**DONE:** `AGENTS.md` ← Atria operating model (roles · Current HEAD Rule · False-Green Law · negative proof · scope/parallel-session discipline · status vocabulary · task-observer activation · N-36 dual-identity warning) · `.claude/skills/payesh-mission/SKILL.md` added (10-phase mission protocol; 2 corrupted strings fixed) · `.gitignore` ← `skill-observations/` · experience memory live (`skill-observations/log.md`, Observations 1–3).
+
+**Verified on current HEAD:** canonical docs ALL PRESENT · N-36 dual identity — original N-36 (API/Test-CI parity) = OPEN/NOT-RUN; N-36/M15-CACHE-PACMA/M15-05 durable invalidation = IMPLEMENTED + VERIFIED on live PG/Redis 2026-10-04 (60/60 tests, produce 511/s, consume 731/s, latency 5ms), completion commit = current HEAD · M15-01 discovery artifact present (scale/reliability gap audit 2026-10-05) · M15-02/03/04/06–09 OPEN · control-plane claim "M15-03 VERIFIED/FIXED-SCOPED" has NO evidence artifact on current main → **NOT VERIFIED** · task-observer activation VERIFIED behaviorally (session-start invoke + observations written this session).
+
+**OPEN/NEXT:** M15-02 identified, NOT started (Control Plane decision) · M15-03 needs evidence or downgrade · parallel-session report `docs/REPORT_OPENCODE_BOOTSTRAP_2026-10-06.md` left untracked (not ours to commit).
+
+---
+
 # Wave 18 — National Load Testing — Handoff
 
 **Date:** 2026-09-12
