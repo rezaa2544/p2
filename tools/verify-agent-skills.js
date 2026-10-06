@@ -55,6 +55,11 @@ const EXPECTED_SKILLS = [
     name: 'read-the-damn-docs',
     repo: 'BuilderIO/skills',
     purpose: 'مطالعه مستندات موثق و قراردادهای رسمی قبل از حدس زدن'
+  },
+  {
+    name: 'payesh-engineering-experience',
+    repo: 'internal/payesh',
+    purpose: 'بازیابی تجربه‌های مهندسی تأییدشدهٔ Payesh قبل از reasoning'
   }
 ];
 
