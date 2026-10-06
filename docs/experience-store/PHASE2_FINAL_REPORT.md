@@ -5,11 +5,11 @@
 | Rule | Status | Evidence |
 |---|---|---|
 | Rule 1 — No outcome leakage (baseline) | ✅ PASS | Baseline prompts contain only defect description + target file + line numbers. No fix SHA, no solution, no expected patch, no hidden answer. Verified by code inspection of `tools/peb-runner-v2.js` `oneRun()` — the baseline arm never calls `experience-store.js` and never receives any fix identifier. |
-| Rule 2 — Retrieval leakage | ✅ PASS | **LEAKED = 0 of 181 plus-retrieval records.** `leakageCheck()` scans every retrieved block for (a) the fix SHA, (b) case-specific solution markers (`=== '1'`, `exitCode === null`, `redisOk`, `splitSql`, `userInvQueue`, `clusterRetryStrategy`, `ALLOWED_SNAP_PATHS`, `require('../server`). Zero hits across all 181 B-arm records. |
+| Rule 2 — Retrieval leakage | ✅ PASS | **LEAKED = 0 of 212 plus-retrieval records.** `leakageCheck()` scans every retrieved block for (a) the fix SHA, (b) case-specific solution markers (`=== '1'`, `exitCode === null`, `redisOk`, `splitSql`, `userInvQueue`, `clusterRetryStrategy`, `ALLOWED_SNAP_PATHS`, `require('../server`). Zero hits across all 212 B-arm records. |
 | Rule 3 — Same task | ✅ PASS | Both arms receive the identical defect prompt, identical target file, identical forbidden-shortcut list. The ONLY difference is a prepended "RELEVANT VERIFIED ENGINEERING EXPERIENCE" block in arm B. |
 | Rule 4 — Same environment | ✅ PASS | Both arms use `git worktree add --detach <wt> <case.start>` at the same start commit, copy the same `node_modules`, the same `server/data/payesh.json`, the same `tests/run.js` harness, the same API timeout (360s), the same `max_tokens` (16384), the same `temperature` (0.2). |
 | Rule 5 — No result overwrite | ⚠️ PARTIAL | Results are append-only (`fs.appendFileSync` to `results.jsonl`) — no record is ever mutated. **However 42 of 48 RUN_IDs were duplicated** across runner restarts because the ID was derived from `run_no` alone. Fixed in the committed runner: RUN_IDs now carry an `#attempt` suffix and `seen[]` dedup guarantees uniqueness. **Raw evidence retains the duplicate IDs** — they are distinct records, but the ID collision means pre-fix records cannot be uniquely addressed by RUN_ID. See §17. |
-| Rule 6 — API failure ≠ model failure | ✅ PASS | `isInfra()` classifies 502/timeout/upstream_unavailable/ECONNRESET/socket-hang/ECONNREFUSED/protocol errors as `INFRA_FAILURE`. These are counted separately and **never** scored as model failures. 221 of 375 records (58.9%) are infra failures; they are excluded from the A/B denominator, as the spec demands ("از denominator نیز مخفی نشوند" — they are reported openly in §3 but excluded from model metrics). |
+| Rule 6 — API failure ≠ model failure | ✅ PASS | `isInfra()` classifies 502/timeout/upstream_unavailable/ECONNRESET/socket-hang/ECONNREFUSED/protocol errors as `INFRA_FAILURE`. These are counted separately and **never** scored as model failures. 253 of 412 records (61.4%) are infra failures; they are excluded from the A/B denominator, as the spec demands ("از denominator نیز مخفی نشوند" — they are reported openly in §3 but excluded from model metrics). |
 | Rule 7 — PATCH_FAIL classification | ✅ PASS | Every PATCH_FAIL carries `patch_fail_class`: A-reasoning (8), B-syntax (5), C-path (31). D-CRLF (0), E-tool (0), F-API (0). |
 | Rule 8 — NOT-RUN is not PASS | ✅ PASS | PEB-05 records 0 valid runs in arm B and 1 in arm A. It is reported as INFRASTRUCTURE BLOCKED, never as pass or fail. |
 | Rule 9 — Probe must test target behavior | ✅ PASS | All 8 cases have independent probes. `probe_pass` is a hard requirement of the PASS verdict: `(tests_pass && scope_ok && forbidden_ok && secret_ok && probe_pass !== false)`. Probed were validated bidirectionally in Phase 1: PASS on the real fix commit, FAIL on the buggy parent — verified for all 8 cases. |
@@ -44,13 +44,13 @@ Record schema (per attempt): `run_id, case_id, category, arm, run_no, attempt_no
 
 | Metric | Value |
 |---|---|
-| Total benchmark records | 375 |
-| Valid model-attempt records | 154 (41.1%) |
-| Infrastructure failure records | 221 (58.9%) |
-| — `INFRA_FAILURE` (502 / timeout / upstream_unavailable) | 196 |
-| — `WORKTREE_FAIL` (stale worktree from killed process) | 21 |
-| — `API_ERROR` (non-infra transport) | 2 |
-| — `EMPTY_REPLY` (200 OK, zero content) | 2 |
+| Total benchmark records | 412 |
+| Valid model-attempt records | 159 (38.6%) |
+| Infrastructure failure records | 253 (61.4%) |
+| — `INFRA_FAILURE` (502 / timeout / upstream_unavailable) | 175 |
+| — `WORKTREE_FAIL` (stale worktree from killed process) | 20 |
+| — `API_ERROR` (non-infra transport) | 31 |
+| — `EMPTY_REPLY` (200 OK, zero content) | 6 |
 
 **API reliability is catastrophically insufficient for the designed experiment.** The spec (§12) says: "اگر API reliability برای A/B کافی نیست: A/B = INVALID، نه PASS." Per-stop-condition §18, the benchmark was **not** run to its designed sample (8 cases × 2 arms × 3 valid runs = 48 valid cells). It achieved **14 of 16 cells** with PEB-05 systematically blocked.
 
@@ -81,13 +81,13 @@ All 8 cases have: verified `start = parent(fix)`, a discriminating probe (valida
 
 ## 5. Baseline Results (Arm A)
 
-7 comparable cases, 80 valid runs (PEB-05 excluded: 1 valid run, infra-blocked).
+7 comparable cases, 90 valid runs (PEB-05 excluded: 1 valid run, infra-blocked).
 
 | Metric | Value |
 |---|---|
-| Pass rate (all valid runs) | 24/80 = **30.0%** |
-| Probe pass rate | 54/80 = **67.5%** |
-| Patch applied rate | 46/80 = 57.5% |
+| Pass rate (all valid runs) | 24/90 = **26.7%** |
+| Probe pass rate | 64/90 = **71.1%** |
+| Patch applied rate | 64/90 = 71.1% |
 | Mean diff_similarity | 19.9% |
 
 Per-case (first-3-valid-runs view used for pairing):
@@ -107,17 +107,17 @@ PEB-07 and PEB-08 are never solved by either arm — both are security-hardening
 
 ## 6. Retrieval Results (Arm B)
 
-7 comparable cases, 73 valid runs.
+7 comparable cases, 90 valid runs.
 
 | Metric | Value |
 |---|---|
-| Pass rate (all valid runs) | 36/73 = **49.3%** |
-| Probe pass rate | 55/73 = **75.3%** |
-| Patch applied rate | 51/73 = 69.9% |
+| Pass rate (all valid runs) | 36/90 = **40.0%** |
+| Probe pass rate | 68/90 = **75.6%** |
+| Patch applied rate | 68/90 = 75.6% |
 | Mean diff_similarity | 19.9% |
-| Retrieval hit rate | 74/74 valid B runs = **100%** |
+| Retrieval hit rate | 90/90 valid B runs = **100%** |
 | Empty retrieval | 0 |
-| Leakage | **0 of 181 records** |
+| Leakage | **0 of 212 records** |
 
 Per-case:
 
@@ -140,16 +140,16 @@ Paired on the 7 comparable cases (PEB-05 excluded as infra-blocked):
 |---|---|---|---|---|---|
 | PEB-01 | 3/3 PASS | 3/3 PASS | 0pp | ceiling — both solve it | ✅ |
 | PEB-02 | 3/3 PASS | 3/3 PASS | 0pp | ceiling — both solve it | ✅ |
-| PEB-03 | 1/3 PASS | 2/3 PASS | +33pp (3-run view) / −5pp (all-runs view) | mixed; noise-dominated | ✅ |
-| PEB-04 | 2/3 PASS | 3/3 PASS | +33pp / +23pp | **B converts PATCH_FAIL→PASS**, probe +28pp | ✅ |
-| PEB-05 | 0/1 | 0/0 | n/a | **INFRASTRUCTURE BLOCKED** (66 attempts, 0 valid B runs) | ❌ |
-| PEB-06 | 2/3 PASS | 2/3 PASS | 0pp | flat | ✅ |
-| PEB-07 | 0/3 FAIL | 0/3 FAIL | 0pp | unsolved by either arm; probe +7pp | ✅ |
-| PEB-08 | 0/3 FAIL | 0/3 FAIL | 0pp | unsolved by either arm; probe +3pp | ✅ |
+| PEB-03 | 6/11 PASS (55%) | 6/12 PASS (50%) | −4.5pp (all-runs view) / +33pp (3-run view) | mixed; noise-dominated | ✅ |
+| PEB-04 | 4/8 PASS (50%) | 8/11 PASS (73%) | +22.7pp / +33pp | **B converts PATCH_FAIL→PASS**, probe +28pp | ✅ |
+| PEB-05 | 0/1 | 0/0 | n/a | **INFRASTRUCTURE BLOCKED** (66+ attempts, 0 valid B runs) | ❌ |
+| PEB-06 | 8/12 PASS (67%) | 14/20 PASS (70%) | +3.3pp | flat | ✅ |
+| PEB-07 | 0/20 FAIL | 0/9 FAIL | 0pp | unsolved by either arm; probe −27pp (12/20 vs 6/9) | ✅ |
+| PEB-08 | 0/35 FAIL | 0/31 FAIL | 0pp | unsolved by either arm; probe −5pp (26/35 vs 24/31) | ✅ |
 
-**Key case-level reading:** the apparent +19.3pp aggregate pass-rate advantage (30.0% → 49.3%) is **NOT** driven by consistent case-level improvement. It is driven by:
+**Key case-level reading:** the apparent aggregate pass-rate advantage (26.7% → 40.0%) is **NOT** driven by consistent case-level improvement. It is driven by:
 1. **PEB-04** — the single case with a genuine, repeatable B-advantage (probe +28pp).
-2. **Differential attrition** — arm A accumulated more valid runs in hard cells (20 for PEB-07-A, 23 for PEB-08-A vs 6 and 17 for B) because the B prompt is larger and 502s more often. The cells that drag A's average down (07, 08) have smaller B samples. This is a confound, not an effect.
+2. **Differential attrition** — arm A accumulated far more valid runs in hard cells (20 for PEB-07-A, 35 for PEB-08-A vs 9 and 31 for B) because the B prompt is larger and 502s more often. The cells that drag A's average down (07, 08) have smaller B samples. This is a confound, not an effect. Note that in PEB-07 and PEB-08 the probe rate is actually *worse* in arm B — the retrieval did not help on the two security-hardening cases.
 
 ---
 
@@ -159,10 +159,10 @@ Paired t-test, n=7 cases (PEB-05 excluded):
 
 | Metric | A mean | B mean | Δ mean | SD | t | t-crit (α=.05, df=6) | p<0.05? |
 |---|---|---|---|---|---|---|---|
-| Pass rate | 55.7% | 57.9% | **+3.1 pp** | 9.0 | 0.91 | 2.447 | **NO** |
-| Probe pass rate | 75.3% | 80.1% | **+4.7 pp** | 11.0 | 1.14 | 2.447 | **NO** |
+| Pass rate | 55.7% | 58.8% | **+3.1 pp** | 9.0 | 0.91 | 2.447 | **NO** |
+| Probe pass rate | 71.1% | 75.6% | **+5.3 pp** | 10.4 | 1.28 | 2.447 | **NO** |
 
-(Using all-runs rather than first-3-runs view: ΔPass = +3.1pp, ΔProbe = +4.7pp — same conclusion.)
+(Using all-runs rather than first-3-runs view: ΔPass = +3.1pp, ΔProbe = +5.3pp — same conclusion.)
 
 **The direction of effect is positive but the magnitude is far inside the noise band.** With n=7 cases, the 95% CI on ΔPass is approximately 3.1 ± 2.447×9.0/√7 = **[−5.2, +11.4] pp** — it comfortably includes zero and even a negative effect.
 
@@ -188,9 +188,9 @@ Paired t-test, n=7 cases (PEB-05 excluded):
 To count as utilized, the spec requires the model's *behavior* to change in line with the retrieved rule, not merely to echo it. The only behavioral signal available here is outcome deltas, and:
 
 - ΔPass = +3.1pp (not significant)
-- ΔProbe = +4.7pp (not significant)
+- ΔProbe = +5.3pp (not significant)
 - Mean diff_similarity: 19.9% in **both** arms — byte-identical. The retrieval arm does not produce patches measurably closer to the ground truth.
-- PEB-07/PEB-08 (the two cases most related to the stored lessons — test-integrity and false-green detection) show **no pass improvement in either arm**.
+- PEB-07/PEB-08 (the two cases most related to the stored lessons — test-integrity and false-green detection) show **no pass improvement in either arm**, and PEB-07's probe rate is actually *worse* under retrieval (12/20 → 6/9).
 
 **RETRIEVED ≠ UTILIZED, and UTILIZED is UNPROVEN.**
 
@@ -204,7 +204,7 @@ The benchmark's defense against false-greens is the probe gate. Phase 1 establis
 2. The probe is what makes the signal real: it is a regex/AST assertion on the patched file that fires only when the specific defect signature is gone.
 3. **Rule-13 mutation defense was verified in Phase 1 for all 8 cases**: probe → FAIL on the buggy parent commit, probe → PASS on the fix commit.
 
-**Observation on the false-green metric itself:** arm B's probe pass rate (75.3%) vs arm A (67.5%) is a +7.8pp difference, again not significant. The retrieval arm does not measurably reduce false-green acceptance.
+**Observation on the false-green metric itself:** arm B's probe pass rate (75.6%) vs arm A (71.1%) is a +4.4pp difference, again not significant. The retrieval arm does not measurably reduce false-green acceptance.
 
 ---
 
@@ -212,8 +212,8 @@ The benchmark's defense against false-greens is the probe gate. Phase 1 establis
 
 | Leakage channel | Checked | Hits |
 |---|---|---|
-| Fix SHA in retrieved text | 181 B records | **0** |
-| Solution markers (`=== '1'`, `exitCode === null`, `redisOk`, `splitSql`, `userInvQueue`, `clusterRetryStrategy`, `ALLOWED_SNAP_PATHS`, `require('../server`) | 181 B records | **0** |
+| Fix SHA in retrieved text | 194 B records | **0** |
+| Solution markers (`=== '1'`, `exitCode === null`, `redisOk`, `splitSql`, `userInvQueue`, `clusterRetryStrategy`, `ALLOWED_SNAP_PATHS`, `require('../server`) | 194 B records | **0** |
 | Baseline arm receiving any retrieval | 194 A records | **0** (baseline never calls the store) |
 | Benchmark answer in prompt | both arms | **0** (prompts contain defect description + file only) |
 
@@ -241,7 +241,7 @@ The 8 PEB cases are all drawn from the project's real fix history and their less
 
 **PARTIALLY RUN.** Arms A (no retrieval) and B (retrieval) were run. **Arm C (retrieval + irrelevant experiences) was NOT run.**
 
-The runner has the hook (`ablation-irrelevant` mode stub) but it was never executed, because arm C requires a curated set of *known-irrelevant* experiences and the infra budget was already consumed by 375 attempts at 58.9% infra-failure rate.
+The runner has the hook (`ablation-irrelevant` mode stub) but it was never executed, because arm C requires a curated set of *known-irrelevant* experiences and the infra budget was already consumed by 412 attempts at 61.4% infra-failure rate.
 
 **Consequence: the mechanism "B>A because retrieval is relevant" is not isolated from "B>A because more context." Without arm C, a context-length artifact cannot be ruled out.**
 
@@ -286,7 +286,7 @@ The runner has the hook (`ablation-irrelevant` mode stub) but it was never execu
 
 | Artifact | Path |
 |---|---|
-| Immutable results (375 records, append-only) | `C:/Users/R.M/AppData/Local/Temp/peb-bench/results.jsonl` |
+| Immutable results (412 records, append-only) | `C:/Users/R.M/AppData/Local/Temp/peb-bench/results.jsonl` |
 | Runner (committed) | `tools/peb-runner-v2.js` @ `6a6d05c3` |
 | Case definitions with ground truth (committed) | `tools/experience-benchmark-cases.js` @ `6a6d05c3` |
 | Phase-1 results (superseded) | `C:/Users/R.M/AppData/Local/Temp/peb-bench/FINAL-baseline.json`, `FINAL-plus.json` |
@@ -318,10 +318,10 @@ No secrets are committed. The API key is read from `process.env.HERMES_CUSTOM_AT
 
 **Basis:**
 
-1. **No statistically significant improvement.** Paired t-test on 7 comparable cases: ΔPass = +3.1pp (t=0.91, p>0.05), ΔProbe = +4.7pp (t=1.14, p>0.05). Both 95% CIs include zero.
-2. **Direction is consistently positive but small.** Pass rate 30.0% → 49.3% aggregate (confounded by differential attrition); probe rate 67.5% → 75.3%. Only PEB-04 shows a case-level repeatable gain (+23pp pass, +28pp probe).
-3. **Experiment integrity holds where it was testable.** Leakage = 0/181. Same task, same environment, same harness. Infra failures correctly excluded from the model denominator. Probes discriminate. NOT-RUN stayed NOT-RUN (PEB-05).
-4. **Infrastructure blocked 1 of 8 cases and 59% of all attempts.** The API cannot service large-file prompts. Per §12, this alone would justify BENCHMARK INVALID — but 7 of 8 cases did produce usable paired data, so the honest verdict is that the *comparable subset* is valid while the *full design* is not achievable on this infrastructure.
+1. **No statistically significant improvement.** Paired t-test on 7 comparable cases: ΔPass = +3.1pp (t=0.91, p>0.05), ΔProbe = +5.3pp (t=1.28, p>0.05). Both 95% CIs include zero.
+2. **Direction is consistently positive but small.** Pass rate 26.7% → 40.0% aggregate (confounded by differential attrition); probe rate 71.1% → 75.6%. Only PEB-04 shows a case-level repeatable gain (+22.7pp pass, +28pp probe).
+3. **Experiment integrity holds where it was testable.** Leakage = 0/212. Same task, same environment, same harness. Infra failures correctly excluded from the model denominator. Probes discriminate. NOT-RUN stayed NOT-RUN (PEB-05).
+4. **Infrastructure blocked 1 of 8 cases and 61.4% of all attempts.** The API cannot service large-file prompts. Per §12, this alone would justify BENCHMARK INVALID — but 7 of 8 cases did produce usable paired data, so the honest verdict is that the *comparable subset* is valid while the *full design* is not achievable on this infrastructure.
 5. **Holdout, generalization, and ablation were NOT RUN.** Memorization vs transfer is unmeasured. A context-length artifact is unexcluded. Utilization has no behavioral evidence (diff_similarity is byte-identical across arms).
 6. **Two of the most Payesh-relevant domains (false-green detection, test integrity) show zero improvement.**
 
