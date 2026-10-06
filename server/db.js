@@ -296,6 +296,18 @@ async function init(fallbackStore) {
           readPoolActive = false;   /* stop routing to a dead replica */
           scheduleReplicaReprobe(); /* S3-1: ولی برایِ بازگشتش کاوش کن */
         });
+        /* M15-03 — همان نگهبانِ Clientِ سطحِ اتصال که poolِ اصلی دارد
+           (بالا، P0-1 round 3 item 2). readPool.on('error') فقط خطاهایِ
+           پس‌زمینهٔ pool را می‌گیرد، نه 'error' رویِ یک Clientِ
+           تحویل‌شده را. بدونِ این شنونده، اگر ارتباطِ یک کلاینتِ
+           رپلیکا وسطِ کوئری بمیرد، رویدادِ 'error' بدونِ شنونده ساطع
+           می‌شود و کلِ فرآیند از کار می‌افتد — دقیقاً همان فروپاشی‌ای
+           که برایِ poolِ اصلی برطرف شد. اکنون که مسیرِ تجمیع از
+           queryRead می‌رود، این نقص از طریقِ کدِ این مأموریت قابلِ
+           دسترس می‌شد، پس همین‌جا بسته شد. */
+        readPool.on('connect', (c) => {
+          try { c.on('error', onClientError); } catch (e) {}
+        });
         const rc = await readPool.connect();
         try { await rc.query('SELECT 1 AS ping'); readPoolActive = true; }
         finally { rc.release(); }

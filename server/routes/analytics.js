@@ -12,8 +12,15 @@
 
 const {
   enforceSchoolIntelligenceAccessGuard,
-  buildSchoolIntelligenceSnapshot
+  buildSchoolIntelligenceSnapshot,
+  assembleSchoolIntelligenceSnapshot
 } = require('../analytics/school-intelligence-center');
+
+/* M15-03: تجمیعِ پایگاه‌داده — شش SELECT * و ۱۰۰هزار ردیفِ خام را با
+   یک کوئریِ تجمیعیِ واحد جایگزین می‌کند. */
+const {
+  computeSchoolIntelligenceFromDb
+} = require('../analytics/school-aggregates');
 
 const {
   enforceRegionalTenantIsolation,
@@ -156,44 +163,48 @@ function createAnalyticsRoutes(ctx) {
     let cases = [];
     let teacherNotes = [];
 
+    /* M15-03: مسیرِ PG دیگر شش SELECT * و تا ۱۰۰هزار ردیفِ خام در
+       حافظهٔ Node بارگذاری نمی‌کند. یک کوئریِ تجمیعیِ واحد، شش خلاصه
+       را در سمتِ سرورِ PG می‌سازد: یک اتصال، یک رفت‌وبرگشت، صفر ردیفِ
+       منتقل‌شده (به‌جایِ شش اتصال از poolِ ۲۰تایی). */
     if (pgLive() && typeof db.query === 'function') {
       try {
-        const [rG, rA, rC, rS, rCases, rTN] = await Promise.all([
-          db.query('SELECT * FROM grades WHERE school_id = $1', [schoolId]),
-          db.query('SELECT * FROM attendance WHERE school_id = $1', [schoolId]),
-          db.query('SELECT * FROM classes WHERE school_id = $1', [schoolId]),
-          db.query('SELECT * FROM schedule WHERE school_id = $1', [schoolId]),
-          db.query('SELECT * FROM counselor_refs WHERE school_id = $1', [schoolId]),
-          db.query('SELECT * FROM teacher_notes WHERE school_id = $1', [schoolId])
-        ]);
-        grades = (rG && rG.rows) || [];
-        attendance = (rA && rA.rows) || [];
-        classes = (rC && rC.rows) || [];
-        schedule = (rS && rS.rows) || [];
-        cases = (rCases && rCases.rows) || [];
-        teacherNotes = (rTN && rTN.rows) || [];
+        const summaries = await computeSchoolIntelligenceFromDb({ schoolId, db });
+        if (summaries) {
+          const snapshot = assembleSchoolIntelligenceSnapshot({
+            schoolId,
+            academicYear,
+            summaries,
+            options: nowOptions()
+          });
+          return {
+            status: 200,
+            body: {
+              ok: true,
+              api_version: '1.0.0',
+              snapshot
+            }
+          };
+        }
+        /* کوئریِ تجمیعی روی هر جدولی یک ردیف می‌دهد؛ اگر نتیجه‌ای نبود،
+           جدول‌ها غایب‌اند — مسیرِ JS با آرایه‌های خالی چاره می‌شود. */
+        console.warn('[analytics] aggregate push-down returned no result for school', schoolId);
       } catch (e) {
-        /* A-03: این فال‌بک یک مسیرِ واقعی است که در فشارِ pool (۶ اتصال به
-           ازایِ هر درخواست رویِ poolِ ۲۰تایی) یا قطعیِ PG اجرا می‌شود، ولی
-           ساکت بود — گزارش، دادهٔ آینهٔ ممکن‌است-کهنه را بدونِ هیچ لاگ یا
-           چرخشِ سنجه‌ای سرو می‌کرد. اکنون اعلام می‌شود. */
-        console.warn('[analytics] PG read failed for school', schoolId, '— serving in-memory mirror:',
+        /* A-03: این فال‌بک یک مسیرِ واقعی است که در فشارِ pool یا قطعیِ PG
+           اجرا می‌شود، ولی آینهٔ درون‌حافظه‌ای ممکن است کهنه باشد —
+           مانندِ پیش اعلام می‌شود. */
+        console.warn('[analytics] PG aggregate failed for school', schoolId, '— serving in-memory mirror:',
           (e && e.message) || e);
-        grades = (store.grades || []).filter(g => Number(g.school_id) === schoolId);
-        attendance = (store.attendance || []).filter(a => Number(a.school_id) === schoolId);
-        classes = (store.classes || []).filter(c => Number(c.school_id) === schoolId);
-        schedule = (store.schedule || []).filter(s => Number(s.school_id) === schoolId);
-        cases = (store.counselor_refs || []).filter(c => Number(c.school_id) === schoolId);
-        teacherNotes = (store.teacher_notes || []).filter(t => Number(t.school_id) === schoolId);
       }
-    } else {
-      grades = (store.grades || []).filter(g => Number(g.school_id) === schoolId);
-      attendance = (store.attendance || []).filter(a => Number(a.school_id) === schoolId);
-      classes = (store.classes || []).filter(c => Number(c.school_id) === schoolId);
-      schedule = (store.schedule || []).filter(s => Number(s.school_id) === schoolId);
-      cases = (store.counselor_refs || []).filter(c => Number(c.school_id) === schoolId);
-      teacherNotes = (store.teacher_notes || []).filter(t => Number(t.school_id) === schoolId);
     }
+
+    /* مسیرِ حافظه: وقتی PG زنده نیست یا تجمیع شکست خورد. */
+    grades = (store.grades || []).filter(g => Number(g.school_id) === schoolId);
+    attendance = (store.attendance || []).filter(a => Number(a.school_id) === schoolId);
+    classes = (store.classes || []).filter(c => Number(c.school_id) === schoolId);
+    schedule = (store.schedule || []).filter(s => Number(s.school_id) === schoolId);
+    cases = (store.counselor_refs || []).filter(c => Number(c.school_id) === schoolId);
+    teacherNotes = (store.teacher_notes || []).filter(t => Number(t.school_id) === schoolId);
 
     const snapshot = buildSchoolIntelligenceSnapshot({
       schoolId,

@@ -502,7 +502,40 @@ function buildSchoolIntelligenceSnapshot(data = {}, options = {}) {
   const healthIndex = calculateSchoolHealthIndex(intermediateSnapshot, options);
   const actionCenter = generatePrincipalActionCenter(intermediateSnapshot, options);
 
-  // احصای ریسک‌ها
+  return assembleSchoolIntelligenceSnapshot({
+    schoolId,
+    academicYear: data.academicYear || data.academic_year,
+    summaries: intermediateSnapshot,
+    options
+  });
+}
+
+/**
+ * اسمبلِ خروجیِ نهاییِ snapshot از شش خلاصهٔ آماده.
+ *
+ * این تابع از هر دو مسیر استفاده می‌شود:
+ *  - buildSchoolIntelligenceSnapshot (آرایه‌های خام در حافظه)
+ *  - server/analytics/school-aggregates.js (تجمیع در سمتِ PG)
+ * تا شاخصِ سلامت، مرکزِ اقدام و خلاصهٔ ریسک، در هر دو مسیر یکسان
+ * ساخته شوند و خروجی‌ها هم‌شکل بمانند.
+ *
+ * @param {Object} args - { schoolId, academicYear, summaries, options }
+ * @returns {Object} SchoolIntelligenceSnapshot
+ */
+function assembleSchoolIntelligenceSnapshot({ schoolId, academicYear, summaries = {}, options = {} } = {}) {
+  const intermediateSnapshot = {
+    academic_summary: summaries.academic_summary || {},
+    attendance_summary: summaries.attendance_summary || {},
+    assessment_summary: summaries.assessment_summary || {},
+    teacher_summary: summaries.teacher_summary || {},
+    parent_summary: summaries.parent_summary || {},
+    intervention_summary: summaries.intervention_summary || {}
+  };
+
+  const healthIndex = calculateSchoolHealthIndex(intermediateSnapshot, options);
+  const actionCenter = generatePrincipalActionCenter(intermediateSnapshot, options);
+
+  // احصای مخاطرات
   const topRisks = [];
   let criticalCount = 0;
   let highCount = 0;
@@ -521,9 +554,9 @@ function buildSchoolIntelligenceSnapshot(data = {}, options = {}) {
   }
 
   return {
-    school_id: schoolId,
+    school_id: Number(schoolId),
     generated_at: options.now || new Date().toISOString(),
-    academic_year: data.academicYear || data.academic_year || '1405-1406',
+    academic_year: academicYear || '1405-1406',
     health_index: healthIndex,
     risk_summary: {
       total_risks_count: topRisks.length,
@@ -532,12 +565,12 @@ function buildSchoolIntelligenceSnapshot(data = {}, options = {}) {
       medium_count: mediumCount,
       top_risks: Object.freeze(topRisks)
     },
-    academic_summary: academicSummary,
-    attendance_summary: attendanceSummary,
-    assessment_summary: assessmentSummary,
-    teacher_summary: teacherSummary,
-    parent_summary: parentSummary,
-    intervention_summary: interventionSummary,
+    academic_summary: intermediateSnapshot.academic_summary,
+    attendance_summary: intermediateSnapshot.attendance_summary,
+    assessment_summary: intermediateSnapshot.assessment_summary,
+    teacher_summary: intermediateSnapshot.teacher_summary,
+    parent_summary: intermediateSnapshot.parent_summary,
+    intervention_summary: intermediateSnapshot.intervention_summary,
     action_center: actionCenter
   };
 }
@@ -619,5 +652,6 @@ module.exports = {
   calculateSchoolHealthIndex,
   generatePrincipalActionCenter,
   buildSchoolIntelligenceSnapshot,
+  assembleSchoolIntelligenceSnapshot,
   generateDistrictAggregation
 };
