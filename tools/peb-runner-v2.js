@@ -135,6 +135,12 @@ function buildProbe(c, wt) {
         if(/require\\\\(path\\\\.join/.test(s)){process.exit(1);}
         if(!/require\\\\(['\\\"]\\\\.\\\\/?/.test(s)){process.exit(1);}
         process.exit(0);`);
+    case 'PEB-09':
+      return q(F, `const s=require('fs').readFileSync('${F}','utf8');
+        if(!/GRADE_ORDINALS/.test(s)){process.exit(1);}
+        if(!/'\\\\u062F\\\\u0647\\\\u0645'|'دهم'/.test(s)){process.exit(1);}
+        if(!/k === 'grade'/.test(s)){process.exit(1);}
+        process.exit(0);`);
     default:
       return null;
   }
@@ -157,6 +163,7 @@ function leakageCheck(retrieved, c) {
     'PEB-06': ['clusterRetryStrategy'],
     'PEB-07': ['ALLOWED_SNAP_PATHS', 'SNAP_PATH_RE'],
     'PEB-08': ["require('../server"],
+    'PEB-09': ['GRADE_ORDINALS', "'دهم'"],
   };
   for (const m of (solMarkers[c.id] || [])) if (t.includes(m)) hits.push(m);
   return { leaked: hits.length > 0, kind: hits.join(',') || 'none' };

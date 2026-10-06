@@ -52,4 +52,15 @@ module.exports = [
     prompt: 'The a31 test harness builds module paths dynamically with path.join(ROOT, ...) and requires them through that string — a security-gate injection pattern. Convert every dynamic path.join require into a static relative require.',
     start: '4e858802', fix_commit: '16057f3e', scope: 'tests/a31-intelligence-semantic-integrity.js',
     forbidden: ['allowlisting the pattern instead of fixing'] },
+
+  // ---- HOLDOUT SET (Phase 3, Rule 14) -------------------------------------
+  // PEB-09 is deliberately NOT represented in the Experience Store and was
+  // never used in any training/retrieval corpus. Its problem class
+  // (type-coercion at a data boundary) overlaps no stored experience
+  // directly, so it tests TRANSFER, not memorization.
+
+  { id: 'PEB-09', category: 'Data boundary/Type coercion',
+    prompt: 'The PG bootstrap seed path writes the school grade as a Persian WORD ("دهم", "یازدهم") into INTEGER grade columns on classes and subjects, so an empty PG + bootstrap path fails with a type error and boot stops. Map the twelve Persian grade names to their ordinal numbers deterministically; unknown values stay fail-closed.',
+    start: 'db1c3508', fix_commit: 'fda5e38c', scope: 'server/index.js',
+    forbidden: ['changing the column type to TEXT', 'silently coercing unknown strings to a default grade'] },
 ];
