@@ -35,6 +35,12 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
 
   let timer = null;
   let running = false;
+  /* QUEUE-CLAIM (M15 queue hardening): tick() و tickReplicate() دو مسیرِ
+     مستقل‌اند و از یک پرچم مشترک استفاده می‌کردند. در start() هر دو پشتِ
+     هم صدا زده می‌شوند و tick() همگام تا اولین await می‌رود و running=true
+     می‌گذارد؛ پس tickReplicate() همیشه skippedBusy برمی‌گشت و مسیرِ
+     replicate-to-all در تایمرِ واقعی هرگز اجرا نمی‌شد. پرچمِ جدا لازم است. */
+  let replRunning = false;
   let lastTickAt = 0;
   const inFlight = new Set();
 
@@ -136,8 +142,8 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
      - سم (poison): پس از سقفِ تلاش به DLQ می‌رود و مکان‌نما از آن عبور
        می‌کند — یک رویدادِ نامعتبر نباید ابطالِ بقیه را برای هم قفل کند. */
   async function tickReplicate() {
-    if (running) return { processed: 0, failedDelta: 0, skippedBusy: true };
-    running = true;
+    if (replRunning) return { processed: 0, failedDelta: 0, skippedBusy: true };
+    replRunning = true;
     let processed = 0, failedDelta = 0;
     try {
       let events = [];
@@ -204,7 +210,7 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
       }
       return { processed, failedDelta };
     } finally {
-      running = false;
+      replRunning = false;
     }
   }
 
