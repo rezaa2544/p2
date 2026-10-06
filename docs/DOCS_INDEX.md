@@ -601,7 +601,7 @@ The repository is the durable project memory. During every material analysis or 
 
 ## 2026-10-06 — M15 V2 Architecture Upgrade (design integrated; not implemented)
 - `docs/CURRENT_WORK_EXECUTION_PLAN.md` → "M15 V2" — canonical V2 architecture, invariants, technology decisions, 25-item queue (M15-01..25), dependency graph, N-36 reconciliation, handoff. Supersedes the V1 12-item M15 queue (mapping in §6).
-- `docs/audit/PAYESH_SYSTEM_SCALE_RELIABILITY_GAP_AUDIT_2026-10-05.md` → "V2 Reconciliation" — critique vs actual repository, recommendation status register, findings V2-F01..V2-F20.
+- `docs/audit/PAYESH_SYSTEM_SCALE_RELIABILITY_GAP_AUDIT_2026-10-05.md` → "V2 Reconciliation" — critique vs actual repository, recommendation status register, findings V2-F01..V2-F22.
 - `docs/CURRENT_PROJECT_INTELLIGENCE.md` → "M15 V2 — Architecture Upgrade Integration".
 - `docs/PREQUISITES.md` → "M15 V2 Architecture Prerequisites".
 - `docs/PAYESH_ADAPTIVE_CACHE_ARCHITECTURE.md` → "M15 V2 PACMA-lite reconciliation"; `docs/PAYESH_OBSERVABILITY_OPERATIONS_ARCHITECTURE.md` → "M15 V2 observability reconciliation".
