@@ -128,8 +128,15 @@ const lines = fs.readFileSync(STORE, 'utf-8').split('\n').filter(l => l.trim());
 fs.writeFileSync(STORE, lines.filter(l => { try { JSON.parse(l); return true; } catch { return false; } }).join('\n') + '\n', 'utf-8');
 check('store still serves queries past a corrupt line', r.rc === 0 && r.out.includes('experience_id'));
 
-// ---- 10. audit + stats commands ----
-console.log('10. audit/stats');
+// ---- 10. QUARANTINED experiences must never enter retrieval (Phase 3) ----
+console.log('10. QUARANTINED not retrievable');
+// a SHA-bound experience is QUARANTINED by screenLeakage(); it is VERIFIED and
+// therefore passes the lifecycle gate, but must NOT be served by `get`.
+r = run(['get', 'sha-bound boundary']);
+check('QUARANTINED (SHA-bound) entry not retrievable', !r.out.includes('TEST-BND-1'));
+
+// ---- 11. audit + stats commands ----
+console.log('11. audit/stats');
 r = run(['audit']);
 check('audit produces JSON', (() => { try { JSON.parse(r.out); return true; } catch { return false; } })());
 r = run(['stats']);

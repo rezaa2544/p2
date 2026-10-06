@@ -231,7 +231,7 @@ function cmdGet(query, opts) {
 
   let hits = all
     .filter(e => RETRIEVABLE.includes(e.validation_status))
-    .filter(e => e.leakage_level !== 'REJECTED')
+    .filter(e => e.leakage_level === 'SAFE')
     .map(e => {
       let score = 0;
       const hay = JSON.stringify(e).toLowerCase();
