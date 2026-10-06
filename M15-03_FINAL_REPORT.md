@@ -311,3 +311,17 @@ pool max=20، connectionTimeout=3000ms (تنظیماتِ production). دیتاب
 هدفِ مأموریت (aggregate push-down روی مسیرِ school-intelligence) **کاملاً انجام و تأیید شد**: درستی با ۱۰۵ assertion اثبات، کارایی ۴-۶.۴۷×، اشباع از c=۴ به c=۲۰+، ۸۱۳MB → ۱.۲MB. چهار legacy defect (F1-F4) با شواهد طبقه‌بندی و **کپی نشدند**. دو اصلاحِ جانبی (queryRead routing، replica crash guard) درونِ scope بودند و regression-clean هستند. هفت یافتهٔ خارج از scope (regional report، boot O(n)، stale mirror، no queue cap، replica lag detection، docs drift، a31 env) به‌صورتِ مستقل ثبت شدند.
 
 **چیزی که هنوز باز است:** F1 و F3 به‌اصالتِ خودشان bugهای مسیرِ قدیمی هستند که aggregate آن‌ها را اصلاح کرد، ولی مسیرِ قدیمی (fallback) هنوز آنها را دارد. این‌ها legacy defect هستند که تعمیرشان scopeِ این مأموریت نبود.
+
+---
+
+## شواهدِ git
+
+| مورد | مقدار |
+|---|---|
+| HEAD شروع | `bb0b5fa65a0aab8ecc7570b2a16227f29f98b6c1` (== origin/main) |
+| HEAD پایانی | `5f543efc7d30c74541fc47bc084bb9bac3e38531` |
+| commit | `M15-03: aggregate push-down for school-intelligence` |
+| فایل‌های commit شده | دقیقاً ۷ فایل (همان‌های §۱۶) |
+| فایل‌های pre-existing | `FINAL_REPORT_FA.md`, `migrations/026*`, `server/cache-invalidation-events.js`, `tools/m15-outbox-capacity.js` — **دست‌نخورده باقی ماندند**، در commit نیستند |
+| untracked که commit نشدند | `.zcode/`, `.mimosa/`, `.inplace-mutant-manifest.json`, `m14-b01-*`, `tools/experience-*.js` — هرگز stage نمی‌شوند |
+| push | انجام نشد (§۱۷ push را اجباری نمی‌داند) |
