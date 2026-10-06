@@ -42,7 +42,7 @@
     "@opentelemetry/semantic-conventions": "^1.43.0",
     "@vercel/analytics": "^2.0.1",
     "ioredis": "^6.0.0",
-    "pg": "^8.23.0"
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
