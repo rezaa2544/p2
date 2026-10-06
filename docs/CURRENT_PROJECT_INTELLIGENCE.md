@@ -714,3 +714,6 @@ EXTERNAL (Rule 8): documentation update prepared as a local commit/patch because
 
 ### Next missions
 M15-02 (capacity baseline, E3) with parallel M15-17 (config safety), M15-12 (retry/deadline standard) and M15-09 (Hermes independent verification of the built invalidation path).
+
+## M15 Queue Hardening — 2026-10-07
+Targeted queue pass found and fixed (FIXED-SCOPED, no live evidence) a real defect: the durable cache-invalidation loop `tickReplicate()` never ran from the worker timer because it shared a `running` flag with `tick()`. Five further queue gaps (retry backoff, watermark retention floor, PG-derived depth gauge, tick fallback without lease, tenant fairness) are registered in `docs/CURRENT_WORK_EXECUTION_PLAN.md` §12. Treat M15-05 durable invalidation as REVALIDATION_REQUIRED until re-verified through the real timer path.

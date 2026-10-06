@@ -89,6 +89,8 @@ jobs:
       run: node tests/security-adversarial-a18-a22.test.js
     - name: Runtime Reliability — DLQ atomic terminal transition
       run: node tests/outbox-dlq-atomicity.test.js
+    - name: Runtime Reliability — worker timer runs replicate path (QUEUE-CLAIM)
+      run: node tests/worker-timer-replicate.js
     - name: Runtime Reliability — isolated fresh-DB lease race proof
       run: |
         set -euo pipefail
