@@ -67,6 +67,12 @@ RAW → VALIDATED → VERIFIED → CANONICAL
 
 هر تجربه پیش از ورود به store اسکن می‌شود. سه سطح: `SAFE` / `QUARANTINED` / `REJECTED`.
 
+**درهای ورودی به retrieval فقط `SAFE` است.** فقط رد کردن `REJECTED` کافی نیست:
+یک تجربهٔ `QUARANTINED` (مثلاً sha_bound روی HEADی که عبور کرده)
+با وجودِ وضعیتِ چرخهٔ حیاتِ VERIFIED باز هم نباید واردِ prompt شود.
+فیلترِ `cmdGet` این ممنوعیت را اعمال می‌کند و یک regression-test آن را نگه
+می‌دارد.
+
 رد می‌شود اگر شامل باشد:
 - SHAی fix بِنچمارک (۸ مورد PEB)
 - فایل solution بِنچمارک
