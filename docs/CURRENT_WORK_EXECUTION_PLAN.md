@@ -1489,4 +1489,3 @@ Adjustments vs the requested order: **M15-13 (loop-delay signal) precedes adapti
 
 ## 11. Cross-session handoff (read this first in a new session)
 Current architecture = V1 code at bb0b5fa incl. the durable cache-invalidation path from `0538383` (+ docs). Target = V2 above. Implemented = V1 + durable invalidation (E3, implementer-reported, not independently verified). Planned = M15-01..25. Conditional = replica/broker/Cluster/k8s/CQRS/shard/cell. Evidence-required = write ceiling, shard threshold, restore time, RPO/RTO, true peak mix. Current mission = M15-01 (static reconciliation complete, runtime pending). Next missions = M15-02 (+ M15-17/M15-12 in parallel) and M15-09 independent verification of the already-built invalidation path. Blocker = push access, owner decisions above. Status line: **M15 = OPEN / V2 DESIGN INTEGRATED / NOT IMPLEMENTED / NOT CERTIFIED.**
-
