@@ -63,4 +63,14 @@ module.exports = [
     prompt: 'The PG bootstrap seed path writes the school grade as a Persian WORD ("دهم", "یازدهم") into INTEGER grade columns on classes and subjects, so an empty PG + bootstrap path fails with a type error and boot stops. Map the twelve Persian grade names to their ordinal numbers deterministically; unknown values stay fail-closed.',
     start: 'db1c3508', fix_commit: 'fda5e38c', scope: 'server/index.js',
     forbidden: ['changing the column type to TEXT', 'silently coercing unknown strings to a default grade'] },
+
+  // ---- GENERALIZATION SET (Phase 3 continuation) ---------------------------
+  // PEB-10 is a DIFFERENT problem class from every corpus experience: test
+  // harness configuration, not server logic. Its fix is an env-var addition
+  // in a test file. If retrieval helps here, it generalizes across classes.
+
+  { id: 'PEB-10', category: 'Test-harness configuration',
+    prompt: 'In the multi-instance OTP ratelimit harness, each instance builds its own JWT key and uses it as the OTP pepper when PAYESH_OTP_PEPPER is unset. Code that instance A hashes fails verification on instance B, so the cross-instance shared-code test R8c only stayed green because of the 0000 bypass. Add an explicit shared PAYESH_OTP_PEPPER to the harness config so it simulates real deployment behavior.',
+    start: '79869632', fix_commit: 'd6a72724', scope: 'tests/otp-ratelimit.js',
+    forbidden: ['removing the R8c cross-instance test', 'making the pepper random per run'] },
 ];

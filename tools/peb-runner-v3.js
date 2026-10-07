@@ -143,8 +143,13 @@ function buildProbe(c, wt) {
     case 'PEB-09':
       return q(F, `const s=require('fs').readFileSync('${F}','utf8');
         if(!/GRADE_ORDINALS/.test(s)){process.exit(1);}
-        if(!/'\\\\u062F\\\\u0647\\\\u0645'|'دهم'/.test(s)){process.exit(1);}
+        if(!/'دهم'/.test(s)){process.exit(1);}
         if(!/k === 'grade'/.test(s)){process.exit(1);}
+        process.exit(0);`);
+    case 'PEB-10':
+      return q(F, `const s=require('fs').readFileSync('${F}','utf8');
+        if(!/PAYESH_OTP_PEPPER/.test(s)){process.exit(1);}
+        if(/PAYESH_OTP_PEPPER['\\\"]?\\s*[:=]\\s*['\\\"]\\s*['\\\"]/.test(s)){process.exit(1);}
         process.exit(0);`);
     default:
       return null;
@@ -169,6 +174,7 @@ function leakageCheck(retrieved, c) {
     'PEB-07': ['ALLOWED_SNAP_PATHS', 'SNAP_PATH_RE'],
     'PEB-08': ["require('../server"],
     'PEB-09': ['GRADE_ORDINALS', "'دهم'"],
+    'PEB-10': ['PAYESH_OTP_PEPPER', 'otp-ratelimit-shared-pepper'],
   };
   for (const m of (solMarkers[c.id] || [])) if (t.includes(m)) hits.push(m);
   return { leaked: hits.length > 0, kind: hits.join(',') || 'none' };
