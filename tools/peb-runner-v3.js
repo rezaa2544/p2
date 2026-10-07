@@ -28,7 +28,7 @@ const REPO = 'C:/Users/R.M/.zcode/workspace/default/p2';
 const BENCH = 'C:/Users/R.M/AppData/Local/Temp/peb-bench';
 const STORE = path.join(REPO, 'tools', 'experience-store.js');
 const RESULTS = path.join(BENCH, 'results.jsonl');
-const API_KEY = process.env.HERMES_CUSTOM_ATRIA_DAWN_PREVIEW_API_KEY || process.env.COUCOU_API_KEY;
+const API_KEY = process.env.COUCOU_API_KEY || process.env.HERMES_CUSTOM_ATRIA_DAWN_PREVIEW_API_KEY;
 const MODEL = 'Atria-Dawn-Preview';
 // The Atria provider retired the OpenAI-format endpoint; the same key works
 // on the Anthropic-format /v1/messages endpoint.
