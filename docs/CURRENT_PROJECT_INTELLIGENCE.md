@@ -717,3 +717,15 @@ M15-02 (capacity baseline, E3) with parallel M15-17 (config safety), M15-12 (ret
 
 ## M15 Queue Hardening — 2026-10-07
 Targeted queue pass found and fixed (FIXED-SCOPED, no live evidence) a real defect: the durable cache-invalidation loop `tickReplicate()` never ran from the worker timer because it shared a `running` flag with `tick()`. Five further queue gaps (retry backoff, watermark retention floor, PG-derived depth gauge, tick fallback without lease, tenant fairness) are registered in `docs/CURRENT_WORK_EXECUTION_PLAN.md` §12. Treat M15-05 durable invalidation as REVALIDATION_REQUIRED until re-verified through the real timer path.
+
+
+## MASTER QUEUE RECONCILIATION — 2026-10-07
+**Current main after reconciliation:** `21b18257fc8a5afe6670047fd0b8018f7db3fd60`.
+
+The canonical execution plan now contains a master closure reconciliation covering historical defect registers (A-01..A-39/NCR families), external audits, Phase 8.x/9.0 evidence debt, intelligence capability certification, M15 V2 architecture, queue hardening findings, and Hermes/PEES validation gaps. Items are mapped to one authoritative workstream rather than duplicated.
+
+**Non-negotiable current status:** HARDENING / ARCHITECTURE UPGRADE / RECONCILIATION — NOT VERIFIED / NOT CERTIFIED.
+
+**Immediate control-plane priorities:** (1) A-30..A-39 / evidence-registry hardening, (2) M15-02 capacity baseline, (3) parallel M15-17 configuration safety + M15-12 retry/deadline + M15-09 independent durable-invalidation verification, then (4) remaining M15 V2 execution and current-head Capability/Role/E2E/Failure/Scale certification.
+
+**Important:** `docs/verification/VERIFICATION_REGISTRY.json` remains bound to historical `e4584806`; no current-head certification may be inferred from it.
