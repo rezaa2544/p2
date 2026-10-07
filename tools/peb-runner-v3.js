@@ -65,7 +65,7 @@ function apiChat(messages, maxTokens) {
     const req = (API_URL.startsWith('https') ? https : http).request(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY, 'anthropic-version': '2023-06-01', 'Content-Length': Buffer.byteLength(body) },
-      timeout: 360000,
+      timeout: 150000,
     }, (res) => {
       let data = '';
       res.on('data', (c) => { data += c; });
