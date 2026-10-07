@@ -283,12 +283,31 @@ function createAnalyticsRoutes(ctx) {
        PAYESH_PG_HYDRATE_LIMIT تنظیم شده)، مدارسِ واقعی بدونِ داده به‌درستی
        «نیازمندِ اقدامِ فوری» پرچم می‌شوند و گزارش ساکت غلط می‌دهد. این
        همان درزِ خواندنِ Wave-1 است که routes/students.js:37 استفاده می‌کند.
-       هر مجموعه یک‌بار خوانده می‌شود (نه به ازایِ هر مدرسه) و فیلترِ
-       school_id مثلِ قبل در حافظه انجام می‌شود. هر مجموعه فال‌بکِ
-       مستقلِ خود را دارد تا شکستِ یک جدول، کلِ گزارش را نیندازد. */
+       M15-04 (P0-1): هر مجموعه یک‌بار خوانده می‌شود (نه به ازایِ هر مدرسه)
+       و دامنهٔ school_id این بار در SQL اعمال می‌شود — یعنی
+       `WHERE school_id = ANY($1::int[])` به‌جای SELECT * کلِ جدول و فیلترِ
+       Node-side. ایزوله‌سازیِ مستأجر پیش از خروج از دیتابیس انجام می‌شود
+       (PREQUISITES §115.1: filter-at-source). فیلترِ اضافیِ per-school پایین
+       عمداً نگه داشته شده — buildSchoolIntelligenceSnapshot هر ورودی را با
+       verifySchoolMatch AGAINST schoolId می‌سنجد (school-intelligence-center.js)
+       و این لایهٔ دفاعیِ fail-closed را نباید حذف کرد.
+       هر مجموعه فال‌بکِ مستقلِ خود را دارد تا شکستِ یک جدول، کلِ گزارش را
+       نیندازد. */
     const REGION_COLL = ['grades', 'attendance', 'classes', 'schedule', 'counselor_refs', 'teacher_notes'];
+    /* M15-04: دامنهٔ مدرسه‌ها از همان مسیرِ PGِ مدارسِ بالاتر می‌آید —
+       مدارسی که در این منطقه‌اند (district_id) و در این درخواست مجازند. */
+    const regionSchoolIds = schools.map(s => Number(s.id)).filter(n => Number.isFinite(n) && n > 0);
     const liveColl = {};
-    if (pgLive() && typeof db.readCollection === 'function') {
+    if (pgLive() && typeof db.readCollectionForSchools === 'function') {
+      for (const cn of REGION_COLL) {
+        try { liveColl[cn] = await db.readCollectionForSchools(cn, regionSchoolIds); }
+        catch (e) {
+          console.warn('[analytics] readCollectionForSchools(' + cn + ') failed — in-memory mirror used:',
+            (e && e.message) || e);
+          liveColl[cn] = null; /* فال‌بکِ مجموعه به store زیر */
+        }
+      }
+    } else if (pgLive() && typeof db.readCollection === 'function') {
       for (const cn of REGION_COLL) {
         try { liveColl[cn] = await db.readCollection(cn); }
         catch (e) {

@@ -29,6 +29,7 @@ function makeCtx(opts){
   const pg = !!opts.pg;
   const queries = [];
   const readCalls = [];
+  const scopedCalls = [];
   const pgSchools = opts.pgSchools || [];
   const pgColl = opts.pgColl || {};
   const store = opts.store || { schools: [], grades: [], attendance: [], classes: [], schedule: [], counselor_refs: [], teacher_notes: [] };
@@ -39,13 +40,20 @@ function makeCtx(opts){
       if (/FROM schools/.test(sql)) return { rows: pgSchools.slice() };
       return { rows: [] };
     },
+    /* M15-04: مسیرِ منطقه‌ای حالا مدرج است — readCollection دیگر روی این
+       مسیر فراخوانی نمی‌شود. readCalls را نگه داشتیم تا منفی‌proof پایین
+       بتواند عدمِ فراخوانیِ SELECT *ِ بدونِ دامنه را ثابت کند. */
     readCollection: async (name) => {
       readCalls.push(name);
+      return (pgColl[name] || []).slice();
+    },
+    readCollectionForSchools: async (name, schoolIds) => {
+      scopedCalls.push({ name, schoolIds: Array.isArray(schoolIds) ? schoolIds.slice() : schoolIds });
       return (pgColl[name] || []).slice();
     }
   };
   return {
-    store, db, queries, readCalls,
+    store, db, queries, readCalls, scopedCalls,
     routes: createAnalyticsRoutes({ store, db })
   };
 }
@@ -81,12 +89,24 @@ async function main() {
         assert.ok(/district_id/.test(q.sql), 'query should match on district_id: ' + q.sql);
       });
     chk('مسیرِ زندهٔ PG واقعاً اجرا شد (فال‌بک نرفت)',
-      () => assert.ok(ctx.queries.length >= 1 && ctx.readCalls.length >= 1,
-        'queries=' + ctx.queries.length + ' readCollections=' + ctx.readCalls.length));
-    chk('readCollection برای شش مجموعه فراخوانی شد',
-      () => assert.deepStrictEqual(ctx.readCalls.sort(),
+      () => assert.ok(ctx.queries.length >= 1 && ctx.scopedCalls.length >= 1,
+        'queries=' + ctx.queries.length + ' scopedReads=' + ctx.scopedCalls.length));
+    /* M15-04 (دلیلِ تغییرِ این assertion): مسیرِ منطقه‌ای دیگر شش
+       readCollection (SELECT * بدون WHERE) نمی‌زند؛ شش خواندنِ مدرجِ
+       readCollectionForSchools می‌زند. assertion از «readCollection فراخوانی
+       شد» به «خواندنِ مدرجِ شش‌گانه فراخوانی شد» تغییر کرد. */
+    chk('readCollectionForSchools برای شش مجموعه فراخوانی شد',
+      () => assert.deepStrictEqual(ctx.scopedCalls.map(x => x.name).sort(),
         ['attendance', 'classes', 'counselor_refs', 'grades', 'schedule', 'teacher_notes'],
-        JSON.stringify(ctx.readCalls)));
+        JSON.stringify(ctx.scopedCalls)));
+    chk('دامنهٔ school_id به کوئریِ مدرج داده می‌شود (فقطِ مدارسِ همان منطقه)',
+      () => {
+        assert.deepStrictEqual(ctx.scopedCalls.map(x => x.schoolIds), [[100], [100], [100], [100], [100], [100]],
+          'schoolIds must be exactly the PG region schools: ' + JSON.stringify(ctx.scopedCalls));
+      });
+    chk('هیچ readCollectionِ بدون دامنه (SELECT * کامل) روی این مسیر صادر نشد',
+      () => assert.deepStrictEqual(ctx.readCalls, [],
+        'unbounded readCollection was still called: ' + JSON.stringify(ctx.readCalls)));
     chk('مدرسهٔ فقطِ آینه‌ای (۲۰۰) در گزارش نیست — منبع PG حاکم است',
       () => {
         const snap = r.body.snapshot;
@@ -117,7 +137,9 @@ async function main() {
         assert.strictEqual(snap.school_count, 1, 'school_count: ' + snap.school_count);
       });
     chk('در حالتِ JSON هیچ readCollectionای فراخوانی نمی‌شود',
-      () => assert.strictEqual(ctx.readCalls.length, 0, JSON.stringify(ctx.readCalls)));
+      () => assert.deepStrictEqual(ctx.readCalls, [], JSON.stringify(ctx.readCalls)));
+    chk('در حالتِ JSON هیچ خواندنِ مدرجی هم فراخوانی نمی‌شود',
+      () => assert.deepStrictEqual(ctx.scopedCalls, [], JSON.stringify(ctx.scopedCalls)));
   }
 
   console.log('▸ A-01 · شکستِ یک readCollection، کلِ گزارش را نمی‌اندازد');
@@ -131,6 +153,11 @@ async function main() {
       isPostgres: () => true,
       query: async () => ({ rows: store.schools.slice() }),
       readCollection: async (name) => {
+        if (name === 'grades') throw new Error('pg connection lost');
+        return [];
+      },
+      /* M15-04: شکستِ یک خواندنِ مدرج هم باید همان فال‌بکِ مجموعه را بدهد. */
+      readCollectionForSchools: async (name) => {
         if (name === 'grades') throw new Error('pg connection lost');
         return [];
       }

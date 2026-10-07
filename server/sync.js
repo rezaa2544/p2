@@ -624,25 +624,86 @@ function createSync(ctx){
      P0-6: hydration از PG رشدِ آینه است — از mirrorAppend می‌گذرد (سقفِ رشد در
      PG-live) و اگر درخواستِ جاری undo-log باز دارد، در آن ثبت می‌شود تا شکستِ
      آینه دقیقاً همین ردیفِ تازه‌هیدراته‌شده را هم بازگرداند (رفتارِ snapshot قدیمی). */
-  async function findForApply(c, id, undo){
+  /* M15-04 (P0-2): قرار دادنِ یک سطرِ هیدراته‌شده در آینه — یک نسخهٔ واحد تا
+     مسیرِ batch و مسیرِ تک‌سطریِ قبلی دقیقاً یک رفتار داشته باشند.
+     ترتیبِ اجرا داخلِ findForApply و در apply-order باقی می‌ماند. */
+  function hydrateIntoMirror(c, row, undo){
+    mirrorAppend(c, row);
+    /* باگ ۳ (بازبین دور ۱ #124): after = state هیدراته — rollback و برشِ
+       post-commit هر دو با همان قواعدِ مالکیتِ pop این‌جا کار می‌کنند؛
+       در rollback معکوس (LIFO)، recهای بعدیِ همین دسته اول به قبل
+       برمی‌گردند و بعد این pop دقیقاً مچ می‌شود. */
+    if(undo) undo.items.push({ k: 'pop', c, id: row.id, idx: store[c].length - 1,
+      after: JSON.parse(JSON.stringify(row)) });
+  }
+
+  /* M15-04 (P0-2): فازِ read حالا batch است. brc یک cache محدود به همین
+     درخواست است: brc.neededIds (c → Set<id>) از پیش‌اسکنِ ops ساخته می‌شود،
+     prefetchCollection با یک کوئریِ set-based تمامِ idهایِ یک مجموعه را
+     یکجا برمی‌دارد و brc.readCache نتیجه را نگه می‌دارد. سطرهای غایب هم
+     به‌صورت null کش می‌شوند تا یک miss بدون round-tripِ جداگانه همان
+     جوابی را بدهد که readOne می‌داد. */
+  async function prefetchCollection(brc, c){
+    if(!brc || brc.prefetched.has(c)) return;
+    brc.prefetched.add(c);   /* اول: یک missِ تودرتو نباید دوباره batch بزند */
+    const ids = brc.neededIds.get(c);
+    if(!ids || ids.size === 0) return;
+    if(!db || typeof db.readMany !== 'function') return;   /* fallback به readOne */
+    try{
+      const rows = await db.readMany(c, Array.from(ids));
+      for(const r of rows){
+        if(r && r.id != null) brc.readCache.set(c + ':' + Number(r.id), r);
+      }
+      for(const id of ids){   /* غیابِ واقعی را هم ثبت کن (مثلِ readOne) */
+        if(!brc.readCache.has(c + ':' + id)) brc.readCache.set(c + ':' + id, null);
+      }
+    }catch(e){
+      /* batch شکست خورد: cache خالی می‌ماند و هر miss به همان مسیرِ readOneِ
+         قبلی برمی‌گردد — degradation، هرگز گسترشِ دامنه. */
+      console.warn('[sync] batched read failed for ' + c + ' — per-row reads used:',
+        (e && e.message) || e);
+    }
+  }
+
+  /* M15-04 (P0-2): خواندنِ مرجع برایِ بررسیِ OCC (پایِ پایه) — از همان
+     cacheِ batch استفاده می‌کند تا این خواندنِ per-op هم set-based باشد.
+     برخلافِ findForApply، mirror/undo را دست نمی‌زند: اینجا فقط خواندن است.
+     اگر مسیرِ legacy (readOne) خطا دهد، پرتاب می‌کند تا caller همان
+     قراردادِ 503ِ sync_read_unavailable را حفظ کند. */
+  async function batchRead(brc, c, id){
+    const nId = Number(id);
+    if(!Number.isFinite(nId)) return null;
+    if(brc && brc.neededIds.has(c) && !brc.prefetched.has(c)) await prefetchCollection(brc, c);
+    const ck = c + ':' + nId;
+    if(brc && brc.readCache.has(ck)) return brc.readCache.get(ck);
+    if(db && typeof db.readOne === 'function') return await db.readOne(c, id);
+    return null;
+  }
+
+  async function findForApply(c, id, undo, brc){
+    const nId = Number(id);
     const arr = store[c] || [];
-    const rec = arr.find(x => x && x.id === Number(id));
+    const rec = arr.find(x => x && x.id === nId);
     if(rec) return rec;
-    if(db && typeof db.isPostgres === 'function' && db.isPostgres()
-        && typeof db.readOne === 'function'){
-      try{
-        const row = await db.readOne(c, id);
-        if(row){
-          mirrorAppend(c, row);
-          /* باگ ۳ (بازبین دور ۱ #124): after = state هیدراته — rollback و برشِ
-             post-commit هر دو با همان قواعدِ مالکیتِ pop این‌جا کار می‌کنند؛
-             در rollback معکوس (LIFO)، recهای بعدیِ همین دسته اول به قبل
-             برمی‌گردند و بعد این pop دقیقاً مچ می‌شود. */
-          if(undo) undo.items.push({ k: 'pop', c, id: row.id, idx: store[c].length - 1,
-            after: JSON.parse(JSON.stringify(row)) });
-          return row;
-        }
-      }catch(e){ /* not in PG either: genuinely missing */ }
+    if(db && typeof db.isPostgres === 'function' && db.isPostgres()){
+      /* M15-04: اگر این مجموعه برای این دسته pre-scan شده، یک کوئریِ یکجا
+         همهٔ idها را آورده است؛ وگرنه مسیرِ readOneِ قبلی عیناً باقی است. */
+      if(brc && brc.neededIds.has(c) && !brc.prefetched.has(c)) await prefetchCollection(brc, c);
+      const ck = c + ':' + nId;
+      if(brc && brc.readCache.has(ck)){
+        const cached = brc.readCache.get(ck);
+        if(cached){ hydrateIntoMirror(c, cached, undo); return cached; }
+        return null;
+      }
+      if(typeof db.readOne === 'function'){
+        try{
+          const row = await db.readOne(c, id);
+          if(row){
+            hydrateIntoMirror(c, row, undo);
+            return row;
+          }
+        }catch(e){ /* not in PG either: genuinely missing */ }
+      }
     }
     return null;
   }
@@ -818,6 +879,32 @@ function createSync(ctx){
     const apply = [];
     const plannedVersions = new Map(), authoritativeRows = new Map();
     const strictBaseVersion = process.env.PAYESH_STRICT_BASE_VERSION === '1' || process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production';
+
+    /* M15-04 (P0-2): پیش‌اسکنِ فازِ read — (collection, id)هایی که این دسته به
+       آن‌ها نیاز دارد، تا فازِ read بتواند با یک کوئریِ set-based به‌جای N
+       کوئریِ تک‌سطری (۲۵۰۰: ۵۰۰ op × تا ۳ readOne) همه را یکجا بخواند.
+       فقطِ idهایِ همین لحظهٔ معلوم: upd/del همیشه id دارند؛ ins فقط اگر
+       کلاینت صریحاً id داده باشد (idهایِ تخصیص‌یافته توسط serverId درونِ
+       حلقهٔ اعمال ساخته می‌شوند و همچنان از مسیرِ readOne می‌آیند).
+       این فقط خواندن است: هیچ نوشتن، هیچ mirrorAppend، هیچ مدخلِ undo —
+       آن‌ها در findForApply و در همان ترتیبِ قبل می‌آیند. */
+    const brc = { readCache: new Map(), prefetched: new Set(), neededIds: new Map() };
+    if(pgLive){
+      for(const op of ops){
+        if(!op || typeof op !== 'object') continue;
+        const c = op.c;
+        if(typeof c !== 'string' || !c) continue;
+        let id = null;
+        if(op.t === 'upd' || op.t === 'del') id = (op.id != null ? op.id : (op.data && op.data.id));
+        else if(op.t === 'ins') id = (op.data && op.data.id);   /* فقطِ idِ کلاینت */
+        const n = Number(id);
+        if(!Number.isFinite(n) || n <= 0) continue;
+        let set = brc.neededIds.get(c);
+        if(!set){ set = new Set(); brc.neededIds.set(c, set); }
+        set.add(n);
+      }
+    }
+
     for(const op of ops){
       /* پاکتِ عملیات (validate.js): کلیدِ ناشناخته یا uid/c/id/atِ بدشکل =
          malformed (کلِ دسته، مثلِ رفتارِ موجود). مقدارِ t این‌جا سنجیده
@@ -859,7 +946,7 @@ function createSync(ctx){
         /* P1-2: هیدراتاسیونِ گِیت هم undo می‌گیرد — پیش‌تر بدونِ مدخل بود و
            ردیفِ هیدراته‌شده در rollback نمی‌ماند به عقب برمی‌گشت و در آینه
            می‌نشست (نشتیِ §۵-۳). ثبتِ pop = rollback دقیق + برشِ post-commit. */
-        await findForApply(op.c, recId, undo);
+        await findForApply(op.c, recId, undo, brc);
       }
       if(!inScope(s, op.c, recId, op.data)) return all('out_of_scope');
       /* R96 P0-2 — دروازهٔ فیلد: فیلدِ ناشناخته / ارتقاءِ نقش / مالکیت /
@@ -934,7 +1021,7 @@ function createSync(ctx){
         const vid = Number(op.id != null ? op.id : (op.data && op.data.id));
         let vrec = null;
         if(db && typeof db.isPostgres === 'function' && db.isPostgres() && typeof db.readOne === 'function'){
-          try { vrec = await db.readOne(op.c, vid); } catch(_) {
+          try { vrec = await batchRead(brc, op.c, vid); } catch(_) {
             return sendJson(res, 503, { ok:false, code:'sync_read_unavailable', results:[] });
           }
         }
@@ -1088,7 +1175,7 @@ function createSync(ctx){
         if(data.id == null) data.id = await serverId(op.c); /* Wave 1: ids service (PG sequences when live) */
         if((VERSION_TRACKED[op.c] || strictBaseVersion) && data.version == null) data.version = 1; /* R95 */
         /* Wave 1: hydrate cross-instance misses from PG before the upsert check. */
-        const ex = await findForApply(op.c, data.id, undo);
+        const ex = await findForApply(op.c, data.id, undo, brc);
         if(ex){
           await rollbackUndo();
           for (const r of results) if (r) r.ok = false;
@@ -1108,7 +1195,7 @@ function createSync(ctx){
         mirror.push({ uid: op.uid, c: op.c, t: 'ins', data: (ex || data) });   /* P1-14: رکوردِ اعمال‌شده با شناسهٔ سرور */
       }else if(op.t === 'upd'){
         /* Wave 1: hydrate cross-instance misses from PG before applying. */
-        const rec = await findForApply(op.c, op.id != null ? op.id : (op.data && op.data.id), undo);
+        const rec = await findForApply(op.c, op.id != null ? op.id : (op.data && op.data.id), undo, brc);
         if(rec){
           const uRec = undo ? undo.items.push({ k: 'rec', c: op.c, id: rec.id,
             before: JSON.parse(JSON.stringify(rec)) }) - 1 : -1;   /* باگ ۲ */
@@ -1131,7 +1218,7 @@ function createSync(ctx){
       }else if(op.t === 'del'){
         const delId = Number(op.id != null ? op.id : (op.data && op.data.id));
         /* Wave 1: hydrate cross-instance misses from PG (seeded row is removed by the filter below). */
-        const delRec = await findForApply(op.c, delId, undo);
+        const delRec = await findForApply(op.c, delId, undo, brc);
         const delSchoolId = delRec ? delRec.school_id : (op.data && op.data.school_id ? op.data.school_id : s.school_id);
         if(undo && delRec) undo.items.push({ k: 'reinsert', c: op.c, rec: JSON.parse(JSON.stringify(delRec)) });   /* P0-6 */
         store[op.c] = store[op.c].filter(x => x.id !== delId);

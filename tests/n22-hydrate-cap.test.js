@@ -124,8 +124,12 @@ function psql(db, sql) {
     } finally { restore(); }
   });
 
-  /* ── N22-2: the uncapped path is unchanged (no regression) -------------- */
-  await check('N22-2 an uncapped hydration reads every row and strips too', async () => {
+  /* ── N22-2: the uncapped path is unchanged (no regression) --------------
+   * M15-04: معنای «هر سطر» حالا «هر سطر از tenant» است. این scratch DB یک
+   * tenantِ تنهاست و users آن school_id ندارد، پس بدونِ PAYESH_HYDRATE_SCHOOL_IDS
+   * هیدراتاسیون دقیقاً هر ۶ سطر را می‌آورد — همان رفتارِ قبلی. اثباتِ
+   * معنایِ tenant-scoped در tests/m15-04-bootstrap-tenant-scoped.js. */
+  await check('N22-2 an uncapped, unscoped hydration reads every row of the tenant and strips too', async () => {
     stash();
     try {
       process.env.DATABASE_URL = 'postgresql://postgres@127.0.0.1:5433/' + TEST_DB;

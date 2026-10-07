@@ -566,6 +566,70 @@ async function readCollection(name) {
   return (memoryStore && Array.isArray(memoryStore[name])) ? memoryStore[name] : [];
 }
 
+/* M15-04 — helpers for set-based reads.
+   readCollection / readOne remain the full-table / single-row seams; these two
+   add a bounded shape so callers that already know the tenant (regional
+   report) or the exact key set (sync read phase) never scan the whole table.
+   Same security boundary as the existing seams: the table name is checked by
+   isPgReadableTable (shape-validated identifier) and every value is a bound
+   parameter — no string interpolation of external input into SQL. */
+
+/**
+ * Read one collection filtered to a set of schools (tenant scope at source).
+ * Empty school list ⇒ no query at all. The returned shape is identical to
+ * readCollection (reviveRows + stripInternalColumns), so callers cannot tell
+ * the two apart.
+ * @param {string} name - collection / table name (real data table only)
+ * @param {Array<number>} schoolIds - school ids to include
+ * @returns {Promise<Array>} array of row objects
+ */
+async function readCollectionForSchools(name, schoolIds) {
+  if (typeof name !== 'string' || !name) return [];
+  if (isPostgres() && isPgReadableTable(name)) {
+    const ids = (Array.isArray(schoolIds) ? schoolIds : [])
+      .map((x) => Number(x))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    if (ids.length === 0) return [];
+    const res = await pool.query(
+      `SELECT * FROM "${name}" WHERE school_id = ANY($1::int[])`,
+      [ids]);
+    return stripInternalColumns(reviveRows(res.rows));
+  }
+  /* Memory mode has no school-scoped table read — hand back the whole
+     collection exactly like readCollection does; callers narrow per-school
+     in JS (unchanged memory-mode behaviour). */
+  return (memoryStore && Array.isArray(memoryStore[name])) ? memoryStore[name] : [];
+}
+
+/**
+ * Read several rows of one collection by numeric id in a single query.
+ * Empty id list ⇒ no query at all. Row shape identical to readOne.
+ * @param {string} name - collection / table name
+ * @param {Array<number|string>} ids - row ids
+ * @returns {Promise<Array>} array of row objects (order not guaranteed)
+ */
+async function readMany(name, ids) {
+  if (typeof name !== 'string' || !name) return [];
+  const want = (Array.isArray(ids) ? ids : [])
+    .map((x) => Number(x))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  if (isPostgres() && isPgReadableTable(name)) {
+    if (want.length === 0) return [];
+    /* ::bigint[] so the same statement works for both INTEGER and BIGINT
+       primary keys (integer = bigint compares losslessly). */
+    const res = await pool.query(
+      `SELECT * FROM "${name}" WHERE id = ANY($1::bigint[])`,
+      [want]);
+    return stripInternalColumns(reviveRows(res.rows));
+  }
+  /* Memory mode: equivalent to N readOne calls (same rows readOne would
+     have returned, no more). */
+  if (want.length === 0) return [];
+  const rows = (memoryStore && Array.isArray(memoryStore[name])) ? memoryStore[name] : [];
+  const set = new Set(want);
+  return rows.filter((r) => r && set.has(Number(r.id)));
+}
+
 /**
  * Read a single row by numeric id (via readCollection).
  * @param {string} name - collection / table name
@@ -587,6 +651,20 @@ async function readOne(name, id) {
   return rows.find((r) => r && Number(r.id) === n) || null;
 }
 
+/* M15-04 (Bootstrap) — دامنهٔ tenant برای هیدراتاسیونِ آینه.
+   PAYESH_HYDRATE_SCHOOL_IDS="3,7" وقتی ست شده باشد، جداولی که school_id
+   دارند فقط ردیف‌های همان مدارس را بارگذاری می‌کنند تا هیدراتاسیون
+   O(tenant) باشد، نه O(کلِ DB). خاموش (پیش‌فرض) = رفتارِ قبلیِ کامل —
+   هیچ جدولی مقیّد نمی‌شود (fail-closed روی طرفِ «دادهٔ کامل»).
+   @returns {Array<number>|null} id مدارسِ مجاز، یا null یعنی بدونِ دامنه */
+function hydrateSchoolScope() {
+  const raw = String(process.env.PAYESH_HYDRATE_SCHOOL_IDS || '');
+  if (!raw) return null;
+  const ids = raw.split(',').map((s) => Number(s.trim()))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return ids.length ? ids : null;
+}
+
 /**
  * Wave 1 — boot hydration: replace store domain collections with PG truth.
  * Iterates SCHEMA_TABLES (not store keys) so a skeleton boot — whose store has
@@ -599,7 +677,7 @@ async function readOne(name, id) {
  * @returns {Promise<{ok:boolean, hydrated:number, skipped:Array}>}
  */
 async function hydrateStoreFromPg(store, opts) {
-  const out = { ok: true, hydrated: 0, skipped: [], capped: [], env_skipped: [], kept: [], mirror_incomplete: false };
+  const out = { ok: true, hydrated: 0, skipped: [], capped: [], env_skipped: [], kept: [], mirror_incomplete: false, tenant_scoped: [] };
   /* B7 (Phase-2 remediation directive): an empty PG table must never wipe a
      non-empty in-memory collection — unless the caller explicitly forces it
      (opts.force === true or PAYESH_FORCE_HYDRATION=1). Protection against
@@ -627,13 +705,56 @@ async function hydrateStoreFromPg(store, opts) {
         if (t && Number.isFinite(n) && n >= 0) limEnv[t] = n;
       }
     });
+  /* M15-04 (Bootstrap) — آینهٔ مقیّد به tenant: وقتی PAYESH_HYDRATE_SCHOOL_IDS
+     ست شده، جداولی که school_id دارند فقط ردیف‌های همان مدارس را
+     بارگذاری می‌کنند (+ ردیف‌های سراسریِ school_id IS NULL که مالِ هیچ
+     tenantی نیستند و policy/authz به آن‌ها وابسته‌اند). هیدراتاسیون
+     O(tenant) می‌شود، نه O(کلِ DB).
+     کدام جدول school_id دارد را با یک کوئریِ کاتالوگ از information_schema
+     می‌پرسیم — نه از یک لیستِ hard-coded: schools/parent_links/offices/…
+     آن ستون را ندارند و باید سراسری بمانند (health-index، bell.js و auth
+     به آن‌ها وابسته‌اند). شکستِ introspection ⇒ هیچ جدولی مقیّد نمی‌شود
+     (fail-safe: هیدراتاسیونِ کامل و کُند، نه آینه‌ای ناقص). */
+  const scopeIds = hydrateSchoolScope();
+  let scopedTables = null;
+  if (scopeIds && isPostgres()) {
+    try {
+      const names = SCHEMA_TABLES
+        ? Array.from(SCHEMA_TABLES).filter(isPgReadableTable)
+        : [];
+      const res = await pool.query(
+        `SELECT table_name FROM information_schema.columns
+          WHERE table_schema = current_schema()
+            AND column_name = 'school_id'
+            AND table_name = ANY($1::text[])`,
+        [names]);
+      scopedTables = new Set(res.rows.map((r) => r.table_name));
+    } catch (e) {
+      scopedTables = null;
+      console.warn('[DB] tenant-scope introspection failed — unbounded hydration used:', e.message);
+    }
+  }
   for (const key of SCHEMA_TABLES) {
     if (!isPgReadableTable(key)) continue;
     if (skipEnv.indexOf(key) > -1) { out.env_skipped.push(key); continue; }
     try {
       const cap = limEnv[key];
+      const scoped = !!(scopeIds && scopedTables && scopedTables.has(key));
       let rows;
-      if (cap !== undefined) {
+      if (scoped) {
+        /* M15-04: tenant scope at source — فقط ردیف‌های همین tenant به
+           علاوهٔ ردیف‌های سراسری (school_id IS NULL). همین pipeِ
+           reviveRows + stripInternalColumns که همهٔ مسیرهایِ خواندن طی
+           می‌کنند، تا shapeِ سطرِ آینه عیناً یکسان بماند. اگر هم‌زمان
+           cap ست شده باشد، هر دو اعمال می‌شوند (دامنه، سپس سقف). همهٔ
+           مقدارها bound parameter هستند؛ نامِ جدول توسطِ
+           isPgReadableTable shape-valid شده است (مانندِ readCollection). */
+        const res = cap !== undefined
+          ? await pool.query(`SELECT * FROM "${key}" WHERE (school_id = ANY($1::int[]) OR school_id IS NULL) ORDER BY id LIMIT $2`, [scopeIds, cap])
+          : await pool.query(`SELECT * FROM "${key}" WHERE (school_id = ANY($1::int[]) OR school_id IS NULL)`, [scopeIds]);
+        rows = stripInternalColumns(reviveRows(res.rows));
+        out.tenant_scoped.push(key);
+      } else if (cap !== undefined) {
         const res = await pool.query(`SELECT * FROM "${key}" ORDER BY id LIMIT $1`, [cap]);
         /* N-22: the capped path used to assign reviveRows(res.rows) directly,
            bypassing stripInternalColumns — so a boot with
@@ -665,8 +786,10 @@ async function hydrateStoreFromPg(store, opts) {
   }
   /* بازخوردِ بازبینِ PR #94: آینهٔ سقف‌دار/ناقص هرگز نباید روی فایلِ
      store.json نوشته شود — فایلِ کاملِ قبلی را می‌کُشد. این پرچم به
-     index.js می‌گوید مسیرهای persist فایل را در PG-live ببندد. */
-  out.mirror_incomplete = out.capped.length > 0 || out.env_skipped.length > 0;
+     index.js می‌گوید مسیرهای persist فایل را در PG-live ببندد.
+     M15-04: آینهٔ مقیّد به tenant هم «ناقص» است (ردیفِ بیرونِ tenant
+     در آن نیست) پس همین گارد اعمال می‌شود. */
+  out.mirror_incomplete = out.capped.length > 0 || out.env_skipped.length > 0 || out.tenant_scoped.length > 0;
   return out;
 }
 
@@ -674,8 +797,8 @@ async function hydrateStoreFromPg(store, opts) {
  * آیا آینهٔ درون‌حافظه‌ای را باید روی store.json نوشت؟
  * خالث/خالص — قابلِ تستِ مستقیم (tests/wave18-hydration-guards.js).
  * فقط وقتی «نه» می‌گوید که PG مرجع است و هیدراتاسیون عمداً بریده
- * بوده (capped/env-skipped). هر حالتِ دیگر — از جمله آینهٔ کامل و
- * حالتِ بدونِ PG — رفتارِ قبلی (نوشتن) را حفظ می‌کند.
+ * بوده (capped/env-skipped/tenant-scoped). هر حالتِ دیگر — از جمله
+ * آینهٔ کامل و حالتِ بدونِ PG — رفتارِ قبلی (نوشتن) را حفظ می‌کند.
  */
 function shouldPersistMirrorFile(pgLive, hydrateResult){
   return !(pgLive && hydrateResult && hydrateResult.mirror_incomplete);
@@ -698,6 +821,10 @@ function hydrationUsersCapped(h){
     return String(s).split(':')[0] === 'users';
   })) return true;
   if (Array.isArray(h.env_skipped) && h.env_skipped.indexOf('users') > -1) return true;
+  /* M15-04: tenant-scoped hydration هم users را میَبُرَد — کاربرانِ
+     بیرونِ دامنه در آینه نیستند (auth در PG-live مستقیم از PG هم می‌خواند،
+     ولی مسیرهایِ مبتنی بر آینه آن‌ها را نمی‌بینند) ⇒ همان هشدارِ G2. */
+  if (Array.isArray(h.tenant_scoped) && h.tenant_scoped.indexOf('users') > -1) return true;
   return false;
 }
 
@@ -1241,7 +1368,9 @@ module.exports = {
   query,
   queryRead,
   readCollection,
+  readCollectionForSchools,
   readOne,
+  readMany,
   hydrateStoreFromPg,
   ping,
   transaction,
