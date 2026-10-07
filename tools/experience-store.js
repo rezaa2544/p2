@@ -295,20 +295,25 @@ function cmdSupersede(id, newId) {
   if (!e) { console.error('not found'); process.exit(5); }
   e.validation_status = 'SUPERSEDED';
   e.superseded_by = newId;
+  // A superseded record must not enter retrieval. The retrieval gate filters
+  // on leakage_level, so SUPERSEDED alone did not bar a SAFE record from
+  // prompts — placeholder/stale records still leaked through.
+  if (e.leakage_level === 'SAFE') e.leakage_level = 'SUPERSEDED_SAFE';
   writeAll(all);
   rebuildIndex();
-  console.log(`SUPERSEDED ${id} -> ${newId}`);
+  console.log(`SUPERSEDED ${id} -> ${newId} (leakage_level ${e.leakage_level})`);
 }
 
 function cmdAudit() {
   const all = readAll();
-  const report = { total: all.length, safe: 0, quarantined: 0, rejected: 0, secrets: 0, by_class: {}, by_status: {} };
+  const report = { total: all.length, safe: 0, quarantined: 0, rejected: 0, superseded: 0, secrets: 0, by_class: {}, by_status: {} };
   for (const e of all) {
     report.by_class[e.problem_class] = (report.by_class[e.problem_class] || 0) + 1;
     report.by_status[e.validation_status] = (report.by_status[e.validation_status] || 0) + 1;
     if (e.leakage_level === 'SAFE') report.safe++;
     if (e.leakage_level === 'QUARANTINED') report.quarantined++;
     if (e.leakage_level === 'REJECTED') report.rejected++;
+    if (e.leakage_level === 'SUPERSEDED_SAFE') report.superseded++;
     const s = screenSecrets(e);
     if (s.found) report.secrets++;
   }

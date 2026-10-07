@@ -139,6 +139,7 @@ check('QUARANTINED (SHA-bound) entry not retrievable', !r.out.includes('TEST-BND
 console.log('11. audit/stats');
 r = run(['audit']);
 check('audit produces JSON', (() => { try { JSON.parse(r.out); return true; } catch { return false; } })());
+check('audit counts superseded separately from safe', (() => { const a = JSON.parse(run(['audit']).out); return a.safe + a.quarantined + a.rejected + a.superseded === a.total; })());
 r = run(['stats']);
 check('stats produces JSON', (() => { try { JSON.parse(r.out); return true; } catch { return false; } })());
 
