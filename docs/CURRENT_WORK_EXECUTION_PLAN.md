@@ -1508,3 +1508,179 @@ Items already planned are **not** duplicated: M15-10 (anti-collapse), M15-12 (re
 **Hermes / independent verification still required:** (1) QUEUE-CLAIM-1 on live Redis+PG with two instances — upstream's "VERIFIED ON LIVE INFRA" for M15-05 durable invalidation must be re-checked through the real `start()` timer path (NOT VERIFIED how that run invoked the loop); (2) reproduce QUEUE-CAPACITY-1 on live PG; (3) review QUEUE-RETRY-1 migration design.
 
 **Next 3 priorities:** ① live revalidation of the timer path (M15-09); ② backoff/jitter + `next_attempt_at` design (M15-12); ③ watermark liveness + DLQ retention design (M15-10).
+
+
+# MASTER CLOSURE RECONCILIATION — 2026-10-07
+**هدف:** این بخش «صف جامع بستن پروژه» است و بر تمام queueهای قبلی، defect registerها، auditها، phaseها، معماری‌ها، یافته‌های خارجی، موارد مشکوک و شکاف‌های evidence سوار می‌شود. این بخش duplicate fix ایجاد نمی‌کند؛ هر مورد تاریخی یا به یک workstream موجود نگاشت می‌شود یا به‌عنوان REVALIDATION/EVIDENCE/DECISION مستقل باقی می‌ماند.
+
+**Current main:** `7a9e19f153ec122a7dca6fb54bef68c59c7c6368` (merge PR #440)
+**حکم فعلی:** **HARDENING / ARCHITECTURE UPGRADE / RECONCILIATION — NOT VERIFIED / NOT CERTIFIED**
+
+## A. قاعده پوشش کامل
+هیچ finding تاریخی با عنوان FIXED/VERIFIED صرفاً از روی گزارش بسته نمی‌شود. برای current HEAD یکی از این dispositionها لازم است:
+`VERIFIED` · `FIXED-SCOPED` · `REVALIDATION_REQUIRED` · `NOT VERIFIED` · `BLOCKED` · `ACCEPTED RISK` · `HISTORICAL / NO CURRENT REPRO`.
+مواردی که در یک workstream جذب شده‌اند دوباره به‌صورت defect مستقل اجرا نمی‌شوند، اما ID تاریخی و evidence boundary آنها حفظ می‌شود.
+
+## B. صف صفر — Certification / Evidence debt (قبل از سبز کردن هر چیزی)
+1. **Verification Registry:** `head_bound=e4584806` و برای current main به‌روز نیست → **REVALIDATION_REQUIRED**؛ registry باید روی hardening SHA نهایی بازسازی شود.
+2. **Three-AI agreement:** ChatGPT + Arena + Atria برای current final SHA کامل نشده → **NOT VERIFIED**.
+3. **Strict Verification Gate:** fail-closed policy موجود است، اما certification registry/evidence graph هنوز current-head certified نیست → **BLOCKED**.
+4. **False-green / test integrity:** orphan/zero-check/mock/swallowed-catch inventory باید به gateهای واقعی متصل و NOT-RUN صریح شود.
+5. **Current-head evidence invalidation:** هر merge مادی، evidence وابسته را دوباره معتبرسازی می‌کند.
+6. **Final evidence ledger:** هر claim باید command + exit + SHA + artifact/runtime + limitation داشته باشد.
+
+## C. صف میراثی Defect — بدون از دست دادن یافته‌های قبل
+### C1 — Atria Phase-A Carry-over / A-01..A-29
+این register تاریخی حذف نمی‌شود؛ وضعیت فعلی آن به شکل زیر مدیریت می‌شود:
+- **A-01/A-02/A-03:** performance/analytics/readCollection → **M15-01/M15-05**, با A-02 همچنان **REVALIDATION/EVIDENCE_REQUIRED**.
+- **A-04:** ID race → single-instance fix موجود؛ multi-instance JSON residual → **REVALIDATION_REQUIRED**.
+- **A-05/A-06:** backup/SMS growth → current behavior must be revalidated; SMS/queue retention جذب **M15-10/M15-15**.
+- **A-07/A-08/A-12/A-13:** test orchestration, zero-check, runner/parity → **A-37 + original N-36 evidence debt**.
+- **A-09/A-10/A-11:** security scanners → CodeQL/Fortify are still **NOT VERIFIED / external-tool dependent**.
+- **A-14..A-17:** historical false-green fixes → retain as regression invariants; current-head gate must prove them.
+- **A-18/A-20/A-24:** Sync/OCC → **REVALIDATION_REQUIRED** for legacy/LWW, crash durability, reconnect, multi-host and final current-head invariant.
+- **A-19/A-21:** ownership → absorbed into tenant/authz matrix **M15-03 + Capability/Role validation**.
+- **A-22:** Redis revocation → current fix has residual cross-instance fail-open risk; **M15-03/M15-08 + failure drill**.
+- **A-23:** intelligence metric semantics → retain under intelligence certification / A-31.
+- **A-25/A-27/A-28/A-29:** reliability/DR/national scale/documentation evidence → **M15-15/M15-18/M15-19/M15-20 + docs reconciliation**.
+- **A-26:** CI/security-gate coverage → **A-37 / Strict Gate**.
+
+### C2 — NCR-01..NCR-27
+Historical NCR list is fully retained; no duplicate fixes are created. Mapping:
+- NCR-01..07 → current authz/boot/security hardening and **M15-03/M15-05 + current-head revalidation**.
+- NCR-08..09 → **M15-11 + adversarial OCC verification**.
+- NCR-10..13 → **A-36/A-37 + M15-05**.
+- NCR-14..15/20 → **M15-03 tenant/region authorization**.
+- NCR-16..17 → **M15-11 Sync/OCC contract**.
+- NCR-18..19/22/26/27 → **A-37 / Strict Gate / CI inventory**.
+- NCR-21 → Parent-360 data semantics → **Capability/Role/E2E + current-head regression**.
+- NCR-23 → frontend build drift → **release/test-integrity gate**.
+- NCR-24..25 → low-priority behavioral cleanup, retained until reproduced/dispositioned.
+
+### C3 — Fresh root-cause / recurrence program A-30..A-39
+**Mandatory closure chain:**
+A-30 Strict Gate → A-31 Intelligence semantic integrity → A-32 SMS/PG/restart idempotency → A-33 PG auth delegation parity → A-34 Sync authorization parity → A-35 Mission-5 authz → A-36 PG migration/test infrastructure → A-37 complete test inventory → A-38 registry rebind → A-39 DR/reliability evidence.
+
+هیچ مورد recurring از FIXED مستقیماً CERTIFIED نمی‌شود.
+
+### C4 — External blind audits
+- **Replit R-A1..R-A4:** class projection / Redis Cluster recovery / HA-only config / temp cleanup → controlled reproduction + disposition; no external report closes them.
+- **Bolt B-01:** Redis outage stale-cache → **M15-09/M15-07**, current durable path still requires independent timer-path verification.
+- **B-02:** direct PG role/school mutation stale bootstrap cache → **M15-07/M15-03**; operational support contract must be decided.
+- **B-03:** PG→memory fallback stale/source signaling → **M15-05**; production authority must remain PG.
+- **B-04:** cross-instance durable revocation journal → **A-39/M15-08**, deployment storage contract.
+- **B-05:** health-index memory mirror → **M15-05/M15-14**.
+- **B-06:** PG pool min/max NaN parsing → **M15-17**.
+- **B-07:** shutdown worker ordering → **M15-10/M15-20**.
+- **Copilot bootstrap grade finding:** mixed numeric/recognized/unknown grade chunks → **REPRODUCTION_REQUIRED on live PG**; do not apply historical patch blindly.
+
+## D. صف معماری و مقیاس — M15 V2 (25 آیتم، canonical)
+1. **M15-01** current-head architecture reconciliation + runtime hot-path inventory.
+2. **M15-02** measured capacity baseline/model.
+3. **M15-03** tenant isolation + resource fairness/noisy-neighbor.
+4. **M15-04** admission/load shedding.
+5. **M15-05** DB scale hardening: connection/query/transaction budgets, PgBouncer-safe locks, server timeouts, bounded reads.
+6. **M15-06** shard/cell-ready data model; 22 tenant-table gaps + global sequence strategy decision.
+7. **M15-07** PACMA-lite: byte-bounded L1, jitter, size/tenant budget, negative cache/hot-key only where evidence warrants.
+8. **M15-08** Redis role separation/failure domains/key policy.
+9. **M15-09** durable invalidation reconciliation + Hermes live verification. **QUEUE-CLAIM-1 is FIXED-SCOPED, not yet independently verified.**
+10. **M15-10** queue/worker anti-collapse: retention, age/depth/DLQ, fairness, handler loops, heartbeat, replay, shutdown.
+11. **M15-11** sync-storm defence, jitter, tenant/device limits, client persistence/eviction.
+12. **M15-12** retry/deadline standard: exponential backoff + full jitter + retry budget + deadline + circuit breakers.
+13. **M15-13** event-loop/payload safety and heavy-work isolation.
+14. **M15-14** independent observability plane, dead-man, black-box probes, bounded telemetry/rotation.
+15. **M15-15** backup/DR automation + immutable/off-site decision.
+16. **M15-16** progressive deployment/canary/rollback.
+17. **M15-17** bounded central configuration and fail-fast validation.
+18. **M15-18** load/spike/soak at modeled scale.
+19. **M15-19** chaos/game days.
+20. **M15-20** real restore/failover with measured RPO/RTO/MTTA/MTTR.
+21. **M15-21** broker decision — conditional; default remains PG outbox.
+22. **M15-22** cell architecture readiness.
+23. **M15-23** read-replica/CQRS decision — evidence-driven.
+24. **M15-24** shard/cell decision gate — do not shard without measured write ceiling/restore evidence.
+25. **M15-25** final 10M+ certification on one exact HEAD.
+
+### D1 — Queue hardening findings now attached to M15
+- **QUEUE-CLAIM-1:** FIXED-SCOPED; real timer replication bug fixed and regression test wired to CI; Hermes live two-instance PG/Redis proof required.
+- **QUEUE-RETRY-1:** NOT FIXED; add `next_attempt_at`, exponential backoff/full jitter, retry budget and live outage test.
+- **QUEUE-CAPACITY-1:** REVALIDATION_REQUIRED; watermark floor can be pinned by dead `hostname:pid` rows; DLQ/failed retention absent.
+- **QUEUE-OBSERVABILITY-1:** NOT FIXED; generic depth is RAM mirror; add PG-derived depth + oldest-age.
+- **QUEUE-CLAIM-2:** NOT FIXED; PG fetch failure must not fall back to unleased RAM rows without an explicit safe degraded-mode contract.
+- **QUEUE-FAIRNESS-1:** NOT FIXED; claim is ID-ordered/no tenant fairness and handler-less events can churn.
+
+### D2 — V2 static findings that must not disappear
+V2-F01 advisory-lock/PgBouncer contract; F02 server DB timeouts; F03 unbounded tables; F04 no-handler re-pend; F05 queue telemetry; F06 retry jitter/sync storm; F07 Redis role/policy contradiction; F08 unbounded env parsing; F09 docs/config drift; F10 nginx NAT/XFF/timeouts; F11 static capacity gate; F12 client DLQ loss; F13 22 tables without school_id; F14 memory mirror/readCollection; F15 sessionFrom I/O; F16 worker heartbeat/replay/shutdown/batch; F17 monitorEventLoopDelay/admission; F18 independent observability/logging; F19 global change sequence; F20 onboarding test red; F21 durable invalidation evidence gap; F22 repository-map docs debt. Each remains mapped to M15 or evidence/decision work and is not considered fixed by architecture documentation.
+
+## E. Previous architecture/phases — retained, not lost
+### E1 — Phase 1–7 / foundation and historical architecture
+Historical architecture, migrations, authz, Redis, offline-first, DB scale, intelligence and release work are retained as evidence records. They are **not reimplemented blindly**. Their current closure condition is current-head invariant revalidation through Capability/Role/E2E and the final evidence gate.
+
+### E2 — Phase 8 / 8.1 / 8.2
+Phase 8.1 has substantial historical verification. Phase 8.2 still has evidence gaps that cannot be silently promoted:
+- alert → on-call → acknowledgement → runbook → recovery chain;
+- real PG + Redis restore with restored DB identity/checksum;
+- measured MTTA/MTTR;
+- cold-cache revoke behavior;
+- canonical alert configuration actually loaded by the monitoring stack.
+Until these are reconciled on current HEAD, **Phase 8.2 = PARTIAL / EVIDENCE GAP**.
+
+### E3 — Phase 8.3 / 8.4 / 8.5 / 9.0
+- **8.3:** national load, p95/p99, 20k RPS / 2.5k write TPS, multi-instance soak, control-plane divergence, cold boot and outbox/event processing → now absorbed by **M15-02/18/19/20**.
+- **8.4:** central tenant enforcement + legacy-route coverage → **M15-03 + Capability/Role Matrix**.
+- **8.5:** WAF enforce + zero-trust certification → **M15-03 + Strict Gate + Final Certification**.
+- **9.0:** 8 educational/intelligence engines wiring → implementation was materially advanced (21/21 runtime-wired in prior intelligence audit), but **final current-head capability/evidence certification remains open**.
+- **Phase 3 intelligence P0-EI-01..21 and Phase 4 scalability/production work:** retained; closure means current-head evidence, not replaying already-landed code.
+
+### E4 — Capability / Role / E2E / Failure-Recovery campaigns
+These are not optional after defect hardening:
+`Requirement → Backend → DB → Auth/AuthZ → API → Frontend → Role → Tenant → Audit → Error/Failure → Recovery`.
+They remain final validation tracks and are blocked until critical hardening/evidence dependencies close.
+
+## F. Hermes / PEES upgrade queue
+1. **Experience Retrieval Phase 3:** current verdict **PROMISING BUT UNPROVEN**.
+2. Holdout needs ≥3 valid runs/arm; current n=1+1 is insufficient.
+3. Generalization = NOT RUN.
+4. Ablation arm C = NOT RUN.
+5. PEB-05 = infrastructure-blocked on large `server/sync.js` prompt.
+6. Phase-3 commits `bcb522bd…518dc9b3` exist in Hermes report but are **not promoted to current main by that report**; reconcile before treating them as repository truth.
+7. Freeze manifest regeneration is needed whenever test inventory changes; current freeze must remain synchronized.
+8. Experience store remains context only; it never overrides current repository truth.
+
+## G. Architecture evolution beyond M15 — conditional queue
+- OpenTelemetry / end-to-end tracing.
+- Policy-as-Code hardening into one authoritative contract.
+- Selective CQRS for proven read pressure.
+- Workflow/Saga for long-running multi-step operations.
+- Selective service extraction only where measured failure/load boundary exists.
+- Kubernetes/service mesh/event sourcing are **research/conditional**, not automatic work.
+- Read replicas, Redis Cluster, broker, sharding and cell expansion remain evidence-gated.
+
+## H. Final closure order
+```
+MASTER EVIDENCE/REGISTRY
+  ↓
+A-30..A-39 + remaining critical defect families
+  ↓
+M15-01 → M15-02
+  ↓
+parallel: M15-17 + M15-12 + M15-09
+  ↓
+M15-03/04/05/06/07/08/10/11/13/14/15/16
+  ↓
+M15-18 → M15-19 + M15-20
+  ↓
+M15-21/22/23/24 decisions
+  ↓
+Capability Matrix → Role Matrix → E2E
+  ↓
+Failure/Recovery → Performance/Scale
+  ↓
+Atria + Arena + ChatGPT current-head agreement
+  ↓
+Hermes independent verification
+  ↓
+M15-25 FINAL 10M+ CERTIFICATION
+```
+
+**Hard stop:** no item is closed merely because an old phase report says VERIFIED; no NOT-RUN becomes PASS; no architecture document counts as implementation; no capacity target counts as measurement.
