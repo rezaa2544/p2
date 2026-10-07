@@ -7,6 +7,36 @@
 
 ---
 
+
+
+# MODEL SELECTION — PAYESH QUALITY-FIRST OPERATIONAL POLICY
+
+> **اولویت مطلق پروژه:** دقت، کیفیت، عمق تحلیل و اطمینان از صحت کار. **سرعت هیچ اولویتی ندارد.** مدل سریع‌تر فقط وقتی انتخاب می‌شود که کیفیت آن برای همان مأموریت اثباتاً کافی باشد.
+>
+> این جدول باید در ابتدای هر بررسی Queue/Work Plan به‌عنوان راهنمای انتخاب مدل خوانده شود. رتبه‌ها «امتیاز عملیاتی Payesh» هستند و نه Benchmark رسمی واحد؛ برای تصمیم‌های مهم، evidence واقعی همان mission و بررسی مستقل Hermes ملاک نهایی است.
+
+| رتبه | مدل | امتیاز عملیاتی Payesh | بهترین کاربرد | انتخاب عملیاتی |
+|---:|---|---:|---|---|
+| 🥇 1 | **Atria-Dawn-Preview** | **96/100** | مهندسی Repo-scale، تحلیل معماری، Agentic Coding، تحقیق عمیق، کار چندمرحله‌ای | **مدل اصلی اجرایی Payesh** |
+| 🥈 2 | **Muse Spark 1.3** | **95/100** | Coding سنگین، تغییرات بزرگ Repo، Context طولانی، Agentic Engineering | اجرای سنگین / جایگزین Atria |
+| 🥉 3 | **MiMo-V2.6-Flash** | **94/100** | Bug Hunting، Security، Refactor، Coding و بررسی فنی مستقل | شکار باگ / نظر دوم |
+| 4 | **Ling 3.1 Flash** | **91/100** | Security Adversarial، Bug Hunting، تحلیل و کدنویسی | بررسی خصمانه / مکمل MiMo |
+| 5 | **Nemotron 3.5 Lightning** | **86/100** | Reasoning، تحلیل مستقل، Second Opinion، مسائل پیچیده | تحلیل و نقد مستقل |
+| 6 | **Ling 3.0 Flash** | **83/100** | کارهای سریع و کم‌ریسک، Exploration و تست اولیه | فقط وقتی کیفیت mission کافی باشد |
+| 7 | **LongCat 2.5 Preview** | **78/100*** | Long-context و آزمایش Agentic/Architecture | Experimental |
+| — | **Fledge Alpha** | **NR** | A/B تا وجود evidence معتبرتر | Production انتخاب پیش‌فرض نیست |
+| — | **Space Bunny** | **NR** | A/B تا وجود evidence معتبرتر | Production انتخاب پیش‌فرض نیست |
+
+### قواعد اجباری انتخاب مدل
+1. **Quality > Accuracy > Reliability > Evidence > Speed.** سرعت هرگز دلیل کافی برای پایین‌آوردن سطح مدل نیست.
+2. برای **P0/P1، امنیت، tenant isolation، data integrity، معماری، migration، queue/worker، recovery، certification و تغییرات پرریسک**: پیش‌فرض **Atria-Dawn-Preview**؛ در صورت نیاز به نظر مستقل، **MiMo-V2.6-Flash** یا **Ling 3.1 Flash** نیز استفاده شود و سپس Hermes مستقل بررسی کند.
+3. برای مأموریت‌هایی که **Atria و مدل دوم** هر دو ارزش افزوده واقعی دارند، diversity مدل عمداً استفاده شود؛ توافق مدل‌ها جایگزین Hermes نیست.
+4. برای کارهای عادی/کم‌ریسک، مدل پایین‌تر فقط در صورتی انتخاب شود که **کیفیت موردنیاز mission را تأمین کند**؛ صرفاً به‌خاطر سرعت انتخاب نشود.
+5. هر Prompt اجرایی OpenCode/Atria باید در ابتدای خود **مدل پیشنهادی + دلیل انتخاب** را مشخص کند.
+6. اگر شواهد جدید نشان دهد رتبه یا قابلیت یک مدل تغییر کرده، **همین بخش باید قبل از mission بعدی به‌روزرسانی شود**؛ جدول stale نباید مبنای انتخاب باشد.
+7. **Hermes = Verification Engine مستقل** و در این جدول به‌عنوان «مدل اجرایی» رتبه‌بندی نمی‌شود؛ نقش آن اعتبارسنجی مستقل و challenge کردن نتیجه است.
+
+---
 # PAYESH — برنامه اجرایی یکپارچه پایش، رفع عیب و اعتبارسنجی نهایی
 
 **وضعیت:** ACTIVE / CANONICAL EXECUTION PLAN  
