@@ -37,6 +37,21 @@
 7. **Hermes = Verification Engine مستقل** و در این جدول به‌عنوان «مدل اجرایی» رتبه‌بندی نمی‌شود؛ نقش آن اعتبارسنجی مستقل و challenge کردن نتیجه است.
 
 ---
+
+# CONTROL-PLANE RECONCILIATION — MANDATORY
+
+This project now requires three-way reconciliation before any material verdict: **Mission Truth + Report Truth + Repository Truth**. The canonical protocol is `docs/CONTROL_PLANE_RECONCILIATION_PROTOCOL.md`.
+
+### Mandatory controls
+- Hermes is a verifier, never repository ground truth; it must independently reconcile reports against current Git state and reject conflicts.
+- ChatGPT must reconcile every material report against the original mission/DoD, mission owner/chat, current refs/ancestry, branch-vs-main state, parallel-session changes, and evidence before accepting a verdict.
+- `PUBLISHED-BRANCH ≠ MERGED-MAIN`; `COMMITTED ≠ VERIFIED`; old-head verification is not current-head verification.
+- Every active mission requires a durable mission record with owner/chat, objective, DoD, expected branch/worktree, status, verified HEAD, report, Hermes verification, reconciliation status, blockers and next action.
+- Missing critical evidence => `NOT VERIFIED`, never PASS.
+- Mission drift requires `MISSION-DRIFT ALERT`; supporting discoveries are queued as `SUPPORTING / DEFERRED` and cannot replace the Primary Objective.
+- Material repository changes invalidate dependent evidence and force `REVALIDATION_REQUIRED`.
+- Before closure, answer: “Would the same verdict be reached from only the mission record + current repository/evidence?” If no, closure is forbidden.
+
 # PAYESH — برنامه اجرایی یکپارچه پایش، رفع عیب و اعتبارسنجی نهایی
 
 **وضعیت:** ACTIVE / CANONICAL EXECUTION PLAN  
