@@ -37,6 +37,21 @@
 7. **Hermes = Verification Engine مستقل** و در این جدول به‌عنوان «مدل اجرایی» رتبه‌بندی نمی‌شود؛ نقش آن اعتبارسنجی مستقل و challenge کردن نتیجه است.
 
 ---
+
+# CONTROL-PLANE RECONCILIATION — MANDATORY
+
+This project now requires three-way reconciliation before any material verdict: **Mission Truth + Report Truth + Repository Truth**. The canonical protocol is `docs/CONTROL_PLANE_RECONCILIATION_PROTOCOL.md`.
+
+### Mandatory controls
+- Hermes is a verifier, never repository ground truth; it must independently reconcile reports against current Git state and reject conflicts.
+- ChatGPT must reconcile every material report against the original mission/DoD, mission owner/chat, current refs/ancestry, branch-vs-main state, parallel-session changes, and evidence before accepting a verdict.
+- `PUBLISHED-BRANCH ≠ MERGED-MAIN`; `COMMITTED ≠ VERIFIED`; old-head verification is not current-head verification.
+- Every active mission requires a durable mission record with owner/chat, objective, DoD, expected branch/worktree, status, verified HEAD, report, Hermes verification, reconciliation status, blockers and next action.
+- Missing critical evidence => `NOT VERIFIED`, never PASS.
+- Mission drift requires `MISSION-DRIFT ALERT`; supporting discoveries are queued as `SUPPORTING / DEFERRED` and cannot replace the Primary Objective.
+- Material repository changes invalidate dependent evidence and force `REVALIDATION_REQUIRED`.
+- Before closure, answer: “Would the same verdict be reached from only the mission record + current repository/evidence?” If no, closure is forbidden.
+
 # PAYESH — برنامه اجرایی یکپارچه پایش، رفع عیب و اعتبارسنجی نهایی
 
 **وضعیت:** ACTIVE / CANONICAL EXECUTION PLAN  
@@ -1714,3 +1729,136 @@ M15-25 FINAL 10M+ CERTIFICATION
 ```
 
 **Hard stop:** no item is closed merely because an old phase report says VERIFIED; no NOT-RUN becomes PASS; no architecture document counts as implementation; no capacity target counts as measurement.
+
+---
+
+# CROSS-CUTTING CONTROL — MISSION DRIFT / GOAL-LOCK / COMPLETION GUARD — 2026-10-08
+
+**Finding:** The Hermes Upgrade session was tasked with completing Fine-tuning/Learning, but execution drifted into Phase 3 validation/collection. The related validation work produced useful evidence, but it did not complete the primary mission. This is a control-plane failure that must be prevented at both executor/verifier level and ChatGPT supervision level.
+
+## Mandatory rule
+
+Every mission has one **Primary Objective** and a finite **Definition of Done**. Related work may support the objective but may not silently replace it.
+
+### Mission Drift Guard
+
+Before execution:
+1. Record the exact Primary Objective.
+2. Record explicit Non-Goals.
+3. Record Definition of Done and blocking criteria.
+4. Record the next intended deliverable.
+
+During execution:
+5. At every major phase transition, compare the current activity against the Primary Objective.
+6. If work is useful but does not advance the Primary Objective, classify it as **SUPPORTING / DEFERRED**, do not promote it to the main mission.
+7. If a discovered issue requires separate work, register it in the canonical queue and return to the Primary Objective unless the Control Plane explicitly reprioritizes.
+8. The executor must explicitly raise **MISSION-DRIFT ALERT** when the current workstream is becoming the new objective.
+
+At completion:
+9. Do not report DONE/COMPLETE until every Definition-of-Done item for the Primary Objective has evidence.
+10. A successful supporting phase never substitutes for an incomplete primary objective.
+11. Final reports must contain:
+   - Primary Objective
+   - Completed DoD items
+   - Not completed DoD items
+   - Supporting work discovered
+   - Deferred queue items
+   - Final verdict
+
+### Hermes-specific guard
+
+Hermes must independently check not only technical correctness but also **mission alignment**:
+"Was the assigned mission actually completed?"
+
+A technically excellent result for a different objective is **NOT VERIFIED** for the assigned mission.
+
+### ChatGPT Control-Plane guard
+
+ChatGPT must reconcile every incoming report against the original mission before accepting its verdict. Agreement with Hermes' report is not evidence of mission completion.
+
+If a report is technically strong but off-objective:
+**accept useful evidence → register the finding → reject completion of the original mission → return execution to the Primary Objective.**
+
+This rule is now part of the canonical execution contract.
+
+---
+
+# UPGRADE SESSION — FINE-TUNING COMPLETION QUEUE — 2026-10-08
+
+**Priority:** HIGH  
+**Owner:** Hermes Upgrade Session  
+**Control Plane:** ChatGPT  
+**Status:** **OPEN — PRIMARY OBJECTIVE NOT COMPLETE**  
+**Current verdict:** Fine-tuning = **NOT VERIFIED / NOT COMPLETE**
+
+## Primary Objective
+
+Complete the assigned **Fine-tuning / Learning upgrade**. Phase 3 validation is supporting evidence only and must not replace this objective.
+
+## Current known state
+
+- Experience Store / Retrieval infrastructure: implemented and useful.
+- Phase 3 collection: 451 records.
+- Leakage: 0.
+- PEB-10 Arm A: 5 valid runs.
+- Generalization/Ablation evidence remains insufficient.
+- Current verdict: **PROMISING BUT UNPROVEN**.
+- A runner/worktree mismatch was identified; this is a supporting infrastructure defect, not the primary mission.
+- The current evidence does **not** prove completed Fine-tuning.
+
+## Completion contract
+
+The session must first reconstruct the actual Fine-tuning plan and current implementation from the repository and its own prior upgrade work. It must then:
+
+1. Identify exactly what "Fine-tuning" means in the current Payesh upgrade architecture.
+2. Determine what has actually been implemented versus only designed/validated.
+3. Complete the missing implementation required for the assigned Fine-tuning objective.
+4. If a claimed training path is technically unavailable in the current environment, prove the blocker precisely and implement/complete the viable supported training path rather than silently substituting validation work.
+5. Execute the required training/learning evaluation.
+6. Preserve strict leakage protection and holdout separation.
+7. Produce baseline-vs-upgraded evidence sufficient to decide whether the upgrade actually improves the intended engineering capability.
+8. Complete the required validation needed by the project's Definition of Done, including generalization and ablation where they are part of that DoD.
+9. Fix the runner/worktree isolation defect so the evaluation infrastructure cannot silently execute against the wrong checkout.
+10. Add an overall collection timeout in addition to connection-level timeouts.
+11. Re-run only the evidence invalidated by the relevant changes; do not discard valid historical evidence without reason.
+12. Finish with exactly one of:
+   - **VERIFIED / COMPLETE**
+   - **PROMISING BUT UNPROVEN**
+   - **BLOCKED**
+   - **NOT COMPLETE**
+   with explicit evidence and the exact remaining gap.
+
+## Hard anti-drift rule
+
+Do **NOT** declare Phase 3 complete merely because its collection is complete.
+
+Do **NOT** continue expanding Phase 3 indefinitely while Fine-tuning remains incomplete.
+
+Phase 3 work may be performed only when it directly satisfies a missing Fine-tuning acceptance criterion or fixes a concrete validation blocker.
+
+If Phase 3 produces an independent finding that is not required for Fine-tuning completion:
+**record it → classify it SUPPORTING/DEFERRED → return to Fine-tuning.**
+
+## Required final report
+
+The final report must begin with:
+
+PRIMARY OBJECTIVE: Fine-tuning / Learning completion
+
+Then provide:
+- implementation status
+- training status
+- evaluation status
+- baseline vs upgraded evidence
+- leakage status
+- holdout status
+- generalization status
+- ablation status
+- runner/worktree integrity
+- timeout integrity
+- exact HEAD
+- exact commands and exits
+- final verdict
+- remaining blockers, if any
+
+**No completion claim from report prose alone. Evidence is mandatory.**
