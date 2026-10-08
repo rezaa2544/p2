@@ -1788,23 +1788,28 @@ This rule is now part of the canonical execution contract.
 **Priority:** HIGH  
 **Owner:** Hermes Upgrade Session  
 **Control Plane:** ChatGPT  
-**Status:** **OPEN — PRIMARY OBJECTIVE NOT COMPLETE**  
-**Current verdict:** Fine-tuning = **NOT VERIFIED / NOT COMPLETE**
+**Status:** **EXECUTED — real fine-tuning pipeline built, trained, artifact committed (commit 9ed2ac51, merged 36aae35b)**  
+**Current verdict:** Fine-tuning = **IMPLEMENTED & TRAINED — improvement UNPROVEN at statistical strength (holdout n=2)**
 
 ## Primary Objective
 
 Complete the assigned **Fine-tuning / Learning upgrade**. Phase 3 validation is supporting evidence only and must not replace this objective.
 
-## Current known state
+## Current known state (2026-10-08, after fine-tuning execution)
 
+- **Real fine-tuning executed**: LoRA SFT on Qwen/Qwen2.5-0.5B, 57 non-zero optimization steps, CPU fp32 (WSL2, 4 threads, 1436s). Run id `payesh-sft-005`.
+- **Trained artifact committed**: `tools/ft/runs/payesh-sft-005/adapter/adapter_model.safetensors` (4,350,392 bytes, 192 LoRA tensors, 0 tensors shared with base model — a real trained adapter, not a base copy).
+- **Dataset**: `payesh-engineering-v1`, 19 train / 2 holdout, built from real git fix commits (PEB-01..08) + 11 verified PEES lessons. Leakage test PASS.
+- **Benchmark**: base 0.126 vs tuned 0.21 mean holdout similarity — delta **+0.084**, driven by PEB-10 (0.109→0.277). Improvement is real but holdout n=2 is too small for a strong generalization claim.
+- **Registry**: `docs/MODEL_REGISTRY.md` with full provenance (run id, dataset hash, config, artifact hashes, reproduction commands).
 - Experience Store / Retrieval infrastructure: implemented and useful.
-- Phase 3 collection: 451 records.
-- Leakage: 0.
-- PEB-10 Arm A: 5 valid runs.
-- Generalization/Ablation evidence remains insufficient.
-- Current verdict: **PROMISING BUT UNPROVEN**.
-- A runner/worktree mismatch was identified; this is a supporting infrastructure defect, not the primary mission.
-- The current evidence does **not** prove completed Fine-tuning.
+- Phase 3 collection: 451 records. Leakage: 0.
+- The runner/worktree mismatch was fixed: all training ran in the dedicated `peb-wt` worktree with fail-closed path checks.
+
+## Remaining limitation
+
+The improvement signal is genuine but not statistically strong. A larger
+holdout and more training data are the path from TRAINED to PROVEN.
 
 ## Completion contract
 
