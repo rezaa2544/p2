@@ -1,0 +1,32 @@
+{
+  "dataset_version": "payesh-engineering-v1",
+  "source_repo_head": "095c75ca1b60f2d1090d8461875d5aa48815968e",
+  "created_at": "2026-10-08T05:33:50.894Z",
+  "sources": {
+    "peb_cases_total": 10,
+    "peb_cases_ok": 10,
+    "peb_errors": [],
+    "peb_train": [
+      "PEB-01",
+      "PEB-02",
+      "PEB-03",
+      "PEB-04",
+      "PEB-05",
+      "PEB-06",
+      "PEB-07",
+      "PEB-08"
+    ],
+    "peb_holdout": [
+      "PEB-09",
+      "PEB-10"
+    ],
+    "pees_records": 11,
+    "commit_corpus": 80
+  },
+  "splits": {
+    "train": 19,
+    "holdout": 2
+  },
+  "train_sha256": "bdb227060b1a1a5ae1e11711101d1201d5aae53f73e8e44b0aa08077b245605d",
+  "holdout_sha256": "e06ce912e97b336bdb47e6dac6a213515cb82ffb50aac879478f25759296033a"
+}

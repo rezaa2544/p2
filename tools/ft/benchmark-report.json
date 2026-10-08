@@ -1,0 +1,18 @@
+{
+  "base_mean_similarity": 0.126,
+  "tuned_mean_similarity": 0.21,
+  "n": 2,
+  "rows": [
+    {
+      "instruction": "The PG bootstrap seed path writes the school grade as a Pers",
+      "base_sim": 0.143,
+      "tuned_sim": 0.143
+    },
+    {
+      "instruction": "In the multi-instance OTP ratelimit harness, each instance b",
+      "base_sim": 0.109,
+      "tuned_sim": 0.277
+    }
+  ],
+  "delta": 0.084
+}

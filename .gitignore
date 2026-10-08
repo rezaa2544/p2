@@ -73,3 +73,7 @@ skill-observations/
    regenerated per mission; never committed (it describes a transient state). */
 .baseline-check.json
 docs-refs-probe.json
+
+# Fine-tuning artifacts: base model weights are re-downloadable, not committed
+tools/ft/base-model/
+tools/ft/bench-*.jsonl
