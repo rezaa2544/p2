@@ -18,9 +18,23 @@
 | HEAD | `048ba3c729055cc6bcc43593218355f838367b17` | `git rev-parse HEAD` |
 | Working tree | **CLEAN** — zero untracked, zero modified | `git status --short --branch` |
 | `main` (local) | `fd83a39927300e65396bfef57980c71abdb87c9d` | `git rev-parse main` |
-| `origin/main` | `fd83a399...` — **identical to local main** | `git rev-list --left-right --count main...origin/main` = `0/0` |
-| `origin/ft-metric-01` | `048ba3c7...` — **matches local HEAD** | `git ls-remote origin ft-metric-01` |
-| `main` vs `ft-metric-01` | ft-metric-01 is **+2 commits** ahead of main (`0/2`) | `git rev-list --left-right --count main...ft-metric-01` |
+| `origin/main` | `da40e5271a9d25d26fee742003ee2b323f8fe29d` — **advanced during this mission** (see "Upstream movement" below) | `git rev-parse origin/main` |
+| `origin/ft-metric-01` | `0c22c8f0eefc851b7d1b71d53540f4ceaf2b3fa6` — **matches local HEAD** | `git ls-remote origin ft-metric-01` |
+| `main` vs `ft-metric-01` | **diverged**: ft-metric-01 has 1 commit not on main (this report); main has 1 commit not on ft-metric-01 (the merge) | `git rev-list --left-right --count origin/main...ft-metric-01` = `1/1` |
+
+### Upstream movement during this mission
+
+While the runtime inventory was being gathered, `origin/main` advanced from `fd83a399` to `da40e527`:
+
+```
+da40e527 Merge pull request #442 from rezaa2544/ft-metric-01
+048ba3c7 docs: FT-METRIC-01 safe-commit report + post-FT-METRIC-01 roadmap status assessment
+979bbb40 FT-METRIC-01: fix tb.size Array bug + add v2 metric, mutation guard, test suite
+```
+
+`da40e527` is a **true merge commit** (parents `fd83a399` + `048ba3c7`), not a squash — the FT-METRIC-01 history is preserved on `main`. Both `979bbb40` and `048ba3c7` are now reachable from `origin/main` (confirmed by `git branch -r --contains`).
+
+**Consequence for this report:** the runtime inventory was bound to HEAD `048ba3c7`, which is *contained in* the new `origin/main`. The inventory therefore also describes code reachable from current `main`; nothing in the delta between `048ba3c7` and `da40e527` touches `server/`, `tools/`, `migrations/`, or `tests/` (the merge adds only the two doc commits already accounted for). **No re-run is required for this inventory** — but the standing M15-01 rule ("re-run and re-bind on each new HEAD") applies to the *next* material merge that touches code.
 
 ### Commits published this mission
 
@@ -74,7 +88,9 @@ fd83a39927300e65396bfef57980c71abdb87c9d   # UNCHANGED — main was not touched
 
 **`VERIFIED ON REMOTE`** — both commits are present on `origin/ft-metric-01`; `origin/main` is byte-identical to before (no force push, no history rewrite, no branch protection bypass, no secrets in URL or log).
 
-**Merge status:** `ft-metric-01` is a feature branch on the remote. Per the project's Eighth Principle ("no merge without explicit owner approval"), **no merge into `main` was performed**. Publishing the branch and merging into `main` are two distinct states and are reported separately.
+**Merge status:** the two earlier commits (`979bbb40`, `048ba3c7`) were merged into `main` during this mission via **PR #442** (`da40e527`, a true merge — history preserved, not squashed). The runtime report itself (`0c22c8f0`) remains on the feature branch pending an owner merge decision. Per the project's Eighth Principle, **no merge was performed by this mission** — the merge above was an upstream action. Publishing a branch and merging into `main` are two distinct states and are reported separately.
+
+**Remote verification evidence (final):** `git ls-remote origin ft-metric-01` → `0c22c8f0...refs/heads/ft-metric-01`; `git branch -r --contains 979bbb40` → now includes `origin/main` and `origin/HEAD -> origin/main`; `git rev-parse origin/main` → `da40e527...`.
 
 ---
 
@@ -222,7 +238,7 @@ Environment: **live PostgreSQL 16.15** on `127.0.0.1:5432`, database `payesh_f3r
 | **P2** | Alertmanager webhook is a placeholder | Alert → on-call → ack → recovery chain is not wired end-to-end. | `alertmanager.yml:19` | Owner decision (external receiver credentials) |
 | **P2** | Zero restore/failover drill on current HEAD; E4 = 0/6 | DR is documented but unproven on this HEAD. | §5E | M15-15/M15-20 + owner decisions (off-site target, E4 topology) |
 | **P2** | Audit logging synchronous by default | Every audit write blocks the request path; under peak attendance load this adds latency. | `audit.js:185-195` | M15-13 (async by default) |
-| **P3** | `ft-metric-01` is +2 on main, unmerged | The FT-METRIC-01 fix and the roadmap-status report exist only on the feature branch; `main` does not benefit. | §1 | Owner merge decision (PR path) |
+| `ft-metric-01` runtime report is on the feature branch, unmerged; `main` moved to `da40e527` mid-mission | The runtime report is not yet on `main`; the two doc commits are (via PR #442). | §1 upstream-movement note | Owner merge decision (PR path) |
 | **P3** | DB in this environment lags the repo by one migration | Some queue-path queries cannot be planned here. | §4 caveat 2 | Stand up a migration-026-level DB for inventory work |
 
 ---
@@ -252,7 +268,7 @@ Against the roadmap's dependency graph (`M15-01 ─► M15-02 ─► M15-03/04/0
 
 The following items are **flagged for a later, authorized update** and were deliberately left untouched:
 
-1. `docs/CURRENT_WORK_EXECUTION_PLAN.md` §11 cross-session handoff still says *"Current mission = M15-01 (static reconciliation complete, runtime pending)"* — the runtime half is now complete and should be re-bound to `048ba3c7` at the next authorized doc-edit window (recall: `STRICT_VERIFICATION_GATE` / `DOCS_INDEX` / `LESSONS_LEARNED` are hash-pinned in rc44, so a law-level edit needs an rc45 bump).
+1. `docs/CURRENT_WORK_EXECUTION_PLAN.md` §11 cross-session handoff still says *"Current mission = M15-01 (static reconciliation complete, runtime pending)"* — the runtime half is now complete and should be re-bound to `0c22c8f0` (or to `da40e527` once merged) at the next authorized doc-edit window (recall: `STRICT_VERIFICATION_GATE` / `DOCS_INDEX` / `LESSONS_LEARNED` are hash-pinned in rc44, so a law-level edit needs an rc45 bump).
 2. `docs/verification/VERIFICATION_REGISTRY.json` remains bound to `head_bound = e4584806` — **intentionally not rebound here**, per the standing rule that the registry is rebound only after the final hardening SHA freezes and three independent reviews complete.
 3. The M15-01 acceptance criterion "re-run and re-bind on each new HEAD" is satisfied for this HEAD only; it must be re-run on the next material merge.
 
@@ -262,7 +278,7 @@ The following items are **flagged for a later, authorized update** and were deli
 
 **M15-01-RUNTIME:** `COMPLETE` — runtime hot-path inventory and observability/DR sweep delivered with file:line evidence; measurement gaps labeled `NOT AVAILABLE`, never as PASS.
 **Push:** `VERIFIED ON REMOTE`
-**Commit SHA and remote branch:** `048ba3c729055cc6bcc43593218355f838367b17` on `origin/ft-metric-01` (includes prior `979bbb40`)
+**Commit SHA and remote branch:** `0c22c8f0eefc851b7d1b71d53540f4ceaf2b3fa6` on `origin/ft-metric-01`; the two earlier commits `979bbb40` + `048ba3c7` additionally reached `origin/main` via upstream PR #442 (`da40e527`)
 **Remote verification evidence:** `git ls-remote origin ft-metric-01` → `048ba3c7...refs/heads/ft-metric-01`; `git branch -r --contains 979bbb40` and `...048ba3c7` → both on `origin/ft-metric-01`; `git rev-parse origin/main` → `fd83a399...` unchanged.
 **Runtime evidence:** 12 hot endpoints mapped (11 CODE-VERIFIED, 1 INFERRED); 4 query plans captured read-only; 1 NOT RUN; observability coverage enumerated with 5 concrete gaps; DR tooling present with semantic verification but zero drill evidence on current HEAD.
 **Tests/checks run:** PG connectivity + 5 `EXPLAIN` (plan-only) queries on `payesh_f3reg`; index inventory on 8 hot tables; static route/handler/metric enumeration. **NOT run:** server boot, load test, `EXPLAIN ANALYZE`, restore/failover drill, `npm test`.
