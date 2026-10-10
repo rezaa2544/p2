@@ -90,7 +90,7 @@ fd83a39927300e65396bfef57980c71abdb87c9d   # UNCHANGED — main was not touched
 
 **Merge status:** the two earlier commits (`979bbb40`, `048ba3c7`) were merged into `main` during this mission via **PR #442** (`da40e527`, a true merge — history preserved, not squashed). The runtime report itself (`0c22c8f0`) remains on the feature branch pending an owner merge decision. Per the project's Eighth Principle, **no merge was performed by this mission** — the merge above was an upstream action. Publishing a branch and merging into `main` are two distinct states and are reported separately.
 
-**Remote verification evidence (final):** `git ls-remote origin ft-metric-01` → `0c22c8f0...refs/heads/ft-metric-01`; `git branch -r --contains 979bbb40` → now includes `origin/main` and `origin/HEAD -> origin/main`; `git rev-parse origin/main` → `da40e527...`.
+**Remote verification evidence (final):** `git ls-remote origin ft-metric-01` → `51112fb7...refs/heads/ft-metric-01`; `git log origin/ft-metric-01` chain `51112fb7 → 0c22c8f0 → 048ba3c7 → 979bbb40` (all four `git cat-file -e` OK); `git branch -r --contains 979bbb40` → includes `origin/main` and `origin/HEAD -> origin/main`; `git rev-parse origin/main` → `da40e527...` (a real merge with parents `fd83a399` + `048ba3c7` — history preserved, not squashed). Independently confirmed by Hermes.
 
 ---
 
@@ -274,6 +274,23 @@ The following items are **flagged for a later, authorized update** and were deli
 
 ---
 
+## 10. Hermes Independent Verification
+
+Hermes (Verification Engine) independently re-executed the checks rather than trusting the report prose. Prompt length matters: a long single-shot prompt hung the CLI (>20 min, zero output); a compact prompt completed in well under the timeout. **Result: 6/6 VERIFIED.**
+
+| # | Question | Verdict | Hermes' independent evidence |
+|---|---|---|---|
+| 1 | Is the push real? | **VERIFIED** | `git ls-remote origin ft-metric-01` → `51112fb7`; chain `51112fb7 → 0c22c8f0 → 048ba3c7 → 979bbb40`, all `git cat-file -e` OK; `origin/main` = `da40e527` has 2 parents (`fd83a399` + `048ba3c7`) — real merge, not squash |
+| 2 | Branches / others' changes preserved? | **VERIFIED** | `979bbb40` and `048ba3c7` both reachable from `origin/main`; local `main` is `fd83a399`, an ancestor of `da40e527` (behind, not rewritten) |
+| 3 | Bound to HEAD + environment, no invented numbers? | **VERIFIED** | HEAD `048ba3c7`/`ft-metric-01` (line 5), PG 16.15 `payesh_f3reg` (line 130); RPS/latency labeled `NOT MEASURED`/`NOT AVAILABLE`; historical 511/731 explicitly not promoted |
+| 4 | Measured vs inference separated? | **VERIFIED** | Matrix uses VERIFIED / INFERRED / NOT AVAILABLE / NOT RUN (+ NOT FOUND for the dead-man grep); NOT RUN stays NOT RUN, never PASS |
+| 5 | Cited file:line references real? | **VERIFIED** | All 5 spot-checks confirmed: `index.js:1045` = router comment opening the manual dispatcher; `:1240` = `/api/health`; `:1328` = `POST /api/sync`; `db.js:581` = `SELECT * ... WHERE id = $1 LIMIT 1`; `pull.js:117` = `server_tombstones` query |
+| 6 | Real gaps listed? | **VERIFIED** | Outbox Seq-Scan index gap, RAM-mirror `payesh_outbox_depth`, missing dead-man/black-box probes, zero-row DB caveat — all present |
+
+**One cosmetic defect found by Hermes and fixed:** the Final Verdict section quoted a stale `ls-remote` result (`048ba3c7`) after the remote advanced to `51112fb7`. Corrected in §2; no factual claim was affected — Hermes explicitly noted it was "cosmetic, not a fabrication."
+
+---
+
 ## Final Verdict
 
 **M15-01-RUNTIME:** `COMPLETE` — runtime hot-path inventory and observability/DR sweep delivered with file:line evidence; measurement gaps labeled `NOT AVAILABLE`, never as PASS.
@@ -283,5 +300,5 @@ The following items are **flagged for a later, authorized update** and were deli
 **Runtime evidence:** 12 hot endpoints mapped (11 CODE-VERIFIED, 1 INFERRED); 4 query plans captured read-only; 1 NOT RUN; observability coverage enumerated with 5 concrete gaps; DR tooling present with semantic verification but zero drill evidence on current HEAD.
 **Tests/checks run:** PG connectivity + 5 `EXPLAIN` (plan-only) queries on `payesh_f3reg`; index inventory on 8 hot tables; static route/handler/metric enumeration. **NOT run:** server boot, load test, `EXPLAIN ANALYZE`, restore/failover drill, `npm test`.
 **Files changed:** 2 added (`PAYESH-POST-FT-METRIC-01-ROADMAP-STATUS.md`, `tools/ft/FT-METRIC-01-SAFE-COMMIT-REPORT.md`), committed as `048ba3c7`, pushed. Zero code changes.
-**Hermes verdict:** pending — report submitted for independent verification.
+**Hermes verdict:** **VERIFIED 6/6** (independent re-execution of all checks — see §10).
 **Next action:** seed a migration-026-level database at representative cardinality and re-capture the §4 query plans to convert the M15-05 plan-evidence gap from `NOT AVAILABLE` to `VERIFIED` — the smallest scoped step that unblocks M15-05's acceptance criteria.
