@@ -1,0 +1,87 @@
+{
+  "mode": "PARTIAL — raw inference outputs not in repo (gitignored, never committed)",
+  "v1_internal_consistency": {
+    "reported_base": 0.126,
+    "recomputed_base": 0.126,
+    "base_ok": true,
+    "reported_tuned": 0.21,
+    "recomputed_tuned": 0.21,
+    "tuned_ok": true,
+    "reported_delta": 0.084,
+    "recomputed_delta": 0.084,
+    "delta_ok": true
+  },
+  "v1_echo_susceptibility": [
+    {
+      "holdout_row": 0,
+      "instruction_head": "The PG bootstrap seed path writes the school grade as a Persian WORD (",
+      "kind": "DIFF",
+      "v1_score_if_prompt_echo": 0,
+      "reported_base_sim": 0.143,
+      "reported_tuned_sim": 0.143,
+      "echo_would_have_scored": 0
+    },
+    {
+      "holdout_row": 1,
+      "instruction_head": "In the multi-instance OTP ratelimit harness, each instance builds its ",
+      "kind": "DIFF",
+      "v1_score_if_prompt_echo": 0,
+      "reported_base_sim": 0.109,
+      "reported_tuned_sim": 0.277,
+      "echo_would_have_scored": 0
+    }
+  ],
+  "v1_diff_blind_spot": [
+    {
+      "holdout_row": 0,
+      "kind": "DIFF",
+      "v2_line_tokens": 31,
+      "v1_word_tokens": 214,
+      "v1_tokens_are_words_not_lines": true,
+      "v1_token_sample": [
+        "diff",
+        "git",
+        "server",
+        "index",
+        "server",
+        "index",
+        "index",
+        "bee28ada"
+      ],
+      "v2_line_token_sample": [
+        "PATH:server/index.js",
+        "PATH:server/index.js",
+        "HUNK",
+        "ADD:/* F1/A-31: ستونِ grade در جدول‌های classes و subjects از نوع INTEGER است اما",
+        "ADD:فروشگاه بوت‌استرپ ممکن است پایهٔ تحصیلی را به‌صورت نوشتاریِ فارسی نگه دارد.",
+        "ADD:تبدیلِ دوجانبه و محدود به نگاشت‌های قطعی — هر مقدارِ ناشناخته همچنان"
+      ]
+    },
+    {
+      "holdout_row": 1,
+      "kind": "DIFF",
+      "v2_line_tokens": 12,
+      "v1_word_tokens": 64,
+      "v1_tokens_are_words_not_lines": true,
+      "v1_token_sample": [
+        "diff",
+        "git",
+        "tests",
+        "otp",
+        "ratelimit",
+        "tests",
+        "otp",
+        "ratelimit"
+      ],
+      "v2_line_token_sample": [
+        "PATH:tests/otp-ratelimit.js",
+        "PATH:tests/otp-ratelimit.js",
+        "HUNK",
+        "DEL:PAYESH_DEMO_CODE: '1'",
+        "ADD:PAYESH_DEMO_CODE: '1',",
+        "ADD:/* A-02: هر نمونه کلیدِ JWT خودش را می‌سازد، و pepperِ OTP در غیابِ"
+      ]
+    }
+  ],
+  "per_row_v2": "NOT COMPUTABLE — requires the model response text, which is not in the repository and must not be regenerated"
+}

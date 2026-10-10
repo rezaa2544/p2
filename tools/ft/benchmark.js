@@ -21,11 +21,11 @@ function sh(cmd, opts = {}) {
 // similarity: token-overlap of generated diff vs real diff
 function sim(a, b) {
   const ta = new Set(a.toLowerCase().split(/\W+/).filter(w => w.length > 2));
-  const tb = b.toLowerCase().split(/\W+/).filter(w => w.length > 2);
-  if (!ta.size || !tb.size) return 0;
+  const tb = b.toLowerCase().split(/\W+/).filter(w => w.length > 2);  // Array — .length (FT-METRIC-01-R1)
+  if (!ta.size || !tb.length) return 0;
   let hit = 0;
   for (const w of tb) if (ta.has(w)) hit++;
-  return hit / tb.size;
+  return hit / tb.length;
 }
 
 function runMode(adapter) {
