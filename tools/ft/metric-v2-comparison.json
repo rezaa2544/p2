@@ -1,0 +1,107 @@
+{
+  "mission": "FT-METRIC-01",
+  "metric_version": "v2",
+  "generated_by": "node tools/ft/metric-v2.js --partial",
+  "head_base": "fd83a39927300e65396bfef57980c71abdb87c9d",
+  "branch": "ft-metric-01",
+
+  "comparison_table": [
+    {
+      "holdout_row": 0,
+      "sample_id": "PEB-09",
+      "task_kind": "DIFF (commit message + diff required)",
+      "instruction_head": "The PG bootstrap seed path writes the school grade as a Persian WORD...",
+      "old_metric_v1_base": 0.143,
+      "old_metric_v1_tuned": 0.143,
+      "echo_status": "NOT COMPUTABLE — raw response not in repo",
+      "format_status": "NOT COMPUTABLE — raw response not in repo",
+      "new_metric_v2_base": null,
+      "new_metric_v2_tuned": null,
+      "fail_reason": "benchmark-base.jsonl/benchmark-tuned.jsonl absent (gitignored, never committed)",
+      "evaluation_limitation": "v2 needs the response text; only the v1 scalar survived"
+    },
+    {
+      "holdout_row": 1,
+      "sample_id": "PEB-10",
+      "task_kind": "DIFF (commit message + diff required)",
+      "instruction_head": "In the multi-instance OTP ratelimit harness, each instance builds...",
+      "old_metric_v1_base": 0.109,
+      "old_metric_v1_tuned": 0.277,
+      "echo_status": "NOT COMPUTABLE — raw response not in repo",
+      "format_status": "NOT COMPUTABLE — raw response not in repo",
+      "new_metric_v2_base": null,
+      "new_metric_v2_tuned": null,
+      "fail_reason": "benchmark-base.jsonl/benchmark-tuned.jsonl absent (gitignored, never committed)",
+      "evaluation_limitation": "v2 needs the response text; only the v1 scalar survived"
+    }
+  ],
+
+  "v1_internal_consistency": {
+    "reported_base": 0.126,
+    "recomputed_base": 0.126,
+    "base_ok": true,
+    "reported_tuned": 0.21,
+    "recomputed_tuned": 0.21,
+    "tuned_ok": true,
+    "reported_delta": 0.084,
+    "recomputed_delta": 0.084,
+    "delta_ok": true,
+    "verdict": "The v1 report's arithmetic is internally consistent: row 0 and row 1 means reproduce the reported means and delta exactly."
+  },
+
+  "v1_echo_susceptibility_proven": {
+    "finding": "The v1 metric would NOT have awarded points for a pure prompt echo on either holdout row.",
+    "rows": [
+      {
+        "holdout_row": 0,
+        "sample_id": "PEB-09",
+        "v1_score_if_response_were_exact_prompt_echo": 0,
+        "reported_base_sim": 0.143,
+        "reported_tuned_sim": 0.143
+      },
+      {
+        "holdout_row": 1,
+        "sample_id": "PEB-10",
+        "v1_score_if_response_were_exact_prompt_echo": 0,
+        "reported_base_sim": 0.109,
+        "reported_tuned_sim": 0.277
+      }
+    ],
+    "why": "overlap(instruction, expected_output) is 0 on both rows: the instructions are English problem statements; the expected outputs are Persian/English commit messages + code diffs. Almost no token overlap. So a pure echo would have scored ~0, and the reported 0.143/0.109/0.277 are NOT echo artifacts.",
+    "caveat": "This only rules out EXACT prompt echo as the source of the v1 numbers. It does not rule out PARTIAL echo (model repeating parts of the instruction alongside real content), which the raw responses would be needed to check. The mission's base finding 'prompt-echo in PEB-09 BASE and TUNED' cannot be confirmed or refuted from surviving data — the raw outputs are gone."
+  },
+
+  "v1_diff_blind_spot_proven": {
+    "finding": "On both holdout rows the v1 tokenizer sees only word identifiers, not the diff structure that defines the patch.",
+    "rows": [
+      {
+        "holdout_row": 0,
+        "sample_id": "PEB-09",
+        "v2_line_tokens": 31,
+        "v1_word_tokens": 214,
+        "v1_token_sample": ["diff", "git", "server", "index", "server", "index", "index", "bee28ada"],
+        "v2_line_token_sample": ["HUNK", "PATH:server/index.js", "ADD:  const GRADE_ORDINALS = {", "ADD:    'اول': 1,", "ADD:  };"]
+      },
+      {
+        "holdout_row": 1,
+        "sample_id": "PEB-10",
+        "v2_line_tokens": 12,
+        "v1_word_tokens": 64,
+        "v1_token_sample": ["diff", "git", "harness", "multi", "instance", "otp", "js", "index"],
+        "v2_line_token_sample": ["HUNK", "PATH:tests/multi-instance-otp.js", "ADD:process.env.PAYESH_OTP_PEPPER = 'shared-pepper-a8c';"]
+      }
+    ],
+    "why": "v1 splits on \\W+ and keeps only tokens longer than 2 chars, so the + / - / @@ markers and the line structure vanish and only code identifiers leak through. A response that reproduces the right identifiers while getting every line wrong can still score well; a response whose added lines are entirely symbols scores 0. Proven in the test suite (case 4b)."
+  },
+
+  "per_row_v2_status": "NOT COMPUTABLE — requires the model response text, which is not in the repository and must not be regenerated under this mission's constraints.",
+
+  "limitations": [
+    "The raw model outputs were never committed (gitignored: tools/ft/bench-*.jsonl, line 79). Per-row v2 scores cannot be computed and the raw data must not be regenerated (no new inference allowed).",
+    "The mission's base finding 'PEB-09 BASE and TUNED responses are identical and are prompt-echo' is UNVERIFIABLE from surviving data. It is neither confirmed nor refuted.",
+    "holdout n=2 — no statistically strong claim is possible at any metric version.",
+    "v2 diff content score is line-token recall; it does not validate that the response is an applicable patch (git apply --check) at the right line numbers.",
+    "Echo detection fires only on verbatim instruction containment; semantic paraphrase echo is not detected.",
+    "v1 and v2 DIFF scores are not comparable (different tokenizers). Only PLAIN-row scores are directly comparable."
+  ]
+}
