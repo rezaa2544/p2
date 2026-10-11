@@ -689,3 +689,12 @@ Canonical status remains **HARDENING / RECONCILIATION — NOT VERIFIED**.
 - NCR-01..NCR-27 are now recorded with severity, disposition and execution order.
 - Stale/duplicate findings are explicitly retained only as REVALIDATION_REQUIRED where current-head evidence shows mitigation.
 - Project state remains **HARDENING / RECONCILIATION — NOT VERIFIED**; broad certification remains blocked.
+
+
+## CONTROL-PLANE PRIORITY ORDER — 2026-10-11
+
+This central supervising-engineer law adopts the expert priority update tracked in GitHub Issue #443. The next primary mission is M15-02 measured capacity baseline. M15-09 (live two-instance PG + Redis verification through the real timer), M15-12 (jittered retry backoff plus next_attempt_at), and M15-17 (configuration validation, including NaN rejection) may proceed in parallel only with distinct owners, bounded scope, and independent evidence. Fine-tuning, PEB, and Experience Store are SUPPORTING/DEFERRED unless fresh measured evidence and an explicit control-plane decision change the order. M15-10/S9 and QUEUE-CAPACITY-1 remain supporting items and must not silently displace M15-02.
+
+**Non-negotiable Evidence Gate:** every DONE/PASS claim must include exact commands, output, exit code, tested SHA, environment, and limitations. NOT RUN, NOT AVAILABLE, BLOCKED, or synthetic-only evidence is never PASS. Important regression tests require mutation evidence. No 10M-scale or production-ready claim before M15-25 passes. Rebuild/freeze the Verification Registry only on the final frozen SHA. Re-run docs-index-coverage, documentation-map-coverage, and onboarding-coverage on the then-current main. Investigate QUEUE-CAPACITY-1 for outbox/dead-letter growth, watermarks, stale-instance rows, and restart/replay behavior. Request independent Hermes review once M15-02 and M15-09/12/17 each have verified evidence or a documented blocker.
+
+This rule governs planning and reporting; it does not mark any mission complete. Status must be re-derived from current repository evidence. See Issue #443 and docs/CURRENT_WORK_EXECUTION_PLAN.md.
