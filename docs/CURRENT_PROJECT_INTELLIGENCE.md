@@ -729,3 +729,12 @@ The canonical execution plan now contains a master closure reconciliation coveri
 **Immediate control-plane priorities:** (1) A-30..A-39 / evidence-registry hardening, (2) M15-02 capacity baseline, (3) parallel M15-17 configuration safety + M15-12 retry/deadline + M15-09 independent durable-invalidation verification, then (4) remaining M15 V2 execution and current-head Capability/Role/E2E/Failure/Scale certification.
 
 **Important:** `docs/verification/VERIFICATION_REGISTRY.json` remains bound to historical `e4584806`; no current-head certification may be inferred from it.
+
+
+## Control-plane update — expert priority realignment (2026-10-11)
+
+Canonical execution priority is explicitly recorded as M15-02 measured capacity baseline first, with M15-09 live two-instance/timer verification, M15-12 jittered retry backoff + next_attempt_at, and M15-17 config validation eligible for parallel execution only under separate ownership and scope. Fine-tuning/PEB/Experience Store is SUPPORTING/DEFERRED unless fresh evidence justifies a change. M15-10/S9 and QUEUE-CAPACITY-1 remain supporting work and must not silently displace M15-02.
+
+Evidence rules: no DONE/PASS without command/output/exit code/SHA/environment/limits; NOT-RUN, NOT AVAILABLE, BLOCKED, or synthetic-only evidence is not PASS; important regression tests require mutation evidence; no 10M-scale or production-ready claim before M15-25; Verification Registry is frozen/rebuilt only at the final SHA. Re-run docs-index-coverage, documentation-map-coverage, and onboarding-coverage on current main. Investigate QUEUE-CAPACITY-1 for dead-letter growth/retention, watermarks, stale-instance rows, and restart/replay. Independent Hermes review is due after M15-02 and M15-09/12/17 each have verified evidence or an explicit blocker.
+
+Tracking issue: https://github.com/rezaa2544/p2/issues/443 (related umbrella: #434). This entry is a planning directive, not evidence that the listed work is complete.

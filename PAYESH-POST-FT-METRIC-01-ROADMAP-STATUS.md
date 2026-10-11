@@ -348,3 +348,14 @@ Hermes به‌عنوان تأییدکنندهٔ مستقل، این سؤالات
 - هیچ درصد پیشرفتی ساخته نشد.
 - هیچ فایل یا شاخه‌ای تغییر نیافت؛ `git status` پیش و پس از این سند یکسان است (تنها یک فایل untracked: همین سند).
 - این سند یک سند وضعیت است، نه گواهی. هیچ `VERIFIED`‌ای داده نشده است.
+
+
+---
+
+## Control-plane priority update — 2026-10-11 (queued, not execution evidence)
+
+Following the expert recommendation tracked in Issue #443, the next primary workstream is M15-02: measured capacity baseline. M15-09 (live two-instance PostgreSQL + Redis verification through the real timer), M15-12 (jittered backoff and next_attempt_at), and M15-17 (config validation, including NaN rejection) may run in parallel only with explicit ownership and separated scope. Fine-tuning/PEB/Experience Store is SUPPORTING/DEFERRED unless new evidence warrants reprioritization. M15-10/S9 and QUEUE-CAPACITY-1 remain supporting queue items.
+
+Mandatory gates: record exact commands, output, exit code, SHA, environment and limitations; NOT-RUN/NOT AVAILABLE/BLOCKED/synthetic-only is never PASS; mutation-test important regression tests; no 10M-scale or production-ready claims before M15-25; freeze/rebuild Verification Registry only on the final SHA. Re-run docs-index-coverage, documentation-map-coverage, and onboarding-coverage against current main. Review QUEUE-CAPACITY-1 for unbounded outbox/dead-letter growth, watermark and stale-instance behavior, and restart/replay. Operational DB evidence remains NOT AVAILABLE unless access is actually established; synthetic tests must be labelled accordingly.
+
+**Review trigger:** independent Hermes verification once M15-02 and M15-09/12/17 each reach verified evidence or a clearly documented blocker. This roadmap note records the required order only; it does not claim execution or completion.
