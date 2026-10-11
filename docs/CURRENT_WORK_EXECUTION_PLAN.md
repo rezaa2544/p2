@@ -1867,3 +1867,36 @@ Then provide:
 - remaining blockers, if any
 
 **No completion claim from report prose alone. Evidence is mandatory.**
+
+
+---
+
+# CONTROL-PLANE PRIORITY REALIGNMENT — EXPERT RECOMMENDATION (2026-10-11)
+
+**Authority/status:** Queued control-plane directive linked to Issue #443; this records priorities and gates, not proof that any mission has run or passed. Re-establish current status from repository evidence at execution time.
+
+## Mandatory execution order
+1. **M15-02 — measured capacity baseline is the primary workstream.** Capture reproducible measurements and state environment, workload, command, output, exit code, SHA, and limitations. Estimates or synthetic data are not operational evidence.
+2. **M15-09 — live two-instance verification** using PostgreSQL + Redis and the real timer path; a green test alone does not prove the timer is actually running.
+3. **M15-12 — retry backoff with jitter and next_attempt_at.**
+4. **M15-17 — configuration validation**, including rejection of invalid pool values such as NaN.
+
+M15-09, M15-12, and M15-17 may proceed in parallel only with explicit separate ownership, bounded scope, and independent evidence. M15-02 remains primary. Fine-tuning, PEB, and Experience Store work is SUPPORTING/DEFERRED unless new measured evidence justifies reprioritization. M15-10/S9 and QUEUE-CAPACITY-1 remain supporting work and must not displace M15-02 without a documented control-plane decision.
+
+## Evidence and release gates
+- No DONE/PASS without exact commands, relevant output, exit code, tested commit SHA, environment, and limitations.
+- NOT RUN, NOT AVAILABLE, BLOCKED, and synthetic-only evidence are not PASS and must remain explicitly labelled.
+- Important regression tests require mutation evidence: demonstrate failure when the target defect is reintroduced or relevant behavior deliberately broken.
+- No 10M-scale, production-ready, or equivalent claim before M15-25 passes its defined evidence gates.
+- Rebuild/freeze the Verification Registry only against the final frozen SHA, not after every intermediate merge.
+- Prevent mission drift: every new work item must map to the canonical plan and be justified against the priority order.
+
+## Required debt checks
+- Re-run docs-index-coverage, documentation-map-coverage, and onboarding-coverage on the current main SHA; record exact outcomes rather than carrying forward historical red/green claims.
+- Investigate QUEUE-CAPACITY-1: unbounded outbox growth, dead-letter retention, watermark behavior, stale-instance rows, and restart/replay behavior. Use operational DB evidence only when authorized and available; otherwise report NOT AVAILABLE and use a safe isolated reproduction.
+- M15-10B operational database evidence was NOT AVAILABLE in the reported audit; synthetic data does not establish production behavior. Assess mixed states (pending + processing lease + dead_letter) in isolated tests without misrepresenting them as operational proof. Do not add indexes or extended statistics without measured evidence.
+
+## Review checkpoint
+Request independent Hermes verification after M15-02 reaches evidence or a clearly documented blocker and M15-09/12/17 each reach evidence or a blocker. Do not wait for the entire backlog. Update status/percentages only from newly verified evidence.
+
+**Tracking:** GitHub Issue #443; related umbrella Issue #434. Issue registration and this documentation change do not themselves execute or verify the missions.
