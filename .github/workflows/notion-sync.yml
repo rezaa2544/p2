@@ -103,22 +103,42 @@ jobs:
           fi
           payload="$(jq -n --arg summary "$summary" '{paragraph:{rich_text:[{type:"text",text:{content:$summary}}]}}')"
 
-          # Find the existing managed paragraph so reruns update one stable snapshot instead of appending duplicates.
+          # Scan all pages so reruns update one stable paragraph and clean duplicate managed snapshots.
           cursor=""
-          existing_block=""
+          managed_blocks=""
+          managed_headings=""
           while :; do
             if [ -n "$cursor" ]; then
               page="$(curl --silent --show-error --fail-with-body -G "https://api.notion.com/v1/blocks/$NOTION_PAGE_ID/children" -H "Authorization: Bearer $NOTION_API_KEY" -H "Notion-Version: 2022-06-28" --data-urlencode "page_size=100" --data-urlencode "start_cursor=$cursor")"
             else
               page="$(curl --silent --show-error --fail-with-body -G "https://api.notion.com/v1/blocks/$NOTION_PAGE_ID/children" -H "Authorization: Bearer $NOTION_API_KEY" -H "Notion-Version: 2022-06-28" --data-urlencode "page_size=100")"
             fi
-            existing_block="$(printf '%s' "$page" | jq -r '[.results[] | select(.type == "paragraph") | select(([.paragraph.rich_text[]?.plain_text] | join("") | contains("PAYESH_SYNC_STATUS_V1")))] | first | .id // empty')"
-            [ -n "$existing_block" ] && break
+            page_blocks="$(printf '%s' "$page" | jq -r '.results[] | select(.type == "paragraph") | select(([.paragraph.rich_text[]?.plain_text] | join("") | contains("PAYESH_SYNC_STATUS_V1"))) | .id')"
+            page_headings="$(printf '%s' "$page" | jq -r '.results[] | select(.type == "heading_3") | select(([.heading_3.rich_text[]?.plain_text] | join("") == "GitHub → Notion — Current Truth")) | .id')"
+            [ -z "$page_blocks" ] || managed_blocks="$(printf '%s\n%s' "$managed_blocks" "$page_blocks")"
+            [ -z "$page_headings" ] || managed_headings="$(printf '%s\n%s' "$managed_headings" "$page_headings")"
             more="$(printf '%s' "$page" | jq -r '.has_more')"
             [ "$more" = "true" ] || break
             cursor="$(printf '%s' "$page" | jq -r '.next_cursor // empty')"
             [ -n "$cursor" ] || break
           done
+          existing_block="$(printf '%s\n' "$managed_blocks" | sed '/^$/d' | head -n 1)"
+          managed_count="$(printf '%s\n' "$managed_blocks" | sed '/^$/d' | wc -l | tr -d ' ')"
+          if [ "$managed_count" -gt 1 ]; then
+            while IFS= read -r duplicate_id; do
+              [ -z "$duplicate_id" ] && continue
+              [ "$duplicate_id" = "$existing_block" ] && continue
+              curl --silent --show-error --fail-with-body -X DELETE "https://api.notion.com/v1/blocks/$duplicate_id" -H "Authorization: Bearer $NOTION_API_KEY" -H "Notion-Version: 2022-06-28" >/dev/null
+            done <<EOF_DUPLICATES
+          $(printf '%s\n' "$managed_blocks" | sed '/^$/d')
+          EOF_DUPLICATES
+            while IFS= read -r heading_id; do
+              [ -z "$heading_id" ] && continue
+              curl --silent --show-error --fail-with-body -X DELETE "https://api.notion.com/v1/blocks/$heading_id" -H "Authorization: Bearer $NOTION_API_KEY" -H "Notion-Version: 2022-06-28" >/dev/null
+            done <<EOF_HEADINGS
+          $(printf '%s\n' "$managed_headings" | sed '/^$/d')
+          EOF_HEADINGS
+          fi
 
           if [ -n "$existing_block" ]; then
             curl --silent --show-error --fail-with-body -X PATCH "https://api.notion.com/v1/blocks/$existing_block" -H "Authorization: Bearer $NOTION_API_KEY" -H "Notion-Version: 2022-06-28" -H "Content-Type: application/json" --data "$payload" >/dev/null
