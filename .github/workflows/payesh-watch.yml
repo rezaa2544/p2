@@ -79,7 +79,7 @@ jobs:
           # Bounded retry: 3 attempts with 5s backoff. A Notion outage must
           # surface as a FAILED sync status, never as a silent success.
           notion_call() {
-            local method="$1" url="$2" attempt=1 max=3
+            local method="$1" url="$2" attempt=1 max=3 out=""
             shift 2
             while [ "$attempt" -le "$max" ]; do
               if out="$(curl -sS --fail-with-body --max-time 20 "${NH[@]}" -X "$method" "$url" "$@" 2>&1)"; then
@@ -90,6 +90,9 @@ jobs:
               NOTION_RETRIES=$((NOTION_RETRIES + 1))
               [ "$attempt" -le "$max" ] && sleep 5
             done
+            # Surface the API response on final failure: a swallowed body makes
+            # a Notion rejection indistinguishable from a network error.
+            echo "::warning::Notion $method failed after $max attempts: ${out:0:300}" >&2
             return 1
           }
 
@@ -154,38 +157,45 @@ jobs:
             gate_lines="${gate_lines}- ${label}: ${state} (${on_head} ${rsha:0:8}) ${rurl}"$'\n'
           done
 
-          # ---------- 2. Snapshot existing Notion blocks once ----------
-          # Paginate all paragraph children up front so every later lookup is a
-          # pure local query (no repeated pagination, no partial-read races).
-          collected="[]"
-          cursor=""
-          while :; do
-            if [ -n "$cursor" ]; then
-              page="$(curl -sS --max-time 20 -G "${NH[@]}" "$NOTION_API/blocks/$NOTION_PAGE_ID/children" --data-urlencode "page_size=100" --data-urlencode "start_cursor=$cursor")"
-            else
-              page="$(curl -sS --max-time 20 -G "${NH[@]}" "$NOTION_API/blocks/$NOTION_PAGE_ID/children" --data-urlencode "page_size=100")"
-            fi
-            if ! printf '%s' "$page" | jq -e '.results' >/dev/null 2>&1; then
-              echo "::warning::Non-JSON or error response while listing Notion blocks; using blocks read so far"
-              break
-            fi
-            collected="$(jq -s '.[0] + .[1]' <(printf '%s' "$collected") <(printf '%s' "$page" | jq '[.results[]? | select(.type == "paragraph")]'))"
-            cursor="$(printf '%s' "$page" | jq -r '.next_cursor // empty')"
-            if [ -z "$cursor" ]; then break; fi
-          done
+          # ---------- 2. Snapshot existing Notion blocks ----------
+          # Paginate all paragraph children so every later lookup is a pure local
+          # query (no repeated pagination, no partial-read races). Snapshots must
+          # be re-taken after a write, otherwise read-back would compare against
+          # the pre-write text and always look stale.
+          snapshot_blocks() {
+            local out="[]" cursor="" page
+            while :; do
+              if [ -n "$cursor" ]; then
+                page="$(curl -sS --max-time 20 -G "${NH[@]}" "$NOTION_API/blocks/$NOTION_PAGE_ID/children" --data-urlencode "page_size=100" --data-urlencode "start_cursor=$cursor")"
+              else
+                page="$(curl -sS --max-time 20 -G "${NH[@]}" "$NOTION_API/blocks/$NOTION_PAGE_ID/children" --data-urlencode "page_size=100")"
+              fi
+              if ! printf '%s' "$page" | jq -e '.results' >/dev/null 2>&1; then
+                echo "::warning::Non-JSON or error response while listing Notion blocks; using blocks read so far"
+                break
+              fi
+              out="$(jq -s '.[0] + .[1]' <(printf '%s' "$out") <(printf '%s' "$page" | jq '[.results[]? | select(.type == "paragraph")]'))"
+              cursor="$(printf '%s' "$page" | jq -r '.next_cursor // empty')"
+              if [ -z "$cursor" ]; then break; fi
+            done
+            printf '%s' "$out"
+          }
 
+          collected="$(snapshot_blocks)"
+
+          # $1 = snapshot json, $2 = marker substring
           text_for() {
-            printf '%s' "$collected" | jq -r --arg m "$1" \
+            printf '%s' "$1" | jq -r --arg m "$2" \
               'first(.[] | select(([.paragraph.rich_text[]?.plain_text] | join("")) | contains($m)))
                | [.paragraph.rich_text[]?.plain_text] | join("")'
           }
           block_id_for() {
-            printf '%s' "$collected" | jq -r --arg m "$1" \
+            printf '%s' "$1" | jq -r --arg m "$2" \
               'first(.[] | select(([.paragraph.rich_text[]?.plain_text] | join("")) | contains($m))) | .id // empty'
           }
 
           # ---------- 3. Staleness / discrepancy vs the recorded snapshot ----------
-          sync_snapshot="$(text_for "PAYESH_SYNC_STATUS_V1")"
+          sync_snapshot="$(text_for "$collected" "PAYESH_SYNC_STATUS_V1")"
           sync_head="$(printf '%s' "$sync_snapshot" | grep -oE 'Current HEAD: [0-9a-f]{40}' | head -1 | cut -d' ' -f3)"
           sync_time="$(printf '%s' "$sync_snapshot" | grep -oE 'Synced: [0-9-]+ [0-9:]+ UTC' | head -1 | sed 's/^Synced: //')"
           sync_unreadable=0
@@ -245,7 +255,7 @@ jobs:
           # ---------- 6. Write with idempotent dedup ----------
           write_managed_block() {
             local marker="$1" body="$2" block_id payload
-            block_id="$(block_id_for "$marker")"
+            block_id="$(block_id_for "$collected" "$marker")"
             payload="$(jq -n --arg b "$body" '{paragraph:{rich_text:[{type:"text",text:{content:$b}}]}}')"
             if [ -n "$block_id" ]; then
               if ! notion_call PATCH "$NOTION_API/blocks/$block_id" -d "$payload" >/dev/null; then
@@ -253,7 +263,11 @@ jobs:
                 return 1
               fi
             else
-              if ! notion_call POST "$NOTION_API/blocks/$NOTION_PAGE_ID/children" -d "$payload" >/dev/null; then
+              # Notion's "append block children" endpoint is PATCH /blocks/{id}/children
+              # and requires a {children:[{object:"block",...}]} envelope; a bare
+              # {paragraph:{...}} via POST is rejected with 400 invalid_request_url.
+              payload="$(jq -n --arg b "$body" '{children:[{object:"block",type:"paragraph",paragraph:{rich_text:[{type:"text",text:{content:$b}}]}}]}')"
+              if ! notion_call PATCH "$NOTION_API/blocks/$NOTION_PAGE_ID/children" -d "$payload" >/dev/null; then
                 echo "::error::Notion append failed for managed block $marker"
                 return 1
               fi
@@ -264,10 +278,13 @@ jobs:
           write_managed_block "PAYESH_WATCH_EVENT_V1" "$event_body"
 
           # ---------- 7. Read-back verification ----------
-          # HTTP 200 alone does not prove the content landed; re-read and assert.
+          # HTTP 200 alone does not prove the content landed. Re-read the page
+          # AFTER the writes and assert the expected text is really there.
+          collected_after="$(snapshot_blocks)"
+
           verify_marker() {
             local marker="$1" expect="$2" text
-            text="$(text_for "$marker")"
+            text="$(text_for "$collected_after" "$marker")"
             if [ -z "$text" ]; then
               echo "::error::Read-back FAILED for $marker (block not found after write)"
               return 1
