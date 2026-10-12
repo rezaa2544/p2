@@ -1,0 +1,314 @@
+name: Payesh Watch — Autonomous Monitoring
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      test_event_id:
+        description: "Optional synthetic event id for end-to-end testing (e.g. E2E-TEST-001). When set the run is labelled synthetic and never masks a real event."
+        required: false
+        default: ""
+  issues:
+    types: [opened, edited, closed, reopened, labeled, unlabeled, assigned, unassigned]
+  pull_request:
+    types: [opened, edited, closed, reopened, synchronize, ready_for_review, converted_to_draft]
+  workflow_run:
+    workflows:
+      - "Node.js CI"
+      - "Payesh Strict Verification Gate"
+      - "Security Program (SAST · SCA · SBOM · DAST · Secret)"
+      - "observability-regression"
+      - "Runtime Reliability"
+    types: [completed]
+
+# Payesh Watch records an autonomous monitoring verdict into Notion.
+# GitHub + canonical repo docs remain the source of truth
+# (see docs/NOTION_GITHUB_SYNC_CONTRACT.md). This workflow never certifies
+# anything: it only reflects returned GitHub data.
+
+permissions:
+  contents: read
+  actions: read
+  issues: read
+  pull-requests: read
+
+# Never cancel: every triggered event must be processed, otherwise an event
+# could be silently dropped and the Notion verdict would lag reality.
+concurrency:
+  group: payesh-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate configuration
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NOTION_API_KEY:-}" ]; then
+            echo "::error::Missing GitHub Actions secret NOTION_API_KEY"
+            exit 1
+          fi
+
+      - name: Watch — classify live GitHub state and record verdict to Notion
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_PAGE_ID: "3f6ba74e-cd98-81ac-972d-e7055540a7ea"
+          REPOSITORY: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TEST_EVENT_ID: ${{ github.event.inputs.test_event_id }}
+        run: |
+          set -euo pipefail
+          command -v gh >/dev/null
+          command -v jq >/dev/null
+
+          NOTION_API="https://api.notion.com/v1"
+          declare -a NH=(-H "Authorization: Bearer $NOTION_API_KEY" -H "Notion-Version: 2022-06-28" -H "Content-Type: application/json")
+          NOTION_RETRIES=0
+
+          # Bounded retry: 3 attempts with 5s backoff. A Notion outage must
+          # surface as a FAILED sync status, never as a silent success.
+          notion_call() {
+            local method="$1" url="$2" attempt=1 max=3
+            shift 2
+            while [ "$attempt" -le "$max" ]; do
+              if out="$(curl -sS --fail-with-body --max-time 20 "${NH[@]}" -X "$method" "$url" "$@" 2>&1)"; then
+                printf '%s' "$out"
+                return 0
+              fi
+              attempt=$((attempt + 1))
+              NOTION_RETRIES=$((NOTION_RETRIES + 1))
+              [ "$attempt" -le "$max" ] && sleep 5
+            done
+            return 1
+          }
+
+          # ---------- 1. Live GitHub state (fail closed) ----------
+          head_sha="$(gh api "repos/$REPOSITORY/commits/main" --jq '.sha')"
+          if [ "${#head_sha}" -ne 40 ]; then
+            echo "::error::Could not read live main HEAD; refusing to record a verdict"
+            exit 1
+          fi
+
+          # Named quality gates. A gate is only evidence of a green main when its
+          # latest run completed successfully on EXACTLY the live main HEAD.
+          gate_files=(node.js.yml strict-verification.yml security.yml observability-regression.yml runtime-reliability.yml)
+          gate_lines=""
+          verdict="GREEN"
+          for wf in "${gate_files[@]}"; do
+            label="$(basename "$wf" .yml)"
+            run_json="$(gh api "repos/$REPOSITORY/actions/workflows/$wf/runs?branch=main&per_page=1" --jq '.workflow_runs[0] // empty')" || run_json=""
+            if [ -z "$run_json" ]; then
+              gate_lines="${gate_lines}- ${label}: NO_RUNS_RECORDED (informational; never PASS)"$'\n'
+              continue
+            fi
+            rstatus="$(printf '%s' "$run_json" | jq -r '.status')"
+            rconc="$(printf '%s' "$run_json" | jq -r '.conclusion // "NOT_FINISHED"')"
+            rsha="$(printf '%s' "$run_json" | jq -r '.head_sha')"
+            rurl="$(printf '%s' "$run_json" | jq -r '.html_url')"
+            on_head="off-HEAD"
+            if [ "$rsha" = "$head_sha" ]; then on_head="on-HEAD"; fi
+            case "$rstatus" in
+              completed)
+                case "$rconc" in
+                  success)
+                    if [ "$on_head" = "on-HEAD" ]; then
+                      state="SUCCESS"
+                    else
+                      state="SUCCESS (off-HEAD — current HEAD not proven)"
+                      if [ "$verdict" = "GREEN" ]; then verdict="INCOMPLETE"; fi
+                    fi
+                    ;;
+                  failure)
+                    if [ "$on_head" = "on-HEAD" ]; then
+                      # A failure on the live HEAD is the most severe state and
+                      # must never be downgraded by a lesser gate's status.
+                      state="FAILURE"
+                      verdict="RED"
+                    else
+                      state="FAILURE (off-HEAD — unresolved; current HEAD not proven)"
+                      if [ "$verdict" = "GREEN" ]; then verdict="INCOMPLETE"; fi
+                    fi
+                    ;;
+                  *)
+                    state="$rconc"
+                    if [ "$verdict" = "GREEN" ]; then verdict="INCOMPLETE"; fi
+                    ;;
+                esac
+                ;;
+              *)
+                state="IN_PROGRESS (never PASS)"
+                if [ "$verdict" = "GREEN" ]; then verdict="INCOMPLETE"; fi
+                ;;
+            esac
+            gate_lines="${gate_lines}- ${label}: ${state} (${on_head} ${rsha:0:8}) ${rurl}"$'\n'
+          done
+
+          # ---------- 2. Snapshot existing Notion blocks once ----------
+          # Paginate all paragraph children up front so every later lookup is a
+          # pure local query (no repeated pagination, no partial-read races).
+          collected="[]"
+          cursor=""
+          while :; do
+            if [ -n "$cursor" ]; then
+              page="$(curl -sS --max-time 20 -G "${NH[@]}" "$NOTION_API/blocks/$NOTION_PAGE_ID/children" --data-urlencode "page_size=100" --data-urlencode "start_cursor=$cursor")"
+            else
+              page="$(curl -sS --max-time 20 -G "${NH[@]}" "$NOTION_API/blocks/$NOTION_PAGE_ID/children" --data-urlencode "page_size=100")"
+            fi
+            if ! printf '%s' "$page" | jq -e '.results' >/dev/null 2>&1; then
+              echo "::warning::Non-JSON or error response while listing Notion blocks; using blocks read so far"
+              break
+            fi
+            collected="$(jq -s '.[0] + .[1]' <(printf '%s' "$collected") <(printf '%s' "$page" | jq '[.results[]? | select(.type == "paragraph")]'))"
+            cursor="$(printf '%s' "$page" | jq -r '.next_cursor // empty')"
+            if [ -z "$cursor" ]; then break; fi
+          done
+
+          text_for() {
+            printf '%s' "$collected" | jq -r --arg m "$1" \
+              'first(.[] | select(([.paragraph.rich_text[]?.plain_text] | join("")) | contains($m)))
+               | [.paragraph.rich_text[]?.plain_text] | join("")'
+          }
+          block_id_for() {
+            printf '%s' "$collected" | jq -r --arg m "$1" \
+              'first(.[] | select(([.paragraph.rich_text[]?.plain_text] | join("")) | contains($m))) | .id // empty'
+          }
+
+          # ---------- 3. Staleness / discrepancy vs the recorded snapshot ----------
+          sync_snapshot="$(text_for "PAYESH_SYNC_STATUS_V1")"
+          sync_head="$(printf '%s' "$sync_snapshot" | grep -oE 'Current HEAD: [0-9a-f]{40}' | head -1 | cut -d' ' -f3)"
+          sync_time="$(printf '%s' "$sync_snapshot" | grep -oE 'Synced: [0-9-]+ [0-9:]+ UTC' | head -1 | sed 's/^Synced: //')"
+          sync_unreadable=0
+
+          if [ "$sync_head" = "$head_sha" ]; then
+            sync_state="CURRENT — Notion snapshot HEAD == live main HEAD"
+          elif [ -z "$sync_head" ]; then
+            sync_state="UNREADABLE — managed PAYESH_SYNC_STATUS_V1 snapshot missing or empty"
+            sync_unreadable=1
+          else
+            sync_state="STALE — snapshot ${sync_head:0:8} != live ${head_sha:0:8} (last synced: ${sync_time:-unknown})"
+          fi
+
+          # ---------- 4. Deterministic event id (dedup key) ----------
+          timestamp="$(date -u '+%Y-%m-%d %H:%M UTC')"
+          if [ -n "${TEST_EVENT_ID:-}" ]; then
+            event_id="$TEST_EVENT_ID"
+            event_origin="synthetic (E2E test vector — never a real state transition)"
+          else
+            event_id="EVT-${head_sha:0:8}-${EVENT_NAME}-${RUN_ID}"
+            event_origin="$EVENT_NAME"
+          fi
+
+          # ---------- 5. Build the managed blocks ----------
+          # Each body is assembled with printf so every YAML line stays indented
+          # (a raw multi-line string would break the block scalar indentation).
+          verdict_body="$(printf '%s\n' \
+            "PAYESH_WATCH_VERDICT_V1" \
+            "Authority: GitHub + canonical repo docs are the source of truth. Notion is a monitoring projection, never a certification." \
+            "Repository: $REPOSITORY | Branch: main | Live HEAD: $head_sha" \
+            "Gate verdict on live HEAD: $verdict" \
+            "Sync state: $sync_state" \
+            "Watch run: $RUN_URL | Processed: $timestamp" \
+            "Gates:" \
+            "$gate_lines" \
+            "Evidence rule: a gate counts as evidence of a green main only when it completed successfully on EXACTLY the live main HEAD. IN_PROGRESS, off-HEAD, missing, skipped or cancelled runs are never promoted to PASS.")"
+
+          event_body="$(printf '%s\n' \
+            "PAYESH_WATCH_EVENT_V1" \
+            "Event ID: $event_id" \
+            "Event type: $EVENT_NAME | Origin: $event_origin" \
+            "Event SHA: $EVENT_SHA | Live main HEAD at processing: $head_sha" \
+            "Processed: $timestamp" \
+            "Notion API retries this run: $NOTION_RETRIES" \
+            "Processing status: RECORDED (write + read-back asserted by this run)" \
+            "Sync state at processing: $sync_state" \
+            "Gate verdict at processing: $verdict")"
+
+          # Notion rich-text content is capped at 2000 characters; refuse truncation.
+          for body in "$verdict_body" "$event_body"; do
+            if [ "${#body}" -gt 1950 ]; then
+              echo "::error::Watch block exceeds safe rich-text size; refusing truncated write"
+              exit 1
+            fi
+          done
+
+          # ---------- 6. Write with idempotent dedup ----------
+          write_managed_block() {
+            local marker="$1" body="$2" block_id payload
+            block_id="$(block_id_for "$marker")"
+            payload="$(jq -n --arg b "$body" '{paragraph:{rich_text:[{type:"text",text:{content:$b}}]}}')"
+            if [ -n "$block_id" ]; then
+              if ! notion_call PATCH "$NOTION_API/blocks/$block_id" -d "$payload" >/dev/null; then
+                echo "::error::Notion PATCH failed for managed block $marker"
+                return 1
+              fi
+            else
+              if ! notion_call POST "$NOTION_API/blocks/$NOTION_PAGE_ID/children" -d "$payload" >/dev/null; then
+                echo "::error::Notion append failed for managed block $marker"
+                return 1
+              fi
+            fi
+          }
+
+          write_managed_block "PAYESH_WATCH_VERDICT_V1" "$verdict_body"
+          write_managed_block "PAYESH_WATCH_EVENT_V1" "$event_body"
+
+          # ---------- 7. Read-back verification ----------
+          # HTTP 200 alone does not prove the content landed; re-read and assert.
+          verify_marker() {
+            local marker="$1" expect="$2" text
+            text="$(text_for "$marker")"
+            if [ -z "$text" ]; then
+              echo "::error::Read-back FAILED for $marker (block not found after write)"
+              return 1
+            fi
+            if ! printf '%s' "$text" | grep -qF "$expect"; then
+              echo "::error::Read-back mismatch for $marker: expected to find '$expect'"
+              return 1
+            fi
+            echo "read-back OK: $marker contains '$expect'"
+          }
+
+          verify_marker "PAYESH_WATCH_VERDICT_V1" "Gate verdict on live HEAD: $verdict"
+          verify_marker "PAYESH_WATCH_EVENT_V1" "Event ID: $event_id"
+
+          # ---------- 8. Publish verdict as a page property (second channel) ----------
+          prop_payload="$(jq -n --arg v "$verdict" --arg t "$timestamp" \
+            '{properties: {"تست": {rich_text: [{type:"text",text:{content:("Payesh Watch " + $v + " — " + $t)}}]}}}')"
+          if ! notion_call PATCH "$NOTION_API/pages/$NOTION_PAGE_ID" -d "$prop_payload" >/dev/null; then
+            echo "::error::Page property PATCH failed"
+            exit 1
+          fi
+          prop_read="$(curl -sS --max-time 20 "${NH[@]}" "$NOTION_API/pages/$NOTION_PAGE_ID" \
+            | jq -r '.properties["تست"].rich_text[0].plain_text // empty')"
+          case "$prop_read" in
+            "Payesh Watch $verdict "*)
+              echo "read-back OK: page property reflects verdict $verdict"
+              ;;
+            *)
+              echo "::error::Page property read-back mismatch: '$prop_read'"
+              exit 1
+              ;;
+          esac
+
+          echo "Payesh Watch processed event=$event_id verdict=$verdict sync=$sync_state retries=$NOTION_RETRIES"
+
+          # ---------- 9. Alert AFTER writing, so the record is never lost ----------
+          if [ "$verdict" = "RED" ]; then
+            echo "::error::PAYESH WATCH ALERT — a quality gate FAILED on live main HEAD $head_sha. See managed block PAYESH_WATCH_VERDICT_V1."
+            exit 1
+          fi
+          if [ "$sync_unreadable" = "1" ]; then
+            echo "::error::PAYESH WATCH ALERT — Notion read path unverified; the managed snapshot is missing."
+            exit 1
+          fi
