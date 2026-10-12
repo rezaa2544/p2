@@ -4,13 +4,13 @@
 # `echo Hello, World!`. It was the sole green check on the current HEAD while
 # executing no test at all — a textbook false-green. This job runs the actual
 # build-integrity and educational-intelligence suites so the "success" check
-# means something. `cimg/base:current` ships Node.js (>=22 required).
+# means something. `cimg/node:22.x` provides Node.js >= 22 out of the box.
 version: 2.1
 
 jobs:
   payesh-node-gate:
     docker:
-      - image: cimg/base:current
+      - image: cimg/node:22.x
     steps:
       - checkout
       - run:
