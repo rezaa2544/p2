@@ -253,7 +253,8 @@ jobs:
             "Watcher: GitHub Actions workflow payesh-watch.yml — the only always-on authorized execution path (Atria is an on-demand validator, not a daemon)." \
             "State: ACTIVE — scheduled every 30 min (cron */30 * * * *) plus push/issues/pull_request/workflow_run triggers." \
             "Last run: $RUN_URL | Finished: $timestamp" \
-            "Stop detection: if Finished above is older than ~45 minutes the watcher has stopped running; check the Actions tab and re-run manually (workflow_dispatch)." \
+            "Stop detection: if Finished above is older than ~45 min AND the repo had activity in that window (a push, PR/issue event, or a completed gate run) that should have triggered a refresh, the watcher has stopped — investigate the Actions tab. During a genuinely quiet window staleness is expected and is NOT a stop." \
+            "Scheduler caveat (observed): in the observation window this repo had zero schedule-triggered runs across all workflows, so the cron heartbeat is not currently firing on GitHub's side. Until that changes the heartbeat depends on event triggers (push/issues/pull_request/workflow_run), which have all fired." \
             "Alert policy: a RED verdict exits non-zero so the GitHub run badge stays truthful. Transition suppression is deliberately NOT used — a green badge over a RED verdict would be a false-green." \
             "Scheduling note while main CI is RED: the cron trigger produces up to 48 failing runs per day. This is intentional signal, not a bug; the remedy is fixing the failing gate.")"
 
