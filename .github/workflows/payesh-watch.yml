@@ -238,14 +238,27 @@ jobs:
             "Event ID: $event_id" \
             "Event type: $EVENT_NAME | Origin: $event_origin" \
             "Event SHA: $EVENT_SHA | Live main HEAD at processing: $head_sha" \
+            "Source (openable): $RUN_URL" \
+            "Related SHA / run: ${EVENT_SHA:0:8} / $RUN_ID" \
             "Processed: $timestamp" \
             "Notion API retries this run: $NOTION_RETRIES" \
             "Processing status: RECORDED (write + read-back asserted by this run)" \
             "Sync state at processing: $sync_state" \
             "Gate verdict at processing: $verdict")"
 
+          # Health marker. The cron schedule is the heartbeat: this block is
+          # rewritten on every run, so its timestamp going stale IS the stop signal.
+          health_body="$(printf '%s\n' \
+            "PAYESH_WATCH_HEALTH_V1" \
+            "Watcher: GitHub Actions workflow payesh-watch.yml — the only always-on authorized execution path (Atria is an on-demand validator, not a daemon)." \
+            "State: ACTIVE — scheduled every 30 min (cron */30 * * * *) plus push/issues/pull_request/workflow_run triggers." \
+            "Last run: $RUN_URL | Finished: $timestamp" \
+            "Stop detection: if Finished above is older than ~45 minutes the watcher has stopped running; check the Actions tab and re-run manually (workflow_dispatch)." \
+            "Alert policy: a RED verdict exits non-zero so the GitHub run badge stays truthful. Transition suppression is deliberately NOT used — a green badge over a RED verdict would be a false-green." \
+            "Scheduling note while main CI is RED: the cron trigger produces up to 48 failing runs per day. This is intentional signal, not a bug; the remedy is fixing the failing gate.")"
+
           # Notion rich-text content is capped at 2000 characters; refuse truncation.
-          for body in "$verdict_body" "$event_body"; do
+          for body in "$verdict_body" "$event_body" "$health_body"; do
             if [ "${#body}" -gt 1950 ]; then
               echo "::error::Watch block exceeds safe rich-text size; refusing truncated write"
               exit 1
@@ -276,6 +289,7 @@ jobs:
 
           write_managed_block "PAYESH_WATCH_VERDICT_V1" "$verdict_body"
           write_managed_block "PAYESH_WATCH_EVENT_V1" "$event_body"
+          write_managed_block "PAYESH_WATCH_HEALTH_V1" "$health_body"
 
           # ---------- 7. Read-back verification ----------
           # HTTP 200 alone does not prove the content landed. Re-read the page
@@ -298,6 +312,7 @@ jobs:
 
           verify_marker "PAYESH_WATCH_VERDICT_V1" "Gate verdict on live HEAD: $verdict"
           verify_marker "PAYESH_WATCH_EVENT_V1" "Event ID: $event_id"
+          verify_marker "PAYESH_WATCH_HEALTH_V1" "Last run: $RUN_URL"
 
           # ---------- 8. Publish verdict as a page property (second channel) ----------
           prop_payload="$(jq -n --arg v "$verdict" --arg t "$timestamp" \
