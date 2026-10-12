@@ -56,16 +56,16 @@ jobs:
           # Always query live main, not only the event payload. Missing API data fails closed.
           head_sha="$(gh api "repos/$REPOSITORY/commits/main" --jq '.sha')"
           test "${#head_sha}" -eq 40
-          issue_443="$(gh api "repos/$REPOSITORY/issues/443" --jq '"#\(.number) — \(.state | ascii_upcase): \(.title) \(.html_url)"')"
+          issue_443="$(gh api "repos/$REPOSITORY/issues/443" --jq '"#\(.number) — \(.state | ascii_upcase): \(.title[0:70]) \(.html_url)"')"
 
           issues="$(gh api "repos/$REPOSITORY/issues?state=open&per_page=100" --jq '
             [.[] | select(has("pull_request") | not)]
-            | sort_by(.updated_at) | reverse | .[:3][]
-            | "- #\(.number) \(.title) \(.html_url)"' | head -c 650)"
+            | sort_by(.updated_at) | reverse | .[:2][]
+            | "- #\(.number) \(.title[0:65]) \(.html_url)"' | head -c 450)"
           pulls="$(gh api "repos/$REPOSITORY/pulls?state=open&per_page=100" --jq '
-            .[:3][] | "- PR #\(.number) \(.title) (\(.draft | if . then "draft" else "open" end)) \(.html_url)"' | head -c 500)"
+            .[:2][] | "- PR #\(.number) \(.title[0:60]) (\(.draft | if . then "draft" else "open" end)) \(.html_url)"' | head -c 350)"
           runs="$(gh api "repos/$REPOSITORY/actions/runs?branch=main&per_page=8" --jq '
-            [.workflow_runs[:4][] | {
+            [.workflow_runs[:3][] | {
               name: .name,
               status: .status,
               conclusion: (.conclusion // "NOT_FINISHED"),
@@ -73,7 +73,7 @@ jobs:
               head_sha: .head_sha
             }]
             | .[] |
-            "- \(.name): \(if .status != "completed" then "IN_PROGRESS" elif .conclusion == "success" then "SUCCESS" elif .conclusion == "failure" then "FAILURE" else .conclusion end) (\(.head_sha[0:8])) \(.html_url)"' | head -c 650)"
+            "- \(.name[0:28]): \(if .status != "completed" then "IN_PROGRESS" elif .conclusion == "success" then "SUCCESS" elif .conclusion == "failure" then "FAILURE" else .conclusion end) (\(.head_sha[0:8])) \(.html_url)"' | head -c 450)"
 
           timestamp="$(date -u '+%Y-%m-%d %H:%M UTC')"
           summary="$(cat <<EOF
@@ -97,7 +97,10 @@ jobs:
           EOF
           )"
           # Notion rich-text text content is limited to 2,000 characters.
-          summary="$(printf '%s' "$summary" | head -c 1850)"
+          if [ "${#summary}" -gt 1950 ]; then
+            echo "::error::Notion snapshot exceeds safe rich-text size; refusing truncated write"
+            exit 1
+          fi
           payload="$(jq -n --arg summary "$summary" '{paragraph:{rich_text:[{type:"text",text:{content:$summary}}]}}')"
 
           # Find the existing managed paragraph so reruns update one stable snapshot instead of appending duplicates.
