@@ -24,7 +24,11 @@ const {
   PHASE3_ENGINE_ID,
   CERTIFICATION_STATUS,
   validateEngineCompleteness,
+  validateQualityGateStatus,
+  validateHumanSovereigntyAcrossPlatform,
+  validateZeroRankingCompliance,
   computeRuntimeWiring,
+  executeEndToEndChain,
   generatePhase3ReleaseCertificate,
   runPhase3Certification
 } = require('../server/analytics/intelligence-release-certification');
@@ -117,10 +121,72 @@ check('گواهی انتشار در حالت یتیمی، REJECTED و release_re
   rejectedCert.status === CERTIFICATION_STATUS.REJECTED && rejectedCert.release_ready === false,
   `status=${rejectedCert.status}`);
 
-const healthyCert = generatePhase3ReleaseCertificate({ completeness: healthy });
-check('گواهی انتشار در حالت سالم، CERTIFIED می‌شود',
+/* ── ۶-ب. شاهدِ رانتایمِ کامل (A-31 / I-08) ─────────────────────────────
+   این بلوک در ۲۰۲۶-۰۹-۲۵ (commit 99b07262) به ماژول اضافه شد: کاتالوگِ سالم
+   به‌تنهایی دیگر برای صدور گواهی کافی نیست — هر گیت، هر ۱۲ گامِ زنجیرهٔ
+   E2E و یک راستی‌آزمایِ مستقل باید «مشاهدهٔ رانتایم» ارائه کنند. این
+   تست در ۲۰۲۶-۰۹-۲۴ (commit 35ebdbca) نوشته شده بود، یعنی قبل از سخت‌تر
+   شدنِ عامدانهٔ گیت؛ مسیرِ سالم بدون این شواهد اکنون REJECTED است. */
+const TS = '2026-09-24T09:00:00.000Z';
+const passedGates = {
+  semantic_tests: { status: 'PASSED' },
+  api_tests: { status: 'PASSED' },
+  master_regression: { status: 'PASSED' },
+  build_parity: { status: 'PASSED' },
+  authorization_parity: { status: 'PASSED' },
+  secret_scan: { status: 'PASSED' },
+  docs_stats_sync: { status: 'PASSED' },
+  docs_consistency: { status: 'PASSED' }
+};
+const runtimeEvidence = {};
+for (let i = 1; i <= 12; i++) {
+  const key = 'STEP_' + String(i).padStart(2, '0');
+  runtimeEvidence[key] = { status: 'OBSERVED', observed_at: TS };
+}
+const independentVerification = {
+  verified: true,
+  verifier_id: 'arena-independent-runtime-verifier',
+  evidence_bundle_id: 'BUNDLE-D5-POSITIVE-CONTROL',
+  verification_signature: 'd5a31e08c4b2f6a0e8c4b2d6f0a4e8c2b6d0f4a8e2c6b0d4f8a2e6c0b4d8f2'
+};
+const PLATFORM_OUTPUTS = {
+  automated_decision: false,
+  automated_execution: false,
+  requires_human_approval: true
+};
+
+/* ابتدا اثبات می‌کنیم که شواهدِ ساخته‌شده واقعاً توسط تابعِ اصلی پذیرفته
+   می‌شوند — وگرنه کنترلِ مثالیِ زیر می‌توانست به‌طور پنهان از شواهدِ ناقص
+   استفاده کند و سبزِ کاذب بسازد. */
+const chainWithEvidence = executeEndToEndChain({ school_id: 101, region_id: 1 }, { runtimeEvidence, timestamp: TS });
+check('runtimeEvidence کامل، زنجیره را RUNTIME/verified می‌کند (نه SIMULATION)',
+  chainWithEvidence.verified === true && chainWithEvidence.verification_mode === 'RUNTIME',
+  `verified=${chainWithEvidence.verified} mode=${chainWithEvidence.verification_mode}`);
+
+const healthyCert = generatePhase3ReleaseCertificate(
+  { completeness: healthy,
+    qualityGates: validateQualityGateStatus({ gateResults: passedGates }),
+    /* sovereignty/zeroRanking از platformOutputs محاسبه می‌شوند، دقیقاً مانندِ
+       runPhase3Certification. عبورِ صریحِ آن‌ها لازم است: بررسیِ بازگشتیِ
+       zero-ranking کلِ params را اسکن می‌کند و زنجیرهٔ e2e کلیدِ
+       zero_ranking_preserved را دارد که با الگوی «_rank» تطبیق می‌خورد. */
+    sovereignty: validateHumanSovereigntyAcrossPlatform(PLATFORM_OUTPUTS),
+    zeroRanking: validateZeroRankingCompliance(PLATFORM_OUTPUTS),
+    e2eChain: chainWithEvidence,
+    independentVerification },
+  { timestamp: TS }
+);
+check('گواهی انتشار در حالت سالم + شاهدِ رانتایم کامل، CERTIFIED می‌شود',
   healthyCert.status === CERTIFICATION_STATUS.CERTIFIED && healthyCert.release_ready === true,
   `status=${healthyCert.status}`);
+
+/* کنترلِ منفیِ A-31: همان کاتالوگِ کاملاً سالم، ولی بدون شاهدِ رانتایم و
+   بدون راستی‌آزمای مستقل — باید REJECTED بماند. اگر این مسیر سبز شود،
+   یعنی خوداظهاری دوباره جایِ مشاهدهٔ رانتایم را گرفته. */
+const unverifiedHealthy = generatePhase3ReleaseCertificate({ completeness: healthy }, { timestamp: TS });
+check('کاتالوگ سالم بدون شاهد رانتایم/راستی‌آزمای مستقل، REJECTED می‌ماند (A-31)',
+  unverifiedHealthy.status === CERTIFICATION_STATUS.REJECTED && unverifiedHealthy.release_ready === false,
+  `status=${unverifiedHealthy.status}`);
 
 // ── ۷. سناریوی کاتالوگ ناقص (همچنان معتبر) ─────────────────────────────
 const incompleteCatalog = CANONICAL_PHASE3_CATALOG.filter(
@@ -136,9 +202,9 @@ check('کاتالوگ ناقص → complete=false با یک موتور غایب'
 // ── ۸. runPhase3Certification در محیط واقعی همچنان CERTIFIED ────────
 const cert = runPhase3Certification(
   { schoolId: 101, regionId: 1, academicYear: '1404-1405', user: { id: 10, role: 'manager', school_id: 101, region_id: 1 } },
-  { timestamp: '2026-09-24T09:00:00.000Z' }
+  { timestamp: TS, gateResults: passedGates, runtimeEvidence, independentVerification }
 );
-check('runPhase3Certification با ۲۰ موتور متصل، CERTIFIED می‌ماند',
+check('runPhase3Certification با ۲۰ موتور متصل + شاهد کامل، CERTIFIED می‌ماند',
   cert.certification_status === CERTIFICATION_STATUS.CERTIFIED && cert.release_ready === true,
   `status=${cert.certification_status}`);
 check('engines_summary، ۲۰ موتور را گزارش می‌دهد',
