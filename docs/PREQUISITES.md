@@ -3217,3 +3217,17 @@ Applies to any agent selecting an M15 mission. Canonical queue and invariants: `
 8. **Backup:** backup without restore drill = UNVERIFIED; RPO/RTO = TARGET/TBD until measured.
 9. **Scenario status:** any failure/chaos scenario not executed on current HEAD = DESIGNED / NOT VERIFIED.
 10. **Client load is system load:** any change to sync/pull/retry must state its jitter/backoff/limit behaviour and keep the N-36 parity contract green.
+
+
+# مدل عملیاتی جاری عامل‌ها — Letta و تفکیک مسئولیت‌ها (2026-10-13)
+
+این بخش مکمل قانون مرکزی است. جزئیات نقش‌ها و زنجیرهٔ تحویل در `docs/GOVERNANCE/CHAT_ROLES_AND_MISSIONS.md` ثبت می‌شود.
+
+- **ChatGPT — Control Plane:** تعیین اولویت، دامنه، معیار پایان، تطبیق گزارش با مأموریت و تصمیم دربارهٔ اقدام بعدی.
+- **Atria — Executor:** اجرای مأموریت و تغییرات مجاز مخزن؛ گزارش با SHA و شواهد قابل ردیابی. خودبازبینی آتریا جایگزین بازبینی مستقل نیست.
+- **Hermes — Independent Verification Engine:** راستی‌آزمایی مستقل گزارش‌ها، تفکیک وضعیت‌های DONE / NOT DONE / SUSPECT / BLOCKED / NOT VERIFIED و بازتولید شواهد.
+- **Letta — Independent Bug Inspector / Evidence Auditor / Regression Hunter:** کشف مستقل باگ‌های ازدست‌رفته، بررسی ادعاهای PASS در برابر خروجی واقعی تست و شکار رگرسیون. پیش‌فرض مأموریت‌های لتا فقط‌خواندنی است و او مجری اصلاحات محسوب نمی‌شود مگر با مجوز جداگانه.
+
+**Handoff پیش‌فرض:** برای کار اجرایی، ChatGPT → Atria → Hermes → ChatGPT؛ برای ممیزی مستقل، ChatGPT → Letta → Hermes → کاربر/ChatGPT → تصمیم دربارهٔ اصلاح توسط Atria.
+
+**Evidence Gate:** نصب مهارت به‌تنهایی اثبات توانایی نیست. هر ادعا باید به SHA، محیط، فرمان/روش، خروجی واقعی، exit code و محدودیت‌ها متصل باشد. NOT RUN / SKIPPED / NOT VERIFIED / BLOCKED هرگز PASS نیست. Notion داشبورد کمکی است؛ GitHub و اسناد کانونی مرجع حقیقت‌اند.
