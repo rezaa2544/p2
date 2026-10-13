@@ -138,7 +138,7 @@ function buildProbe(c, wt) {
     case 'PEB-08':
       return q(F, `const s=require('fs').readFileSync('${F}','utf8');
         if(/require\\\\(path\\\\.join/.test(s)){process.exit(1);}
-        if(!/require\\\\(['\\\"]\\\\.\\\\/?/.test(s)){process.exit(1);}
+        if(!/require\\\\(['\\"]\\\\.\\\\/?/.test(s)){process.exit(1);}
         process.exit(0);`);
     case 'PEB-09':
       return q(F, `const s=require('fs').readFileSync('${F}','utf8');
@@ -149,7 +149,7 @@ function buildProbe(c, wt) {
     case 'PEB-10':
       return q(F, `const s=require('fs').readFileSync('${F}','utf8');
         if(!/PAYESH_OTP_PEPPER/.test(s)){process.exit(1);}
-        if(/PAYESH_OTP_PEPPER['\\\"]?\\s*[:=]\\s*['\\\"]\\s*['\\\"]/.test(s)){process.exit(1);}
+        if(/PAYESH_OTP_PEPPER['\\"]?\\s*[:=]\\s*['\\"]\\s*['\\"]/.test(s)){process.exit(1);}
         process.exit(0);`);
     default:
       return null;
@@ -403,7 +403,7 @@ async function oneRun(c, arm, runNo, attemptNo) {
     rec.changed_files = changed.length;
     rec.scope_ok = changed.length > 0 && changed.every(f => f === c.scope || (f.startsWith('tests/') && f.endsWith('.js')));
     rec.forbidden_ok = c.forbidden.every(f => !diff.includes(f));
-    rec.secret_ok = !/gh[pousr]_[A-Za-z0-9]{36,}|AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_\-]{10,}\./.test(diff);
+    rec.secret_ok = !/gh[pousr]_[A-Za-z0-9]{36,}|AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_-]{10,}\./.test(diff);
 
     const fixDiff = (() => { try { return execSync(`git -C "${REPO}" show ${c.fix_commit} -- ${c.scope}`, { encoding: 'utf8', timeout: 30000 }); } catch { return ''; } })();
     // overlap metric: shared non-space diff lines
