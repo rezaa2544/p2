@@ -14,6 +14,7 @@ const s5 = require('./engagement-index.test');
 const s6 = require('./deterministic.test');
 const s7 = require('./mutation-safety.test');
 const s8 = require('./tenant-isolation.test');
+const s9 = require('./no-data-status.test');
 
 function run() {
   console.log('═══════════════════════════════════════════════════════════════════');
@@ -28,8 +29,9 @@ function run() {
   s6.run();
   s7.run();
   s8.run();
+  s9.run();
 
-  console.log('\n✅ تمامی ۸ سوئیت آزمون نمای ۳۶۰ والدین و مرکز اقدامات خانواده با موفقیت پاس شدند.');
+  console.log('\n✅ تمامی ۹ سوئیت آزمون نمای ۳۶۰ والدین و مرکز اقدامات خانواده با موفقیت پاس شدند.');
 }
 
 if (require.main === module) {
