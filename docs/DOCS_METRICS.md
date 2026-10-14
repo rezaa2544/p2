@@ -9,7 +9,7 @@
 
 | سنجه | مقدار | منبع |
 |---|---:|---|
-| تعداد کل اسناد `docs/*.md` | **۴۸۰** سند ریشه (پیش از خود سند قفل `rc44`؛ با آن ۴۸۱) + ۱۱۲ سند پایدار در زیرپوشه‌ها (`RUNBOOK_CARDS/` + `user-guides/` + `pilot/` + `ARCHITECTURE/` + `GOVERNANCE/` + `audit/` + `control-plane/` + `experience-store/` + `external-memory/` + `roadmaps/`) = جمع درخت پایدار ۵۹۳؛ تفکیک: سه زیرپوشهٔ پایه ۲۰ + بقیهٔ پایدار ۹۲ ⇒ درخت سه‌زیرپوشه‌ای ۵۰۱؛ سوابقِ روزانهٔ عملیاتی (`daily-audits/` + `daily-reports/`) خارج از شمارش — سیاست C6-02 | شمارش فایل |
+| تعداد کل اسناد `docs/*.md` | **۴۸۳** سند ریشه (پیش از خود سند قفل `rc44`؛ با آن ۴۸۴) + ۱۱۳ سند پایدار در زیرپوشه‌ها (`RUNBOOK_CARDS/` + `user-guides/` + `pilot/` + `ARCHITECTURE/` + `GOVERNANCE/` + `audit/` + `control-plane/` + `experience-store/` + `external-memory/` + `roadmaps/`) = جمع درخت پایدار ۵۹۷؛ تفکیک: سه زیرپوشهٔ پایه ۲۰ + بقیهٔ پایدار ۹۳ ⇒ درخت سه‌زیرپوشه‌ای ۵۰۴؛ سوابقِ روزانهٔ عملیاتی (`daily-audits/` + `daily-reports/`) خارج از شمارش — سیاست C6-02 | شمارش فایل |
 | لینک‌های داخلی بررسی‌شده | **۴۶۳** (۰ شکسته) | `tools/docs-health.sh` |
 | لینک شکسته | **۰** | همان |
 | تعارض عددی بین اسناد | **۰** (۴۸ بررسی هماهنگ) | `tools/docs-consistency-check.sh` |
