@@ -79,8 +79,15 @@ jobs:
     # --max-warnings freezes the pre-existing no-empty/no-unused-vars baseline
     # so it can only shrink; every other eslint:recommended rule is a hard
     # error and blocks the build.
-    - name: Lint (N-23 — the lint contract is now enforced)
-      run: npm run lint
+    #
+    # CI-DECOUPLE (PAYESH-CI-UNBLOCK, 2026-10-13): this step used to be the
+    # FIRST substantive gate in the job. When it failed, GitHub Actions
+    # short-circuited every subsequent step — 64 test steps were reported
+    # SKIPPED on every run, so the whole test contract was silently
+    # unenforced (a false-coverage, not a false-green). The lint contract is
+    # now moved to the END of the job so the test matrix runs unconditionally
+    # and its verdicts are always surfaced; the lint failure still fails the
+    # job exactly as before (no continue-on-error, no gate weakening).
     - name: Comprehensive canonical regression runner
       run: npm run test:all
     - name: Runtime Reliability — Lease fencing static contract
@@ -374,3 +381,9 @@ jobs:
     - name: Smoke harness — jsdom scrollTo five-pass regression
       run: node tests/smoke-jsdom-runtime.test.js
     - run: npm test
+    # CI-DECOUPLE (cont.): the lint contract now runs LAST. Every test step
+    # above executes unconditionally regardless of the lint verdict, and the
+    # lint failure still fails the job. Order change only — no rule, threshold,
+    # or continue-on-error was added.
+    - name: Lint (N-23 — the lint contract is now enforced)
+      run: npm run lint
