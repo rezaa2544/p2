@@ -91,14 +91,19 @@ jobs:
     - name: Comprehensive canonical regression runner
       run: npm run test:all
     - name: Runtime Reliability — Lease fencing static contract
+      if: always()
       run: node tests/outbox-lease-fencing.test.js
     - name: Security — independent adversarial A-18..A-22 battery
+      if: always()
       run: node tests/security-adversarial-a18-a22.test.js
     - name: Runtime Reliability — DLQ atomic terminal transition
+      if: always()
       run: node tests/outbox-dlq-atomicity.test.js
     - name: Runtime Reliability — worker timer runs replicate path (QUEUE-CLAIM)
+      if: always()
       run: node tests/worker-timer-replicate.js
     - name: Runtime Reliability — isolated fresh-DB lease race proof
+      if: always()
       run: |
         set -euo pipefail
         RRDB="payesh_runtime_reliability"
@@ -113,28 +118,38 @@ jobs:
 
     # QA false-green gates run before dependency-heavy live stages.
     - name: Stale path contract — historical TODO redirect
+      if: always()
       run: node tests/stale-path-contract.js
     - name: Critical orphan — seed integrity
+      if: always()
       run: node tests/seed-integrity.js
     - name: Phase 7 verifier contract — fixture/boundary regression
+      if: always()
       run: node tests/phase7-production-verifier-contract.test.js
     - name: A-31 Intelligence semantic/certification integrity
+      if: always()
       run: node tests/semantic-layer/a31-semantic-certification-integrity.test.js
     - name: Critical orphan — server security regression
+      if: always()
       run: node tests/security2.js
     - name: Critical orphan — atomic sync batch
+      if: always()
       run: node tests/sync-atomic-batch.js
     - name: Critical orphan — duplicate claim/idempotency
+      if: always()
       run: node tests/sync-dup-claim.js
     - name: Critical orphan — DLQ retry/recovery
+      if: always()
       run: node tests/sync-dlq-retry.js
     - name: Critical orphan — read-replica recovery
+      if: always()
       run: node tests/db-replica-recovery.js
     # A-02 (P1): the dev OTP bypass must be an explicit opt-in. Runs the
     # suite AND its vulnerable-predicate mutation (A02_MUTATE=VULN); the
     # mutated run MUST fail — a green mutation would mean the negative
     # proof is dead (false green).
     - name: A-02 dev OTP bypass predicate (opt-in only)
+      if: always()
       run: |
         node tests/a02-dev-otp-bypass.js
         if A02_MUTATE=VULN node tests/a02-dev-otp-bypass.js; then
@@ -150,6 +165,7 @@ jobs:
     # written; a positive-control canary proves the store write-check is
     # alive first, so the no-write assertion cannot be a false green.
     - name: M14-A01 sync/report_logs teacher denial (batch contract)
+      if: always()
       run: |
         node tests/a01-report-logs-repro.js
         if A01_MUTATE=VULN node tests/a01-report-logs-repro.js; then
@@ -159,14 +175,18 @@ jobs:
           echo "✅ vulnerable predicate correctly failed the suite (negative proof alive)"
         fi
     - name: Performance harness — false-green regression
+      if: always()
       run: node tests/capacity-saturation-probe.js
 
     # ── Governance contracts ────────────────────────────────────────────────
     - name: TEST/CI parity contract — npm test ≠ whole repository
+      if: always()
       run: node tests/ci-test-parity-contract.js
     - name: Release version contract — package.json / lock / tags coherence
+      if: always()
       run: node tests/release-version-contract.js
     - name: M1 Runtime Probes & Scrape Regression — publishRuntimeProbes wiring
+      if: always()
       run: node tests/runtime-probes-scrape-regression.test.js
 
     # ── Educational Intelligence Layer (P0-EI-01 semantic layer) ─────────────
@@ -175,21 +195,35 @@ jobs:
     # critical orphan so tests/ci-test-parity-contract.js P3 (npm test boundary)
     # and P6 (orphan budget) both stay satisfied.
     - name: Intelligence Layer — educational semantic suite (33 suites)
+      if: always()
       run: node tests/semantic-layer/runner.js
     - name: Intelligence Layer — analytics wiring guard (no orphan engines)
+      if: always()
       run: node tests/analytics-wiring-guard.test.js
     - name: Intelligence Layer — no-data-masking gate (D1)
+      if: always()
       run: node tests/no-data-masking.test.js
     - name: Intelligence Layer — real timestamps + certificate fingerprint uniqueness (D2)
+      if: always()
       run: node tests/analytics-timestamps.test.js
     - name: Intelligence Layer — Phase 9.0 wiring gate E2E (D3)
+      if: always()
       run: node tests/semantic-analytics-e2e.test.js
     - name: Intelligence Layer — non-circular release certification (D5)
+      if: always()
       run: node tests/certification-non-circular.test.js
     - name: Intelligence Layer — client consumer render gate (D6)
+      if: always()
       run: node tests/intelligence-client-render.test.js
 
+    # CI-CASCADE: the four steps below are a real dependency chain — they build,
+    # verify, tear down and rebuild the shared payesh_ci schema. Steps that
+    # consume that schema are gated on pg-chain-ready below; the chain steps
+    # themselves are gated on their direct predecessor so a schema build that
+    # never landed cannot cascade into a meaningless rollback/re-apply.
     - name: Migration chain — clean install on an empty database (001 → latest)
+      id: pg-chain-up
+      if: always()
       run: |
         DATABASE_URL="$PGURL" node tools/migrate-ledger.js up
         psql "$PGURL" -c "SELECT COUNT(*) AS tables FROM information_schema.tables WHERE table_schema='public';"
@@ -197,11 +231,14 @@ jobs:
         psql "$PGURL" -c "SELECT * FROM sync_conflicts LIMIT 1;" >/dev/null && echo "sync_conflicts readable OK"
 
     - name: Migration 012 — real crash window / ledger recovery
+      if: always() && steps.pg-chain-up.conclusion == 'success'
       run: |
         export DATABASE_URL="$PGURL"
         node tests/migration-012-crash-recovery-live.js
 
     - name: Rollback chain — latest → 001
+      id: pg-chain-down
+      if: always() && steps.pg-chain-up.conclusion == 'success'
       run: |
         DATABASE_URL="$PGURL" node tools/migrate-ledger.js down-all
         LEFT=$(psql "$PGURL" -t -A -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_name <> 'schema_migrations';")
@@ -210,6 +247,8 @@ jobs:
         psql "$PGURL" -c "DROP TABLE IF EXISTS schema_migrations;"
 
     - name: Re-apply clean chain for the live-PG suites
+      id: pg-chain-ready
+      if: always() && steps.pg-chain-down.conclusion == 'success'
       run: DATABASE_URL="$PGURL" node tools/migrate-ledger.js up
 
     # ── B-PG rework (M12 / F-1 + F-2): bounded, fail-closed PG guarantees ────
@@ -223,16 +262,20 @@ jobs:
     # They run against the postgres:17 service above and each one creates and
     # drops its own scratch database, so they never touch payesh_ci.
     - name: Critical orphan — B-PG health/readiness bounded under a runtime PG blackhole
+      if: always()
       run: timeout 300 node tests/b-pg-health-blackhole.js
     - name: Critical orphan — B-PG mid-migration crash recovery (kill at the 012 ledger row)
+      if: always()
       run: timeout 300 node tests/b-pg-migration-midflight-kill.js
     - name: Critical orphan — B-PG timeout misconfiguration stays bounded (unset/""/0/-1/abc)
+      if: always()
       run: timeout 420 node tests/b-pg-timeout-failsafe.js
     # F-2 negative test: the LEGACY arm reproduces the pre-fix unbounded hang,
     # so it MUST exit non-zero. This step fails only if that arm goes green —
     # i.e. if the probe stops being load-bearing (false-green defence). The
     # 92s local run fits comfortably under the 300s bound.
     - name: Critical orphan — B-PG negative test, LEGACY arm must stay RED (hang reproduced)
+      if: always()
       run: |
         set -u
         out="$(mktemp)"
@@ -254,12 +297,14 @@ jobs:
     # contract; no live PG needed — the probe drives the engine in-process
     # and observes gate behaviour through the AUTHORITY_UNAVAILABLE branch.
     - name: Critical orphan — B-PG canary SoT TTL/backoff bounds (F-3 regression coverage)
+      if: always()
       run: timeout 180 node tests/b-pg-canary-sot-bounds.js
     # F-3 negative test: the LEGACY arm reproduces the pre-fix dead gates
     # (NaN/0 ⇒ every comparison false ⇒ a synchronous PG round-trip per
     # request), so it MUST exit non-zero. This step fails only if that arm
     # goes green — i.e. if the probe stops being load-bearing.
     - name: Critical orphan — B-PG canary SoT negative test, LEGACY arm must stay RED
+      if: always()
       run: |
         set -u
         out="$(mktemp)"
@@ -275,10 +320,14 @@ jobs:
         fi
         echo "LEGACY arm correctly RED (exit $rc) — the F-3 canary TTL/backoff fix stays load-bearing"
     - name: PostgreSQL Migration Ledger verification (E3 live PG)
+      # CI-CASCADE: consumes the shared payesh_ci schema — gated on pg-chain-ready.
+      if: always() && steps.pg-chain-ready.conclusion == 'success'
       run: |
         export DATABASE_URL="$PGURL"
         node tests/schema-migrations-live-pg.test.js
     - name: Live-PG suites (fail without a database — P1-GAP-01)
+      # CI-CASCADE: consumes the shared payesh_ci schema — gated on pg-chain-ready.
+      if: always() && steps.pg-chain-ready.conclusion == 'success'
       run: |
         export DATABASE_URL="$PGURL"
         node tests/pg-relational-seed.js
@@ -286,8 +335,10 @@ jobs:
         node tests/wave3-query3.js
         node tests/wave3-parity.js
     - name: Live-Redis suite (otp-redis — fails without Redis)
+      if: always()
       run: node tests/otp-redis.js
     - name: Redis outage ⇒ auth fails CLOSED (BLOCKER 5)
+      if: always()
       run: |
         if [ ! -x /usr/bin/redis-server ] && [ ! -x /usr/local/bin/redis-server ]; then
           sudo apt-get update -qq
@@ -296,43 +347,60 @@ jobs:
         fi
         node tests/phase2-redis-fail-closed.js
     - name: Re-audit A-22 — Redis unavailable end-to-end (fake RESP server)
+      if: always()
       # boots real server instances against a hand-written RESP3 Redis, then
       # kills/partitions it: boot-gate, distributed session, cross-instance,
       # expiry, restart, and bounded-partition behaviour.
       run: node tests/reaudit-redis-outage.js
     - name: OCC across two real instances — 10 concurrent writers (BLOCKER 4)
+      # CI-CASCADE: consumes the shared payesh_ci schema — gated on pg-chain-ready.
+      if: always() && steps.pg-chain-ready.conclusion == 'success'
       run: |
         export DATABASE_URL="$PGURL"
         node tests/phase2-occ-multi.js
     - name: Re-audit A-20 — OCC stale-write across all 5 PATCH paths
+      if: always()
       # boots a normal + a PAYESH_STRICT_BASE_VERSION=1 instance and proves the
       # stale-write/clobber path is closed for students/users/classes/attendance/grades.
       run: node tests/reaudit-occ-stale-write.js
     - name: Re-audit A-19 — student_id cannot bypass school ownership
+      if: always()
       # cross-school student_id in attendance/grades (manager/teacher/parent),
       # student_id re-pointing via PATCH, and cross-school student transfer.
       run: node tests/reaudit-a19-student-id-ownership.js
     - name: Outbox crash/restart replay + real DLQ row (BLOCKER 3)
+      # CI-CASCADE: consumes the shared payesh_ci schema — gated on pg-chain-ready.
+      if: always() && steps.pg-chain-ready.conclusion == 'success'
       run: |
         export DATABASE_URL="$PGURL"
         node tests/phase2-outbox-failover.js
     - name: Runtime Reliability — Live lease race / stale completion fencing
+      # CI-CASCADE: consumes the shared payesh_ci schema — gated on pg-chain-ready.
+      if: always() && steps.pg-chain-ready.conclusion == 'success'
       run: |
         export DATABASE_URL="$PGURL"
         node tests/outbox-lease-race-live.js
     - name: Phase 6.5 Runtime Truth — Red Team RT-01…RT-10
+      # CI-CASCADE: consumes the shared payesh_ci schema — gated on pg-chain-ready.
+      if: always() && steps.pg-chain-ready.conclusion == 'success'
       run: |
         export DATABASE_URL="$PGURL"
         node tests/phase65-runtime-truth.js
     - name: Production Truth Gate — 5 gates, VERIFIED or NOT VERIFIED
+      # CI-CASCADE: consumes the shared payesh_ci schema — gated on pg-chain-ready.
+      if: always() && steps.pg-chain-ready.conclusion == 'success'
       run: |
         export DATABASE_URL="$PGURL"
         node tools/production-truth-gate.js
     - name: Phase 7 production verifier T1–T7 — VERIFIED or NOT VERIFIED
+      # CI-CASCADE: consumes the shared payesh_ci schema — gated on pg-chain-ready.
+      if: always() && steps.pg-chain-ready.conclusion == 'success'
       run: |
         export DATABASE_URL="$PGURL"
         bash tools/production-verifier.sh
     - name: Phase 8.1 battery A — unified verifier + canary atomicity + R5 boot-gate matrix (live PG)
+      # CI-CASCADE: consumes the shared payesh_ci schema — gated on pg-chain-ready.
+      if: always() && steps.pg-chain-ready.conclusion == 'success'
       run: |
         export DATABASE_URL="$PGURL"
         node tests/unified-production-verifier.js
@@ -341,20 +409,26 @@ jobs:
         node tests/canary-atomic-runtime.js
         node tests/r5-prod-redis-boot-gate.js
     - name: Phase 8.1 battery B — server17 behavioural suite (isolated JSON-store contract)
+      if: always()
       run: node tests/server17.js
       env:
         REDIS_URL: ''
     - name: Phase 8.1 battery C — migration & constraint static gates
+      if: always()
       run: |
         node tests/migration-sequence.js
         node tests/migrate-pg-constraints.js
         node tests/schema-migrations-ledger.test.js
         node tests/migration-009-negative.test.js
     - name: Runtime Reliability — Outbox/Worker/Redis regression
+      if: always()
       run: node tests/outbox-runtime-reliability.test.js
     - name: Runtime Reliability — Five-Task/Five-Pass independent battery
+      if: always()
       run: node tests/runtime-reliability-five-task.test.js
     - name: Sync offline OCC — adversarial PG and client contracts
+      # CI-CASCADE: consumes the shared payesh_ci schema — gated on pg-chain-ready.
+      if: always() && steps.pg-chain-ready.conclusion == 'success'
       run: |
         export SYNC_TEST_DATABASE_URL="$PGURL"
         node tests/sync-occ-adversarial-live.js
@@ -362,14 +436,17 @@ jobs:
         node tests/sync-client-adversarial.js
         node tests/strict-gate-empty-registry.js
     - name: Data Integrity — OCC atomic write + migration 012 recovery
+      if: always()
       run: node tests/data-integrity-occ-migration.js
     - name: Zero-Trust Remediation — R1, R2 & R21 authoritative fail-closed suites
+      if: always()
       run: |
         node tests/r1-eliminate-ram-authorities.test.js
         node tests/r2-postgres-authority-fail-closed.js
         node tests/schema-migrations-ledger.test.js
         node tests/c3-remediation-regression.test.js
     - name: Phase 8.1 battery D — production boot-policy suites
+      if: always()
       run: |
         node tests/pg-prod-boot-no-db.js
         node tests/pg-prod-suite-policy.js
@@ -378,12 +455,35 @@ jobs:
         node tests/env-flags.js
         node tests/wave15-health.js
     - run: npm run build --if-present
+      if: always()
     - name: Smoke harness — jsdom scrollTo five-pass regression
+      if: always()
       run: node tests/smoke-jsdom-runtime.test.js
     - run: npm test
+      if: always()
     # CI-DECOUPLE (cont.): the lint contract now runs LAST. Every test step
     # above executes unconditionally regardless of the lint verdict, and the
     # lint failure still fails the job. Order change only — no rule, threshold,
     # or continue-on-error was added.
+    #
+    # CI-CASCADE (PAYESH-CI-RECOVERY-02, 2026-10-14): reordering was necessary
+    # but NOT sufficient. Live evidence: on 7499b7cf the whole-suite runner
+    # (step "Comprehensive canonical regression runner") failed with exit 5
+    # (stale docs-stats freeze manifest inside scripts/run-all-tests.sh), and
+    # because every step below had no `if:` condition, GitHub Actions skipped
+    # ALL 63 subsequent gates — the entire test contract was reported SKIPPED,
+    # i.e. unenforced, not green.
+    # Every gate step below therefore carries `if: always()` so it runs and
+    # surfaces its OWN verdict no matter what its siblings did. A failing step
+    # still fails the job (required checks stay red); nothing is downgraded,
+    # retried, or converted to a warning — the change only stops one red gate
+    # from silencing 60 unrelated green/red signals.
+    # The ONE preserved dependency is the shared PostgreSQL schema: steps that
+    # consume the migrated payesh_ci database are gated on the dedicated
+    # `pg-chain-*` step ids below, because without that schema their verdict is
+    # meaningless (they would fail red for an environmental reason, not a real
+    # one). B-PG probes are excluded — each creates and drops its own scratch
+    # database, so they never touch payesh_ci.
     - name: Lint (N-23 — the lint contract is now enforced)
+      if: always()
       run: npm run lint
