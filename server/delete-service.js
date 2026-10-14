@@ -152,14 +152,14 @@ function createDeleteService({ store, db, markDirty, outbox }) {
     }
 
     if (typeof meta.audit === 'function') {
-      try { meta.audit(rec); } catch (e) {}
+      try { meta.audit(rec); } catch (e) {/* swallowed: intentional — e unused */}
     }
 
     const cache = require('./cache');
     try {
       if (rec && rec.school_id) cache.invalidateCollection(collection, rec.school_id).catch(() => {});
       if (collection === 'users' && Number.isFinite(delId)) cache.invalidateUser(delId).catch(() => {});
-    } catch (_) {}
+    } catch (_) {/* swallowed: intentional — _ unused */}
 
     return { ok: true, status: 200, record: rec };
   }

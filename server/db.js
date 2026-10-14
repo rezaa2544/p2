@@ -216,7 +216,7 @@ async function init(fallbackStore) {
 
   try {
     if (pool) {
-      try { await pool.end(); } catch (e) {}
+      try { await pool.end(); } catch (e) {/* swallowed: intentional — e unused */}
     }
 
     pool = new pg.Pool({
@@ -256,7 +256,7 @@ async function init(fallbackStore) {
        would be stricter than the contract this codebase already ships for its
        other shared backend. */
     pool.on('connect', (c) => {
-      try { c.on('error', onClientError); } catch (e) {}
+      try { c.on('error', onClientError); } catch (e) {/* swallowed: intentional — e unused */}
     });
 
     // Test connection & verify ping
@@ -306,7 +306,7 @@ async function init(fallbackStore) {
            queryRead می‌رود، این نقص از طریقِ کدِ این مأموریت قابلِ
            دسترس می‌شد، پس همین‌جا بسته شد. */
         readPool.on('connect', (c) => {
-          try { c.on('error', onClientError); } catch (e) {}
+          try { c.on('error', onClientError); } catch (e) {/* swallowed: intentional — e unused */}
         });
         const rc = await readPool.connect();
         try { await rc.query('SELECT 1 AS ping'); readPoolActive = true; }
@@ -351,7 +351,7 @@ function scheduleReconnect() {
       if (isPgActive) {
         console.log('[DB] Successfully reconnected to PostgreSQL database');
       }
-    } catch (e) {}
+    } catch (e) {/* swallowed: intentional — e unused */}
   }, 10000).unref();
 }
 
@@ -378,7 +378,7 @@ function scheduleReplicaReprobe() {
     try {
       const rc = await readPool.connect();
       try { await rc.query('SELECT 1 AS ping'); }
-      finally { try { rc.release(); } catch (e) {} }
+      finally { try { rc.release(); } catch (e) {/* swallowed: intentional — e unused */} }
       readPoolActive = true;
       console.log('[DB] Read replica recovered; routing reads back to replica');
     } catch (e) {
@@ -1188,7 +1188,7 @@ async function close() {
   if (pool) {
     try {
       await pool.end();
-    } catch (e) {}
+    } catch (e) {/* swallowed: intentional — e unused */}
     pool = null;
     isPgActive = false;
   }
@@ -1196,7 +1196,7 @@ async function close() {
   if (readPool) {
     try {
       await readPool.end();
-    } catch (e) {}
+    } catch (e) {/* swallowed: intentional — e unused */}
     readPool = null;
     readPoolActive = false;
   }

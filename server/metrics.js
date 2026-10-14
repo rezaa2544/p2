@@ -612,7 +612,7 @@ async function publishRuntimeProbes() {
     }
     registry.set('payesh_redis_up', [], up);
     registry.set('payesh_redis_ping_latency_ms', [], pingMs);
-  } catch (e) {}
+  } catch (e) {/* swallowed: intentional — e unused */}
   /* DB (engine up + health latency + pools + outbox depth) */
   try {
     const dbMod = await _safe(() => require('./db'), null);

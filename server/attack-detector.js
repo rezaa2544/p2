@@ -49,7 +49,7 @@ function createAttackDetector(options = {}) {
     /* actor is a process-local one-way digest; never the supplied session/IP. */
     const event = { pattern, severity: pattern === 'forged_sync_metadata' ? 'high' : 'medium', count, at, actor: item.actor };
     events.push(event);
-    try { onDetect(event); } catch (_) {}
+    try { onDetect(event); } catch (_) {/* swallowed: intentional — _ unused */}
     return event;
   }
   function observeRequest(event = {}) {

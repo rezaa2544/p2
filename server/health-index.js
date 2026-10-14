@@ -152,7 +152,7 @@ function createHealthIndex(ctx) {
     const s = await sessionFrom(req);
     if (!s) return sendJson(res, 401, { ok: false, code: 'no_session' });
     if (s.role !== 'superadmin') {
-      try { audit('authz_failure', { user_id: s.id, role: s.role, school_id: s.school_id, summary: 'عدم دسترسی به شاخصِ سلامت با نقش ' + s.role, reason: 'forbidden' }); } catch (e) {}
+      try { audit('authz_failure', { user_id: s.id, role: s.role, school_id: s.school_id, summary: 'عدم دسترسی به شاخصِ سلامت با نقش ' + s.role, reason: 'forbidden' }); } catch (e) {/* swallowed: intentional — e unused */}
       return sendJson(res, 403, { ok: false, code: 'forbidden' });
     }
     const schools = store.schools || [];

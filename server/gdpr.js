@@ -58,7 +58,7 @@ function eraseUserData(store, uid) {
 /* ابطالِ نشست‌ها: همه (نسخه) + جاری (jti)؛ خروجی: نسخهٔ جدید. */
 async function eraseUserSessions(uid, currentJti, sessionTtlS) {
   if (currentJti) {
-    try { await revocation.revokeSession(currentJti, sessionTtlS || 28800); } catch (e) {}
+    try { await revocation.revokeSession(currentJti, sessionTtlS || 28800); } catch (e) {/* swallowed: intentional — e unused */}
   }
   return revocation.revokeAllUserSessions(uid);
 }

@@ -224,7 +224,7 @@ function createAudit(opts = {}) {
         const fd = fs.openSync(auditFile, 'a', 0o600);
         fs.closeSync(fd);
       }
-    } catch (e) {}
+    } catch (e) {/* swallowed: intentional — e unused */}
   }
 
   function ensureInit() {
@@ -239,7 +239,7 @@ function createAudit(opts = {}) {
       if (!fs.existsSync(auditDir)) fs.mkdirSync(auditDir, { recursive: true, mode: 0o700 });
 
       if (fs.existsSync(auditFile)) {
-        try { fs.chmodSync(auditFile, 0o600); } catch (e) {}
+        try { fs.chmodSync(auditFile, 0o600); } catch (e) {/* swallowed: intentional — e unused */}
         if (asyncMode) {
           /* حالتِ async: شمارشِ خطوط با خواندنِ کلِ فایلِ (تا ۱۰MB)
              سنکرون در مسیرِ نخستِ رویداد نمی‌ارزد — سقفِ حجم در flush
@@ -274,7 +274,7 @@ function createAudit(opts = {}) {
         await fs.promises.mkdir(auditDir, { recursive: true, mode: 0o700 });
         try {
           const stat = await fs.promises.stat(auditFile);
-          try { await fs.promises.chmod(auditFile, 0o600); } catch (e) {}
+          try { await fs.promises.chmod(auditFile, 0o600); } catch (e) {/* swallowed: intentional — e unused */}
           currentDay = new Date(stat.mtime).toISOString().slice(0, 10);
         } catch (e) {
           const handle = await fs.promises.open(auditFile, 'a', 0o600);
@@ -310,13 +310,13 @@ function createAudit(opts = {}) {
 
       // انتقال فایل فعال به پوشه آرشیو
       fs.renameSync(auditFile, rotatedFile);
-      try { fs.chmodSync(rotatedFile, 0o600); } catch (e) {}
+      try { fs.chmodSync(rotatedFile, 0o600); } catch (e) {/* swallowed: intentional — e unused */}
 
       // سازگاری با آزمون‌های قدیمی (مانند server17 که وجود .1 را بررسی می‌کند)
       try {
         fs.copyFileSync(rotatedFile, auditFile + '.1');
         fs.chmodSync(auditFile + '.1', 0o600);
-      } catch (e) {}
+      } catch (e) {/* swallowed: intentional — e unused */}
 
       // ریست شمارنده‌ها
       eventCounter = 0;
@@ -352,7 +352,7 @@ function createAudit(opts = {}) {
       if (fs.existsSync(auditFile) && fs.statSync(auditFile).size >= maxBytes) {
         rotate('size');
       }
-    } catch (e) {}
+    } catch (e) {/* swallowed: intentional — e unused */}
   }
 
   /* Async rotation is used only by the background flusher. It deliberately
@@ -370,11 +370,11 @@ function createAudit(opts = {}) {
       const rotatedFile = path.join(auditDir, `audit-${ts}.log`);
 
       await fs.promises.rename(auditFile, rotatedFile);
-      try { await fs.promises.chmod(rotatedFile, 0o600); } catch (e) {}
+      try { await fs.promises.chmod(rotatedFile, 0o600); } catch (e) {/* swallowed: intentional — e unused */}
       try {
         await fs.promises.copyFile(rotatedFile, auditFile + '.1');
         await fs.promises.chmod(auditFile + '.1', 0o600);
-      } catch (e) {}
+      } catch (e) {/* swallowed: intentional — e unused */}
 
       eventCounter = 0;
       currentDay = now.toISOString().slice(0, 10);
@@ -393,7 +393,7 @@ function createAudit(opts = {}) {
     try {
       const stat = await fs.promises.stat(auditFile);
       if (stat.size >= maxBytes) return rotateAsync('size');
-    } catch (e) {}
+    } catch (e) {/* swallowed: intentional — e unused */}
     return null;
   }
 
@@ -413,7 +413,7 @@ function createAudit(opts = {}) {
       droppedEvents++;
       if (!overflowWarned) {
         overflowWarned = true;
-        try { process.emitWarning('audit async queue reached its bound; newest events are being dropped', { code: 'PAYESH_AUDIT_QUEUE_OVERFLOW' }); } catch (e) {}
+        try { process.emitWarning('audit async queue reached its bound; newest events are being dropped', { code: 'PAYESH_AUDIT_QUEUE_OVERFLOW' }); } catch (e) {/* swallowed: intentional — e unused */}
       }
       return false;
     }
@@ -436,7 +436,7 @@ function createAudit(opts = {}) {
         while (flushQueue.length) {
           const batch = flushQueue;
           flushQueue = [];
-          try { await checkRotationAsync(); } catch (e) {}
+          try { await checkRotationAsync(); } catch (e) {/* swallowed: intentional — e unused */}
           const chunk = batch.join('');
           try { await fs.promises.mkdir(path.dirname(auditFile), { recursive: true, mode: 0o700 }); } catch (e) {}
           const ok = await new Promise((resolve) => {
@@ -471,7 +471,7 @@ function createAudit(opts = {}) {
       fs.mkdirSync(path.dirname(auditFile), { recursive: true, mode: 0o700 });
       fs.mkdirSync(auditDir, { recursive: true, mode: 0o700 });
       fs.appendFileSync(auditFile, chunk, { encoding: 'utf8', mode: 0o600 });
-      try { fs.chmodSync(auditFile, 0o600); } catch (e) {}
+      try { fs.chmodSync(auditFile, 0o600); } catch (e) {/* swallowed: intentional — e unused */}
     } catch (e) {
       /* Preserve the final batch for an embedding process that retries. */
       flushQueue = [chunk].concat(flushQueue);
@@ -486,7 +486,7 @@ function createAudit(opts = {}) {
     try{
       const t = require('./tracing');
       if(t && typeof t.getTraceId === 'function') return t.getTraceId();
-    }catch(e){}
+    }catch(e){/* swallowed: intentional — e unused */}
     return null;
   }
   function record(eventOrType, detailObj) {
@@ -578,7 +578,7 @@ function createAudit(opts = {}) {
           try {
             const m = require('./metrics');
             m.inc('payesh_audit_write_failures_total', { sink: 'fs', reason: 'append_error' });
-          } catch (_) {}
+          } catch (_) {/* swallowed: intentional — _ unused */}
           console.error('[AUDIT_FS_ERROR] Failed to write audit log:', err && err.message ? err.message : String(err));
         }
         eventCounter++;
@@ -589,7 +589,7 @@ function createAudit(opts = {}) {
       try {
         const m = require('./metrics');
         m.inc('payesh_audit_write_failures_total', { sink: 'record', reason: 'record_error' });
-      } catch (_) {}
+      } catch (_) {/* swallowed: intentional — _ unused */}
       console.error('[AUDIT_RECORD_ERROR] Failed to record audit event:', e && e.message ? e.message : String(e));
       return null;
     }

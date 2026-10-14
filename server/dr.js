@@ -142,7 +142,7 @@ function createDR(ctx) {
     const tmp = final + '.tmp';
     fs.writeFileSync(tmp, JSON.stringify(m, null, 2), { encoding: 'utf8', mode: 0o600 });
     fs.renameSync(tmp, final);
-    try { fs.chmodSync(final, 0o600); } catch (e) {}
+    try { fs.chmodSync(final, 0o600); } catch (e) {/* swallowed: intentional — e unused */}
   }
 
   /* The manifest is DERIVED from the files on disk, so a lost or corrupt
@@ -278,7 +278,7 @@ function createDR(ctx) {
     const tmp = dest + '.tmp';
     fs.writeFileSync(tmp, out, { mode: 0o600 });
     fs.renameSync(tmp, dest);
-    try { fs.chmodSync(dest, 0o600); } catch (e) {}
+    try { fs.chmodSync(dest, 0o600); } catch (e) {/* swallowed: intentional — e unused */}
     audit('backup_encrypted', { file: path.basename(String(name)), enc: path.basename(dest), size: out.length, summary: 'پشتیبان رمزنگاری شد: ' + path.basename(dest) });
     return {
       ok: true, file: path.basename(dest), size: out.length,
@@ -315,7 +315,7 @@ function createDR(ctx) {
       if (sha256Buf(plain) !== header.plain_sha256) return { ok: false, reason: 'checksum_mismatch' };
       if (dest) {
         fs.writeFileSync(dest, plain, { mode: 0o600 });
-        try { fs.chmodSync(dest, 0o600); } catch (e) {}
+        try { fs.chmodSync(dest, 0o600); } catch (e) {/* swallowed: intentional — e unused */}
       }
       return { ok: true, size: plain.length, sha256: sha256Buf(plain), duration_ms: Number(process.hrtime.bigint() - t0) / 1e6 };
     } catch (e) {
@@ -357,7 +357,7 @@ function createDR(ctx) {
     const dest = assertContained(path.join(abs, path.basename(srcName)));
     const want = sha256File(src);
     fs.copyFileSync(src, dest);
-    try { fs.chmodSync(dest, 0o600); } catch (e) {}
+    try { fs.chmodSync(dest, 0o600); } catch (e) {/* swallowed: intentional — e unused */}
     const got = sha256File(dest);
     const ok = got === want;
     audit('backup_offsite_copied', { file: path.basename(String(srcName)), ok, encrypted: useEncrypted, summary: 'کپی برون‌سایتی پشتیبان' + (ok ? '' : ' — ناموفق') });
@@ -475,7 +475,7 @@ function createDR(ctx) {
       /* P3 — restore into an ISOLATED store (the live store is untouched) */
       const s3 = process.hrtime.bigint();
       let restored = null;
-      try { restored = JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')); } catch (e) {}
+      try { restored = JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')); } catch (e) {/* swallowed: intentional — e unused */}
       const insp = inspectData(restored);
       if (!rec('restore_isolated', insp.ok, Number(process.hrtime.bigint() - s3) / 1e6, { problems: insp.problems })) {
         report.reason = 'restore_failed'; return report;
