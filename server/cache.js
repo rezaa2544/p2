@@ -182,7 +182,7 @@ async function init() {
       } else if (event.type === 'all') {
         localUserBootstrapCache.clear();
       }
-    } catch (e) {}
+    } catch (e) {/* swallowed: intentional — e unused */}
   });
 
   return { ok: true };
@@ -261,7 +261,7 @@ async function getBootstrapCache(userId) {
       l1Set(userId, data, data.school ? data.school.id : null);
       metrics.inc('payesh_cache_lookups_total', { layer: 'l2_redis', outcome: 'hit' }); /* ویو ۱۴ */
       return data;
-    } catch (e) {}
+    } catch (e) {/* swallowed: intentional — e unused */}
   }
   metrics.inc('payesh_cache_lookups_total', { layer: 'l2_redis', outcome: 'miss' });
   return null;

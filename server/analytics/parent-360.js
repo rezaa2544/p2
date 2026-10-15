@@ -134,10 +134,17 @@ function buildParent360Profile(params = {}, options = {}) {
     ? roundTo((attNumerator / totalSessions) * 100, 1)
     : null;
 
-  let attendanceStatus = totalSessions === 0 ? 'NO_DATA' : 'EXCELLENT';
-  if (attendanceRate < 80.0 || unexcusedCount >= 3) attendanceStatus = 'CRITICAL';
-  else if (attendanceRate < 90.0 || unexcusedCount >= 1) attendanceStatus = 'WARNING';
-  else if (attendanceRate < 95.0) attendanceStatus = 'STABLE';
+  // I-04: نبودِ داده ≠ وضعیتِ بد. وقتی هیچ جلسه‌ای ثبت نشده، نرخ null است
+  // و «null < 80.0» در جاوااسکریپت برابر true می‌شود؛ بدون این نگه‌دارنده،
+  // NO_DATA بی‌درنگ توسط همان مقایسه به CRITICAL تبدیل می‌شد. الگویِ قرارداد
+  // همانِ perfStatus زیر است: دادهٔ ناقص، نه عالی و نه بحرانی — ناشناخته است.
+  let attendanceStatus = 'NO_DATA';
+  if (attendanceRate !== null) {
+    if (attendanceRate < 80.0 || unexcusedCount >= 3) attendanceStatus = 'CRITICAL';
+    else if (attendanceRate < 90.0 || unexcusedCount >= 1) attendanceStatus = 'WARNING';
+    else if (attendanceRate < 95.0) attendanceStatus = 'STABLE';
+    else attendanceStatus = 'EXCELLENT';
+  }
 
   const attendanceOverview = {
     attendance_rate: attendanceRate,

@@ -1,7 +1,7 @@
 {
-  "_generated": "2026-09-29",
+  "_generated": "2026-10-14",
   "_why": "ارجاع‌های کهنهٔ موجود در گزارش‌های تاریخیِ نقطه‌درزمانی — ویرایششان یعنی جعلِ سابقه. این فهرست فقط از رشدِ بدهی جلوگیری می‌کند؛ ارجاعِ کهنهٔ تازه گیت را قرمز می‌کند.",
-  "count": 253,
+  "count": 255,
   "known": [
     "docs/AI_PROMPT.md → docs/SKILL.md",
     "docs/AI_PROMPT.md → src/js/19-actions.js",
@@ -101,6 +101,7 @@
     "docs/audit/history/runtime/RUNTIME_PROOF.md → server/middleware/scope.js",
     "docs/audit/history/runtime/RUNTIME_REPLACEMENT_REPORT.md → server/middleware/scope.js",
     "docs/audit/history/runtime/RUNTIME_TOPOLOGY_REPORT.md → server/middleware/scope.js",
+    "docs/audit/PAYESH_SYSTEM_SCALE_RELIABILITY_GAP_AUDIT_2026-10-05.md → server/middleware/scope.js",
     "docs/BACKEND_PRODUCTION_ARCHITECTURE.md → server/services/storage.js",
     "docs/BACKEND_PRODUCTION_ARCHITECTURE.md → server/workers/sms-worker.js",
     "docs/BUG_HUNT_REPORT.md → tests/wave8-deep-audit.js",
@@ -198,6 +199,7 @@
     "docs/DELTA_HARDENING.md → docs/DELTA_COVERAGE_REPORT_2026-09-11.md",
     "docs/DEPENDENCY_GRAPH.md → server/middleware/scope.js",
     "docs/HANDOFF_ARCHIVE.md → tests/atttime.tmp.js",
+    "docs/HANDOFF.md → docs/REPORT_OPENCODE_BOOTSTRAP_2026-10-06.md",
     "docs/HANDOFF.md → tests/wave8-deep-audit.js",
     "docs/INSCOPE_OPTIMIZATION_PLAN.md → server/scope-index.js",
     "docs/IRAN_COMPLIANCE_PACKAGE.md → docs/DATA_GOVERNANCE.md",

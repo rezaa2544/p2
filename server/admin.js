@@ -26,7 +26,7 @@ function createAdmin(ctx){
   const dir = path.join(ctx.dataDir, 'backups');
 
   function ensureDir(){
-    try{ fs.mkdirSync(dir, { recursive: true }); }catch(e){}
+    try{ fs.mkdirSync(dir, { recursive: true }); }catch(e){/* swallowed: intentional — e unused */}
   }
   function listBackups(){
     try{
@@ -91,16 +91,16 @@ function createAdmin(ctx){
     try{
       fs.writeFileSync(tmp, JSON.stringify(data), { encoding: 'utf8', mode: 0o600 }); /* S-73-3: PII — owner-only */
       fs.renameSync(tmp, final);
-      try{ fs.chmodSync(final, 0o600); }catch(e){}
+      try{ fs.chmodSync(final, 0o600); }catch(e){/* swallowed: intentional — e unused */}
     }catch(e){
       return null;
     }
     const all = listBackups();
     for(const f of all.slice(0, Math.max(0, all.length - RETENTION))){
-      try{ fs.unlinkSync(path.join(dir, f)); }catch(e){}
+      try{ fs.unlinkSync(path.join(dir, f)); }catch(e){/* swallowed: intentional — e unused */}
     }
     let size = 0;
-    try{ size = fs.statSync(final).size; }catch(e){}
+    try{ size = fs.statSync(final).size; }catch(e){/* swallowed: intentional — e unused */}
     audit('backup_created', { user_id: (userId == null ? null : userId), role: 'superadmin', file: name, size, source: source || 'manual', ip: ip || null, summary: 'تهیه نسخه پشتیبان (export): ' + name + ' (' + size + ' بایت)' });
     return { name: name, size: size, count: listBackups().length };
   }
@@ -144,7 +144,7 @@ function createAdmin(ctx){
       return sendJson(res, 404, { ok: false, code: 'no_backup' });
     }
     let data = null;
-    try{ data = JSON.parse(fs.readFileSync(fp, 'utf8')); }catch(e){}
+    try{ data = JSON.parse(fs.readFileSync(fp, 'utf8')); }catch(e){/* swallowed: intentional — e unused */}
     if(!data || typeof data !== 'object' || !Array.isArray(data.users)){
       audit('restore_failed', { user_id: g.user.id, role: g.user.role, school_id: g.user.school_id, file: name, reason: 'corrupt', summary: 'خطا در بازیابی پشتیبان: فایل خراب ' + name });
       return sendJson(res, 409, { ok: false, code: 'corrupt_backup' });

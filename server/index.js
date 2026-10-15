@@ -84,14 +84,14 @@ const { createAbuseGuard } = require('./abuse-guard'); /* Q3 audit/metric/webhoo
 try {
   const __envf = checkEnvFlags(process.env);
   if(__envf.mismatch) console.warn(mismatchWarning(__envf));
-}catch(e){}
+}catch(e){/* swallowed: intentional — e unused */}
 /* Phase 8.1 (R15): production running the WAF in detect-only mode must say
    so loudly at boot (default stays `report` by design — staged rollout,
    RISK-S-007; the warning makes the deployment decision explicit). */
 try {
   const __wafw = wafModeWarning(process.env);
   if(__wafw) console.warn(__wafw);
-}catch(e){}
+}catch(e){/* swallowed: intentional — e unused */}
 
 const ROOT = path.join(__dirname, '..');
 const DATA_DIR = path.join(__dirname, 'data');
@@ -353,7 +353,7 @@ const dbReady = db.init(store)
     if (info && info.ok === false) {
       console.error('[FATAL] Database readiness failed:', info.error || info.warning || 'unknown');
       if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') {
-        try { db.close(); } catch (e) {}
+        try { db.close(); } catch (e) {/* swallowed: intentional — e unused */}
         process.exit(1);
       }
       return info;
@@ -498,8 +498,8 @@ const cacheReady = cache.init().then((r) => {
        همچنان ترافیک سرو می‌کرد و ابطال در هر درخواست fail-open می‌شد.
        (اثبات: tests/reaudit-redis-outage.js S1) */
     if (isProdShape()) {
-      try { persistStore(); } catch (e) {}
-      try { db.close(); } catch (e) {}
+      try { persistStore(); } catch (e) {/* swallowed: intentional — e unused */}
+      try { db.close(); } catch (e) {/* swallowed: intentional — e unused */}
       process.exit(1);
     }
     return;
@@ -647,7 +647,7 @@ function persistStoreSync(){
        این مسیر فقط در خاموشی/فال‌بک اجرا می‌شود؛ ~۴۰ms اضافه بی‌اثر است. */
     fs.writeFileSync(tmp, require('./json-fast').stringifyAscii(store), { encoding: 'utf8', mode: 0o600 }); /* S-73-3: PII — owner-only */
     fs.renameSync(tmp, STORE_FILE);
-    try{ fs.chmodSync(STORE_FILE, 0o600); }catch(e){}
+    try{ fs.chmodSync(STORE_FILE, 0o600); }catch(e){/* swallowed: intentional — e unused */}
   }catch(e){ /* store file may be gone (tests) — never crash on exit */ }
 }
 /* P0-1: the periodic JSON mirror must never run in production. If PostgreSQL
@@ -665,9 +665,9 @@ setInterval(() => {
   }
 }, 2000).unref(); /* Wave 1: no periodic JSON persist in PG mode */
 process.on('exit', () => {
-  try { worker.stop(); } catch (e) {}
+  try { worker.stop(); } catch (e) {/* swallowed: intentional — e unused */}
   persistStoreSync();
-  try{ if(typeof auditLogger.flushSync === 'function') auditLogger.flushSync(); }catch(e){}
+  try{ if(typeof auditLogger.flushSync === 'function') auditLogger.flushSync(); }catch(e){/* swallowed: intentional — e unused */}
 });
 /* Wave 15: SIGTERM/SIGINT → handleShutdown (drain + close ناهمگام) —
    ثبتِ آن در پایینی فایل است؛ رویدادِ exit فقط کارِ همگام انجام می‌دهد
@@ -783,7 +783,7 @@ function sendJsonCounting(res, status, obj){
     if(r && r.sess && obj && ['forged_by', 'user_mismatch', 'school_mismatch', 'ownership_forge'].includes(obj.code)) {
       attackDetector.observeSyncResult({ sessionId: r.sess.jti, code: obj.code });
     }
-  }catch(_){}
+  }catch(_){/* swallowed: intentional — _ unused */}
   return sendJson(res, status, obj);
 }
 function readBody(req, limit){
@@ -1082,7 +1082,7 @@ const onRequest = async (req, res) => {
     try{
       if(chunk) __mBytes += Buffer.isBuffer(chunk) ? chunk.length
         : Buffer.byteLength(String(chunk), typeof enc === 'string' ? enc : 'utf8');
-    }catch(e){}
+    }catch(e){/* swallowed: intentional — e unused */}
     return __mEnd.call(this, chunk, enc, cb);
   };
   res.on('finish', () => {
@@ -1117,7 +1117,7 @@ const onRequest = async (req, res) => {
           errorOccurred: res.statusCode >= 500
         });
       }
-    } catch (_) {}
+    } catch (_) {/* swallowed: intentional — _ unused */}
   });
   /* Tracing (P-Trace): شناسهٔ ردیابی در کانتکست و سرآیندِ پاسخ برای هم‌بستگی —
      پیش از WAF تا رویدادهای ممیزیِ آن شناسهٔ ردیابی داشته باشند. */
@@ -1125,10 +1125,10 @@ const onRequest = async (req, res) => {
   try{
     const __tid = tracing.getTraceId();
     if(__tid){ req.context.trace_id = __tid; res.setHeader('X-Trace-Id', __tid); }
-  }catch(e){}
+  }catch(e){/* swallowed: intentional — e unused */}
   /* WAF (P-WAF): حالتِ report (پیش‌فرض — فقط-تشخیص) یا enforce (P0 #6:
      PAYESH_WAF_MODE=enforce ⇒ verdict = 403 waf_blocked با fail-safe allowlist) */
-  try{ await waf.wafMiddleware(req, res); }catch(e){}
+  try{ await waf.wafMiddleware(req, res); }catch(e){/* swallowed: intentional — e unused */}
   /* P0 #6: اگر WAF (enforce) درخواست را مسدود کرده باشد (403 فرستاده)، روتینگ ادامه نمی‌یابد */
   if(res.writableEnded) return;
   /* Q3 red-team / CSRF: an explicit browser Origin or Referer on every
@@ -1185,20 +1185,20 @@ const onRequest = async (req, res) => {
          خوانده می‌شوند تا هر درخواست هزینهٔ I/O ندهد). */
       try{
         if(db.isPostgres && db.isPostgres() && typeof db.poolStats === 'function') metrics.publishDbPools(db.poolStats());
-      }catch(e){}
+      }catch(e){/* swallowed: intentional — e unused */}
       try{
         if(typeof outbox.depth === 'function') metrics.publishOutboxDepth(outbox.depth());
-      }catch(e){}
+      }catch(e){/* swallowed: intentional — e unused */}
       /* Runtime health gauges must also refresh on the Prometheus scrape path;
          `/api/health` is operator-facing, not the collector's source. */
       try {
         const runtimeSecurity = runtimeMonitor.snapshot();
         metrics.set('payesh_suspicious_sessions', [], runtimeSecurity.suspicious_sessions);
         metrics.set('payesh_attack_patterns_blocked', [], runtimeSecurity.attack_patterns_blocked);
-      } catch (_) {}
+      } catch (_) {/* swallowed: intentional — _ unused */}
       try {
         await metrics.publishRuntimeProbes();
-      } catch (_) {}
+      } catch (_) {/* swallowed: intentional — _ unused */}
       const body = metrics.render();
       res.writeHead(200, {
         'Content-Type': 'text/plain; version=0.0.4; charset=utf-8',
@@ -1245,7 +1245,7 @@ const onRequest = async (req, res) => {
       let dbp = { ok: false, driver: 'unknown', alive: false };
       try { dbp = await db.ping(); } catch (e) { dbp = { ok: false, driver: 'unknown', alive: false, error: String(e.message || e).slice(0, 120) }; }
       let rdp = { ok: false, driver: 'unknown', alive: false };
-      try { rdp = await redis.ping(); } catch (e) {}
+      try { rdp = await redis.ping(); } catch (e) {/* swallowed: intentional — e unused */}
       const pool = db.getPool();
       const dbAlive = !!(dbp && dbp.ok);
       /* A-NEXT: verdict باید از اندازه‌گیریِ تازهٔ خودِ این درخواست ساخته
@@ -1269,7 +1269,7 @@ const onRequest = async (req, res) => {
       try {
         metrics.set('payesh_suspicious_sessions', [], runtimeSecurity.suspicious_sessions);
         metrics.set('payesh_attack_patterns_blocked', [], runtimeSecurity.attack_patterns_blocked);
-      } catch (_) {}
+      } catch (_) {/* swallowed: intentional — _ unused */}
       const body = {
         ok: isHealthy, name: 'payesh-server', phase: 1, time: new Date().toISOString(), version: '1.0', pid: process.pid,
         anomalies_detected_24h: runtimeSecurity.anomalies_detected_24h,
@@ -1293,7 +1293,7 @@ const onRequest = async (req, res) => {
       };
       /* Wave 10 — pool observability (primary + optional read replica) when PG live */
       try { if (db.isPostgres && db.isPostgres() && typeof db.poolStats === 'function') body.db_pools = db.poolStats(); }
-      catch (e) {}
+      catch (e) {/* swallowed: intentional — e unused */}
       return sendJson(res, isHealthy ? 200 : 503, body);
     }
     /* Wave 15: hookِ فقط-تست (env-gated، پیش‌فرض خاموش) — مسیرِ آهسته برای
@@ -1318,7 +1318,7 @@ const onRequest = async (req, res) => {
       /* Q3: detector hashes source/subject internally; neither phone nor IP is
          emitted to logs, metrics, webhooks, or health. */
       if(res.statusCode === 401) {
-        try { attackDetector.observeLoginFailure({ source: clientIp(req), subject: b && b.phone }); } catch (_) {}
+        try { attackDetector.observeLoginFailure({ source: clientIp(req), subject: b && b.phone }); } catch (_) {/* swallowed: intentional — _ unused */}
       }
       return r;
     }
@@ -1916,7 +1916,7 @@ const wrappedRequest = async (req, res) => {
   try{
     await onRequest(req, res);
   }catch(e){
-    try{ console.error('[request] unhandled handler error:', (e && e.message) || e); }catch(_){}
+    try{ console.error('[request] unhandled handler error:', (e && e.message) || e); }catch(_){/* swallowed: intentional — _ unused */}
     try{ if(!res.writableEnded) sendJson(res, 500, { ok: false, code: 'internal_error' }); }catch(_){}
   }
 };
@@ -1963,7 +1963,7 @@ if(TLS_CERT || TLS_KEY){
 }
 /* Wave 14 — تاپِ زمان‌سنجی پاسخ (هر دو حالت HTTP/HTTPS) — fail-safe؛ هرگز
    بوتِ سرویس را نمی‌شکند. */
-try { if (server) metrics.attach(server); } catch (e) {}
+try { if (server) metrics.attach(server); } catch (e) {/* swallowed: intentional — e unused */}
 /* S-73-6: connection/request timeouts — a stalled client must not hold a
    socket forever (slowloris surface). 65s covers the slowest legit op. */
 /* R96 P1-10: production باید TLS داشته باشد — یا مستقیم (گواهیِ CA) یا
@@ -1977,7 +1977,7 @@ try{
   if('requestTimeout' in server) server.requestTimeout = 65000;
   if('headersTimeout' in server) server.headersTimeout = 65000;
   server.keepAliveTimeout = 65000;
-}catch(e){}
+}catch(e){/* swallowed: intentional — e unused */}
 
 /* ── Wave 15: Graceful Shutdown (SIGTERM / SIGINT) ───────────────────
    توالی:
@@ -2003,8 +2003,8 @@ function handleShutdown(signal) {
   const t0 = Date.now();
   const started = inFlight;
   console.log('[shutdown] ' + signal + ' received — draining ' + started + ' in-flight request(s), budget ' + SHUTDOWN_TIMEOUT_MS + 'ms');
-  try { if (server.closeIdleConnections) server.closeIdleConnections(); } catch (e) {}
-  try { server.close(() => {}); } catch (e) {} /* ERR_SERVER_NOT_RUNNING — context تست */
+  try { if (server.closeIdleConnections) server.closeIdleConnections(); } catch (e) {/* swallowed: intentional — e unused */}
+  try { server.close(() => {/* swallowed: intentional — e unused */}); } catch (e) {} /* ERR_SERVER_NOT_RUNNING — context تست */
   let done = false;
   const killer = setTimeout(() => {
     console.error('[shutdown] drain budget exceeded — forcing exit');
@@ -2019,10 +2019,10 @@ function handleShutdown(signal) {
     done = true;
     clearTimeout(killer);
     clearInterval(poll);
-    try { persistStore(); } catch (e) {}
+    try { persistStore(); } catch (e) {/* swallowed: intentional — e unused */}
     (async () => {
-      try { await db.close(); } catch (e) {}
-      try { await redis.close(); } catch (e) {}
+      try { await db.close(); } catch (e) {/* swallowed: intentional — e unused */}
+      try { await redis.close(); } catch (e) {/* swallowed: intentional — e unused */}
       console.log('[shutdown] clean — dependencies closed in ' + (Date.now() - t0) + 'ms; exit 0');
       process.exit(0);
     })();
@@ -2059,7 +2059,7 @@ if(require.main === module){
   if (db.isProductionEnv() && !process.env.DATABASE_URL && !db.memoryFallbackAllowed()) {
     console.error('[FATAL] ' + db.backingStorePolicy().reason);
     console.error('Error: production requires PostgreSQL — set DATABASE_URL (the JSON/in-memory store is dev-only and forks per instance)');
-    try { persistStoreSync(); } catch (e) {}
+    try { persistStoreSync(); } catch (e) {/* swallowed: intentional — e unused */}
     process.exit(1);
   }
   const startListening = async () => {

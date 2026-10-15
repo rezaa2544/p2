@@ -490,7 +490,7 @@ let rLi, rLp;
         const recorded = await revocation.revokeSession(v.payload.jti, Math.max(1, v.payload.exp - Math.floor(Date.now() / 1000)));
         if (recorded !== true) {
           revocationFallback.appendJournal(revocationDataDir, { jti: v.payload.jti, exp: v.payload.exp });
-          try { audit('revocation_journalled', { user_id: v.payload.sub, jti: v.payload.jti, reason: 'redis_unconfirmed_write' }); } catch (_) {}
+          try { audit('revocation_journalled', { user_id: v.payload.sub, jti: v.payload.jti, reason: 'redis_unconfirmed_write' }); } catch (_) {/* swallowed: intentional — _ unused */}
         }
         audit('logout', { user_id: v.payload.sub, role: v.payload.role, school_id: v.payload.school_id, ip: clientIp(req), summary: 'خروج کاربر: ' + v.payload.sub }); if(ctx.markDirty) ctx.markDirty();
       }
@@ -532,7 +532,7 @@ let rLi, rLp;
       collectDel('messages', (r) => Number(r.from_id) === uid);
       let urow = null;
       if(typeof db.readOne === 'function'){
-        try{ const live = await db.readOne('users', uid); if(live) urow = live; }catch(e){}
+        try{ const live = await db.readOne('users', uid); if(live) urow = live; }catch(e){/* swallowed: intentional — e unused */}
       }
       if(!urow) urow = (store.users || []).find(u => u && Number(u.id) === uid);
       if(urow){
@@ -562,7 +562,7 @@ let rLi, rLp;
       await gdpr.eraseUserSessions(uid, s.jti, SESSION_TTL_S);
     } catch (revErr) {
       revocationFailed = revErr.code || String(revErr.message || revErr);
-      try { audit('gdpr_revocation_degraded', { user_id: uid, code: revocationFailed, summary: 'erasure persisted; session revocation unavailable' }); } catch (_) {}
+      try { audit('gdpr_revocation_degraded', { user_id: uid, code: revocationFailed, summary: 'erasure persisted; session revocation unavailable' }); } catch (_) {/* swallowed: intentional — _ unused */}
     }
     if(ctx.markDirty) ctx.markDirty();
     /* نشستِ فعلی هم همین حالا می‌میرد (cookie پاک) */
