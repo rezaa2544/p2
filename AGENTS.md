@@ -28,6 +28,9 @@
 
 Current HEAD، tests/CI، documentation، roadmap و origin/main را دوباره بررسی کن و SHA نهایی را ثبت کن.
 
+انتشار بخشی از تحویل است: commit، Push، و سپس تأیید مستقل SHA و محتوای ریموت.
+تا تأیید انتشار، مأموریت DONE نیست. مرجع: Rule 32 سند سیاست مهندسی.
+
 Historical reports منبع truth نیستند؛ فقط evidence تاریخی‌اند.
 
 ---

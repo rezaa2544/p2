@@ -76,6 +76,11 @@ A failed push is `NOT-PUSHED` for that attempt. It is not a fleet-wide blocker.
 
 If push is unavailable, preserve the work in a durable repository artifact when possible and continue independent work. A later live session may deliver it.
 
+`NOT-PUSHED` is the status of that Mission itself until publication is
+verified. "Continue independent work" means other independent work may
+proceed; it never authorises `DONE` for the unpublished Mission, whose status
+remains `WORK_INCOMPLETE` until the remote is verified.
+
 ## 5. Takeover / failover
 
 If an Arena/session becomes unavailable:
