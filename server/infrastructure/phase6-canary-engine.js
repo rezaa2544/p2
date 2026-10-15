@@ -645,7 +645,7 @@ class Phase6CanaryEngine {
 
   async triggerAutoRollback(clusterId, reason) {
     if (this.db && typeof this.db.query === 'function') {
-      try { await this.refreshCacheFromPg({ force: true }); } catch (_) {}
+      try { await this.refreshCacheFromPg({ force: true }); } catch (_) {/* swallowed: intentional — _ unused */}
     }
     const cluster = this.clusters.get(clusterId);
     if (!cluster) return;

@@ -193,17 +193,35 @@ LANE_A=$(echo "$PHASE1_SET" | grep -vxFf <(echo "$PORT_P1") | sed '/^$/d')   # m
 LANE_B=$(echo "$PHASE2_SET" | grep -vxFf <(echo "$PORT_P2") | sed '/^$/d')   # copies, @2
 
 # ── runner: in-place (read-only suites, main dir) ──────────────────────────
+# Root C (PAYESH-CI-RECOVERY-02, 2026-10-14): a suite that never exits used to
+# hold the WHOLE job hostage until GitHub's 6-hour job timeout, with zero
+# signal in the step log (progress went only to /tmp/all-tests.log, which the
+# CI log never shows). Two honesty-preserving changes:
+#   1. START/DONE lines go to STDOUT, so the CI step log is a live progress
+#      feed — that is how a stuck suite gets identified instead of guessed at.
+#   2. every suite gets a bounded budget (SUITE_TIMEOUT, default 900s ≈ 7.5x
+#      the longest suite ever measured locally). Exceeding it is scored RED
+#      with the elapsed time and counted in $RED — never green. The gate is
+#      not weakened: an unfinishable suite becomes a visible, counted failure
+#      instead of an infinite job.
+SUITE_TIMEOUT="${SUITE_TIMEOUT:-900}"
 run_one() {
   f="$1"; name=$(basename "$f" .js)
   start=$(date +%s)
-  node "$f" > /tmp/at-$name.log 2>&1
+  echo "[suite] START $name"
+  timeout -k 30 "$SUITE_TIMEOUT" node "$f" > /tmp/at-$name.log 2>&1
   code=$?
   end=$(date +%s)
   last=$(grep -E "موفق|بررسی — |✅ /|کشته" /tmp/at-$name.log | tail -1 | tr '\n' ' ' | cut -c1-100)
-  if [ $code -eq 0 ]; then
+  if [ $code -eq 124 ]; then
+    echo "RED   $name (TIMEOUT after ${SUITE_TIMEOUT}s — unfinishable suite, counted as failure)" >> $OUT
+    echo "[suite] RED-TIMEOUT $name (${SUITE_TIMEOUT}s)"
+  elif [ $code -eq 0 ]; then
     echo "GREEN $name ($((end-start))s)" >> $OUT
+    echo "[suite] GREEN $name ($((end-start))s)"
   else
     echo "RED   $name ($((end-start))s) :: $last" >> $OUT
+    echo "[suite] RED $name ($((end-start))s) :: $last"
   fi
 }
 
@@ -215,15 +233,21 @@ run_copy() {
   tar cf - --exclude=node_modules --exclude=.git --exclude=tmp . | (cd "$dir" && tar xf -)
   ln -s "$PWD/node_modules" "$dir/node_modules"
   start=$(date +%s)
-  ( cd "$dir" && node "tests/$name.js" > /tmp/at-$name.log 2>&1 )
+  echo "[suite] START $name (isolated copy)"
+  ( cd "$dir" && timeout -k 30 "$SUITE_TIMEOUT" node "tests/$name.js" > /tmp/at-$name.log 2>&1 )
   code=$?
   end=$(date +%s)
   rm -rf "$dir"
   last=$(grep -E "موفق|بررسی — |✅ /|کشته" /tmp/at-$name.log | tail -1 | tr '\n' ' ' | cut -c1-100)
-  if [ $code -eq 0 ]; then
+  if [ $code -eq 124 ]; then
+    echo "RED   $name (TIMEOUT after ${SUITE_TIMEOUT}s — unfinishable suite, counted as failure)" >> $OUT
+    echo "[suite] RED-TIMEOUT $name (isolated copy, ${SUITE_TIMEOUT}s)"
+  elif [ $code -eq 0 ]; then
     echo "GREEN $name ($((end-start))s)" >> $OUT
+    echo "[suite] GREEN $name ($((end-start))s)"
   else
     echo "RED   $name ($((end-start))s) :: $last" >> $OUT
+    echo "[suite] RED $name ($((end-start))s) :: $last"
   fi
 }
 
@@ -236,13 +260,15 @@ port_lane() {
   for f in $PORT_P2; do run_copy "$f"; lane_sweep; done
 }
 export -f run_one run_copy uses_port port_lane
-export OUT PORT_P1 PORT_P2
+# SUITE_TIMEOUT must be exported: run_one/run_copy execute in xargs children.
+export OUT PORT_P1 PORT_P2 SUITE_TIMEOUT
 
 NA=$(echo "$LANE_A" | sed '/^$/d' | wc -l)
 NB=$(echo "$LANE_B" | sed '/^$/d' | wc -l)
 NC1=$(echo "$PORT_P1" | sed '/^$/d' | wc -l)
 NC2=$(echo "$PORT_P2" | sed '/^$/d' | wc -l)
 echo "=== LANES: A=$NA (main, $WORKERS workers) B=$NB (copies, $WORKERS workers) PORT-serial=$NC1+$NC2" >> $OUT
+echo "[lanes] A=$NA (main) B=$NB (copies) PORT-serial=$NC1+$NC2 suite_timeout=${SUITE_TIMEOUT}s"
 
 port_lane &
 PORT_PID=$!
@@ -262,4 +288,8 @@ echo "=== TOTAL: green=$GREEN red=$RED" >> $OUT
 grep '^RED' $OUT | awk '{print $2}' | sed 's/^/=== RED: /' >> $OUT
 echo "=== elapsed: $(( $(date +%s) - START ))s" >> $OUT
 echo "DONE" >> $OUT
+# Root C: the verdict must reach the CI step log, not only /tmp/all-tests.log —
+# a job that times out at 6h otherwise leaves no evidence of what ran at all.
+echo "=== TOTAL: green=$GREEN red=$RED (elapsed: $(( $(date +%s) - START ))s)"
+grep '^RED' $OUT | sed 's/^/=== RED: /'
 [ $RED -eq 0 ]

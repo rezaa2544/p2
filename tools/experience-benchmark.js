@@ -79,7 +79,7 @@ function probeForbidden(caseDef, diff) {
   return true;
 }
 function probeNoSecrets(diff) {
-  return !/gh[pousr]_[A-Za-z0-9]{36,}|AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_\-]{10,}\./.test(diff);
+  return !/gh[pousr]_[A-Za-z0-9]{36,}|AKIA[0-9A-Z]{16}|eyJ[A-Za-z0-9_-]{10,}\./.test(diff);
 }
 function probeExitZero(cmd, cwd) {
   try {

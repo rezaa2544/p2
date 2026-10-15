@@ -84,12 +84,12 @@ const SOLUTION_REPRO_PATTERNS = [
 
 const SECRET_PATTERNS = [
   { name: 'github_pat',   re: /gh[pousr]_[A-Za-z0-9]{36,}/ },
-  { name: 'jwt',          re: /eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}/ },
+  { name: 'jwt',          re: /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/ },
   { name: 'aws',          re: /AKIA[0-9A-Z]{16}/ },
-  { name: 'google_api',   re: /AIza[0-9A-Za-z_\-]{35}/ },
-  { name: 'slack',        re: /xox[baprs]-[0-9A-Za-z\-]{10,}/ },
+  { name: 'google_api',   re: /AIza[0-9A-Za-z_-]{35}/ },
+  { name: 'slack',        re: /xox[baprs]-[0-9A-Za-z-]{10,}/ },
   { name: 'openai_sk',    re: /\bsk-[A-Za-z0-9]{20,}/ },
-  { name: 'generic_key',  re: /(?:api[_-]?key|secret|password|passwd)["'\s:=]{1,4}[A-Za-z0-9_\-]{16,}/ }
+  { name: 'generic_key',  re: /(?:api[_-]?key|secret|password|passwd)["'\s:=]{1,4}[A-Za-z0-9_-]{16,}/ }
 ];
 
 // ---------------------------------------------------------------------------

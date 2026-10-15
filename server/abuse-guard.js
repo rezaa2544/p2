@@ -52,12 +52,12 @@ function createAbuseGuard(options = {}) {
     const count = Math.max(1, Math.min(1000000, Number(event.count) || 1));
     const at = Number.isFinite(Number(event.at)) ? Number(event.at) : Date.now();
     const compact = { pattern, severity, count, at };
-    try { audit('attack_pattern_detected', compact); } catch (_) {}
-    try { metrics.inc('payesh_attack_patterns_detected_total', { pattern, severity }); } catch (_) {}
+    try { audit('attack_pattern_detected', compact); } catch (_) {/* swallowed: intentional — _ unused */}
+    try { metrics.inc('payesh_attack_patterns_detected_total', { pattern, severity }); } catch (_) {/* swallowed: intentional — _ unused */}
     /* `actor` is already a detector digest, never a raw session/IP; the
        monitor hashes it again for its own bounded session keyspace. */
-    try { if (runtimeMonitor) runtimeMonitor.markAttackPatternBlocked(pattern, event.actor, at); } catch (_) {}
-    try { await webhook({ type: 'attack_pattern', ...compact }); } catch (_) {}
+    try { if (runtimeMonitor) runtimeMonitor.markAttackPatternBlocked(pattern, event.actor, at); } catch (_) {/* swallowed: intentional — _ unused */}
+    try { await webhook({ type: 'attack_pattern', ...compact }); } catch (_) {/* swallowed: intentional — _ unused */}
     return compact;
   }
   async function reportAnomaly(event = {}) {
@@ -65,10 +65,10 @@ function createAbuseGuard(options = {}) {
     const role = ['superadmin', 'manager', 'teacher', 'student', 'parent', 'edu_office', 'counselor', 'driver', 'anonymous'].includes(event.role) ? event.role : 'anonymous';
     const at = Number.isFinite(Number(event.at)) ? Number(event.at) : Date.now();
     const compact = { signal, role, severity: 'medium', at };
-    try { audit('runtime_anomaly_detected', compact); } catch (_) {}
-    try { metrics.inc('payesh_runtime_anomalies_total', { signal }); } catch (_) {}
-    try { if (runtimeMonitor && typeof runtimeMonitor.markSuspicious === 'function') runtimeMonitor.markSuspicious(event.sessionId, at); } catch (_) {}
-    try { await webhook({ type: 'runtime_anomaly', ...compact }); } catch (_) {}
+    try { audit('runtime_anomaly_detected', compact); } catch (_) {/* swallowed: intentional — _ unused */}
+    try { metrics.inc('payesh_runtime_anomalies_total', { signal }); } catch (_) {/* swallowed: intentional — _ unused */}
+    try { if (runtimeMonitor && typeof runtimeMonitor.markSuspicious === 'function') runtimeMonitor.markSuspicious(event.sessionId, at); } catch (_) {/* swallowed: intentional — _ unused */}
+    try { await webhook({ type: 'runtime_anomaly', ...compact }); } catch (_) {/* swallowed: intentional — _ unused */}
     return compact;
   }
   return { report, reportAnomaly };

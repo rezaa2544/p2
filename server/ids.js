@@ -53,7 +53,7 @@ function createIds({ db, cache }){
       bootstrapped.add(col);
     }catch(e){ /* نبود دسترسی: لایهٔ بعدی تصمیم می‌گیرد */
     }finally{
-      try{ await db.query('SELECT pg_advisory_unlock($1)', [key]); }catch(e){}
+      try{ await db.query('SELECT pg_advisory_unlock($1)', [key]); }catch(e){/* swallowed: intentional — e unused */}
     }
   };
 
@@ -69,7 +69,7 @@ function createIds({ db, cache }){
         const r = await db.query('SELECT nextval($1)', [ownedSeq]);
         return Number(r.rows[0].nextval);
       }
-    }catch(e){}
+    }catch(e){/* swallowed: intentional — e unused */}
     const seq = seqName(col);
     try{
       const r = await db.query('SELECT nextval($1)', [seq]);
@@ -87,7 +87,7 @@ function createIds({ db, cache }){
   const guardedMaxPlusOne = async (col, list) => {
     let token = null;
     if(cache){
-      try{ token = await cache.acquireLock('ids:' + col, 5); }catch(e){}
+      try{ token = await cache.acquireLock('ids:' + col, 5); }catch(e){/* swallowed: intentional — e unused */}
     }
     try{
       const base = Math.max(localMax(list), lastIssued.get(col) || 0);
