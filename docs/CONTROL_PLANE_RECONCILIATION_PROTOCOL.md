@@ -23,6 +23,10 @@ LOCAL → REMOTE BRANCH → PR → MERGED MAIN → CURRENT-HEAD VERIFIED
 
 PUBLISHED-BRANCH is not MERGED-MAIN. COMMITTED is not VERIFIED. OLD-HEAD VERIFIED is not CURRENT-HEAD VERIFIED. TEST-PASS is not MISSION-COMPLETE.
 
+REPO SCOPE — a SHA is valid only inside its own repo; comparing SHAs from two
+different repos as before/after is invalid. See Rule 32 of
+docs/ENGINEERING_EXECUTION_AND_VERIFICATION_POLICY.md.
+
 ## 4. Hermes Verification Contract
 Hermes MUST independently inspect repository reality, exact refs and ancestry; distinguish branch publication from main merge; challenge executor claims conflicting with Git; check mission alignment; invalidate stale evidence; report conflicts; and never defend a prior verdict merely because it was previously issued.
 
