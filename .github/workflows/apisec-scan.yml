@@ -52,9 +52,24 @@ jobs:
       security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
       actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
     runs-on: ubuntu-latest
+    env:
+      APISEC_CREDENTIALS_PRESENT: ${{ secrets.apisec_username != '' && secrets.apisec_password != '' }}
 
     steps:
+       - name: Fail closed when APIsec credentials are missing
+         if: ${{ env.APISEC_CREDENTIALS_PRESENT != 'true' }}
+         shell: bash
+         run: |
+           {
+             echo '## APIsec — BLOCKED'
+             echo ''
+             echo 'Required repository secrets apisec_username and apisec_password are missing or empty.'
+             echo 'No APIsec scan was executed; this result is NOT evidence of a clean API.'
+           } >> "$GITHUB_STEP_SUMMARY"
+           exit 1
+
        - name: APIsec scan
+         if: ${{ env.APISEC_CREDENTIALS_PRESENT == 'true' }}
          uses: apisec-inc/apisec-run-scan@025432089674a28ba8fb55f8ab06c10215e772ea
          with:
           # The APIsec username with which the scans will be executed
