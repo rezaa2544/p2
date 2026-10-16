@@ -269,6 +269,10 @@ async function main() {
     } else { chk('CANARY: نشستِ manager وجود داشت', false); }
 
     const s = sessions.teacher;
+    /* Snapshot BEFORE the unauthorized request. Taking the baseline after
+       syncOp() can absorb a fast persisted write and make the no-write check
+       falsely green. The manager canary above already proved persistence. */
+    const base = countReportLogs();
     const r = await syncOp(s.cookie, [mkReportLogOp(s.user, 'a01-teacher-1')]);
     console.log('  HTTP status  : ' + r.status);
     console.log('  body ok      : ' + (r.json && r.json.ok));
@@ -280,7 +284,6 @@ async function main() {
     chk('teacher: code رد پاسخ‌ داده شد', !!res0.code, res0.code || '');
     /* سیگنالِ بارگذارِ اصلی: آیا رکورد واقعاً نوشته شد؟ یک چرخهٔ کاملِ
        تیکر صبر می‌کنیم تا هر نوشتنِ به‌تعویق‌افتاده رس برسد. */
-    const base = countReportLogs();
     const after = await settleCount();
     chk('teacher: رکورد در store نوشته نشد (مهم‌ترین سیگنال)', after === base,
       'base=' + base + ' after=' + after);
