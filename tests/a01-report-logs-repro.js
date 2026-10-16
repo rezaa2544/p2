@@ -261,7 +261,7 @@ async function main() {
 
   /* ── A01-2: مورد P1 اصلی — teacher → report_logs ins ─────── */
   console.log('— A01-2: موردِ P1 اصلی — teacher → report_logs registration —');
-  if (!MUT) {
+  if (!MUT && sessions.manager && sessions.teacher) {
     /* کنترلِ مثبتِ زنده‌بودنِ write-check: یک actorِ مجاز اول یک رکورد
        می‌نویسد و باید در فایل دیده شود. بدون این کنترل، اگر persist
        غیرفعال باشد، چکِ «نوشته نشد» برای teacher کاذب سبز می‌شود
@@ -301,7 +301,12 @@ async function main() {
       console.log('  ℹ توضیح: HTTP 200 + per-op ok:false قراردادِ دستهٔ sync است (خطِ 1398 sync.js + 865).');
       console.log('     این یک bypass نیست — مگر اینکه رکورد نوشته شده باشد (چکِ بالا).');
     }
-  } else { console.log('  ⏳ حالتِ جهش: skip شد'); }
+  } else if (MUT) {
+    console.log('  ⏳ حالتِ جهش: skip شد');
+  } else {
+    chk('A01-2 preconditions: manager + teacher sessions available', false,
+      'manager=' + !!sessions.manager + ' teacher=' + !!sessions.teacher + '; actor login checks above contain the primary failure');
+  }
 
   /* ── A01-3: actorهای مجاز — آیا مسیرِ مشروع حفظ می‌شود؟ ─── */
   console.log('— A01-3: actorهای مجاز (model: manager/counselor/edu_office/superadmin) —');
