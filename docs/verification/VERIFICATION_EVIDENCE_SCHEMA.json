@@ -7,7 +7,7 @@
   "reviewers": ["chatgpt", "arena", "atria"],
   "reviewer_verdicts": ["PASS", "FAIL", "BLOCKED"],
   "allowed_statuses": ["UNKNOWN", "TESTED", "RUNTIME_VERIFIED", "ADVERSARIAL_VERIFIED", "INDEPENDENTLY_VERIFIED", "CERTIFIED"],
-  "required_registry_keys": ["schema_version", "policy", "status", "head_bound", "required_reviewers", "allowed_statuses", "reviews_recorded", "human_governance", "items"],
+  "required_registry_keys": ["schema_version", "policy", "status", "head_bound", "required_reviewers", "allowed_statuses", "reviews_recorded", "human_governance", "expected_ids", "items"],
   "required_item_keys": ["id", "status", "requirement", "head_sha", "reviews", "known_limitations", "evidence"],
   "required_evidence_keys": ["reviewer", "kind", "command", "exit_code", "checks_total", "checks_passed", "artifact", "sha256", "head_sha", "runtime", "ts"],
   "evidence_kinds": ["positive_test", "negative_test", "adversarial_test", "runtime_evidence", "failure_recovery_evidence", "data_evidence", "review_note"],
@@ -20,7 +20,7 @@
     "checks_passed": "integer, 0 <= checks_passed <= checks_total",
     "artifact": "repo-relative path; file must exist (V-02)",
     "sha256": "sha256 hex of the artifact bytes (V-02)",
-    "head_sha": "40-hex commit the evidence was produced on; must equal registry head_bound and gate HEAD (V-02/V-06)",
+    "head_sha": "40-hex immutable source commit on which the evidence was produced; normally equals checkout HEAD. For a metadata-only registry commit, may equal its parent only when the gate proves docs/verification/VERIFICATION_REGISTRY.json is the sole changed path. All item, evidence, and human-governance bindings must agree on that evidence SHA; ancestry still checks checkout HEAD (V-02/V-06).",
     "runtime": "non-empty object describing runtime (node/os/...)",
     "ts": "ISO-8601 timestamp"
   },
