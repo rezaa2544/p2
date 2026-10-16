@@ -44,7 +44,7 @@ V-02 weak evidence binding            -> V-02 evidence binds HEAD+artifact+hash 
 V-03 reviewer independence            -> V-03 reviewer evidence pairwise distinct (no byte-cloned PASS)
 V-04 status machine                   -> V-04 allowed_statuses == canonical machine; item/verdict membership enforced
 V-05 BLOCKED_UNTIL ignored            -> V-05 top-level status must be in the machine and not BLOCKED*
-V-06 local-only HEAD binding          -> V-06 origin/main resolvable and HEAD contained in origin/main
+V-06 remote ancestry binding          -> origin/main resolves; on push/main HEAD is an ancestor of origin/main, while on pull_request origin/main is an ancestor of PR HEAD
 V-07 scanner coverage                 -> G7 walks sh/ts/json + self-skip/self-only/expect-true patterns; G6b allowlist entries must be owned (owner/reason/expiry/replacement) and may be path-scoped
 V-08 self-attested intelligence       -> V-08 self-certification modules may not be the sole evidence source
 V-09 certification input injection    -> V-09 every reviewer PASS needs reviews_recorded + item.reviews + slot-identity corroboration
