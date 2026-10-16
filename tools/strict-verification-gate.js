@@ -18,7 +18,7 @@ const REVIEWER_VERDICTS = ['PASS', 'FAIL', 'BLOCKED'];
 const EVIDENCE_KINDS = ['positive_test', 'negative_test', 'adversarial_test', 'runtime_evidence', 'failure_recovery_evidence', 'data_evidence', 'review_note'];
 const POSITIVE_KINDS = ['positive_test', 'runtime_evidence', 'data_evidence'];
 const ADVERSARIAL_KINDS = ['negative_test', 'adversarial_test', 'failure_recovery_evidence'];
-const REQUIRED_REGISTRY_KEYS = ['schema_version', 'policy', 'status', 'head_bound', 'required_reviewers', 'allowed_statuses', 'reviews_recorded', 'human_governance', 'items'];
+const REQUIRED_REGISTRY_KEYS = ['schema_version', 'policy', 'status', 'head_bound', 'required_reviewers', 'allowed_statuses', 'reviews_recorded', 'human_governance', 'expected_ids', 'items'];
 const REQUIRED_ITEM_KEYS = ['id', 'status', 'requirement', 'head_sha', 'reviews', 'known_limitations', 'evidence'];
 const REQUIRED_EVIDENCE_KEYS = ['reviewer', 'kind', 'command', 'exit_code', 'checks_total', 'checks_passed', 'artifact', 'sha256', 'head_sha', 'runtime', 'ts'];
 const SELF_CERT_SOURCES = /(?:^|\s)(?:server\/analytics\/intelligence-release-certification\.js|server\/infrastructure\/phase4-release-certification\.js)(?=\s|$)/;
