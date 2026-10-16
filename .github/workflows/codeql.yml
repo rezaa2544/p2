@@ -1,11 +1,9 @@
 name: "CodeQL"
+# Repository Code Scanning default setup is enabled. Running this advanced
+# CodeQL workflow on push/PR conflicts with default setup ("advanced configurations
+# cannot be processed when default setup is enabled"). Keep a manual diagnostic
+# entry point; default setup owns automatic branch/PR scanning.
 on:
-  push:
-    branches: ["main"]
-  pull_request:
-    branches: ["main"]
-  schedule:
-    - cron: "23 2 * * 4"
   workflow_dispatch:
 
 permissions:
