@@ -40,7 +40,7 @@ Registry exploits below must be rejected by tools/strict-verification-gate.js wi
 Negative fixtures: tests/strict-verification-gate.negative.test.js (wired in .github/workflows/strict-verification.yml).
 
 V-01 empty-registry bypass            -> V-01 registry declares a non-empty items array
-V-02 weak evidence binding            -> V-02 evidence binds HEAD+artifact+hash (and registry head_bound == HEAD)
+V-02 evidence binding            -> V-02 binds immutable evidence SHA + artifact + hash; normally checkout HEAD, or the parent SHA only when a metadata-only commit changes exactly docs/verification/VERIFICATION_REGISTRY.json (ancestry still checks checkout HEAD)
 V-03 reviewer independence            -> V-03 reviewer evidence pairwise distinct (no byte-cloned PASS)
 V-04 status machine                   -> V-04 allowed_statuses == canonical machine; item/verdict membership enforced
 V-05 BLOCKED_UNTIL ignored            -> V-05 top-level status must be in the machine and not BLOCKED*
@@ -53,3 +53,12 @@ V-11 empty zero-ranking compliance    -> V-11 checks_total >= 1 (no 0/0) and bot
 V-12 evidence schema                  -> V-12 mandatory schema for evidence/reviewer/run/command/exit/artifact/hash/runtime (docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json, pinned in the gate)
 
 FAIL-CLOSED: any missing/unprovable field above => NOT VERIFIED + exit 1. No fallback green.
+
+
+TWO-PHASE REGISTRY BINDING (Issue #472)
+A tracked registry cannot store the SHA of the same commit containing it: changing the registry changes that commit SHA. The gate therefore supports a metadata-only commit protocol:
+1. Run required tests and collect independent evidence against an immutable source SHA.
+2. Commit only `docs/verification/VERIFICATION_REGISTRY.json` in a child commit.
+3. The gate binds registry `head_bound`, item `head_sha`, evidence `head_sha`, and human-governance `head_sha` to the parent source SHA only if `git diff-tree --name-only HEAD^ HEAD` contains exactly that registry path.
+4. Any additional changed path, missing parent, mismatched SHA, artifact/hash mismatch, absent human approval, or missing reviewer evidence remains FAIL / NOT VERIFIED.
+5. This protocol resolves SHA self-reference only; it does not create evidence or grant approvals. The registry must not be updated to imply tests/reviews that were not performed on the source SHA.
