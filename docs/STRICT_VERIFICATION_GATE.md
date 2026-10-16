@@ -59,6 +59,6 @@ TWO-PHASE REGISTRY BINDING (Issue #472)
 A tracked registry cannot store the SHA of the same commit containing it: changing the registry changes that commit SHA. The gate therefore supports a metadata-only commit protocol:
 1. Run required tests and collect independent evidence against an immutable source SHA.
 2. Commit only `docs/verification/VERIFICATION_REGISTRY.json` in a child commit.
-3. The gate binds registry `head_bound`, item `head_sha`, evidence `head_sha`, and human-governance `head_sha` to the parent source SHA only if `git diff-tree --name-only HEAD^ HEAD` contains exactly that registry path.
+3. The gate binds registry `head_bound`, item `head_sha`, evidence `head_sha`, and human-governance `head_sha` to the parent source SHA only if HEAD is a single-parent, non-merge commit and `git diff --name-only --no-renames HEAD^ HEAD` contains exactly that registry path. Merge commits are rejected for metadata-only binding.
 4. Any additional changed path, missing parent, mismatched SHA, artifact/hash mismatch, absent human approval, or missing reviewer evidence remains FAIL / NOT VERIFIED.
 5. This protocol resolves SHA self-reference only; it does not create evidence or grant approvals. The registry must not be updated to imply tests/reviews that were not performed on the source SHA.
