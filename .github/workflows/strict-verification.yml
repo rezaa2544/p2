@@ -28,10 +28,15 @@ jobs:
         run: node tests/strict-verification-gate.negative.test.js
       - name: Strict verification contract
         run: node tools/strict-verification-gate.js
+      # Issue #454 item 2: a failing step must not erase the evidence of the steps
+      # below it. `if: always()` keeps Core tests and the Production truth gate
+      # running and surfacing their OWN verdict; the job still fails if any step
+      # failed. Nothing is downgraded and no gate is weakened.
       - name: Core tests
+        if: always()
         run: npm test
       - name: Production truth gate
-        if: ${{ env.DATABASE_URL != '' }}
+        if: ${{ always() && env.DATABASE_URL != '' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GATE_REQUIRE_CLEAN: "1"

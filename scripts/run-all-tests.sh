@@ -292,4 +292,11 @@ echo "DONE" >> $OUT
 # a job that times out at 6h otherwise leaves no evidence of what ran at all.
 echo "=== TOTAL: green=$GREEN red=$RED (elapsed: $(( $(date +%s) - START ))s)"
 grep '^RED' $OUT | sed 's/^/=== RED: /'
+# Issue #454 item 6 (fail-closed): zero executed suites must never be green.
+# An empty lane set previously fell through to `[ $RED -eq 0 ]` with
+# GREEN=0 RED=0 and exited 0 — a "no suites ran" run reported as success.
+if [ "$GREEN" -eq 0 ]; then
+  echo "=== FATAL: green=0 — no suites executed; refusing to report green ===" >&2
+  exit 1
+fi
 [ $RED -eq 0 ]
