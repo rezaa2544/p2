@@ -191,8 +191,11 @@ function finishFixture(dir, reg) {
   return head;
 }
 
-function runGate(dir) {
-  const r = spawnSync(process.execPath, ['tools/strict-verification-gate.js'], { cwd: dir, encoding: 'utf8', timeout: 60000 });
+function runGate(dir, eventName) {
+  const r = spawnSync(process.execPath, ['tools/strict-verification-gate.js'], {
+    cwd: dir, encoding: 'utf8', timeout: 60000,
+    env: { ...process.env, GITHUB_EVENT_NAME: eventName || 'push', GITHUB_BASE_REF: eventName === 'pull_request' ? 'main' : '' }
+  });
   return { code: r.status, out: (r.stdout || '') + (r.stderr || '') };
 }
 
@@ -291,8 +294,10 @@ addCase('V-12b', 'V-12', 'registry missing schema keys (no policy/status/allowed
 
 addCase('V-12c', 'V-12', 'schema file weakened (evidence keys stripped) — pinned contract must notice', null, { tamperSchema: true });
 
-/* GOOD control: must stay accepted */
+/* GOOD control: must stay accepted in push/main context and PR context. */
 cases.push({ id: 'GOOD', expectFail: null, description: 'fully valid registry stays VERIFIED', mutate: null, extra: {} });
+cases.push({ id: 'GOOD-PR-ANCESTRY', expectFail: null, description: 'valid PR HEAD descends from origin/main', mutate: null, extra: { prContext: true } });
+addCase('V-06-PR-DIVERGENT', 'V-06 PR base contained in HEAD', 'PR HEAD does not descend from origin/main', null, { prContext: true, divergentPrOrigin: true });
 
 /* ── runner ─────────────────────────────────────────────────────────────── */
 console.log('==== A-30 V-01..V-12 NEGATIVE GATE FIXTURES ====');
@@ -305,9 +310,22 @@ for (const c of cases) {
       fs.writeFileSync(path.join(dir, c.extra.addFile.path), c.extra.addFile.content);
     }
     const head = finishFixture(dir, reg);
+    if (c.extra && c.extra.prContext) {
+      if (c.extra.divergentPrOrigin) {
+        /* Create a sibling commit for origin/main; it is not an ancestor of the PR HEAD. */
+        const prHead = git(dir, ['rev-parse', 'HEAD']);
+        git(dir, ['checkout', '-q', 'HEAD~1']);
+        git(dir, ['commit', '--allow-empty', '-qm', 'divergent origin main']);
+        const divergent = git(dir, ['rev-parse', 'HEAD']);
+        git(dir, ['checkout', '-q', prHead]);
+        git(dir, ['update-ref', 'refs/remotes/origin/main', divergent]);
+      } else {
+        /* Valid PR context: origin/main is the parent of this PR HEAD. */
+        git(dir, ['update-ref', 'refs/remotes/origin/main', 'HEAD~1']);
+      }
+    }
     if (c.extra && c.extra.divergentOrigin) {
-      /* local-only line: origin/main stays on the PARENT commit while HEAD is the
-         crafted child — original gate never consults origin/main (V-06). */
+      /* Push/main negative fixture: HEAD is a local-only child beyond origin/main. */
       git(dir, ['update-ref', 'refs/remotes/origin/main', 'HEAD~1']);
     }
     if (c.extra && c.extra.noOrigin) {
@@ -321,7 +339,7 @@ for (const c of cases) {
         fs.writeFileSync(sp, JSON.stringify(sc, null, 2));
       }
     }
-    const r = runGate(dir);
+    const r = runGate(dir, c.extra && c.extra.prContext ? 'pull_request' : 'push');
     if (c.expectFail === null) {
       rec('GOOD control accepted (exit 0)', r.code === 0, 'exit=' + r.code + (r.code !== 0 ? '\n' + r.out.split('\n').filter((l) => l.includes('FAIL') || l.includes('BLOCKERS')).slice(0, 12).join('\n') : ''));
     } else {
