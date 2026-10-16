@@ -36,8 +36,31 @@ const norm = (v) => JSON.stringify(v);
 
 let head = '';
 try { head = cp.execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT }).toString().trim(); } catch (e) { }
+
+/* Two-phase binding: a registry commit may bind evidence to its immutable parent
+   only when the registry is the sole changed path. This avoids self-reference
+   (editing the registry changes HEAD) without allowing code/workflow/test drift
+   after evidence collection. All ancestry checks continue to use checkout HEAD. */
+let evidenceHead = head;
+let metadataOnlyBinding = false;
+let metadataBindingReason = 'registry commit is not proven metadata-only';
+try {
+  const parent = cp.execFileSync('git', ['rev-parse', '--verify', 'HEAD^'], { cwd: ROOT, encoding: 'utf8' }).trim();
+  const changed = cp.execFileSync('git', ['diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD^', 'HEAD'], { cwd: ROOT, encoding: 'utf8' })
+    .split(/\r?\n/).map((s) => s.trim()).filter(Boolean).sort();
+  if (isSha1(parent) && changed.length === 1 && changed[0] === 'docs/verification/VERIFICATION_REGISTRY.json') {
+    evidenceHead = parent;
+    metadataOnlyBinding = true;
+    metadataBindingReason = 'registry-only metadata commit; evidence binds parent ' + parent;
+  } else {
+    metadataBindingReason = 'changed paths=' + JSON.stringify(changed) + '; expected registry only';
+  }
+} catch (e) {
+  metadataBindingReason = 'no verifiable parent/diff: ' + String(e.message || e);
+}
 console.log('==== PAYESH STRICT VERIFICATION GATE ====');
 chk('G1 current HEAD known', /^[0-9a-f]{40}$/.test(head), head);
+chk('V-02 evidence binding mode explicit', !metadataOnlyBinding || evidenceHead !== head, metadataBindingReason);
 chk('G2 mandatory policy exists', fs.existsSync(path.join(ROOT, 'docs', 'STRICT_VERIFICATION_GATE.md')));
 chk('G3 registry exists', fs.existsSync(REG));
 let reg = null; try { reg = JSON.parse(read(REG)); } catch (e) { }
@@ -166,15 +189,15 @@ if (reg && isObj(reg)) {
     norm(reg.allowed_statuses));
   const top = String(reg.status || '');
   chk('V-05 top-level status in machine & not BLOCKED*', CANONICAL_STATUSES.includes(top) && !/^BLOCKED/i.test(top), top || '(absent)');
-  chk('V-02 registry head_bound matches HEAD', reg.head_bound === head, 'head_bound=' + reg.head_bound + ' head=' + head);
+  chk('V-02 registry head_bound matches immutable evidence SHA', reg.head_bound === evidenceHead, 'head_bound=' + reg.head_bound + ' evidence_sha=' + evidenceHead + ' checkout_head=' + head + (metadataOnlyBinding ? ' [metadata-only]' : ''));
   const hg = reg.human_governance;
   const hgOk = isObj(hg) &&
     hg.requires_human_approval === true &&          /* absent key must NOT pass (V-10) */
     hg.human_approved === true &&                   /* absent key must NOT pass (V-10) */
     isStr(hg.approver) && !REVIEWERS.includes(String(hg.approver).toLowerCase()) &&
-    isDate(hg.decided_at) && hg.head_sha === head;
+    isDate(hg.decided_at) && hg.head_sha === evidenceHead;
   chk('V-10 human governance present, approved, human (not AI reviewer), head-bound', hgOk,
-    isObj(hg) ? JSON.stringify({ r: hg.requires_human_approval, a: hg.human_approved, approver: hg.approver, head: hg.head_sha }) : 'absent');
+    isObj(hg) ? JSON.stringify({ r: hg.requires_human_approval, a: hg.human_approved, approver: hg.approver, head: hg.head_sha, evidence_sha: evidenceHead }) : 'absent');
   chk('V-12 registry has all required keys', REQUIRED_REGISTRY_KEYS.every((k) => k in reg),
     REQUIRED_REGISTRY_KEYS.filter((k) => !(k in reg)).join(',') || 'complete');
 
@@ -199,7 +222,7 @@ if (reg && isObj(reg)) {
       const id = isObj(item) ? String(item.id || '') : '';
       chk('G8 unique item ' + id, !!id && !ids.has(id));
       ids.add(id);
-      chk('G9 ' + id + ' binds current HEAD', item.head_sha === head, 'item=' + item.head_sha + ' head=' + head);
+      chk('G9 ' + id + ' binds immutable evidence SHA', item.head_sha === evidenceHead, 'item=' + item.head_sha + ' evidence_sha=' + evidenceHead + ' checkout_head=' + head);
       for (const r of REVIEWERS) {
         const v = item[r] || {};
         chk('G10 ' + id + ' ' + r + ' PASS + evidence', v.status === 'PASS' && Array.isArray(v.evidence) && v.evidence.length > 0, v.status || 'missing');
@@ -264,14 +287,14 @@ if (reg && isObj(reg)) {
       for (const f of flat) {
         const e = f.e;
         if (!isObj(e)) { bindErrs.push(f.where + ': not an object'); continue; }
-        if (e.head_sha !== head) bindErrs.push(f.where + ': head_sha mismatch');
+        if (e.head_sha !== evidenceHead) bindErrs.push(f.where + ': head_sha mismatch (expected evidence SHA ' + evidenceHead + ')');
         if (!isStr(e.artifact) || !isSha256(e.sha256)) { bindErrs.push(f.where + ': artifact/sha256 missing'); continue; }
         const ap = path.resolve(ROOT, e.artifact);
         if (!ap.startsWith(ROOT + path.sep) || !fs.existsSync(ap)) { bindErrs.push(f.where + ': artifact not in repo: ' + e.artifact); continue; }
         const actual = crypto.createHash('sha256').update(fs.readFileSync(ap)).digest('hex');
         if (actual !== e.sha256) bindErrs.push(f.where + ': sha256 mismatch');
       }
-      chk('V-02 ' + id + ' evidence binds HEAD+artifact+hash', bindErrs.length === 0, bindErrs.slice(0, 4).join(' | '));
+      chk('V-02 ' + id + ' evidence binds immutable SHA+artifact+hash', bindErrs.length === 0, bindErrs.slice(0, 4).join(' | '));
 
       /* V-03: the three reviewers' evidence must be independent (not byte-clones) */
       const reviewerSlots = REVIEWERS.map((r) => ({ r, entries: slots.find((s) => s.slot === r).entries }));
@@ -347,7 +370,7 @@ if (reg && isObj(reg)) {
 
 const certified = reg && Array.isArray(reg.items) ? reg.items.filter((x) => x && x.status === 'CERTIFIED').length : 0;
 console.log('RESULT ' + pass + ' pass / ' + fail + ' fail');
-console.log('HEAD ' + head);
+console.log('HEAD ' + head);\nconsole.log('EVIDENCE_SHA ' + evidenceHead + (metadataOnlyBinding ? ' (metadata-only registry commit)' : ''));
 console.log('CERTIFIED ' + certified);
 console.log('VERDICT ' + (fail ? 'NOT VERIFIED' : 'VERIFIED'));
 if (fail) { console.log('BLOCKERS'); failures.forEach((x) => console.log(' - ' + x.n + (x.d ? ' — ' + x.d : ''))); }
