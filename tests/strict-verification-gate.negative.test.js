@@ -147,7 +147,7 @@ function mkFixture(name) {
   });
   const allow = {
     schema_version: 1,
-    items: ['assert(true', 'process.exit(0)', '|| true', '0/0 checks'].map(mk)
+    items: ['assert(true', 'process.exit(0)', '|| true', '0/0 checks', 'self-skip', 'self-only', 'expect-true-toBe'].map(mk)
   };
   fs.writeFileSync(path.join(dir, 'docs', 'verification', 'FALSE_GREEN_ALLOWLIST.json'), JSON.stringify(allow, null, 2));
   git(dir, ['init', '-q']);
@@ -248,7 +248,7 @@ addCase('V-06', 'V-06', 'HEAD not contained in origin/main (unpushed local line)
 addCase('V-06b', 'V-06', 'origin/main ref missing (cannot prove remote binding)', null, { noOrigin: true });
 
 /* V-07: scanner misses shell false-greens */
-addCase('V-07', 'fake-green.sh', 'false-green || true hidden in a .sh test', null, { addFile: { path: 'tests/fake-green.sh', content: '#!/bin/sh\ncmd_volatile || true\necho "all good"\n' } });
+addCase('V-07', 'G7 || true has no unapproved hits', 'false-green || true hidden in a .sh test', null, { addFile: { path: 'tests/fake-green.sh', content: '#!/bin/sh\ncmd_volatile || true\necho "all good"\n' } });
 
 /* V-08: certification evidence solely from self-attesting module */
 addCase('V-08', 'V-08', 'all evidence commands run the self-certification module', (r) => {
@@ -340,7 +340,7 @@ for (const c of cases) {
     }
     const r = runGate(dir, c.extra && c.extra.prContext ? 'pull_request' : 'push');
     if (c.expectFail === null) {
-      rec('GOOD control accepted (exit 0)', r.code === 0, 'exit=' + r.code + (r.code !== 0 ? '\n' + r.out.split('\n').filter((l) => l.includes('FAIL') || l.includes('BLOCKERS')).slice(0, 12).join('\n') : ''));
+      rec('GOOD control accepted (exit 0)', r.code === 0, 'exit=' + r.code + (r.code !== 0 ? '\n' + r.out.split('\n').slice(-30).join('\n') : ''));
     } else {
       const rejected = r.code !== 0 && r.out.includes(c.expectFail);
       const detail = 'exit=' + r.code + (rejected ? '' : (r.code === 0 ? ' — ACCEPTED by gate (defect)' : ' — exit1 but expected check missing: ' + c.expectFail));
