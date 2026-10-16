@@ -19,6 +19,22 @@ const topLevelTests = fs.readdirSync(TESTS).filter(f => f.endsWith('.js')).map(f
 const apiDir = path.join(TESTS, 'api');
 const apiTests = fs.existsSync(apiDir) ? fs.readdirSync(apiDir).filter(f => f.endsWith('.test.js')).map(f => 'tests/api/' + f).sort() : [];
 const apiRunnerPath = 'tests/api/runner.js';
+/* The API runner owns its suite registry. Compare that registry with the
+   actual tests/api/*.test.js inventory instead of pinning a stale count
+   (the registry grew from 30 to 31 suites). Requiring the module does not
+   execute suites because its CLI entrypoint is guarded by require.main. */
+const apiRunnerModule = fs.existsSync(path.join(ROOT, apiRunnerPath))
+  ? require(path.join(ROOT, apiRunnerPath))
+  : null;
+const apiRegistry = apiRunnerModule && Array.isArray(apiRunnerModule.API_TESTS)
+  ? apiRunnerModule.API_TESTS.slice().sort()
+  : [];
+const apiDiskInventory = apiTests.map(t => path.basename(t)).sort();
+const apiMissingFromRegistry = apiDiskInventory.filter(t => !apiRegistry.includes(t));
+const apiMissingOnDisk = apiRegistry.filter(t => !apiDiskInventory.includes(t));
+const apiCoverage = apiRegistry.length > 0
+  && apiMissingFromRegistry.length === 0
+  && apiMissingOnDisk.length === 0;
 console.log('\n🔗 TEST/CI parity contract\n');
 const testScript = (pkg.scripts && pkg.scripts.test) || '';
 chk('P1 npm test is defined', testScript.length > 0, 'package.json scripts.test is empty');
@@ -35,11 +51,14 @@ if (comprehensiveRunnerWired) {
 }
 const orphans = topLevelTests.filter(t => !executed.has(t));
 const apiRunnerWired = testScript.includes(apiRunnerPath) || referenced.has(apiRunnerPath);
-const apiCoverage = apiTests.length === 30 && apiRunnerWired;
-chk('P6a API inventory has exactly 30 suites', apiTests.length === 30, 'count=' + apiTests.length);
+chk('P6a API inventory matches runner registry', apiCoverage,
+  'disk=' + apiDiskInventory.length + ' registry=' + apiRegistry.length
+  + ' missingFromRegistry=' + JSON.stringify(apiMissingFromRegistry)
+  + ' missingOnDisk=' + JSON.stringify(apiMissingOnDisk));
 chk('P6d comprehensive runner is wired', comprehensiveRunnerWired, 'scripts/run-all-tests.sh');
 chk('P6b API runner is wired into a canonical gate', apiRunnerWired, apiRunnerPath);
-chk('P6c API runner covers all 30 suites', apiCoverage, 'runner=' + apiRunnerWired + ' suites=' + apiTests.length);
+chk('P6c API runner covers every discovered API suite', apiCoverage && apiRunnerWired,
+  'runner=' + apiRunnerWired + ' disk=' + apiDiskInventory.length + ' registry=' + apiRegistry.length);
 console.log('\n  📊 measured: ' + topLevelTests.length + ' top-level tests | API suites=' + apiTests.length + ' | ' + executed.size + ' wired | ' + orphans.length + ' top-level unwired\n');
 chk(`P6 unwired tests <= registered budget (${ORPHAN_BUDGET})`, orphans.length <= ORPHAN_BUDGET, `unwired=${orphans.length}`);
 for (const t of CRITICAL_ORPHANS) { chk(`P7 critical orphan exists: ${t}`, fs.existsSync(path.join(ROOT,t))); chk(`P8 critical orphan wired: ${t}`, referenced.has(t)); }
