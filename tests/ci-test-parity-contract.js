@@ -32,9 +32,11 @@ const apiRegistry = apiRunnerModule && Array.isArray(apiRunnerModule.API_TESTS)
 const apiDiskInventory = apiTests.map(t => path.basename(t)).sort();
 const apiMissingFromRegistry = apiDiskInventory.filter(t => !apiRegistry.includes(t));
 const apiMissingOnDisk = apiRegistry.filter(t => !apiDiskInventory.includes(t));
+const apiRegistryDuplicates = apiRegistry.filter((t, i) => i > 0 && t === apiRegistry[i - 1]);
 const apiCoverage = apiRegistry.length > 0
   && apiMissingFromRegistry.length === 0
-  && apiMissingOnDisk.length === 0;
+  && apiMissingOnDisk.length === 0
+  && apiRegistryDuplicates.length === 0;
 console.log('\n🔗 TEST/CI parity contract\n');
 const testScript = (pkg.scripts && pkg.scripts.test) || '';
 chk('P1 npm test is defined', testScript.length > 0, 'package.json scripts.test is empty');
@@ -54,7 +56,8 @@ const apiRunnerWired = testScript.includes(apiRunnerPath) || referenced.has(apiR
 chk('P6a API inventory matches runner registry', apiCoverage,
   'disk=' + apiDiskInventory.length + ' registry=' + apiRegistry.length
   + ' missingFromRegistry=' + JSON.stringify(apiMissingFromRegistry)
-  + ' missingOnDisk=' + JSON.stringify(apiMissingOnDisk));
+  + ' missingOnDisk=' + JSON.stringify(apiMissingOnDisk)
+  + ' duplicateRegistryEntries=' + JSON.stringify(apiRegistryDuplicates));
 chk('P6d comprehensive runner is wired', comprehensiveRunnerWired, 'scripts/run-all-tests.sh');
 chk('P6b API runner is wired into a canonical gate', apiRunnerWired, apiRunnerPath);
 chk('P6c API runner covers every discovered API suite', apiCoverage && apiRunnerWired,
