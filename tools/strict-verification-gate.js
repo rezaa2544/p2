@@ -45,15 +45,24 @@ let evidenceHead = head;
 let metadataOnlyBinding = false;
 let metadataBindingReason = 'registry commit is not proven metadata-only';
 try {
-  const parent = cp.execFileSync('git', ['rev-parse', '--verify', 'HEAD^'], { cwd: ROOT, encoding: 'utf8' }).trim();
-  const changed = cp.execFileSync('git', ['diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD^', 'HEAD'], { cwd: ROOT, encoding: 'utf8' })
-    .split(/\r?\n/).map((s) => s.trim()).filter(Boolean).sort();
-  if (isSha1(parent) && changed.length === 1 && changed[0] === 'docs/verification/VERIFICATION_REGISTRY.json') {
-    evidenceHead = parent;
-    metadataOnlyBinding = true;
-    metadataBindingReason = 'registry-only metadata commit; evidence binds parent ' + parent;
+  /* Reject merge commits: a first-parent diff alone does not prove the second
+     parent introduced no source changes. A metadata-only binding is a single-
+     parent commit with exactly one changed path, the registry itself. */
+  const parentLine = cp.execFileSync('git', ['rev-list', '--parents', '-n', '1', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
+  const commitAndParents = parentLine ? parentLine.split(/\s+/) : [];
+  if (commitAndParents.length !== 2) {
+    metadataBindingReason = 'metadata-only binding requires a non-merge commit with exactly one parent; parent_count=' + Math.max(0, commitAndParents.length - 1);
   } else {
-    metadataBindingReason = 'changed paths=' + JSON.stringify(changed) + '; expected registry only';
+    const parent = commitAndParents[1];
+    const changed = cp.execFileSync('git', ['diff', '--name-only', '--no-renames', parent, 'HEAD'], { cwd: ROOT, encoding: 'utf8' })
+      .split(/\r?\n/).map((s) => s.trim()).filter(Boolean).sort();
+    if (isSha1(parent) && changed.length === 1 && changed[0] === 'docs/verification/VERIFICATION_REGISTRY.json') {
+      evidenceHead = parent;
+      metadataOnlyBinding = true;
+      metadataBindingReason = 'single-parent registry-only metadata commit; evidence binds parent ' + parent;
+    } else {
+      metadataBindingReason = 'changed paths=' + JSON.stringify(changed) + '; expected registry only';
+    }
   }
 } catch (e) {
   metadataBindingReason = 'no verifiable parent/diff: ' + String(e.message || e);
