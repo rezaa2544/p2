@@ -124,8 +124,17 @@ async function boot(extraEnv) {
     PAYESH_AUDIT: path.join(d, 'a.log'),
     PAYESH_KEY: path.join(d, 'k.key'),
     PAYESH_DEMO_CODE: '1',
-    PAYESH_OTP_PEPPER: 'a01-repro-pepper'
+    PAYESH_OTP_PEPPER: 'a01-repro-pepper',
+    NODE_ENV: 'test',
+    PAYESH_ENV: 'test',
+    PAYESH_ALLOW_DEV_MEMORY_AUTHORITY: '1'
   }, extraEnv || {});
+  /* This reproduction proves the JSON-store report_logs authorization contract.
+     CI exports live PG/Redis variables globally; inheriting them silently moves
+     this child onto PostgreSQL, whose isolated schema lacks the seeded demo users.
+     Remove infrastructure URLs from this child so the identity and write canary
+     exercise the same isolated PAYESH_STORE fixture that the assertions inspect. */
+  for (const key of ['DATABASE_URL', 'PGURL', 'READ_DATABASE_URL', 'REDIS_URL']) delete env[key];
   fs.copyFileSync(REAL_STORE, env.PAYESH_STORE);
   const p = spawnServer(env);
   for (let i = 0; i < 60; i++) {
