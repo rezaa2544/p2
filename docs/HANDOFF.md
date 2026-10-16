@@ -1,3 +1,31 @@
+# Issue #454 — بازممیزی و اصلاحِ دروازهٔ CI/تست — ۲۰۲۶-۱۰-۱۶
+
+**Mission:** بازممیزیِ ده‌بندیِ Issue #454 روی HEAD منجمد و رفعِ مواردِ باز، به‌صورتِ **شاخهٔ پیشنهادیِ ادغام‌نشده** · **Owner:** OpenCode (executor) · **Control Plane:** کاربر · **HEAD مبنا:** `0e389391` = `origin/main` · **شاخه:** `fix/454-ci-test-gate-remediation` (ادغام‌نشده — اصل هشتم §۰).
+
+## چه انجام شد
+
+| بند #454 | وضعیت روی HEAD | اقدام |
+|---|---|---|
+| ۱ decouple lint | از قبل رفع‌شده (lint آخرین گام، خط ۴۸۷) | بدون تغییر |
+| ۲ cascade در strict-verification | **باز** | `if: always()` روی Core tests + `always() &&` روی truth gate |
+| ۳ zero-suite در API runner | **باز** | گاردِ fail-closed + `runSuites()` + تستِ رگرسیون |
+| ۴ شمارنده‌های skip (۱۳ فایل) | باز | **تعمداً دست‌نخورده** (نیازمند فهرستِ ممیزیِ خارجی؛ ریسک شکستن ۵۹ سوئیت) |
+| ۵ ردیف مهاجرت `026` | **باز** | افزودن به `docs/MIGRATION_GUIDE.md` §۸ |
+| ۶ صفر-سوئیت در `run-all-tests.sh` | **باز** | `[ "$GREEN" -eq 0 ] ⇒ exit 1` |
+| ۷ lint سبز | از قبل سبز | بدون تغییر (۰ خطا · ۱۳۷۱ هشدار ≤ ۱۳۷۹) |
+
+**VERIFIED on current HEAD (`0e389391` + تغییرات) — E3 (اجرای واقعی محلی):** `npm run build:check`=0 · `npm test`=0 (smoke ۵۴۷/۵۴۷) · `npm run lint`=0 · `node tools/docs-stats-sync.js --check`=0 · `node tools/migrate-helper.js --check`=0 (شمارهٔ بعدی ۰۲۷) · `node tests/zero-suite-fail-closed.test.js`=۴/۴ exit 0 · `bash -n scripts/run-all-tests.sh`=0.
+
+**Negative proof (جهش):** حذفِ گاردِ صفر-سوئیت ⇒ تست **exit 1** با سطرِ قرمزِ «empty registry fails closed» و بازتولیدِ همان false-green اصلی (`0/0 سوئیت موفق — بدون خطا ✅`)؛ فایل بایت‌به‌بایت بازگردانده شد ⇒ **TEST VALID**.
+
+**مستندات (H11):** `docs/AI_PROMPT.md` + `CONTRIBUTING.md` در همان نوبت به‌روز شدند.
+
+**OPEN/NEXT:** بندِ ۴ و بندِ ۱۰ نیازمندِ تصمیمِ control-plane · گیتِ `strict-verification` تا بازسازیِ رژیم روی SHA نهایی **سرخ می‌ماند** (fail-closed طراحیی؛ علت: schema پین‌شدهٔ گیت A-30 — `status/requirement/head_sha/reviews/expected_ids/human_governance` — و `head_bound=e4584806`؛ سبزِ مصنوعی ساخته نشد) · یافتهٔ جانبی: `tests/handoff-integrity.js` **کهنه/بی‌سیم** است (به `HANDOFF.md` ریشه اشاره می‌کند که در `2f3b23c3` آرشیو شد؛ روی HEAD قرمز است و به `run.js` سیم‌کشی نشده) · تنها secret موجود `NOTION_API_KEY` است ⇒ `DATABASE_URL` نیست ⇒ truth-gate همواره skip.
+
+**Status:** `FIXED-SCOPED` (نیازمندِ verification مستقل/CI و مجوزِ ادغامِ ناظر).
+
+---
+
 # OpenCode/Atria Bootstrap Reconciliation — 2026-10-06
 
 **Mission:** P0 bootstrap reconciliation + current-head synchronization · **Owner:** Atria (executor) · **Control Plane:** ChatGPT · **HEAD:** `bb0b5fa6` = `origin/main`

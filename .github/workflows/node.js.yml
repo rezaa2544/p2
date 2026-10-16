@@ -90,6 +90,9 @@ jobs:
     # job exactly as before (no continue-on-error, no gate weakening).
     - name: Comprehensive canonical regression runner
       run: npm run test:all
+    - name: Zero-suite fail-closed contract (issue #454 / A-13)
+      if: always()
+      run: node tests/zero-suite-fail-closed.test.js
     - name: Runtime Reliability — Lease fencing static contract
       if: always()
       run: node tests/outbox-lease-fencing.test.js
