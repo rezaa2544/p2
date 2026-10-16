@@ -29,7 +29,7 @@ jobs:
         id: scope
         shell: bash
         run: |
-          if find . -type f \\( -name '*.cs' -o -name '*.vb' \\) -not -path './.git/*' -not -path './node_modules/*' -print -quit | grep -q .; then
+          if find . -type f \( -name '*.cs' -o -name '*.vb' \) -not -path './.git/*' -not -path './node_modules/*' -print -quit | grep -q .; then
             echo 'has_dotnet=true' >> "$GITHUB_OUTPUT"
             echo 'SecurityCodeScan is applicable: C# or VB.NET source found.' >> "$GITHUB_STEP_SUMMARY"
           else
