@@ -170,7 +170,7 @@ jobs:
     - name: M14-A01 exception cleanup fail-closed contract
       if: always()
       timeout-minutes: 1
-      run: node tests/a01-exception-cleanup.test.js
+      run: node scripts/a01-exception-cleanup-contract.js
     - name: M14-A01 sync/report_logs teacher denial (batch contract)
       if: always()
       timeout-minutes: 5
