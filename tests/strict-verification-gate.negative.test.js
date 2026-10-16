@@ -353,6 +353,59 @@ for (const c of cases) {
   }
 }
 
+/* Issue #472: exercise the two-phase registry binding using a real temporary git history.
+   A valid metadata commit must bind to its immutable source parent. A merge commit
+   with the same registry-only first-parent tree delta must be rejected explicitly. */
+function runMetadataBindingFixture(name, mergeCommit) {
+  const dir = mkFixture('metadata-' + name);
+  try {
+    writeArtifacts(dir);
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-qm', 'immutable source evidence commit']);
+    const sourceSha = git(dir, ['rev-parse', 'HEAD']);
+
+    const reg = goodRegistry(sourceSha, null, dir);
+    reg.expected_ids = reg.items.map((it) => String(it.id));
+    fs.writeFileSync(path.join(dir, 'docs', 'verification', 'VERIFICATION_REGISTRY.json'), JSON.stringify(reg, null, 2));
+    git(dir, ['add', 'docs/verification/VERIFICATION_REGISTRY.json']);
+    git(dir, ['commit', '-qm', 'registry-only metadata commit']);
+    const metadataSha = git(dir, ['rev-parse', 'HEAD']);
+    git(dir, ['update-ref', 'refs/remotes/origin/main', sourceSha]);
+
+    if (mergeCommit) {
+      /* A merge commit whose final tree differs from first parent only by registry
+         must still be rejected for metadata binding because multi-parent history is
+         not the protocol's allowed evidence-finalization shape. */
+      git(dir, ['checkout', '-qb', 'side-source', sourceSha]);
+      fs.writeFileSync(path.join(dir, 'tests', 'smoke.js'), '// side-parent source mutation\n');
+      git(dir, ['add', 'tests/smoke.js']);
+      git(dir, ['commit', '-qm', 'side parent source change']);
+      const sideSha = git(dir, ['rev-parse', 'HEAD']);
+      git(dir, ['checkout', '--detach', metadataSha]);
+      const tree = git(dir, ['rev-parse', metadataSha + '^{tree}']);
+      const mergeSha = git(dir, ['commit-tree', tree, '-p', sourceSha, '-p', sideSha, '-m', 'merge-shaped metadata commit']);
+      git(dir, ['update-ref', 'HEAD', mergeSha]);
+    }
+
+    const result = runGate(dir, 'pull_request');
+    if (mergeCommit) {
+      rec('Issue #472 merge commit rejected for metadata binding',
+        result.code !== 0 && result.out.includes('metadata-only binding requires a non-merge commit'),
+        'exit=' + result.code);
+    } else {
+      rec('Issue #472 single-parent registry-only commit binds immutable parent',
+        result.code === 0,
+        'exit=' + result.code + (result.code !== 0 ? '\n' + result.out.split('\n').filter((l) => l.includes('FAIL') || l.includes('BLOCKERS')).slice(0, 12).join('\n') : ''));
+    }
+  } catch (e) {
+    rec('Issue #472 metadata fixture harness error (' + name + ')', false, String(e && e.message || e));
+  } finally {
+    try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {}
+  }
+}
+runMetadataBindingFixture('positive', false);
+runMetadataBindingFixture('merge-negative', true);
+
 console.log('==== A-30 NEGATIVE RESULT ' + pass + ' pass / ' + fail + ' fail ====');
 if (fail) {
   console.log('BLOCKERS');
