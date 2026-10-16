@@ -312,12 +312,11 @@ for (const c of cases) {
     const head = finishFixture(dir, reg);
     if (c.extra && c.extra.prContext) {
       if (c.extra.divergentPrOrigin) {
-        /* Create a sibling commit for origin/main; it is not an ancestor of the PR HEAD. */
-        const prHead = git(dir, ['rev-parse', 'HEAD']);
-        git(dir, ['checkout', '-q', 'HEAD~1']);
-        git(dir, ['commit', '--allow-empty', '-qm', 'divergent origin main']);
-        const divergent = git(dir, ['rev-parse', 'HEAD']);
-        git(dir, ['checkout', '-q', prHead]);
+        /* Create a sibling commit directly so the fixture's rewritten registry
+           in the working tree is not disturbed by checkout/stash operations. */
+        const parent = git(dir, ['rev-parse', 'HEAD~1']);
+        const tree = git(dir, ['rev-parse', parent + '^{tree}']);
+        const divergent = git(dir, ['commit-tree', tree, '-p', parent, '-m', 'divergent origin main']);
         git(dir, ['update-ref', 'refs/remotes/origin/main', divergent]);
       } else {
         /* Valid PR context: origin/main is the parent of this PR HEAD. */
