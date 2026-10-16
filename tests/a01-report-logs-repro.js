@@ -134,7 +134,7 @@ async function boot(extraEnv) {
      this child onto PostgreSQL, whose isolated schema lacks the seeded demo users.
      Remove infrastructure URLs from this child so the identity and write canary
      exercise the same isolated PAYESH_STORE fixture that the assertions inspect. */
-  for (const key of ['DATABASE_URL', 'PGURL', 'READ_DATABASE_URL', 'REDIS_URL']) delete env[key];
+  for (const key of ['DATABASE_URL', 'PGURL', 'READ_DATABASE_URL', 'REDIS_URL', 'REDIS_CLUSTER_NODES', 'REDIS_SENTINELS', 'REDIS_SENTINEL_NAME', 'REDIS_PASSWORD']) delete env[key];
   fs.copyFileSync(REAL_STORE, env.PAYESH_STORE);
   const p = spawnServer(env);
   for (let i = 0; i < 60; i++) {
