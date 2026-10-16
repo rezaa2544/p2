@@ -89,6 +89,7 @@ jobs:
     # and its verdicts are always surfaced; the lint failure still fails the
     # job exactly as before (no continue-on-error, no gate weakening).
     - name: Comprehensive canonical regression runner
+      timeout-minutes: 20
       run: npm run test:all
     - name: Zero-suite fail-closed contract (issue #454 / A-13)
       if: always()
