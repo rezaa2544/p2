@@ -379,7 +379,8 @@ if (reg && isObj(reg)) {
 
 const certified = reg && Array.isArray(reg.items) ? reg.items.filter((x) => x && x.status === 'CERTIFIED').length : 0;
 console.log('RESULT ' + pass + ' pass / ' + fail + ' fail');
-console.log('HEAD ' + head);\nconsole.log('EVIDENCE_SHA ' + evidenceHead + (metadataOnlyBinding ? ' (metadata-only registry commit)' : ''));
+console.log('HEAD ' + head);
+console.log('EVIDENCE_SHA ' + evidenceHead + (metadataOnlyBinding ? ' (metadata-only registry commit)' : ''));
 console.log('CERTIFIED ' + certified);
 console.log('VERDICT ' + (fail ? 'NOT VERIFIED' : 'VERIFIED'));
 if (fail) { console.log('BLOCKERS'); failures.forEach((x) => console.log(' - ' + x.n + (x.d ? ' — ' + x.d : ''))); }
