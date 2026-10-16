@@ -194,6 +194,7 @@ async function main() {
 
   console.log('— A01-0: بوت سرور روی current HEAD —');
   const srv = MUT ? null : await boot();
+  if (process.env.A01_TEST_THROW_AFTER_BOOT === '1') throw new Error('A01 forced exception after child spawn');
   chk('سرور روی پورت ' + PORT + ' بالا آمد', !!srv || !!MUT);
   if (!srv && !MUT) {
     /* تلهٔ false-green: return زودهنگام بدونِ این انتصاب، یک شکستِ بوت
@@ -414,4 +415,15 @@ async function main() {
   process.exit(fail ? 1 : 0);
 }
 
-main().catch((e) => { console.error('CRASH', e); process.exitCode = 2; });
+function cleanupAfterCrash() {
+  for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} }
+  for (const d of tmpdirs) { try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {} }
+}
+
+main().catch((e) => {
+  console.error('CRASH', e);
+  cleanupAfterCrash();
+  /* Exit immediately after killing children: otherwise their open stdio pipes
+     can keep the parent event loop alive forever and strand the CI step. */
+  process.exit(2);
+});
