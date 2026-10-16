@@ -18,7 +18,32 @@ on:
     - cron: '19 11 * * 6'
 
 jobs:
+  scope-check:
+    name: SecurityCodeScan applicability (C# / VB.NET)
+    runs-on: ubuntu-latest
+    outputs:
+      has_dotnet: ${{ steps.scope.outputs.has_dotnet }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require a matching language before invoking SecurityCodeScan
+        id: scope
+        shell: bash
+        run: |
+          if find . -type f \\( -name '*.cs' -o -name '*.vb' \\) -not -path './.git/*' -not -path './node_modules/*' -print -quit | grep -q .; then
+            echo 'has_dotnet=true' >> "$GITHUB_OUTPUT"
+            echo 'SecurityCodeScan is applicable: C# or VB.NET source found.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'has_dotnet=false' >> "$GITHUB_OUTPUT"
+            {
+              echo '## SecurityCodeScan — NOT APPLICABLE'
+              echo 'No C# (.cs) or VB.NET (.vb) source files exist in this JavaScript/Node.js repository.'
+              echo 'The C#/VB scanner was not run; this is a scope decision, not a clean SAST result.'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   SCS:
+    needs: scope-check
+    if: ${{ needs.scope-check.outputs.has_dotnet == 'true' }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
