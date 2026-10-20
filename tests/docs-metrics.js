@@ -63,6 +63,30 @@ grp('C6-02 — سیاست شمارِ روزانه (board 2026-09-17)');
    ساختِ یک گزارش روزانهٔ واقعی، شمار پایدار و گیتِ --check را نمی‌زند. */
 const stats = require('../tools/docs-stats-sync.js');
 const t0 = stats.truth();
+const docsMetadata = require('../tools/docs-metadata');
+const stableCatalog = docsMetadata.buildCatalog().filter((entry) => !docsMetadata.isDailyDoc(entry.path));
+const catalogStatuses = {};
+for (const entry of stableCatalog) catalogStatuses[entry.status] = (catalogStatuses[entry.status] || 0) + 1;
+const statusMap = fs.readFileSync(path.join(ROOT, 'docs/DOCUMENTATION_MAP.md'), 'utf8');
+const expectedStatusRows = [
+  `| فعال (در حال استفاده) | ${faNum(catalogStatuses.active || 0)} |`,
+  `| زنده (ماشینی/رخدادی، مستثنی از بامپ) | ${faNum(catalogStatuses['active-live'] || 0)} |`,
+  `| منجمد (قفل‌ها و اسنادِ منجمد) | ${faNum(catalogStatuses.frozen || 0)} |`,
+  `| آرشیو (بایگانی نمایه) | ${faNum(catalogStatuses.archived || 0)} |`,
+];
+chk('truth/map: وضعیت‌های پایدار با کاتالوگِ indexed یکی است',
+  stableCatalog.length === t0.docsTree &&
+  t0.activeDocs === (catalogStatuses.active || 0) &&
+  t0.liveDocs === (catalogStatuses['active-live'] || 0) &&
+  t0.frozenDocs === (catalogStatuses.frozen || 0) &&
+  t0.archivedDocs === (catalogStatuses.archived || 0) &&
+  expectedStatusRows.every((row) => statusMap.includes(row)),
+  JSON.stringify(catalogStatuses));
+const expectedSearchTokens = Object.keys(docsMetadata.buildSearchIndex(docsMetadata.buildCatalog())).length;
+chk('truth/map: شمارِ توکنِ جستجو با نمایهٔ تولیدی (با اسناد روزانه) برابر است',
+  t0.searchTokens === expectedSearchTokens &&
+  statusMap.includes(`| توکن در نمایهٔ جستجو (شامل اسناد روزانه) | ${faNum(expectedSearchTokens)} |`),
+  `${t0.searchTokens}/${expectedSearchTokens}`);
 chk('truth: زیرپوشه‌های daily-* از شمار پایدار جداست',
   t0.dailyTotal === Object.values(t0.dailySubs).reduce((a, b) => a + b, 0) && t0.dailyTotal > 0,
   'daily=' + t0.dailyTotal);

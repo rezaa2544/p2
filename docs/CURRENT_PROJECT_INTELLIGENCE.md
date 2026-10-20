@@ -738,3 +738,29 @@ Canonical execution priority is explicitly recorded as M15-02 measured capacity 
 Evidence rules: no DONE/PASS without command/output/exit code/SHA/environment/limits; NOT-RUN, NOT AVAILABLE, BLOCKED, or synthetic-only evidence is not PASS; important regression tests require mutation evidence; no 10M-scale or production-ready claim before M15-25; Verification Registry is frozen/rebuilt only at the final SHA. Re-run docs-index-coverage, documentation-map-coverage, and onboarding-coverage on current main. Investigate QUEUE-CAPACITY-1 for dead-letter growth/retention, watermarks, stale-instance rows, and restart/replay. Independent Hermes review is due after M15-02 and M15-09/12/17 each have verified evidence or an explicit blocker.
 
 Tracking issue: https://github.com/rezaa2544/p2/issues/443 (related umbrella: #434). This entry is a planning directive, not evidence that the listed work is complete.
+
+
+## Control-plane checkpoint — M15-01 before M15-02 (2026-10-18)
+
+Per the user's explicit instruction for this session, execute M15-01 before M15-02; this temporarily overrides the 2026-10-11 M15-02-first ordering. Current source binding: `arena/c33a022c-p2` / `8f6e7d5f0a823a70a58f85f7803a4d956db350ab` (matched `origin/main` at review time). Current-head static rebind is documented, but runtime RPS, query plans, deployed observability, and DR evidence remain unavailable; therefore M15-01 is **BLOCKED / REVALIDATION_REQUIRED**, not complete. M15-02 is **NOT STARTED** and remains held. See the detailed evidence and security follow-up (SI-013) in `docs/CURRENT_WORK_EXECUTION_PLAN.md` and the linked audit addendum.
+
+### Environment revalidation — 2026-10-19
+
+Owner authorization is explicit, but no isolated reachable E3 target was identified: the only Vercel deployment found is production (no project/team env vars; build-machine resources are not runtime capacity), and the only Supabase project is inactive/unlinked with no listed secrets. No production load was sent and no DB/project was restored or changed. Local-only probe/cursor regression tests pass, including mutation evidence, but do not close runtime RPS, query-plan, observability, or DR requirements. Documentation debt is now closed for the three re-run gates (75/75, 23/23, 30/30; zero orphans). M15-01 remains **BLOCKED / REVALIDATION_REQUIRED** and M15-02 **NOT STARTED**; see the 2026-10-19 evidence table in the audit addendum.
+
+### M15-01 harness worktree update — 2026-10-19
+
+Two isolated runtime E3 jobs and one disposable PITR/HA/Redis failover job are implemented in the worktree, with local unit/config/syntax checks passing; the workflow and all live runtime operations remain **NOT RUN** because this runner has no Docker/PG/Redis/k6 and no authorized reachable staging. The base `HEAD` is unchanged and the worktree is uncommitted. No current E3 artifact or operational result exists, so M15-01 stays **BLOCKED / REVALIDATION_REQUIRED** and M15-02 stays **NOT STARTED**. A single-runner drill is at most E3; it cannot establish E4, off-site recovery, or on-call acknowledgement.
+
+## M15-01 current revalidation — 2026-10-20
+
+The checked-out base remains `8f6e7d5f0a823a70a58f85f7803a4d956db350ab` on `arena/c33a022c-p2`; worktree changes are uncommitted. Runtime/DR harness hardening and local unit/configuration checks have advanced, but this does not supply E3 evidence. The sandbox has no Docker/Podman, PostgreSQL/Redis tools or endpoints, k6, or M15 listeners; the full `npm test` uses the JSON/in-memory dev/test store. Current route RPS, current-schema `EXPLAIN`, deployed observability/alert route, queue/replay, PITR, and PostgreSQL/Redis failover are all **NOT RUN**. **M15-01 remains BLOCKED / REVALIDATION_REQUIRED; M15-02 remains NOT STARTED.** Do not push until the real M15-01 evidence gate is met. Any single-runner drill is at most E3, not E4 or production readiness; see the 2026-10-20 addendum in the execution plan and M15 audit.
+
+
+### Scope-limited workflow publication authorization — 2026-10-20
+
+The user subsequently authorized commit/push of the reviewed M15-01 implementation and necessary support files to `arena/c33a022c-p2` only, to trigger isolated GitHub Actions evidence collection. This is a narrow exception to earlier no-push checkpoints; it is not approval to merge, push elsewhere, bypass branch protection, force-push, or touch production. The authorization is not operational evidence or acceptance. M15-01 remains **BLOCKED / REVALIDATION_REQUIRED** until evidence is reviewed and independently accepted; M15-02 remains **NOT STARTED**, SI-013/P0 remains open, and E4 is not established.
+
+### Pre-publication revalidation — 2026-10-20
+
+The scoped commit/push authorization remains limited to `arena/c33a022c-p2` for isolated evidence collection. Final local regression/docs checks pass, including M15 runtime 29/29 and DR 16/16; `npm test` passes but uses JSON/in-memory mode without `DATABASE_URL`. YAML syntax parsed, but Docker/Compose and actionlint validation/runtime are unavailable locally. The secret scan remains red with 81 long-hex candidates (values withheld); SI-013/P0 remains open. No commit, push, workflow run, or operational E3 artifact exists at this checkpoint. M15-01 remains **BLOCKED / REVALIDATION_REQUIRED**, M15-02 **NOT STARTED**, and E4 is unproven.

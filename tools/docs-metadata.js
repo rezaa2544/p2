@@ -187,11 +187,16 @@ function buildCatalog() {
     if (freezeMatch) { status = 'frozen'; freezeVer = freezeMatch[1]; }
     else if (LIVE.has(path.basename(rel))) { status = 'active-live'; freezeVer = 'مستثنی (زنده)'; }
     else {
-      const idx = indexMap[rel] || indexMap[path.basename(rel)];
+      const indexKey = rel.replace(/\\/g, '/');
+      /* Basename fallback is valid only for root documents. Applying the
+         root README's status to every nested README silently misclassifies
+         otherwise-unindexed folder guides. */
+      const idx = indexMap[indexKey] || (!indexKey.includes('/') ? indexMap[path.basename(indexKey)] : undefined);
       status = idx ? idx.status : 'active';
       freezeVer = status === 'archived' ? 'پیش از آرشیو' : 'rc14';
     }
-    const idx = indexMap[rel] || indexMap[path.basename(rel)];
+    const indexKey = rel.replace(/\\/g, '/');
+    const idx = indexMap[indexKey] || (!indexKey.includes('/') ? indexMap[path.basename(indexKey)] : undefined);
     const base = rel.replace(/\\/g, '/').split('/').pop();
     entries.push({
       path: 'docs/' + rel,

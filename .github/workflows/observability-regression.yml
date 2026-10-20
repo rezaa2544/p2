@@ -36,10 +36,23 @@ jobs:
         run: node tests/observability-semantic-guard.js
       - name: Configuration regression
         run: node tests/observability-config.js
+      - name: Create protected test metrics-token file
+        run: |
+          set -euo pipefail
+          umask 077
+          token_file="$RUNNER_TEMP/payesh_metrics_token"
+          printf '%s' 'ci-only-observability-test-token' > "$token_file"
+          chmod 600 "$token_file"
+          printf 'PAYESH_METRICS_TOKEN_FILE=%s\n' "$token_file" >> "$GITHUB_ENV"
       - name: promtool rule validation
-        run: docker run --rm -v "$PWD/infra/observability:/etc/prometheus:ro" prom/prometheus:v2.54.1 promtool check rules /etc/prometheus/alert-rules.yml
+        run: docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/infra/observability/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro" prom/prometheus:v2.54.1 promtool check rules /etc/prometheus/alert-rules.yml
       - name: promtool Prometheus config validation
-        run: docker run --rm -v "$PWD/infra/observability:/etc/prometheus:ro" prom/prometheus:v2.54.1 promtool check config /etc/prometheus/prometheus.yml
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v "$PWD/infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
+            -v "$PWD/infra/observability/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro" \
+            -v "$PAYESH_METRICS_TOKEN_FILE:/etc/prometheus/payesh_metrics_token:ro" \
+            prom/prometheus:v2.54.1 promtool check config /etc/prometheus/prometheus.yml
       - name: promtool Alertmanager config validation with non-live CI URL
         run: |
           sed 's|__WEBHOOK_URL__|https://example.invalid/alertmanager-ci|g' infra/observability/alertmanager.yml > /tmp/alertmanager.yml
@@ -58,6 +71,10 @@ jobs:
           code=$?
           set -e
           test "$code" -eq 78
+      - name: Remove protected test metrics-token file
+        if: always()
+        run: |
+          if [[ -n "${PAYESH_METRICS_TOKEN_FILE:-}" ]]; then rm -f "$PAYESH_METRICS_TOKEN_FILE"; fi
 
   runtime:
     runs-on: ubuntu-latest
@@ -81,6 +98,14 @@ jobs:
       GRAFANA_PASSWORD: ci-observability-test
     steps:
       - uses: actions/checkout@v4
+      - name: Create protected test metrics-token file
+        run: |
+          set -euo pipefail
+          umask 077
+          token_file="$RUNNER_TEMP/payesh_metrics_token"
+          printf '%s' 'ci-only-observability-test-token' > "$token_file"
+          chmod 600 "$token_file"
+          printf 'PAYESH_METRICS_TOKEN_FILE=%s\n' "$token_file" >> "$GITHUB_ENV"
       - name: Start Loki and Promtail against isolated test log files
         run: |
           set -e
@@ -107,6 +132,11 @@ jobs:
           done
           echo 'Loki did not receive both Promtail streams in time' >&2
           exit 1
-      - name: Stop isolated observability services
+      - name: Stop isolated observability services and remove test token
         if: always()
-        run: PAYESH_LOG_DIR=/tmp/payesh-logs docker compose -f infra/observability/docker-compose.observability.yml down -v
+        run: |
+          set +e
+          PAYESH_LOG_DIR=/tmp/payesh-logs docker compose -f infra/observability/docker-compose.observability.yml down -v
+          rc=$?
+          if [[ -n "${PAYESH_METRICS_TOKEN_FILE:-}" ]]; then rm -f "$PAYESH_METRICS_TOKEN_FILE"; fi
+          exit "$rc"

@@ -27,8 +27,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
-const FILE = path.join(ROOT, 'HANDOFF.md');
-const FILES = ['HANDOFF.md'];
+const FILES = ['docs/HANDOFF.md'];
 
 let pass = 0, fail = 0;
 const failures = [];

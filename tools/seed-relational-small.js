@@ -41,6 +41,20 @@ const ROOT = path.join(__dirname, '..');
 const MIGRATIONS = path.join(ROOT, 'migrations');
 const TABLES = ['schools', 'users', 'subjects', 'classes', 'enrollments', 'attendance', 'grades'];
 
+function recentIsoDateDays(count, now) {
+  const n = Number(count);
+  const base = now == null ? new Date() : new Date(now);
+  if (!Number.isInteger(n) || n < 1 || n > 31 || !Number.isFinite(base.getTime())) {
+    throw new Error('invalid ISO fixture date window');
+  }
+  base.setUTCHours(0, 0, 0, 0);
+  return Array.from({ length: n }, (_, offset) => {
+    const day = new Date(base);
+    day.setUTCDate(day.getUTCDate() - offset);
+    return day.toISOString().slice(0, 10);
+  });
+}
+
 /* 🔴 مرزِ ورودیِ شناسهٔ SQL: نامِ جدول از TABLES ثابت می‌آید، ولی چون در
    متنِ SQL جای می‌گیرد (DDL/DELETE نمی‌توانند $N بگیرند)، با allowlistِ
    دقیقِ هم‌تراز با server/db.js اعتبارسنجی می‌شود. */
@@ -291,14 +305,17 @@ async function loadFixture(client) {
     }
   }
 
-  /* ── attendance: 5 days per student ── */
+  /* ── attendance: 5 recent ISO/Gregorian days per student ──
+     reports-sql compares YYYY-MM-DD strings against Gregorian month bounds;
+     storing Jalali digits here makes the live attendance report silently empty. */
+  const attendanceDates = recentIsoDateDays(5);
   let attendance = 0;
   for (const sid of schoolIds) {
     for (const stu of studentsBySchool[sid]) {
-      for (let d = 1; d <= 5; d++) {
+      for (let d = 1; d <= attendanceDates.length; d++) {
         await client.query(
           'INSERT INTO attendance (student_id, class_id, school_id, date, status, source, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,NOW(),NOW())',
-          [stu, classIds[sid][0], sid, '1405-07-' + String(d).padStart(2, '0'),
+          [stu, classIds[sid][0], sid, attendanceDates[d - 1],
             d % 5 === 0 ? 'absent' : 'present', 'seed']);
         attendance++;
       }
@@ -313,13 +330,13 @@ async function loadFixture(client) {
         await client.query(
           'INSERT INTO grades (student_id, class_id, subject_id, teacher_id, school_id, score, max_score, exam_type, kind, term, date, source, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,20,$7,$8,$9,$10,$11,NOW(),NOW())',
           [stu, classIds[sid][0], subjectIds[sid][n], teachersBySchool[sid], sid,
-            10 + n + (stu % 5), 'midterm', 'score', '1', '1405-07-10', 'seed']);
+            10 + n + (stu % 5), 'midterm', 'score', '1', attendanceDates[0], 'seed']);
         grades++;
       }
     }
   }
 
-  return { schoolIds, userIds, classIds, subjectIds, enrollments, attendance, grades };
+  return { schoolIds, userIds, classIds, subjectIds, enrollments, attendance, grades, attendanceDates };
 }
 
 async function counts(client) {
@@ -491,7 +508,7 @@ async function main() {
   }
 }
 
-module.exports = { applyMigrations, clearFixture, loadFixture, counts, migrationFiles, TABLES };
+module.exports = { applyMigrations, clearFixture, loadFixture, counts, migrationFiles, TABLES, recentIsoDateDays };
 
 if (require.main === module) {
   main().catch((e) => {

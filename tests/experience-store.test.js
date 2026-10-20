@@ -80,7 +80,7 @@ check('benchmark solution file rejected from main store', !fs.readFileSync(STORE
 
 // ---- 3. secret rejection (mission section 20) ----
 console.log('3. secret rejection');
-r = run(['add', tmpFile(baseExperience({ experience_id: 'TEST-SECRET', evidence: [{ kind: 'tool-output', ref: 'token ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }] }))]);
+r = run(['add', tmpFile(baseExperience({ experience_id: 'TEST-SECRET', evidence: [{ kind: 'tool-output', ref: 'token ' + 'ghp_' + 'A'.repeat(36) }] }))]);
 check('github token rejected', r.rc === 3, 'expected exit 3');
 
 // ---- 4. experience poisoning defense (mission section 23) ----

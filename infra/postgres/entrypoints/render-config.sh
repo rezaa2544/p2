@@ -18,5 +18,6 @@ sed -e "s|__REPO_S3_BUCKET__|${PB_REPO_S3_BUCKET}|g" \
     -e "s|__REPO_S3_REGION__|${PB_REPO_S3_REGION}|g" \
     -e "s|__REPO_S3_VERIFY_TLS__|${PB_REPO_S3_VERIFY_TLS}|g" \
     "$RENDER_TEMPLATE" > "$RENDER_TARGET"
-chmod 0640 "$RENDER_TARGET"
-echo "render-config: $RENDER_TARGET ساخته شد (endpoint=${PB_REPO_S3_ENDPOINT} bucket=${PB_REPO_S3_BUCKET})"
+chown postgres:postgres "$RENDER_TARGET"
+chmod 0600 "$RENDER_TARGET"
+echo "render-config: $RENDER_TARGET ساخته شد (owner=postgres:postgres mode=0600 endpoint=${PB_REPO_S3_ENDPOINT} bucket=${PB_REPO_S3_BUCKET})"

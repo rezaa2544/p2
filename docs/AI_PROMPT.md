@@ -16,6 +16,8 @@
 
 > **یادداشت تغییرات — ۲۰۲۶-۱۰-۱۶ (ممیزی و اصلاحِ دروازهٔ CI/تست، #454):** روی HEAD منجمدِ `0e389391` بازممیزیِ ده‌بندیِ Issue #454 انجام و شاخهٔ ادغام‌نشدهٔ `fix/454-ci-test-gate-remediation` ساخته شد. سه اصلاحِ fail-closed: رجیستریِ خالیِ آزمونِ رابطِ API، اجرای صفر-سوئیت در `scripts/run-all-tests.sh`، و حفظِ شاهدِ گام‌ها در گیتِ اعتبارسنجی (`.github/workflows/strict-verification.yml`)؛ به‌همراه ثبتِ ردیفِ مهاجرتِ `026` در `docs/MIGRATION_GUIDE.md`. دو بندِ ۱ و ۷ روی HEAD جاری از قبل سبز بودند (lint آخرین گام است؛ ۰ خطا و ۱۳۷۱ هشدار ≤ ۱۳۷۹). بندِ ۴ (شمارنده‌های skip) و بندِ ۱۰ (حجمِ مخزن) باز مانده‌اند و به تصمیمِ control-plane نیاز دارند. هیچ ادغامی در `main` انجام نشد (اصلِ هشتمِ §۰).
 
+> **به‌روزرسانیِ نشست — ۲۰۲۶-۱۰-۱۹ (M15-01):** harnessهایِ محلیِ E3/DR پیاده و تست‌هایِ واحد/ساختاری اجرا شده‌اند، اما هیچ اجرایِ GitHub Actions، PostgreSQL/Redis، route-RPS، EXPLAIN زنده، alert-routing، queue/replay، PITR یا failover انجام نشده است. M15-01 همچنان **BLOCKED / REVALIDATION_REQUIRED** و M15-02 **NOT STARTED** است. شواهد و فرمان‌ها در `docs/CURRENT_WORK_EXECUTION_PLAN.md` و addendum ممیزی ثبت‌اند؛ تست محلی یا fixture جای evidence عملیاتی را نمی‌گیرد.
+
 ---
 
 ## ۰. دستور نقش (Role Instruction)

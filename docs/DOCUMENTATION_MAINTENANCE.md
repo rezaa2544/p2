@@ -127,6 +127,7 @@
 | `tests/docs-freeze-marker.js` | فهرست و هش‌های قفل جاری | هر مرج + هر بامپ |
 | `tests/docs-metrics.js` | ادعاهای عددی `DOCS_METRICS.md` با دیسک | هر بامپ |
 | `tests/docs-index-coverage.js` | ساختار نمایه و دسته‌ها | پس از تغییر نمایه |
+| `tests/handoff-integrity.js` | UTF-8، mojibake و append-only بودنِ `docs/HANDOFF.md`؛ از `tests/run.js` اجرا می‌شود | هر ویرایش handoff و هر `npm test` |
 | `tests/docs-export-script.js` | سناریوی خروجی گرفتن از کتابخانه | پس از تغییر ابزار خروجی |
 | `tests/incident-playbooks.js` | پلی‌بوک‌های حادثه | پس از تغییر ران‌بوک‌ها |
 | `tests/*-coverage.js` (هر سند بزرگ) | ساختار/اعداد/ارجاع‌های همان سند | همراه سندش |

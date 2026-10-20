@@ -446,3 +446,12 @@ PostgreSQL 17 → `initdb` → نقش/پایگاه → migrationها (۹۰ جد�
 4. **بررسیِ مصرفِ حافظهٔ API زیرِ بار.** OOM در `anon-rss ≈ 911 MB` رخ داد؛ این عدد
    برایِ بارِ هدف بسیار کم است و نیاز به profiling دارد — ولی روی همین سخت‌افزار
    نمی‌توان نتیجهٔ معتبر گرفت.
+
+---
+
+## Addendum — artifact redaction and evidence status (2026-10-18)
+
+- In the session worktree, the five `tests/performance/results/w18-*.json` exports were locally redacted: the session-cookie field and associated user-identity object were replaced by explicit redaction markers. A structural comparison against the pre-redaction objects confirmed that `metrics`, `root_group`, and workload-model data were unchanged in all five files. These JSON edits remain worktree-only and are explicitly excluded from the M15-01 publication so the Git patch does not re-emit removed sensitive content.
+- The session credentials' embedded expiry was 2026-09-12; the first commit containing the exports is `0069a23892323f8f45a1ed4386c3dc6129fb3862` (committer date 2026-09-25), reachable from the public `origin/main`. User-identity provenance is not established. No credential or personal-data value is reproduced here. **The Git history has not been rewritten**; the public historical copies remain, and owner review is required for identity provenance, notification, and any history-cleanup decision (incident SI-013).
+- Re-summarizing the checked-in exports does not reproduce the report's prose RPS figures; all five `http_reqs.rate` values differ. The exports lack sufficient run/SHA/environment provenance to resolve that discrepancy. Treat them as historical artifacts only—not as current-head E3, a live capacity baseline, or evidence for M15-02.
+- The current repository secret scan is not a clean pass (exit 1); its result is recorded in SI-013 and the 2026-10-18 M15-01 rebind. The prior test-count statement above describes the historical run at the time this report was written, not this current-head scan.

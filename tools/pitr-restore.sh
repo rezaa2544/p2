@@ -14,7 +14,7 @@
 #   tools/pitr-restore.sh --time "2026-09-10 09:15:00+03:30"
 #   tools/pitr-restore.sh --name before_bad_release
 #   tools/pitr-restore.sh --latest --no-verify
-#   PGHOST/PGPORT/PGDATABASE را برایِ instance تولیدی تنظیم کن یا
+#   PBR_DATABASE نامِ دیتابیسِ برنامه برایِ pitr-verify است (پیش‌فرض: payesh).
 #   PBR_EXEC را با wrapper کانتینری (مثلاً: PBR_EXEC="docker compose exec -T pg-backup")
 #
 # خروجی: ۰ موفق (دایرکتوری و پورت چاپ می‌شود)؛ ۱ هر پیش‌نیاز/بازیابیِ ناموفق
@@ -24,6 +24,7 @@ set -euo pipefail
 STANZA="${PBR_STANZA:-payesh}"
 PBR_DEST_ROOT="${PBR_DEST_ROOT:-/var/backups/payesh-pitr}"
 PBR_PORT="${PBR_PORT:-54329}"
+PBR_DATABASE="${PBR_DATABASE:-payesh}"
 PBR_BIN="${PBR_BIN:-}"
 PBR_EXEC="${PBR_EXEC:-}"           # مثال: "docker compose exec -T pg-backup"
 TARGET_SPEC=""                      # ریکاردِ --type/--target برای pgbackrest
@@ -35,10 +36,25 @@ usage(){ echo "مصرف: $0 (--time 'TS'|--name N|--xid ID|--latest) [--no-start
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --time)  [ $# -ge 2 ] || usage; TARGET_SPEC="--type=time --target=$2"; shift 2;;
-    --name)  [ $# -ge 2 ] || usage; TARGET_SPEC="--type=name --target=$2"; shift 2;;
-    --xid)   [ $# -ge 2 ] || usage; TARGET_SPEC="--type=xid --target=$2"; shift 2;;
-    --latest) TARGET_SPEC="--type=latest"; shift;;
+    --time)
+      [ $# -ge 2 ] || usage
+      TARGET_SPEC="--type=time --target=$2 --target-action=promote"
+      RESTORE_OPTS+=(--type=time "--target=$2" --target-action=promote)
+      shift 2;;
+    --name)
+      [ $# -ge 2 ] || usage
+      TARGET_SPEC="--type=name --target=$2 --target-action=promote"
+      RESTORE_OPTS+=(--type=name "--target=$2" --target-action=promote)
+      shift 2;;
+    --xid)
+      [ $# -ge 2 ] || usage
+      TARGET_SPEC="--type=xid --target=$2 --target-action=promote"
+      RESTORE_OPTS+=(--type=xid "--target=$2" --target-action=promote)
+      shift 2;;
+    --latest)
+      TARGET_SPEC="--type=latest"
+      RESTORE_OPTS+=(--type=latest)
+      shift;;
     --no-start) NO_START=1; shift;;
     --no-verify) SKIP_VERIFY=1; shift;;
     --dest) [ $# -ge 2 ] || usage; PBR_DEST_ROOT="$2"; shift 2;;
@@ -48,6 +64,10 @@ while [ $# -gt 0 ]; do
   esac
 done
 [ -n "$TARGET_SPEC" ] || usage
+if [[ ! "$PBR_DATABASE" =~ ^[A-Za-z_][A-Za-z0-9_]{0,62}$ ]]; then
+  echo "FAIL: PBR_DATABASE must be a simple PostgreSQL database name" >&2
+  exit 1
+fi
 
 run_pbr(){ # اجرایِ pgbackrest (روی میزبان یا داخلِ سرویسِ کانتینری)
   if [ -n "$PBR_EXEC" ]; then $PBR_EXEC pgbackrest "$@"; else pgbackrest "$@"; fi
@@ -69,7 +89,7 @@ chmod 700 "$RUN_DIR/data"
 echo "== PITR run: $RUN_DIR (stanza=$STANZA port=$PBR_PORT $TARGET_SPEC)"
 
 # ── ۱/۲) restore با replay تا هدف ──
-run_pbr --stanza="$STANZA" --pg1-path="$RUN_DIR/data" --delta $TARGET_SPEC restore
+run_pbr --stanza="$STANZA" --pg1-path="$RUN_DIR/data" --delta "${RESTORE_OPTS[@]}" restore
 
 # ── تنظیمِ ایزوله (محیطِ سنجش؛ هرگز دیتای تولیدی را باز نکنید) ──
 cat > "$RUN_DIR/etc/postgresql.conf" <<CONF
@@ -104,12 +124,12 @@ done
 
 # ── ۴) verify ──
 if [ "$SKIP_VERIFY" -eq 0 ]; then
-  PGHOST="$RUN_DIR/run" PGPORT="$PBR_PORT" PGDATABASE=postgres "$(cd "$(dirname "$0")" && pwd)/pitr-verify.sh" \
+  PGHOST="$RUN_DIR/run" PGPORT="$PBR_PORT" PGDATABASE="$PBR_DATABASE" "$(cd "$(dirname "$0")" && pwd)/pitr-verify.sh" \
     --host-dir "$RUN_DIR/run" --port "$PBR_PORT" --stanza "$STANZA" --target-spec "$TARGET_SPEC"
 fi
 
 echo "════════════════════════════════════════════"
 echo "PITR_READY dir=$RUN_DIR port=$PBR_PORT socket=$RUN_DIR/run"
-echo "اتصال: psql \"host=$RUN_DIR/run port=$PBR_PORT dbname=payesh user=postgres\""
+echo "اتصال: psql \"host=$RUN_DIR/run port=$PBR_PORT dbname=$PBR_DATABASE user=postgres\""
 echo "پس از سنجش: pg_ctl -D '$RUN_DIR/data' stop && rm -rf '$RUN_DIR'"
 echo "════════════════════════════════════════════"

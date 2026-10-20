@@ -1,3 +1,24 @@
+# M15-01 current-head revalidation — مستندات و شواهد محلی — ۲۰۲۶-۱۰-۱۹
+
+**Mission:** اجرای ترتیبِ صریحِ مالک، M15-01 سپس M15-02 · **HEAD مبنا:** `8f6e7d5f0a823a70a58f85f7803a4d956db350ab` · **شاخه:** `arena/c33a022c-p2`.
+
+## وضعیت و شواهد
+
+- بازپیوندِ ایستای معماری با HEAD و ممیزیِ hot pathها در `docs/audit/PAYESH_SYSTEM_SCALE_RELIABILITY_GAP_AUDIT_2026-10-05.md` ثبت است؛ این کار، اندازه‌گیری زنده نیست.
+- شواهدِ route RPS، query plan روی schema جاری، observability/alerting مستقر، و DR restore/failover جاری **NOT RUN** هستند. محیطِ API+PostgreSQL+Redis ایزوله و قابل‌دسترسی از sandbox پیدا نشد؛ Production هدفِ بار نبود و هیچ ترافیکی به آن فرستاده نشد.
+- بررسیِ محلیِ اخیر: `DATABASE_URL` و متغیرهای PG/Redis unset؛ Docker/Podman/PostgreSQL/Redis/k6 نصب نیستند. اجرای `npm test` از JSON/in-memory store استفاده می‌کند؛ نتیجه‌اش فقط regression code/harness است، نه evidence دیتابیس یا ظرفیت.
+- ایرادهای مستنداتیِ پیدا‌شده بسته شدند: نمایه و release note موجودی ۲۶ مهاجرت (۰۰۱–۰۲۶) را از ادعاهای تاریخی جدا می‌کنند؛ قاعدهٔ ممیزیِ عددِ ۵ میلیون دیگر مقدار معتبر ۲٫۵ میلیون را false-positive نمی‌گیرد. اختلاف شمار وضعیت ریشه‌یابی شد: آمارگیر قبلی فقط ۴۴ فایلِ قفل را «منجمد» می‌شمرد و متادیتا به‌علت fallback نام‌پایه، سه README زیرپوشه را از README ریشه ارث‌بری می‌داد. اکنون مسیرهای زیرپوشه دقیق‌اند و هر دو ابزار با طبقه‌بندی کانونیک ۵۳۰ فعال / ۴۵ منجمد / ۳ زنده / ۲۰ آرشیو هم‌راستا هستند؛ شمارِ نمایهٔ جستجوی تولیدی ۴۰۰۱ توکن است (با ۷۸ سند روزانه)؛ گزارش هماهنگی صفر تعارض دارد.
+
+## تصمیمِ وضعیت
+
+**M15-01: BLOCKED / REVALIDATION_REQUIRED** — بازبینیِ ایستا تکمیل است، اما معیارهای عملیاتی بالا بازند؛ این مأموریت DONE/CERTIFIED نیست. **M15-02: NOT STARTED** — طبق ترتیبِ خواسته‌شده تا تکمیل M15-01 نگه داشته شد؛ هیچ عددِ synthetic/برآوردی به‌عنوان ظرفیتِ اندازه‌گیری‌شده ثبت نشد. برای ادامه، محیطِ staging ایزوله و دسترسیِ امنِ لازم باید در اختیارِ اجرا باشد؛ سپس command/input/output/exit/SHA/environment/run-count ثبت شود.
+
+## کنترل‌های محلی
+
+تست‌های مستنداتِ همان نوبت: docs index 75/75، map 23/23 با صفر یتیم، onboarding 30/30، maintenance 45/45، handoff 4/4، docs health 9/9، docs consistency 22/22، docs metrics 25/25، docs metadata 18/18 و freeze marker 14/14؛ `docs-stats-sync --check --freeze` صفر. `npm test` نیز exit 0 (suite اصلی 39/39، REST API suites 31/31، و smoke 547/547). این سبزی‌ها **هیچ‌یک** جایگزین E3 runtime evidence نیستند.
+
+---
+
 # بستنِ چهار آیتمِ باز + تثبیتِ مجوزِ دائمیِ push/merge (#454 · #443 · #441؛ #433/#434 باز ماندند) — ۲۰۲۶-۱۰-۱۶
 
 **Mission:** رسیدگی/بستنِ Issueهای #454 · #443 · #434 · #433 و PR #441 · **Owner:** OpenCode (executor) · **Control Plane:** کاربر · **HEAD مبنا:** `origin/main` = `31010ebd` · **شاخه:** `docs/session-closeout-2026-10-16`.
@@ -573,3 +594,66 @@ mutation check confirms the control exercises the same code path.
 2. Fix `enrollments` in `tools/generate-national-dataset.js` itself.
 3. Profile API memory growth under load (`anon-rss ≈ 911 MB` at OOM looks low
    for the target load, but this hardware cannot yield a trustworthy answer).
+
+---
+
+## Current checkpoint — 2026-10-18 (M15-01 / SI-013)
+
+**Binding:** `rezaa2544/p2`, branch `arena/c33a022c-p2`, source HEAD `8f6e7d5f0a823a70a58f85f7803a4d956db350ab` (matched `origin/main` at review). Per the explicit user instruction, M15-01 precedes M15-02 for this session.
+
+- **M15-01:** current-head static rebind documented in `docs/audit/PAYESH_SYSTEM_SCALE_RELIABILITY_GAP_AUDIT_2026-10-05.md`; status **BLOCKED / REVALIDATION_REQUIRED** because no live route-RPS run, current `EXPLAIN`, deployed-observability check, or current DR run was available. **M15-02 remains NOT STARTED**; no capacity-baseline work was represented as measured.
+- **Artifact safety:** the five Wave 18 JSON files are redacted only in the local worktree; a programmatic structural comparison confirmed the metrics, root groups, and workload models were unchanged. These five JSON edits are excluded from the M15-01 publication to avoid re-emitting removed values in a Git patch. Their first tracked commit (`0069a23892323f8f45a1ed4386c3dc6129fb3862`, 2026-09-25) is reachable from the public repository history. The session credentials' expiry predated that commit, but user-identity provenance is unverified. No history rewrite or public notification was performed. Incident **SI-013** is provisionally P0 pending owner review; no credential or identity value is copied into this handoff.
+- `gh api .../secret-scanning/alerts` returned HTTP 403 (“Resource not accessible by integration”); alert state is unknown. The current `node tests/secret-scan.js` run exits 1 (12 green / 1 red; 82 candidate hits) and is not a clean gate; no values were printed. A dedicated staging DB/Redis/k6 environment is absent, and the sandbox cannot reach arbitrary external staging hosts.
+- Current workspace-only checks: `npm test` exit 0 (tests/run.js 39/39, API suites 31/31, smoke 547/547); `node tests/capacity-saturation-probe.js` 16/16; syntax checks for four probe/auth-delta files; `node tools/capacity-saturation-probe.js --validate`; `node tests/wave18-load-test.js` 38/38; `wave10-chg-id` 31/31; `chg_id_cursor` 33/33; change-ID mutation suite 8/8; `handoff-integrity` 4/4; JSON redaction integrity; docs-index 75/75; documentation-map 23/23 (zero orphans); onboarding 30/30; freeze marker 14/14; docs stats `--check --freeze` exit 0. These local checks do not establish E3.
+
+**Owner follow-up:** confirm whether the identity metadata is synthetic, decide incident notification and public-history cleanup, and provide an authorized reachable staging/runtime path through secure configuration (never chat) before reopening M15-01 runtime verification. Do not start M15-02 until the M15-01 gate is met.
+
+### Rule 15/16 task contract and five-pass ledger
+
+**Contract:** Objective: rebind M15-01 to current HEAD, establish which runtime evidence exists, contain/report the Wave 18 artifact exposure, and reconcile canonical status docs. Scope: static M15 architecture and source-history review, local artifact redaction, evidence-gap recording, and freeze update. Out of scope: running M15-02, inventing/using synthetic E3, contacting production, or rewriting public Git history. Owner: session agent for repository work; repository/security owner for identity provenance, notification, history-cleanup decision, and staging access. Dependencies: authorized reachable staging/DB/Redis plus owner security decision. Acceptance: five traceable tasks; five independent checks per task; exact SHA and command/output provenance where available; no secret or PII values in records; no PASS/DONE without E3. Required outputs: current-head rebind, incident record, blocker and next action.
+
+| Task | Five independent verification passes (evidence / result) | Status |
+|---|---|---|
+| T1 — Bind repository and history | (1) `git branch --show-current` + `git rev-parse HEAD`; (2) `git rev-parse origin/main` equality; (3) GitHub compare from `1b19449f49a2952d2fbda99053f9af42f2cf4c6c` to current SHA (141 ahead, 0 behind); (4) `git show -s` and `git merge-base --is-ancestor` for artifact-introduction commit; (5) `git diff --name-only`/`git diff --check`, confirming the only server-source edits are the two comment corrections (no runtime logic change). | VERIFIED for source binding only |
+| T2 — Inventory hot paths and RPS | (1) compare targets in `docs/CAPACITY_WORKLOAD_MODEL.md`; (2) map router dispatch in `server/index.js`; (3) re-read pull/sync/DB read paths and line-bound behavior; (4) run `python3 tools/wave18-summarize-results.py tests/performance/results`; (5) compare all five stored rates with the report's five prose rates; (6) run capacity-probe 16/16 plus a `responseFailure(step) => null` mutation that fails the suite (exit 1). The static map and guard behavior are traceable; no current runtime RPS was generated. | VERIFIED for static inventory/harness guard only; operational acceptance NOT AVAILABLE |
+| T3 — Query plans, observability, queue, and DR | (1) inspect current DB/query builders; (2) bind M15-03 report to its older synthetic PG16 run/SHA; (3) inspect current metrics and queue gauges; (4) inspect DR runbook/report provenance; (5) check runtime availability (`command -v` for PG/Redis/k6/container tools, connection variables, listeners). Five checks confirm there is no current E3 plan, deployment check, or DR run. | BLOCKED — runtime acceptance not met |
+| T4 — Contain/report SI-013 | (1) compare each old/current JSON structure without printing fields; (2) assert redaction markers and unchanged metrics/root/model; (3) verify first-add commit date and ancestry; (4) run current secret scan with matched values kept out of output (exit 1); (5) query GitHub alert endpoint (403; state unknown). Worktree redaction is verified; public-history removal and identity provenance remain open. | BLOCKED — owner action required |
+| T5 — Reconcile documentation | (1) re-read applicable engineering/documentation rules; (2) update audit, plan, intelligence, incident log, and handoff; (3) run `node tools/docs-stats-sync.js --freeze`; (4) run `node tools/docs-stats-sync.js --check --freeze`; (5) run `git diff --check` plus the three coverage gates. Current results: docs-index 75/75; documentation-map 23/23 with 0 orphans; onboarding 30/30; freeze marker 14/14; stats check exit 0. `node tools/docs-metadata.js` confirms zero orphans. Documentation verification passes; repository delivery is pending commit/push. | VERIFIED for documentation checks; unpublished, not DONE |
+
+### Revalidation — 2026-10-19
+
+The owner explicitly authorized permitted actions. No isolated E3 target is thereby created or identified:
+
+- Vercel `p2` deployment `dpl_TU3Dva3d9f75ebh3ZKs52ZjVQ7av` is `READY`/`PROMOTED` on production at SHA `8f6e7d5f0a823a70a58f85f7803a4d956db350ab`. Its 2-vCPU/8-GiB figure is the build machine, not runtime capacity. Project and shared env-variable lists are empty; no request or load was sent to production.
+- The only Supabase project found is `kzgeffoqglvptgikcnod` (PG17, `ap-northeast-2`, `INACTIVE`). Health returned no active services; migration listing timed out; secrets list was empty; no repository/Vercel link was found. It was not restored or modified.
+- No local PG/Redis/container/k6 tooling or DB/Redis/API environment variables are present. GitHub Actions secret enumeration returned 403, so that inventory remains unknown; no secret values were read.
+- Current local regressions: capacity probe 16/16; `wave10-chg-id` 31/31; `chg_id_cursor` 33/33; mutation suite 8/8. A deliberate `responseFailure(step) => null` mutation made the capacity-probe suite fail as expected (exit 1). These are local code/harness checks, not E3 operational evidence.
+- The stale comments in `server/db.js` and `server/syncdelta.js` were corrected in the worktree; behavior is unchanged. The phone-index plan remains unverified until current-schema `EXPLAIN`.
+- The former `handoff-integrity.js` path/wiring defect is closed: it now checks `docs/HANDOFF.md`, is invoked by `tests/run.js`, and passes 4/4 on this worktree.
+
+**Disposition unchanged:** M15-01 **BLOCKED / REVALIDATION_REQUIRED**; M15-02 **NOT STARTED**. Production was not load-tested, no Supabase project was restored, and no DR operation was attempted. SI-013 remains provisional P0; local artifact redaction does not remove public historical copies or settle identity-data provenance.
+
+**Evidence boundary:** “VERIFIED” above applies only to the named static subtask, never to M15-01 overall, M15-02, E3 capacity, production readiness, or SI-013 closure.
+
+---
+
+## Continuation checkpoint — 2026-10-20 (M15-01)
+
+**Binding:** `rezaa2544/p2`, branch `arena/c33a022c-p2`, checked-out `HEAD` `8f6e7d5f0a823a70a58f85f7803a4d956db350ab`. The worktree is dirty and contains uncommitted repository changes; this SHA names the base checkout, not the changed files.
+
+**Disposition:** M15-01 remains **BLOCKED / REVALIDATION_REQUIRED**; M15-02 remains **NOT STARTED**. Current-head route RPS, schema-current `EXPLAIN`, live observability/alert delivery, queue behavior, PITR restore, and PostgreSQL/Redis failover are still **NOT RUN**. No production traffic was sent, no remote database was restored or modified, and no E3 artifact exists.
+
+**Worktree-only harness hardening:** PostgreSQL runtime credentials are randomized and passed through protected mode-0600 env files; the shared command/output redactor covers DSNs, common token/key/cookie assignments and authorization headers. Raw DR output is staged outside the upload directory, moved into evidence only after redaction, and the DR report includes source-tree cleanliness plus a disposition that cannot close M15-01. The runtime harness now inspects effective API/load-generator container users as well as resource limits and removes transient route files. The image runs as `node`; Docker context excludes local credentials, dependencies, tests, and unrelated data. The Prometheus token file is mode 0640 with no world access; a CI-only Compose override grants only its runner group to the non-root Prometheus process, and the runtime guard verifies its owner/GID. These are code/harness controls, not operational proof.
+
+**Local verification on 2026-10-20:** `npm ci` exit 0; `npm audit --omit=dev` exit 0 (0 production vulnerabilities); full `npm audit` exit 1 for one moderate dev-only Moment path-traversal advisory (not changed in this M15 scope); `npm test` exit 0 (main 39/39 and smoke 547/547; API runner completed, with the test output explicitly selecting the JSON/in-memory store because `DATABASE_URL` is unset); runtime unit 27/27; DR unit 14/14; PITR argv contract 5/5; HA config 100/100; observability config 23/23; docs index 75/75; documentation map 23/23 (zero orphans); onboarding 30/30. Node/Bash syntax checks and `git diff --check` passed. Docs stats first found a stale freeze count; after the new checkpoint text, another check found stale search-token and freeze counts. `node tools/docs-stats-sync.js --freeze` synchronized the map/freeze files, and the final `--check --freeze` plus docs-metrics 25/25 passed. The local availability check found no Docker/Podman, PostgreSQL/Redis clients or servers, k6, actionlint, DB/API endpoint variables, or listeners on the M15 ports. All of these are local regression/configuration checks only.
+
+**Next gate:** provide an authorized, reachable isolated E3 runner/runtime and secure configuration. Run the exact-SHA route/query/observability/queue and DR jobs there; inspect command, output, exit code, SHA, environment, run count, and stated limits. A single-runner drill is at most E3; E4 still requires independent failure domains, genuine off-site recovery evidence, and alert → on-call → acknowledgement → runbook → recovery. Do not push before M15-01 actually meets its gate; do not start M15-02 before then.
+
+### Dockerless feasibility check — 2026-10-20
+
+The user asked to continue without Docker. This sandbox is Debian 12 x86_64 with `gcc`/`make` but has no PostgreSQL (`postgres`/`initdb`/`pg_ctl`), Redis server/CLI, Prometheus/`promtool`, Alertmanager, MinIO/`mc`, pgBackRest, PgBouncer, or Go binaries. The current runtime harness expects real PostgreSQL 17.11, Redis 8.0.2, Prometheus 2.54.1, and Alertmanager 0.27.0; the DR harness additionally uses PostgreSQL 16, Redis 7.4.2, MinIO, pgBackRest, and PgBouncer. No version-matched native stack has been provisioned or validated here. Replacing these services with JSON/in-memory stores, mocks, or an embedded SQL substitute would not satisfy operational acceptance and must not be reported as E3. The sandbox also cannot control the user's Windows host. Disposition remains M15-01 **BLOCKED / REVALIDATION_REQUIRED**, M15-02 **NOT STARTED**; no push.
+
+
+### Scope-limited workflow publication authorization — 2026-10-20
+
+The user's later explicit authorization allows commit/push of reviewed M15-01 harness/support changes to `arena/c33a022c-p2` solely to make the isolated workflow run and collect evidence. This supersedes the earlier no-push instruction only for that exact operation. It does not allow a `main`/other-branch push, merge, force-push, branch-protection bypass, or production testing. Workflow completion is not independent acceptance or E4 proof. M15-01 remains **BLOCKED / REVALIDATION_REQUIRED**, M15-02 **NOT STARTED**, and SI-013/P0 remains open.

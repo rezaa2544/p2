@@ -37,6 +37,7 @@ const FILES = [
   'infra/postgres/post-checks.sh',
   'infra/redis/docker-compose.sentinel.yml', 'infra/redis/sentinel.conf.template', 'infra/redis/redis-checks.sh',
   'tools/pitr-restore.sh', 'tools/pitr-verify.sh', 'tools/failover-postgres.sh', 'tools/failover-redis.sh',
+  'tools/m15-01-dr-runtime.sh',
   'docs/HA_POSTGRES.md', 'docs/HA_REDIS.md', 'docs/DR_RUNBOOK.md'
 ];
 FILES.forEach((f) => chk('وجود ' + f, rd(f) != null));
@@ -71,13 +72,21 @@ const pbTpl = rd('infra/postgres/pgbackrest.conf.template') || '';
 const render = rd('infra/postgres/entrypoints/render-config.sh') || '';
 const pbMissing = placeholders(pbTpl).filter((p) => !render.includes(p));
 chk('pg: همهٔ placeholderهایِ pgbackrest در render-config پوشیده می‌شوند', pbMissing.length === 0, pbMissing.join(','));
+chk('pgbackrest config در runtime با مالک postgres و mode 0600 ساخته می‌شود',
+  /chown postgres:postgres "\$RENDER_TARGET"/.test(render) && /chmod 0600 "\$RENDER_TARGET"/.test(render)
+  && !/chmod 0640 "\$RENDER_TARGET"/.test(render));
+const minioInitBlock = (pgCompose.split('  minio-init:')[1] || '').split('  pg-primary:')[0];
+chk('MinIO init همان bucket را می‌سازد که pgBackRest از Compose می‌گیرد',
+  /PB_REPO_S3_BUCKET:\s*\$\{PB_REPO_S3_BUCKET:-payesh-pgbackrest\}/.test(minioInitBlock)
+  && /mc mb -p "local\/\$\$\{PB_REPO_S3_BUCKET:-payesh-pgbackrest\}"/.test(minioInitBlock));
 
 /* ── CFG-SH ── */
 grp('CFG-SH — اسکریپت‌ها');
 const SH = ['infra/postgres/entrypoints/render-config.sh', 'infra/postgres/entrypoints/primary-entrypoint.sh',
   'infra/postgres/entrypoints/standby-entrypoint.sh', 'infra/postgres/init/01-replication.sh',
   'infra/postgres/post-checks.sh', 'infra/redis/redis-checks.sh',
-  'tools/pitr-restore.sh', 'tools/pitr-verify.sh', 'tools/failover-postgres.sh', 'tools/failover-redis.sh'];
+  'tools/pitr-restore.sh', 'tools/pitr-verify.sh', 'tools/failover-postgres.sh', 'tools/failover-redis.sh',
+  'tools/m15-01-dr-runtime.sh'];
 SH.forEach((f) => {
   const src = rd(f); if (!src) return;
   const r = spawnSync('bash', ['-n', path.join(ROOT, f)], { encoding: 'utf8' });
@@ -90,6 +99,13 @@ SH.forEach((f) => {
 /* ── CFG-TPL — الگوهایِ recovery/sentinel ── */
 grp('CFG-TPL — الگوها');
 {
+  const primaryEntry = rd('infra/postgres/entrypoints/primary-entrypoint.sh') || '';
+  chk('primary entrypoint پیش از initdb در PGDATA فایل نمی‌سازد',
+    !/cat\s*>>\s*"\$PGDATA\/postgresql\.auto\.conf"/.test(primaryEntry));
+  const pitrRestore = rd('tools/pitr-restore.sh') || '';
+  chk('PITR time target با فاصله به‌صورت یک argv عبور می‌کند و promote می‌شود',
+    /RESTORE_OPTS\+\=\(\-\-type=time "\-\-target=\$2" \-\-target-action=promote\)/.test(pitrRestore)
+    && /"\$\{RESTORE_OPTS\[@\]\}"/.test(pitrRestore));
   const recTpl = rd('infra/postgres/recovery.conf.template') || '';
   chk('recovery.template: primary_conninfo + restore_command + hot_standby',
     /primary_conninfo/.test(recTpl) && /restore_command/.test(recTpl) && /hot_standby = on/.test(recTpl));
