@@ -43,6 +43,7 @@ jobs:
           node --check tools/m15-01-alert-receiver.js
           node --check tools/m15-01-ci-db.js
           node --check tools/m15-01-ci-seed.js
+          node --check tools/m15-01-ci-summary.js
           node --check tests/m15-01-runtime-evidence-unit.js
           node --check tests/m15-01-dr-runtime-unit.js
           node --check server/index.js
@@ -55,6 +56,12 @@ jobs:
           M15_ROUTE_SECONDS: "5"
           M15_ROUTE_CONCURRENCY: "2"
         run: bash tools/m15-01-ci-runtime.sh
+
+      - name: Publish bounded runtime outcome summary
+        if: always()
+        env:
+          M15_EVIDENCE_RUN: ${{ matrix.run }}
+        run: node tools/m15-01-ci-summary.js runtime "$RUNNER_TEMP/m15-01-${M15_EVIDENCE_RUN}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
       - name: Upload current-head E3 evidence and command output
         if: always()
@@ -120,6 +127,10 @@ jobs:
         env:
           M15_RUNTIME_ALLOW_CI: "1"
         run: bash tools/m15-01-dr-runtime.sh
+
+      - name: Publish bounded DR outcome summary
+        if: always()
+        run: node tools/m15-01-ci-summary.js dr "$RUNNER_TEMP/m15-01-dr-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
       - name: Upload DR command output and bounded E3 evidence
         if: always()

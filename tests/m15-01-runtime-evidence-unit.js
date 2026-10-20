@@ -8,6 +8,7 @@ const os = require('os');
 const path = require('path');
 const evidence = require('../tools/m15-01-runtime-evidence');
 const logRedactor = require('../tools/m15-01-log-redactor');
+const ciSummary = require('../tools/m15-01-ci-summary');
 const ciSeed = require('../tools/m15-01-ci-seed');
 const relationalSeed = require('../tools/seed-relational-small');
 const receiver = require('../tools/m15-01-alert-receiver');
@@ -106,6 +107,43 @@ try {
     const genericConstraintDiagnostic = logRedactor.redactText('DETAIL: Key (id)=(12345) already exists.', {});
     assert.doesNotMatch(genericConstraintDiagnostic, /12345/);
     assert.match(genericConstraintDiagnostic, /Key \(id\)=\[REDACTED\]/);
+  });
+
+  test('CI evidence summaries expose only allowlisted status and failed-stage metadata', () => {
+    const dir = path.join(os.tmpdir(), 'm15-ci-summary-' + crypto.randomUUID());
+    const secret = 'synthetic-summary-secret-value';
+    fs.mkdirSync(dir, { recursive: true });
+    try {
+      fs.writeFileSync(path.join(dir, 'runtime-evidence.json'), JSON.stringify({
+        status: 'FAIL', source_sha: 'a'.repeat(40), exit_code: 1,
+        failure: { code: 'runtime_fixture_failed', message: secret, dsn: 'postgres://user:' + secret + '@127.0.0.1/db' }
+      }));
+      fs.writeFileSync(path.join(dir, 'infrastructure-cleanup.json'), JSON.stringify({ status: 'PASS' }));
+      fs.writeFileSync(path.join(dir, 'commands.log'), [
+        'COMMAND[start-postgres]: docker run POSTGRES_PASSWORD=' + secret,
+        'EXIT_CODE[start-postgres]: 0',
+        'EXIT_CODE[isolated-e3-runtime-evidence]: 1'
+      ].join('\n'));
+      const runtime = ciSummary.createSummary('runtime', dir);
+      assert.match(runtime, /Source SHA: `a{40}`/);
+      assert.match(runtime, /First failed command stage: `isolated-e3-runtime-evidence` \(exit 1\)/);
+      assert.match(runtime, /Failure code: `runtime_fixture_failed`/);
+      assert.match(runtime, /Cleanup report: \*\*PASS\*\*/);
+      assert.strictEqual(runtime.includes(secret), false);
+      assert.strictEqual(runtime.includes('postgres://'), false);
+
+      fs.writeFileSync(path.join(dir, 'dr-runtime-evidence.json'), JSON.stringify({
+        status: 'FAIL', source_sha: 'b'.repeat(40), exit_code: 1,
+        postgres: { pitr: { before_marker_restored: 'NOT_RUN', after_marker_excluded: 'NOT_RUN' },
+          failover: { promoted_standby_writable_after_promotion: 'NOT_RUN' } },
+        redis_sentinel: { post_promotion_write_verified: 'NOT_RUN' }, sensitive: secret
+      }));
+      fs.writeFileSync(path.join(dir, 'commands.log'), 'EXIT_CODE[pg-compose-start]: 1\n');
+      const dr = ciSummary.createSummary('dr', dir);
+      assert.match(dr, /First failed command stage: `pg-compose-start` \(exit 1\)/);
+      assert.match(dr, /not independent review, production readiness, or E4 evidence/);
+      assert.strictEqual(dr.includes(secret), false);
+    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
   });
 
   test('runtime evidence failure messages redact PostgreSQL constraint PII and credentials', () => {
