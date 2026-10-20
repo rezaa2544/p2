@@ -94,10 +94,31 @@ jobs:
                  -e 's/[A-Fa-f0-9]{64,}/[LONG_HEX-REDACTED]/g' "$output_file"
           rm -f "$output_file"
           exit "$rc"
-      - name: promtool Alertmanager config validation with non-live CI URL
+      - name: amtool Alertmanager config validation with non-live CI URL
         run: |
+          set -euo pipefail
           sed 's|__WEBHOOK_URL__|https://example.invalid/alertmanager-ci|g' infra/observability/alertmanager.yml > /tmp/alertmanager.yml
-          docker run --rm -v /tmp/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro prom/alertmanager:v0.27.0 amtool check-config /etc/alertmanager/alertmanager.yml
+          output_file="$RUNNER_TEMP/amtool-config.log"
+          set +e
+          docker run --rm --entrypoint=/bin/amtool \
+            -v /tmp/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro \
+            prom/alertmanager:v0.27.0 check-config /etc/alertmanager/alertmanager.yml >"$output_file" 2>&1
+          rc=$?
+          set -e
+          if [[ "$rc" -ne 0 ]]; then
+            {
+              echo '## amtool Alertmanager config diagnostics'
+              grep -Ei 'error|failed|invalid|unknown|denied|not found|fatal|pull access' "$output_file" | tail -n 12 \
+                | sed -E -e 's#(https?://)[^[:space:]]+#[URL-REDACTED]#gI' \
+                        -e 's/(password|token|secret|authorization|cookie)[^=: ]*[[:space:]]*[:=][[:space:]]*[^[:space:]]+/[REDACTED]/Ig' \
+                        -e 's/[A-Fa-f0-9]{64,}/[LONG_HEX-REDACTED]/g' || true
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          sed -E -e 's#(https?://)[^[:space:]]+#[URL-REDACTED]#gI' \
+                 -e 's/(password|token|secret|authorization|cookie)[^=: ]*[[:space:]]*[:=][[:space:]]*[^[:space:]]+/[REDACTED]/Ig' \
+                 -e 's/[A-Fa-f0-9]{64,}/[LONG_HEX-REDACTED]/g' "$output_file"
+          rm -f "$output_file"
+          exit "$rc"
       - name: Alertmanager checked-in placeholder must fail closed
         run: |
           set +e
@@ -162,10 +183,12 @@ jobs:
       - name: Verify Loki received both streams
         run: |
           set -e
-          for i in $(seq 1 30); do
+          for i in $(seq 1 60); do
             curl -fsS http://127.0.0.1:3100/ready >/dev/null 2>&1 || true
-            server_json="$(curl -gsS --get 'http://127.0.0.1:3100/loki/api/v1/query_range' --data-urlencode 'query={service="payesh",log_source="server-log"}' --data-urlencode 'limit=20' || true)"
-            audit_json="$(curl -gsS --get 'http://127.0.0.1:3100/loki/api/v1/query_range' --data-urlencode 'query={service="payesh",log_source="audit-log"}' --data-urlencode 'limit=20' || true)"
+            end_ns="$(date +%s%N)"
+            start_ns="$((end_ns - 300000000000))"
+            server_json="$(curl -gsS --get 'http://127.0.0.1:3100/loki/api/v1/query_range' --data-urlencode 'query={service="payesh",log_source="server-log"}' --data-urlencode 'limit=20' --data-urlencode "start=${start_ns}" --data-urlencode "end=${end_ns}" --data-urlencode 'direction=forward' || true)"
+            audit_json="$(curl -gsS --get 'http://127.0.0.1:3100/loki/api/v1/query_range' --data-urlencode 'query={service="payesh",log_source="audit-log"}' --data-urlencode 'limit=20' --data-urlencode "start=${start_ns}" --data-urlencode "end=${end_ns}" --data-urlencode 'direction=forward' || true)"
             printf '%s' "$server_json" | grep -F 'runtime-promtail-server-line' >/dev/null 2>&1 &&
             printf '%s' "$audit_json" | grep -F 'runtime-promtail-audit' >/dev/null 2>&1 &&
             printf '%s' "$audit_json" | grep -F 'runtime-trace-001' >/dev/null 2>&1 && exit 0

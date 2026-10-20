@@ -58,6 +58,7 @@ jobs:
         run: bash tools/m15-01-ci-runtime.sh
 
       - name: Publish bounded runtime outcome summary
+        id: runtime_summary
         if: always()
         env:
           M15_EVIDENCE_RUN: ${{ matrix.run }}
@@ -67,7 +68,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: m15-01-runtime-${{ matrix.run }}-${{ github.sha }}
+          name: m15-01-runtime-${{ matrix.run }}-${{ steps.runtime_summary.outputs.status }}-${{ steps.runtime_summary.outputs.failure_code }}-${{ steps.runtime_summary.outputs.failed_stage }}-${{ github.sha }}
           path: ${{ runner.temp }}/m15-01-${{ matrix.run }}-${{ github.run_id }}-${{ github.run_attempt }}/
           if-no-files-found: error
           retention-days: 30
@@ -129,6 +130,7 @@ jobs:
         run: bash tools/m15-01-dr-runtime.sh
 
       - name: Publish bounded DR outcome summary
+        id: dr_summary
         if: always()
         run: node tools/m15-01-ci-summary.js dr "$RUNNER_TEMP/m15-01-dr-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
@@ -136,7 +138,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: m15-01-dr-${{ github.sha }}
+          name: m15-01-dr-${{ steps.dr_summary.outputs.status }}-${{ steps.dr_summary.outputs.failure_code }}-${{ steps.dr_summary.outputs.failed_stage }}-${{ github.sha }}
           path: ${{ runner.temp }}/m15-01-dr-${{ github.run_id }}-${{ github.run_attempt }}/
           if-no-files-found: error
           retention-days: 30
