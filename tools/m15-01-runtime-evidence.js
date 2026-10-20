@@ -813,7 +813,7 @@ async function exerciseQueueRetention(outbox, pool, report) {
   report.queue_retention_probe = probe;
   const processed = await pool.query(`INSERT INTO server_outbox
       (type, collection, payload, status, retry_count, created_at, processed_at)
-    VALUES ('m15.queue_retention_probe', 'm15_retention', jsonb_build_object('origin', $1),
+    VALUES ('m15.queue_retention_probe', 'm15_retention', jsonb_build_object('origin', $1::text),
       'processed', 0, NOW() - INTERVAL '30 days', NOW() - INTERVAL '30 days')
     RETURNING id;`, [marker]);
   if (!processed.rows.length) throw new Error('queue_retention_processed_probe_insert_failed');
@@ -823,7 +823,7 @@ async function exerciseQueueRetention(outbox, pool, report) {
     VALUES ($1, 0, NOW() - INTERVAL '30 days'), ($2, $3, NOW());`, [staleInstance, currentInstance, outboxId]);
   const dlq = await pool.query(`INSERT INTO server_outbox_dlq
       (outbox_id, type, collection, payload, error_message, retry_count, failed_at)
-    VALUES ($1, 'm15.queue_retention_probe', 'm15_retention', jsonb_build_object('origin', $2),
+    VALUES ($1, 'm15.queue_retention_probe', 'm15_retention', jsonb_build_object('origin', $2::text),
       'synthetic retention probe', 5, NOW() - INTERVAL '30 days')
     RETURNING id;`, [outboxId, marker]);
   if (!dlq.rows.length) throw new Error('queue_retention_dlq_probe_insert_failed');

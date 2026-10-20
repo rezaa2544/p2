@@ -389,6 +389,12 @@ try {
     assert.match(p11, /execFileSync\('psql'/);
   });
 
+  test('queue-retention JSONB marker parameters have explicit PostgreSQL types', () => {
+    const runtime = fs.readFileSync(path.join(__dirname, '..', 'tools', 'm15-01-runtime-evidence.js'), 'utf8');
+    assert.match(runtime, /jsonb_build_object\('origin', \$1::text\)/);
+    assert.match(runtime, /jsonb_build_object\('origin', \$2::text\)/);
+  });
+
   test('phone-auth EXPLAIN contract matches auth SQL and P11 bind precedent', () => {
     const auth = fs.readFileSync(path.join(__dirname, '..', 'server', 'auth.js'), 'utf8');
     const p11 = fs.readFileSync(path.join(__dirname, '..', 'tests', 'p11-phone-auth-live.js'), 'utf8');
