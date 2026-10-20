@@ -39,7 +39,7 @@ chk('چک‌لیست دام آف‌بای‌وان آمده', doc.includes('آف
 
 grp('تست‌ها و ابزارها');
 ['tests/docs-freeze-marker.js', 'tests/docs-metrics.js', 'tests/docs-health.js', 'tests/docs-consistency.js',
- 'tests/docs-index-coverage.js', 'tools/docs-health.sh', 'tools/docs-consistency-check.sh',
+ 'tests/docs-index-coverage.js', 'tests/handoff-integrity.js', 'tools/docs-health.sh', 'tools/docs-consistency-check.sh',
  'tools/generate-data-dictionary.js', 'tools/docs-export.sh'].forEach((t) =>
   chk('ارجاع به ' + t, doc.includes(t)));
 chk('الگوی تست تازه معرفی شده', doc.includes('risk-register-coverage.js'));

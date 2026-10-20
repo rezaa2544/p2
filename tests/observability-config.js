@@ -17,10 +17,14 @@ const env = rd(DIR + '/env.observability.example');
 const metrics = rd('server/metrics.js');
 
 chk('compose contains pinned observability services', ['prometheus:v2.54.1','alertmanager:v0.27.0','grafana:11.2.0','loki:3.1.1','promtail:3.1.1'].every((x) => compose.includes(x)));
-chk('Prometheus loads only canonical alert-rules.yml', /rule_files:\s*\n\s*- \/etc\/prometheus\/alert-rules\.yml(?:\s*)$/.test(prom));
+const ruleFilesBlock = (prom.match(/^rule_files:\s*\n((?:[ \t]+-[^\n]*\n)+)/m) || [])[1] || '';
+chk('Prometheus loads only canonical alert-rules.yml', ruleFilesBlock.trim() === '- /etc/prometheus/alert-rules.yml');
 chk('retired alerts.yml is not mounted', !/\.\/alerts\.yml:/.test(compose));
 chk('retired alerts.yml has no active alert', !/^- alert:/m.test(rd(DIR + '/alerts.yml')));
 chk('Prometheus target is payesh-api /metrics', /job_name: payesh-api/.test(prom) && /metrics_path: \/metrics/.test(prom) && /host\.docker\.internal:3000/.test(prom));
+chk('Prometheus uses Bearer auth from the mounted protected token file', /authorization:\s*\n\s*type: Bearer\s*\n\s*credentials_file: \/etc\/prometheus\/payesh_metrics_token/.test(prom) && /PAYESH_METRICS_TOKEN_FILE:\?/.test(compose));
+chk('Prometheus runs non-root as the owner of the mode-0600 token file', /user: "\$\{PROMETHEUS_UID:-65534\}:\$\{PROMETHEUS_GID:-65534\}"/.test(compose) && /PROMETHEUS_UID=65534/.test(env) && /install -o "\$PROMETHEUS_UID" -g "\$PROMETHEUS_GID" -m 0600/.test(rd(DIR + '/README.md')));
+chk('Alertmanager can reach the host-only CI receiver when explicitly configured', /host\.docker\.internal:host-gateway/.test(compose));
 chk('Prometheus points at Alertmanager', /alertmanager:9093/.test(prom));
 chk('all active alerts have for + severity', [...rules.matchAll(/- alert:[\s\S]*?(?=\n\s*- alert:|\n*$)/g)].every((m) => /for: \d+m/.test(m[0]) && /severity: (critical|warning)/.test(m[0])));
 const secondaryPath = path.join(ROOT, 'monitoring/alert-rules.yml');

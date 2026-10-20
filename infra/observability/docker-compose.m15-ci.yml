@@ -1,0 +1,22 @@
+# M15 CI-only override: grant the non-root Prometheus process read access to
+# the runner-owned, group-readable token file without making it world-readable.
+# Explicit run labels bind all created Compose resources to one workflow attempt.
+services:
+  prometheus:
+    group_add:
+      - "${M15_PROMETHEUS_FILE_GID:?M15_PROMETHEUS_FILE_GID must match the token-file group}"
+    labels:
+      io.payesh.m15-01.run: "${M15_RUN_INSTANCE:?M15_RUN_INSTANCE is required}"
+  alertmanager:
+    labels:
+      io.payesh.m15-01.run: "${M15_RUN_INSTANCE:?M15_RUN_INSTANCE is required}"
+
+networks:
+  default:
+    labels:
+      io.payesh.m15-01.run: "${M15_RUN_INSTANCE:?M15_RUN_INSTANCE is required}"
+
+volumes:
+  prom-data:
+    labels:
+      io.payesh.m15-01.run: "${M15_RUN_INSTANCE:?M15_RUN_INSTANCE is required}"

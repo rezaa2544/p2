@@ -4,6 +4,14 @@
 **مسیر فیزیکی:** `docs/experience-store/` + `tools/experience-store.js` + `tools/experience-benchmark.js`
 **تست رگرسیون:** `node tests/experience-store.test.js` (۱۵ چک)
 
+## گزارش‌های چرخهٔ پیاده‌سازی (شواهد نقطه‌درزمانی)
+
+این گزارش‌ها تاریخچهٔ خودِ مخزن تجربه‌اند و وضعیت جاری را جایگزین نمی‌کنند:
+- [Phase 2 — گزارش تجمیعی](PHASE2_CONSOLIDATED_REPORT.md)
+- [Phase 2 — گزارش نهایی](PHASE2_FINAL_REPORT.md)
+- [Phase 3 — گزارش تجمیعی](PHASE3_CONSOLIDATED_REPORT.md)
+- [Phase 3 — گزارش نهایی](PHASE3_FINAL_REPORT.md)
+
 ---
 
 ## ۱. هدف

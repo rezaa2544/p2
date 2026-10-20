@@ -613,9 +613,12 @@ async function hydrateStoreFromPg(store, opts) {
        PAYESH_PG_HYDRATE_LIMIT=u:5000    — سقفِ سطرِ per-جدول (ORDER BY id)
      مسیرهایِ خواندنِ زنده (pgLive ⇒ db.readCollection/executePagedList)
      همچنان مستقیم از PG می‌خوانند؛ سقف فقط «آینهٔ درون‌حافظه‌ایِ بوت» را
-     مقیّد می‌کند. یافتهٔ مانور: auth فعلاً از همین آینه می‌خواند (اسکنِ
-     خطیِ store.users) — در مقیاسِ واقعی باید به جست‌وجویِ ایندکس‌دارِ PG
-     برود (users.phone ایندکس ندارد). */
+     مقیّد می‌کند. در حالتِ PostgreSQL، جست‌وجویِ کاربرِ auth از `db.query`
+     و `db.readOne` استفاده می‌کند (server/auth.js:userByPhone/sessionFrom)؛
+     آینه فقط در حالتِ JSON و fallback غیرتولیدیِ lookup استفاده می‌شود.
+     migration 010 ایندکسِ عبارتیِ users.phone را تعریف می‌کند، اما استفادهٔ
+     واقعیِ planner تا EXPLAIN روی schema جاری **تأییدنشده** است. سقفِ hydration
+     خواندنِ مستقیمِ PG را محدود نمی‌کند. */
   const skipEnv = String(process.env.PAYESH_PG_HYDRATE_SKIP || '')
     .split(',').map((s) => s.trim()).filter(Boolean);
   const limEnv = {};

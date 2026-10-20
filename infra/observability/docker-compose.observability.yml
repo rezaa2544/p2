@@ -10,9 +10,13 @@ name: payesh-observability
 services:
   prometheus:
     image: prom/prometheus:v2.54.1
+    # Match the mounted mode-0600 scrape-token file owner; defaults to the
+    # pinned image's non-root nobody UID/GID. Override for a rebuilt image.
+    user: "${PROMETHEUS_UID:-65534}:${PROMETHEUS_GID:-65534}"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - ${PAYESH_METRICS_TOKEN_FILE:?PAYESH_METRICS_TOKEN_FILE must point to a protected file with the server token}:/etc/prometheus/payesh_metrics_token:ro
       - prom-data:/prometheus
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -39,6 +43,7 @@ services:
         exec /bin/alertmanager --config.file=/tmp/alertmanager.yml
     ports:
       - "127.0.0.1:9093:9093"
+    extra_hosts: ["host.docker.internal:host-gateway"]
     restart: unless-stopped
 
   grafana:

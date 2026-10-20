@@ -69,6 +69,7 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      PB_REPO_S3_BUCKET: ${PB_REPO_S3_BUCKET:-payesh-pgbackrest}
     restart: "no"
 
   # ── Primary ──
@@ -195,6 +196,8 @@ services:
     command: ["echo 'pg-backup ready — pgbackrest stanza=payesh'; exec sleep infinity"]
     environment:
       <<: *pgbackrest-env
+      PGUSER: ${PGHA_SUPERUSER:-postgres}
+      PGPASSWORD: ${PGHA_PASSWORD:?PGHA_PASSWORD را در env-file بگذارید}
     volumes:
       - pgdata-primary:/var/lib/postgresql/data:ro
       - wal-spool:/var/spool/pgbackrest

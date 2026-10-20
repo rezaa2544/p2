@@ -41,6 +41,11 @@ chk('اسناد زنده درست برچسب خورده‌اند', entries.filte
 chk('قفل‌های تاریخی وضعیت منجمد و نسخهٔ آر‌سی دارند',
   entries.filter((e) => /DOCS_FREEZE_v1\.0\.0-rc\d+\.md$/.test(e.path)).every((e) => e.status === 'frozen' && /^rc\d+$/.test(e.freeze)));
 
+const nestedReadmes = ['docs/RUNBOOK_CARDS/README.md', 'docs/experience-store/README.md', 'docs/pilot/README.md'];
+chk('READMEهای زیرپوشه وضعیتِ README ریشه را به ارث نمی‌برند',
+  nestedReadmes.every((p) => entries.find((e) => e.path === p)?.status === 'active'),
+  nestedReadmes.map((p) => `${p}:${entries.find((e) => e.path === p)?.status || 'missing'}`).join(', '));
+
 grp('ارجاع‌ها');
 const byPath = new Map(entries.map((e) => [e.path, e]));
 let sym = true;

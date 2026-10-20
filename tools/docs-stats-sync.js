@@ -40,6 +40,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
+const { buildCatalog, buildSearchIndex, isDailyDoc } = require('./docs-metadata');
 
 const ROOT = path.join(__dirname, '..');
 const DOCS = path.join(ROOT, 'docs');
@@ -176,8 +177,28 @@ function truth() {
   })(path.join(ROOT, 'tests'), '');
   const testsNested = Object.values(nested).reduce((a, b) => a + b, 0);
 
-  /* دسته‌بندیِ وضعیت برای نقشهٔ مستندات */
-  const frozenDocs = fs.readdirSync(DOCS).filter((f) => /^DOCS_FREEZE_v1\.0\.0-rc\d+\.md$/.test(f)).length;
+  /* دسته‌بندیِ وضعیت برای نقشهٔ مستندات از همان کاتالوگِ docs-metadata
+     می‌آید تا اسنادِ صریحاً منجمد (مثل README قدیمی) با فایل‌هایِ قفل
+     اشتباه نشوند. اسنادِ روزانه طبق C6-02 از طبقه‌بندیِ پایدار خارج‌اند. */
+  const catalog = buildCatalog();
+  const stableCatalog = catalog.filter((entry) => !isDailyDoc(entry.path));
+  const searchTokens = Object.keys(buildSearchIndex(catalog)).length;
+  const statusCounts = {};
+  for (const entry of stableCatalog) statusCounts[entry.status] = (statusCounts[entry.status] || 0) + 1;
+  const statusTree = rootMd.length + subTotal;
+  if (stableCatalog.length !== statusTree) {
+    throw new Error(`فهرست پایدارِ کاتالوگ (${stableCatalog.length}) با درختِ آماری (${statusTree}) یکی نیست`);
+  }
+  if ((statusCounts['active-live'] || 0) !== LIVE_DOCS.length) {
+    throw new Error(`شمارِ سندهای زنده در کاتالوگ (${statusCounts['active-live'] || 0}) با سیاست LIVE_DOCS (${LIVE_DOCS.length}) یکی نیست`);
+  }
+  const activeDocs = statusCounts.active || 0;
+  const archivedDocs = statusCounts.archived || 0;
+  const frozenDocs = statusCounts.frozen || 0;
+  const liveDocs = statusCounts['active-live'] || 0;
+  if (activeDocs + archivedDocs + frozenDocs + liveDocs !== statusTree) {
+    throw new Error('طبقه‌بندی وضعیتِ کاتالوگ همهٔ اسنادِ پایدار را پوشش نمی‌دهد');
+  }
 
   return {
     rc: rc || '?',
@@ -189,13 +210,17 @@ function truth() {
     dailyTotal,
     docsTree: rootMd.length + subTotal,      // C6-02: درخت پایدار
     docsTreePhysical: rootMd.length + subTotal + dailyTotal, // کل فیزیکی (تفصیلی)
+    searchTokens, // generated index covers all catalog docs, including daily-* records
     testsRoot,
     testsApi,
     testsTotal: testsRoot + testsApi,
     testsNested,
     nested,
+    activeDocs,
+    archivedDocs,
     frozenDocs,
-    liveDocs: LIVE_DOCS.length,
+    liveDocs,
+    statusCounts,
   };
 }
 
@@ -246,6 +271,12 @@ const OWNED = [
   },
   {
     file: 'docs/DOCUMENTATION_MAP.md',
+    key: 'map-search-tokens',
+    match: /^\| توکن در نمایهٔ جستجو \(شامل اسناد روزانه\) \|.*\|$/m,
+    render: (t) => `| توکن در نمایهٔ جستجو (شامل اسناد روزانه) | ${fa(t.searchTokens)} |`,
+  },
+  {
+    file: 'docs/DOCUMENTATION_MAP.md',
     key: 'map-sub',
     match: /^\| اسناد زیرپوشه‌ها \(.*?\) \|.*\|$/m,
     render: (t) => `| اسناد زیرپوشه‌ها (${subLabel(t)}) | ${fa(t.docsSub)} |`,
@@ -267,8 +298,8 @@ const OWNED = [
   {
     file: 'docs/DOCUMENTATION_MAP.md',
     key: 'map-status-frozen',
-    match: /^\| منجمد \(قفل‌های تاریخی\) \|.*\|$/m,
-    render: (t, m, ctx) => `| منجمد (قفل‌های تاریخی) | ${fa(t.frozenDocs)} |`,
+    match: /^\| منجمد \(قفل‌ها و اسنادِ منجمد\) \|.*\|$/m,
+    render: (t, m, ctx) => `| منجمد (قفل‌ها و اسنادِ منجمد) | ${fa(t.frozenDocs)} |`,
   },
   {
     file: 'docs/DOCUMENTATION_MAP.md',
@@ -336,15 +367,21 @@ function rewriteFreeze(man) {
 }
 
 /* ── موتور ───────────────────────────────────────────────────────── */
-/* ردیفِ «آرشیو» قاعدهٔ ماشینی ندارد (دستهٔ ۲.۱۱ نقشه است)، پس مقدارِ جاری‌اش
-   خوانده می‌شود و «فعال» باقی‌مانده می‌شود. اگر باقی‌مانده منفی شد، یعنی آرشیو
-   اشتباه است و ابزار به‌جای نوشتن می‌ایستد. */
+/* ردیفِ «آرشیو» در نقشه دستی است؛ مقدارش را از متن می‌خوانیم و با
+   طبقه‌بندیِ canonical کاتالوگ می‌سنجیم. فعال/زنده/منجمد از docs-metadata
+   می‌آیند تا تعریفِ وضعیت بین دو ابزار منحرف نشود. */
 function statusContext(t) {
   const src = fs.readFileSync(path.join(ROOT, 'docs/DOCUMENTATION_MAP.md'), 'utf8');
   const m = src.match(/^\| آرشیو \(بایگانی نمایه\) \|\s*([\d۰-۹]+)\s*\|$/m);
   const archive = m ? unfa(m[1]) : 0;
-  const active = t.docsTree - t.liveDocs - t.frozenDocs - archive;
-  return { archive, active, archiveRowFound: !!m };
+  const active = t.activeDocs;
+  return {
+    archive,
+    active,
+    archiveRowFound: !!m,
+    archiveMatchesCatalog: archive === t.archivedDocs,
+    statusTotal: active + t.liveDocs + t.frozenDocs + archive,
+  };
 }
 
 function run({ check, freeze, json }) {
@@ -357,11 +394,16 @@ function run({ check, freeze, json }) {
   let ctx = {};
   try { ctx = statusContext(t); } catch (e) { /* سند نبود؛ پایین گزارش می‌شود */ }
 
-  /* اگر دسته‌بندی قابل derivation نبود، هیچ ردیفی از آن جدول نوشته نمی‌شود */
-  if (ctx.archiveRowFound && ctx.active < 0) {
-    ambiguous.push('docs/DOCUMENTATION_MAP.md [به تفکیک وضعیت]: فعال = ' + ctx.active +
-      ' (منفی) — ردیفِ آرشیو (' + ctx.archive + ') با جمعِ درخت (' + t.docsTree +
-      ') نمی‌خواند؛ از نوشتن خودداری شد');
+  /* اگر دسته‌بندیِ وضعیت قابل اثبات/مقایسه نبود، هیچ ردیفی از آن جدول نوشته نمی‌شود. */
+  if (!ctx.archiveRowFound) {
+    ambiguous.push('docs/DOCUMENTATION_MAP.md [به تفکیک وضعیت]: ردیفِ آرشیو پیدا نشد؛ از نوشتن خودداری شد');
+  } else if (!ctx.archiveMatchesCatalog) {
+    ambiguous.push('docs/DOCUMENTATION_MAP.md [به تفکیک وضعیت]: آرشیوِ درج‌شده (' + ctx.archive +
+      ') با کاتالوگ (' + t.archivedDocs + ') یکی نیست؛ از نوشتن خودداری شد');
+  }
+  if (ctx.archiveRowFound && (ctx.active < 0 || ctx.statusTotal !== t.docsTree)) {
+    ambiguous.push('docs/DOCUMENTATION_MAP.md [به تفکیک وضعیت]: جمعِ وضعیت‌ها (' + ctx.statusTotal +
+      ') با درختِ پایدار (' + t.docsTree + ') نمی‌خواند؛ از نوشتن خودداری شد');
   }
 
   for (const spec of OWNED) {

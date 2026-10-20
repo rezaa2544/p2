@@ -42,7 +42,7 @@ x-sentinel-cmd: &sentinel-cmd
 
 services:
   redis-master:
-    image: redis:7.4.2-alpine
+    image: redis:7.4.2-bookworm
     command: *redis-cmd
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD را در env بگذارید}
@@ -58,7 +58,7 @@ services:
     restart: unless-stopped
 
   redis-replica-1:
-    image: redis:7.4.2-alpine
+    image: redis:7.4.2-bookworm
     command:
       - sh
       - -c
@@ -76,7 +76,7 @@ services:
     restart: unless-stopped
 
   redis-replica-2:
-    image: redis:7.4.2-alpine
+    image: redis:7.4.2-bookworm
     command:
       - sh
       - -c
@@ -95,7 +95,7 @@ services:
 
   # سه sentinel روی میزبان‌های جدا در پروداکشن (anti-affinity) — اینجا سه سرویس
   sentinel-1: &sentinel-svc
-    image: redis:7.4.2-alpine
+    image: redis:7.4.2-bookworm
     command: *sentinel-cmd
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}

@@ -1,0 +1,144 @@
+name: M15-01 E3 Runtime Evidence
+
+on:
+  push:
+    branches: ["main", "arena/**"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-e3-runtime:
+    name: Isolated E3 runtime run ${{ matrix.run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        run: ["a", "b"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Runtime harness unit and mutation-sensitivity gates
+        run: node tests/m15-01-runtime-evidence-unit.js
+
+      - name: Syntax checks
+        run: |
+          node --check tools/m15-01-runtime-evidence.js
+          node --check tools/m15-01-log-redactor.js
+          node --check tools/m15-01-route-load.js
+          node --check tools/m15-01-alert-receiver.js
+          node --check tools/m15-01-ci-db.js
+          node --check tools/m15-01-ci-seed.js
+          node --check tools/m15-01-ci-summary.js
+          node --check tests/m15-01-runtime-evidence-unit.js
+          node --check tests/m15-01-dr-runtime-unit.js
+          node --check server/index.js
+          bash -n tools/m15-01-ci-runtime.sh
+          bash -n tools/m15-01-dr-runtime.sh
+
+      - name: Build live E3 evidence on isolated PostgreSQL, Redis, Prometheus, and Alertmanager
+        env:
+          M15_EVIDENCE_RUN: ${{ matrix.run }}
+          M15_ROUTE_SECONDS: "5"
+          M15_ROUTE_CONCURRENCY: "2"
+        run: bash tools/m15-01-ci-runtime.sh
+
+      - name: Publish bounded runtime outcome summary
+        id: runtime_summary
+        if: always()
+        env:
+          M15_EVIDENCE_RUN: ${{ matrix.run }}
+        run: node tools/m15-01-ci-summary.js runtime "$RUNNER_TEMP/m15-01-${M15_EVIDENCE_RUN}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+
+      - name: Upload current-head E3 evidence and command output
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: m15-01-runtime-${{ matrix.run }}-${{ steps.runtime_summary.outputs.status }}-${{ steps.runtime_summary.outputs.failure_code }}-${{ steps.runtime_summary.outputs.failed_stage }}-${{ github.sha }}
+          path: ${{ runner.temp }}/m15-01-${{ matrix.run }}-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: error
+          retention-days: 30
+
+  isolated-dr-drill:
+    name: Current-head PostgreSQL PITR and HA failover plus Redis Sentinel failover
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run required documentation gates on the checked-out SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          checkout_sha="$(git rev-parse HEAD)"
+          printf 'GITHUB_SHA=%s\ncheckout_sha=%s\n' "$GITHUB_SHA" "$checkout_sha"
+          test "$checkout_sha" = "$GITHUB_SHA"
+          set +e
+          node tests/docs-index-coverage.js
+          docs_index_rc=$?
+          printf 'exit_code docs-index-coverage=%s\n' "$docs_index_rc"
+          node tests/documentation-map-coverage.js
+          docs_map_rc=$?
+          printf 'exit_code documentation-map-coverage=%s\n' "$docs_map_rc"
+          node tests/onboarding-coverage.js
+          onboarding_rc=$?
+          printf 'exit_code onboarding-coverage=%s\n' "$onboarding_rc"
+          set -e
+          test "$docs_index_rc" -eq 0
+          test "$docs_map_rc" -eq 0
+          test "$onboarding_rc" -eq 0
+
+      - name: Validate HA/DR configuration and shell contracts
+        run: |
+          node tests/ha-config.js
+          node tests/pitr-restore-args.js
+          node tests/m15-01-dr-runtime-unit.js
+          node --check tools/m15-01-log-redactor.js
+          bash -n tools/m15-01-dr-runtime.sh
+          bash -n tools/pitr-restore.sh
+          bash -n tools/pitr-verify.sh
+          bash -n tools/failover-postgres.sh
+          bash -n tools/failover-redis.sh
+
+      - name: Run disposable current-head PITR and failover drill
+        env:
+          M15_RUNTIME_ALLOW_CI: "1"
+        run: bash tools/m15-01-dr-runtime.sh
+
+      - name: Publish bounded DR outcome summary
+        id: dr_summary
+        if: always()
+        run: node tools/m15-01-ci-summary.js dr "$RUNNER_TEMP/m15-01-dr-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+
+      - name: Upload DR command output and bounded E3 evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: m15-01-dr-${{ steps.dr_summary.outputs.status }}-${{ steps.dr_summary.outputs.failure_code }}-${{ steps.dr_summary.outputs.failed_stage }}-${{ github.sha }}
+          path: ${{ runner.temp }}/m15-01-dr-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: error
+          retention-days: 30
