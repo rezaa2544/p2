@@ -12,6 +12,7 @@ const ciSummary = require('../tools/m15-01-ci-summary');
 const ciSeed = require('../tools/m15-01-ci-seed');
 const relationalSeed = require('../tools/seed-relational-small');
 const receiver = require('../tools/m15-01-alert-receiver');
+const migrationLedger = require('../tools/migrate-ledger');
 
 let pass = 0;
 function test(name, fn) {
@@ -377,6 +378,15 @@ try {
     assert.strictEqual(evidence.cacheWorkerTimerContractMatches(index, worker, outbox.replace("type NOT LIKE 'cache.%'", "type LIKE 'cache.%'")), false);
     const runtimeSource = fs.readFileSync(path.join(__dirname, '..', 'tools', 'm15-01-runtime-evidence.js'), 'utf8');
     assert.doesNotMatch(runtimeSource, /require\(['"]\.\.\/server\/index['"]\)/);
+  });
+
+  test('P11 migration chain routes transaction-control migration 012 through psql', () => {
+    const p11 = fs.readFileSync(path.join(__dirname, '..', 'tests', 'p11-phone-auth-live.js'), 'utf8');
+    const migration012 = fs.readFileSync(path.join(__dirname, '..', 'migrations', '012_partition_grades_attendance.sql'), 'utf8');
+    assert.strictEqual(migrationLedger.hasInternalTransactionControl(migration012), true);
+    assert.strictEqual(migrationLedger.hasInternalTransactionControl('SELECT 1;'), false);
+    assert.match(p11, /hasInternalTransactionControl\(sql\)/);
+    assert.match(p11, /execFileSync\('psql'/);
   });
 
   test('phone-auth EXPLAIN contract matches auth SQL and P11 bind precedent', () => {
