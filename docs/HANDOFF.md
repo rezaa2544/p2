@@ -657,3 +657,17 @@ The user asked to continue without Docker. This sandbox is Debian 12 x86_64 with
 ### Scope-limited workflow publication authorization — 2026-10-20
 
 The user's later explicit authorization allows commit/push of reviewed M15-01 harness/support changes to `arena/c33a022c-p2` solely to make the isolated workflow run and collect evidence. This supersedes the earlier no-push instruction only for that exact operation. It does not allow a `main`/other-branch push, merge, force-push, branch-protection bypass, or production testing. Workflow completion is not independent acceptance or E4 proof. M15-01 remains **BLOCKED / REVALIDATION_REQUIRED**, M15-02 **NOT STARTED**, and SI-013/P0 remains open.
+
+## Continuation checkpoint — 2026-10-21 (workflow outcomes)
+
+**Source:** `arena/c33a022c-p2`, workflow SHA `69662f4232208cff059bdc3c6a176aabf2ecd182`; permitted commits are `0fa2f305a66a344a91aaca963158b72ae53a4570`, `aac25f38f464a2578a078310da0c2984e83f5c0d`, and `69662f4232208cff059bdc3c6a176aabf2ecd182`. All pushes were fast-forward to this branch only. No merge, force-push, bypass, or production test occurred.
+
+- Latest M15 Actions run `39495570754`: **FAIL**. Runtime A/B stopped at `p11-phone-auth-live` before the runtime evidence report; DR stopped at `pg-ha-start`. The artifacts uploaded with exact-SHA status/stage metadata.
+- Latest observability run `39495570472`: **FAIL**. Static/promtool/amtool validation passed; the Loki/Promtail stream check failed, and the dependent healthy-metric runtime step failed.
+- GitHub artifact payload download is blocked by the sandbox's outbound allowlist. Only names, sizes, job/step conclusions, and current-head binding were reviewed; command-output contents were not. These failures are not accepted E3 evidence and cannot be marked PASS.
+- Local `npm test` passed (39/39, REST API 31/31, smoke 547/547) in JSON/in-memory mode because `DATABASE_URL` is absent. `build:check` passed; M15 unit 30/30, DR unit 16/16, PITR args 5/5, observability config 24/24, semantic guard, docs/freeze gates passed. YAML and embedded shell syntax parsed. The secret scan remains red with 81 long-hex candidates; values are withheld. SI-013/P0 remains open.
+- The seven capacity/W18 paths remain local and unstaged; none is in the three commits, and public history was not rewritten. Independent review has not occurred. E3 acceptance is **NOT ESTABLISHED**, E4/production readiness remain **UNPROVEN**.
+
+**Disposition:** M15-01 **BLOCKED / REVALIDATION_REQUIRED**; M15-02 **NOT STARTED**. A single-runner drill is at most E3 and does not prove off-site recovery or the full alert → on-call → acknowledgement → runbook → recovery chain.
+
+**Next action:** repository owner reviews the redacted command output for runs `39495570754` and `39495570472` in GitHub and shares only the sanitized first-error lines for correction and revalidation.
