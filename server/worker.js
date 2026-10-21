@@ -42,6 +42,10 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
      replicate-to-all در تایمرِ واقعی هرگز اجرا نمی‌شد. پرچمِ جدا لازم است. */
   let replRunning = false;
   let lastTickAt = 0;
+  let lastReplicateTickAt = 0;
+  let lastReplicateResult = null;
+  let lastReplicateTickErrored = false;
+  const cacheReplicationEnabled = () => process.env.PAYESH_CACHE_DURABLE_INVALIDATION !== 'off';
   const inFlight = new Set();
 
   function handlerFor(evt) {
@@ -144,6 +148,8 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
   async function tickReplicate() {
     if (replRunning) return { processed: 0, failedDelta: 0, skippedBusy: true };
     replRunning = true;
+    lastReplicateTickAt = Date.now();
+    lastReplicateTickErrored = false;
     let processed = 0, failedDelta = 0;
     try {
       let events = [];
@@ -208,7 +214,12 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
       if (lastOkId > 0 && outbox && typeof outbox.advanceWatermark === 'function') {
         await outbox.advanceWatermark(lastOkId);
       }
-      return { processed, failedDelta };
+      const result = { processed, failedDelta };
+      lastReplicateResult = result;
+      return result;
+    } catch (err) {
+      lastReplicateTickErrored = true;
+      throw err;
     } finally {
       replRunning = false;
     }
@@ -219,9 +230,7 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
     lastTickAt = Date.now();
     timer = setInterval(() => {
       tick().catch(() => {});
-      if (!process.env.PAYESH_CACHE_DURABLE_INVALIDATION || process.env.PAYESH_CACHE_DURABLE_INVALIDATION !== 'off') {
-        tickReplicate().catch(() => {});
-      }
+      if (cacheReplicationEnabled()) tickReplicate().catch(() => {});
     }, intervalMs);
     if (timer.unref) timer.unref();
   }
@@ -241,8 +250,15 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
     return {
       running,
       active: timer !== null,
+      intervalMs,
       lastTickAt: lastTickAt ? new Date(lastTickAt).toISOString() : null,
       lastTickAgeMs: lastTickAt ? Date.now() - lastTickAt : 0,
+      cacheReplicationEnabled: cacheReplicationEnabled(),
+      cacheReplicationLastTickAt: lastReplicateTickAt ? new Date(lastReplicateTickAt).toISOString() : null,
+      cacheReplicationLastTickAgeMs: lastReplicateTickAt ? Date.now() - lastReplicateTickAt : null,
+      cacheReplicationLastProcessed: lastReplicateResult ? lastReplicateResult.processed : null,
+      cacheReplicationLastFailedDelta: lastReplicateResult ? lastReplicateResult.failedDelta : null,
+      cacheReplicationLastTickErrored: lastReplicateTickErrored,
       healthy: isHealthy()
     };
   }

@@ -21,6 +21,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { hasInternalTransactionControl } = require('../tools/migrate-ledger');
 
 const PGURL = process.env.P11_LIVE_PG || '';
 let pg = null;
@@ -48,9 +49,12 @@ function chk(name, cond, extra){
   for(const m of migs){
     try {
       const sql = fs.readFileSync(path.join(migDir, m), 'utf8');
-      /* ری‌تارگت (مرج #82): مهاجرتِ 012 متاکامندِ psql دارد (\gset) و از
-         pool.query عبور نمی‌کند — قراردادِ خودِ مهاجرت اجرایِ psql است. */
-      if (/^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql)) {
+      /* Migration 012 contains procedures that COMMIT internally. Sending its
+         whole file through one node-postgres query creates an implicit
+         transaction block, so PostgreSQL rejects the procedure COMMIT with
+         SQLSTATE 2D000. Use psql's per-statement file execution for transaction-
+         control migrations as well as files with psql meta-commands. */
+      if (/^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql) || hasInternalTransactionControl(sql)) {
         require('child_process').execFileSync('psql',
           ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(migDir, m), PGURL], { stdio: 'pipe' });
       } else {

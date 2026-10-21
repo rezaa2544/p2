@@ -10,6 +10,7 @@ const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
 const { execFileSync } = require('child_process');
+const { isValidActorProvinceTenantPolicy } = require('./m15-01-tenant-policy');
 
 const ROOT = path.join(__dirname, '..');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -511,8 +512,18 @@ async function waitForApiReady(name, base, timeoutMs) {
             health: {
               status: health.response.status,
               worker_active: healthBody.worker.active === true,
+              worker_interval_ms: Number(healthBody.worker.intervalMs),
               worker_last_tick_at: healthBody.worker.lastTickAt || null,
               worker_last_tick_age_ms: Number(healthBody.worker.lastTickAgeMs || 0),
+              cache_replication_enabled: healthBody.worker.cacheReplicationEnabled === true,
+              cache_replication_last_tick_at: healthBody.worker.cacheReplicationLastTickAt || null,
+              cache_replication_last_tick_age_ms: healthBody.worker.cacheReplicationLastTickAgeMs == null
+                ? null : Number(healthBody.worker.cacheReplicationLastTickAgeMs),
+              cache_replication_last_processed: healthBody.worker.cacheReplicationLastProcessed == null
+                ? null : Number(healthBody.worker.cacheReplicationLastProcessed),
+              cache_replication_last_failed_delta: healthBody.worker.cacheReplicationLastFailedDelta == null
+                ? null : Number(healthBody.worker.cacheReplicationLastFailedDelta),
+              cache_replication_last_tick_errored: healthBody.worker.cacheReplicationLastTickErrored === true,
               pid: Number(healthBody.pid || 0)
             }
           };
@@ -673,6 +684,43 @@ function assertManagerPrincipalSchoolInSeed(principal, seedPath) {
   return { role: 'manager', school_id: Number(principal.school_id), runtime_store_school_found: true };
 }
 
+function assertManagerPrincipalProvinceScope(scope, principal) {
+  const schoolId = Number(principal && principal.school_id);
+  const scopeSchoolId = Number(scope && scope.school_id);
+  const provinceId = Number(scope && scope.province_id);
+  const provinceCode = String(scope && scope.province_code || '');
+  if (!principal || principal.role !== 'manager' || !Number.isSafeInteger(schoolId) || schoolId < 1
+      || !scope || scopeSchoolId !== schoolId || !Number.isSafeInteger(provinceId) || provinceId < 1
+      || !/^\d{2}$/.test(provinceCode)
+      || !isValidActorProvinceTenantPolicy(scope, { school_id: schoolId, province_code: provinceCode })) {
+    throw new Error('seeded_manager_province_scope_invalid');
+  }
+  return { province_scope_resolved: true, tenant_policy_present: true, tenant_policy_valid: true };
+}
+
+async function verifyManagerPrincipalProvinceScope(pool, principal) {
+  if (!principal || principal.role !== 'manager' || !Number.isSafeInteger(Number(principal.school_id))
+      || Number(principal.school_id) < 1) throw new Error('seeded_manager_province_scope_invalid');
+  const result = await pool.query(
+    `SELECT s.id AS school_id, s.province_id, p.code AS province_code,
+            (tp.province IS NOT NULL) AS tenant_policy_present,
+            tp.province AS tenant_policy_province, tp.school AS tenant_policy_school,
+            tp.allowed_scope AS tenant_policy_allowed_scope, tp.version AS tenant_policy_version
+       FROM schools AS s
+       LEFT JOIN provinces AS p ON p.id = s.province_id
+       LEFT JOIN LATERAL (
+         SELECT province, school, allowed_scope, version
+           FROM tenant_policy
+          WHERE province = p.code AND (school = s.id::text OR school = '*')
+          ORDER BY CASE WHEN school = s.id::text THEN 0 ELSE 1 END
+          LIMIT 1
+       ) AS tp ON TRUE
+      WHERE s.id = $1;`,
+    [Number(principal.school_id)]);
+  if (!result.rows || result.rows.length !== 1) throw new Error('seeded_manager_province_scope_invalid');
+  return assertManagerPrincipalProvinceScope(result.rows[0], principal);
+}
+
 function jalaliMonthForIsoDate(rawDate) {
   const isoDate = String(rawDate || '').slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) throw new Error('fixture_attendance_date_invalid');
@@ -789,7 +837,10 @@ function cacheWorkerTimerContractMatches(indexSource, workerSource, outboxSource
     && replayBlock.includes("type NOT LIKE 'cache.%'")
     && replicateBlock.includes("type LIKE 'cache.%' AND id > $1")
     && timerBlock.includes('setInterval(')
-    && timerBlock.includes('tickReplicate().catch');
+    && timerBlock.includes('tickReplicate().catch')
+    && workerSource.includes('cacheReplicationEnabled: cacheReplicationEnabled()')
+    && workerSource.includes('cacheReplicationLastTickAgeMs:')
+    && workerSource.includes('intervalMs,');
 }
 
 async function exerciseQueueRetention(outbox, pool, report) {
@@ -813,7 +864,7 @@ async function exerciseQueueRetention(outbox, pool, report) {
   report.queue_retention_probe = probe;
   const processed = await pool.query(`INSERT INTO server_outbox
       (type, collection, payload, status, retry_count, created_at, processed_at)
-    VALUES ('m15.queue_retention_probe', 'm15_retention', jsonb_build_object('origin', $1),
+    VALUES ('m15.queue_retention_probe', 'm15_retention', jsonb_build_object('origin', $1::text),
       'processed', 0, NOW() - INTERVAL '30 days', NOW() - INTERVAL '30 days')
     RETURNING id;`, [marker]);
   if (!processed.rows.length) throw new Error('queue_retention_processed_probe_insert_failed');
@@ -823,7 +874,7 @@ async function exerciseQueueRetention(outbox, pool, report) {
     VALUES ($1, 0, NOW() - INTERVAL '30 days'), ($2, $3, NOW());`, [staleInstance, currentInstance, outboxId]);
   const dlq = await pool.query(`INSERT INTO server_outbox_dlq
       (outbox_id, type, collection, payload, error_message, retry_count, failed_at)
-    VALUES ($1, 'm15.queue_retention_probe', 'm15_retention', jsonb_build_object('origin', $2),
+    VALUES ($1, 'm15.queue_retention_probe', 'm15_retention', jsonb_build_object('origin', $2::text),
       'synthetic retention probe', 5, NOW() - INTERVAL '30 days')
     RETURNING id;`, [outboxId, marker]);
   if (!dlq.rows.length) throw new Error('queue_retention_dlq_probe_insert_failed');
@@ -914,6 +965,53 @@ async function exerciseOutbox(cfg, pool, outbox, report) {
   return { origin: queueOrigin, eventId: Number(event.id), replayIds: [] };
 }
 
+async function readRestartReplayDiagnostic(base, pool, eventId, instanceId) {
+  let watermark = null;
+  let event = null;
+  let worker = {};
+  try {
+    const result = await pool.query('SELECT last_id FROM server_outbox_watermark WHERE instance_id = $1;', [instanceId]);
+    if (result.rows.length) watermark = result.rows[0].last_id;
+  } catch (_) {}
+  try {
+    const result = await pool.query('SELECT status, retry_count, last_error FROM server_outbox WHERE id = $1;', [eventId]);
+    if (result.rows.length) event = result.rows[0];
+  } catch (_) {}
+  try {
+    const health = await fetchText(new URL('/api/health', base), {}, 5000);
+    if (health.response.ok) worker = (JSON.parse(health.text).worker || {});
+  } catch (_) {}
+  const finiteOrNull = (value) => value == null || !Number.isFinite(Number(value)) ? null : Number(value);
+  const knownStatuses = new Set(['pending', 'processing', 'processed', 'failed', 'dead_letter']);
+  const status = event && knownStatuses.has(String(event.status)) ? String(event.status) : 'unknown';
+  return {
+    watermark_last_id: finiteOrNull(watermark),
+    event_status: status,
+    retry_count: finiteOrNull(event && event.retry_count),
+    last_error: event && event.last_error ? redactError(event.last_error, process.env) : null,
+    worker_active: worker.active === true,
+    worker_interval_ms: finiteOrNull(worker.intervalMs),
+    cache_replication_enabled: worker.cacheReplicationEnabled === true,
+    cache_replication_last_tick_age_ms: finiteOrNull(worker.cacheReplicationLastTickAgeMs),
+    cache_replication_last_processed: finiteOrNull(worker.cacheReplicationLastProcessed),
+    cache_replication_last_tick_errored: worker.cacheReplicationLastTickErrored === true
+  };
+}
+
+function restartReplayDiagnosticMessage(code, diagnostic) {
+  return code + ': watermark=' + (diagnostic.watermark_last_id == null ? 'unknown' : diagnostic.watermark_last_id)
+    + '; event=' + diagnostic.event_status
+    + '; retry_count=' + (diagnostic.retry_count == null ? 'unknown' : diagnostic.retry_count)
+    + '; interval_ms=' + (diagnostic.worker_interval_ms == null ? 'unknown' : diagnostic.worker_interval_ms)
+    + '; replicate_enabled=' + diagnostic.cache_replication_enabled
+    + '; replicate_tick_age_ms=' + (diagnostic.cache_replication_last_tick_age_ms == null
+      ? 'never' : diagnostic.cache_replication_last_tick_age_ms)
+    + '; replicate_processed=' + (diagnostic.cache_replication_last_processed == null
+      ? 'unknown' : diagnostic.cache_replication_last_processed)
+    + '; replicate_error=' + diagnostic.cache_replication_last_tick_errored
+    + (diagnostic.last_error ? '; last_error=' + diagnostic.last_error : '');
+}
+
 async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) {
   const beforeStop = await pool.query('SELECT status FROM server_outbox WHERE id = $1;', [queueRun.eventId]);
   if (!beforeStop.rows.length || beforeStop.rows[0].status !== 'pending') throw new Error('queue_event_not_pending_before_process_restart');
@@ -923,7 +1021,8 @@ async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) 
   if (!afterStop.rows.length || afterStop.rows[0].status !== 'pending') throw new Error('queue_event_not_pending_after_process_restart');
 
   const restarted = await bootApi(cfg, cfg.api_restart_container, cfg.base, runtimeState, {
-    PAYESH_WORKER_INTERVAL_MS: '250'
+    PAYESH_WORKER_INTERVAL_MS: '250',
+    PAYESH_CACHE_DURABLE_INVALIDATION: 'on'
   });
   if (restarted.container.host_pid === report.application.container_host_pid) throw new Error('api_process_pid_did_not_change_on_restart');
   report.resource_isolation.api_container_runs.push({
@@ -937,10 +1036,33 @@ async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) 
     network_mode: restarted.container.network_mode,
     limits_verified_by_docker_inspect: true
   });
-  const reached = await waitFor(async () => {
-    const rows = await pool.query('SELECT last_id FROM server_outbox_watermark WHERE instance_id = $1;', [cfg.api_instance_id]);
-    return rows.length && Number(rows[0].last_id) >= queueRun.eventId ? Number(rows[0].last_id) : null;
-  }, 90000, 'restarted_api_timer_watermark');
+  report.queue.restart_attempt = {
+    prior_container: report.application.container,
+    prior_host_pid: report.application.container_host_pid,
+    restarted_container: restarted.container.name,
+    restarted_host_pid: restarted.container.host_pid,
+    worker_interval_ms: restarted.health.worker_interval_ms,
+    worker_timer_active: restarted.health.worker_active,
+    cache_replication_enabled: restarted.health.cache_replication_enabled,
+    cache_replication_last_tick_age_ms: restarted.health.cache_replication_last_tick_age_ms
+  };
+  if (restarted.health.worker_interval_ms !== 250) {
+    throw new Error('restarted_api_worker_interval_mismatch:' + String(restarted.health.worker_interval_ms));
+  }
+  if (restarted.health.cache_replication_enabled !== true) {
+    throw new Error('restarted_api_cache_replication_disabled');
+  }
+  let reached;
+  try {
+    reached = await waitFor(async () => {
+      const rows = await pool.query('SELECT last_id FROM server_outbox_watermark WHERE instance_id = $1;', [cfg.api_instance_id]);
+      return rows.length && Number(rows[0].last_id) >= queueRun.eventId ? Number(rows[0].last_id) : null;
+    }, 90000, 'restarted_api_timer_watermark');
+  } catch (_) {
+    const diagnostic = await readRestartReplayDiagnostic(cfg.base, pool, queueRun.eventId, cfg.api_instance_id);
+    report.queue.restart_attempt.failure_diagnostic = diagnostic;
+    throw new Error(restartReplayDiagnosticMessage('restarted_api_timer_watermark_timeout', diagnostic));
+  }
   const processed = await pool.query('SELECT status, retry_count FROM server_outbox WHERE id = $1;', [queueRun.eventId]);
   if (!processed.rows.length || processed.rows[0].status !== 'processed') throw new Error('restarted_api_timer_did_not_process_cache_event');
   const liveHealth = await fetchText(new URL('/api/health', cfg.base), {}, 5000);
@@ -953,9 +1075,14 @@ async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) 
     prior_host_pid: report.application.container_host_pid,
     restarted_host_pid: restarted.container.host_pid,
     instance_id_preserved: true,
-    worker_interval_ms: 250,
+    worker_interval_ms: restarted.health.worker_interval_ms,
     worker_timer_active: restarted.health.worker_active,
     worker_last_tick_age_ms: Number(liveHealthBody.worker.lastTickAgeMs || 0),
+    cache_replication_enabled: restarted.health.cache_replication_enabled,
+    cache_replication_last_tick_age_ms: liveHealthBody.worker.cacheReplicationLastTickAgeMs == null
+      ? null : Number(liveHealthBody.worker.cacheReplicationLastTickAgeMs),
+    cache_replication_last_processed: liveHealthBody.worker.cacheReplicationLastProcessed == null
+      ? null : Number(liveHealthBody.worker.cacheReplicationLastProcessed),
     boot_replay_cache_exclusion_verified: true,
     event_status: processed.rows[0].status,
     event_retry_count: Number(processed.rows[0].retry_count || 0),
@@ -975,6 +1102,7 @@ async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) 
   const replay = await bootApi(cfg, cfg.api_replay_container, replayBase, runtimeState, {
     PAYESH_INSTANCE_ID: replayId,
     PAYESH_WORKER_INTERVAL_MS: '250',
+    PAYESH_CACHE_DURABLE_INVALIDATION: 'on',
     PORT: '13001'
   });
   report.resource_isolation.api_container_runs.push({
@@ -988,24 +1116,64 @@ async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) 
     network_mode: replay.container.network_mode,
     limits_verified_by_docker_inspect: true
   });
-  const replayWatermark = await waitFor(async () => {
-    const rows = await pool.query('SELECT last_id FROM server_outbox_watermark WHERE instance_id = $1;', [replayId]);
-    return rows.length && Number(rows[0].last_id) >= queueRun.eventId ? Number(rows[0].last_id) : null;
-  }, 90000, 'independent_api_timer_watermark');
+  report.queue.replay_instance_ids = [replayId];
+  report.queue.independent_replay_attempt = {
+    instance_id: replayId,
+    container: replay.container.name,
+    host_pid: replay.container.host_pid,
+    worker_interval_ms: replay.health.worker_interval_ms,
+    worker_timer_active: replay.health.worker_active,
+    cache_replication_enabled: replay.health.cache_replication_enabled,
+    cache_replication_last_tick_age_ms: replay.health.cache_replication_last_tick_age_ms
+  };
+  if (replay.health.worker_interval_ms !== 250) {
+    throw new Error('independent_api_worker_interval_mismatch:' + String(replay.health.worker_interval_ms));
+  }
+  if (replay.health.cache_replication_enabled !== true) {
+    throw new Error('independent_api_cache_replication_disabled');
+  }
+  let replayWatermark;
+  try {
+    replayWatermark = await waitFor(async () => {
+      const rows = await pool.query('SELECT last_id FROM server_outbox_watermark WHERE instance_id = $1;', [replayId]);
+      return rows.length && Number(rows[0].last_id) >= queueRun.eventId ? Number(rows[0].last_id) : null;
+    }, 90000, 'independent_api_timer_watermark');
+  } catch (_) {
+    const diagnostic = await readRestartReplayDiagnostic(replayBase, pool, queueRun.eventId, replayId);
+    report.queue.independent_replay_attempt.failure_diagnostic = diagnostic;
+    throw new Error(restartReplayDiagnosticMessage('independent_api_timer_watermark_timeout', diagnostic));
+  }
   const replayStatus = await pool.query('SELECT status FROM server_outbox WHERE id = $1;', [queueRun.eventId]);
   if (!replayStatus.rows.length || replayStatus.rows[0].status !== 'processed') throw new Error('independent_api_timer_did_not_replay_cache_event');
-  report.queue.replay_instance_ids = [replayId];
   report.queue.independent_replay = {
     consumers: 2,
     api_processes: [
-      { container: cfg.api_restart_container, host_pid: restarted.container.host_pid, instance_id: cfg.api_instance_id, worker_timer_active: restarted.health.worker_active, watermark: Number(reached) },
-      { container: cfg.api_replay_container, host_pid: replay.container.host_pid, instance_id: replayId, worker_timer_active: replay.health.worker_active, watermark: Number(replayWatermark) }
+      {
+        container: cfg.api_restart_container,
+        host_pid: restarted.container.host_pid,
+        instance_id: cfg.api_instance_id,
+        worker_timer_active: restarted.health.worker_active,
+        worker_interval_ms: restarted.health.worker_interval_ms,
+        cache_replication_enabled: restarted.health.cache_replication_enabled,
+        watermark: Number(reached)
+      },
+      {
+        container: cfg.api_replay_container,
+        host_pid: replay.container.host_pid,
+        instance_id: replayId,
+        worker_timer_active: replay.health.worker_active,
+        worker_interval_ms: replay.health.worker_interval_ms,
+        cache_replication_enabled: replay.health.cache_replication_enabled,
+        watermark: Number(replayWatermark)
+      }
     ],
     all_processed: true,
     watermarks_reached_event_id: Number(reached) >= queueRun.eventId && Number(replayWatermark) >= queueRun.eventId,
     same_persisted_cache_event_observed_by_both: true
   };
   report.queue.consumer_results.push({ instance_id: replayId, event_processed: true, watermark: Number(replayWatermark) });
+  const replayStopped = stopApiContainer(cfg.api_replay_container, runtimeState);
+  report.queue.independent_replay.container_shutdown_exit_code = replayStopped.exit_code;
 
   const afterMetricsResponse = await getMetrics(cfg.base, process.env.PAYESH_METRICS_TOKEN);
   if (!afterMetricsResponse.response.ok) throw new Error('queue_after_metrics_http_' + afterMetricsResponse.response.status);
@@ -1191,6 +1359,12 @@ async function run() {
       throw new Error('database_container_resource_limits_or_run_ownership_not_verified');
     }
     const apiBoot = await bootApi(cfg, cfg.api_container, cfg.base, runtimeState, {});
+    if (apiBoot.health.worker_interval_ms !== cfg.worker_interval_ms) {
+      throw new Error('initial_api_worker_interval_mismatch:' + String(apiBoot.health.worker_interval_ms));
+    }
+    if (apiBoot.health.cache_replication_enabled !== true) {
+      throw new Error('initial_api_cache_replication_disabled');
+    }
     report.resource_isolation = {
       mode: 'separate Docker containers and cgroup CPU/memory/PID limits; one shared ephemeral runner host',
       physical_hosts_separate: false,
@@ -1230,10 +1404,13 @@ async function run() {
       ready_status: apiBoot.readiness.status,
       database_driver: apiBoot.readiness.database_driver,
       redis_driver: apiBoot.readiness.redis_driver,
-      worker_interval_ms: cfg.worker_interval_ms,
+      worker_interval_ms: apiBoot.health.worker_interval_ms,
+      configured_worker_interval_ms: cfg.worker_interval_ms,
       worker_timer_active_on_boot: apiBoot.health.worker_active === true,
       worker_timer_started_at: apiBoot.health.worker_last_tick_at,
       worker_last_tick_age_ms_on_boot: apiBoot.health.worker_last_tick_age_ms,
+      cache_replication_enabled_on_boot: apiBoot.health.cache_replication_enabled,
+      cache_replication_last_tick_age_ms_on_boot: apiBoot.health.cache_replication_last_tick_age_ms,
       worker_timer_ticks_not_waited_for: true,
       private_worker_test_hook_used: false
     };
@@ -1292,6 +1469,7 @@ async function run() {
 
     const principal = await findDatabaseManagerPrincipal(pool);
     report.database.manager_principal_scope = assertManagerPrincipalSchoolInSeed(principal);
+    report.database.manager_principal_province_scope = await verifyManagerPrincipalProvinceScope(pool, principal);
     const latestAttendance = await pool.query('SELECT max(date) AS latest_date FROM attendance WHERE school_id = $1;', [principal.school_id]);
     const fixtureAttendanceDate = latestAttendance.rows[0] && latestAttendance.rows[0].latest_date;
     if (!fixtureAttendanceDate) throw new Error('seeded_manager_attendance_date_missing');
@@ -1400,8 +1578,8 @@ async function run() {
 
     await explainPhoneLookup(pool, report, principal);
     const queueRun = await exerciseOutbox(cfg, pool, queueOutbox, report);
-    await exerciseRedisAlert(cfg, metricsToken, report, runtimeState);
     await exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState);
+    await exerciseRedisAlert(cfg, metricsToken, report, runtimeState);
     queueRun.replayIds = report.queue.replay_instance_ids;
 
     report.status = 'PASS';
@@ -1436,7 +1614,7 @@ async function run() {
     const rawCode = err && err.code || rawMessage.split(/[:\s]/)[0] || err && err.name || 'error';
     report.failure = {
       code: redactErrorCode(rawCode, process.env),
-      message: redactError(rawMessage, process.env)
+      message: formatFailureDiagnostic(err, process.env)
     };
     report.completed_at = new Date().toISOString();
     report.exit_code = 1;
@@ -1567,6 +1745,9 @@ async function run() {
     }
     console.log('M15-01 isolated runtime evidence: ' + report.status + ' · SHA=' + (report.source_sha || 'unbound')
       + ' · exit=' + exitCode + (report.failure ? ' · ' + report.failure.code : ''));
+    if (report.failure && report.failure.message) {
+      console.log('M15_FAILURE_MESSAGE=' + report.failure.message);
+    }
     if (report.status === 'PASS') {
       for (const route of report.routes || []) {
         console.log('ROUTE ' + route.route_template + ' requests=' + route.successes + ' rps=' + route.rps
@@ -1589,9 +1770,18 @@ async function run() {
 function redactError(message, env) {
   const { redactText } = require('./m15-01-log-redactor');
   let out = redactText(String(message || 'unknown'), env || {});
-  // Error-only numeric identifiers can appear without a field label.
-  out = out.replace(/\b\d{10,}\b/g, '[REDACTED_NUMERIC_IDENTIFIER]');
-  return out.slice(0, 240);
+  out = out.replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[REDACTED_EMAIL]');
+  out = out.replace(/\bhttps?:\/\/[^\s"'`<>]+/gi, '[REDACTED_URL]');
+  // Error-only numeric identifiers and formatted phone numbers can lack field labels.
+  out = out.replace(/\+?\d(?:[\d .()/-]*\d){7,}/g, '[REDACTED_NUMERIC_IDENTIFIER]');
+  return out.replace(/[\r\n\t ]+/g, ' ').trim().slice(0, 240);
+}
+
+function formatFailureDiagnostic(error, env) {
+  const output = String(error && (error.stderr || error.stdout) || '').trim();
+  if (!output) return redactError(error && error.message || error || 'unknown', env);
+  const command = String(error && error.cmd || '').trim().split(/\s+/)[0] || 'command';
+  return redactError(path.basename(command) + ' stderr: ' + output, env);
 }
 
 function redactErrorCode(value, env) {
@@ -1616,12 +1806,15 @@ module.exports = {
   counterDeltaMatches,
   phoneAuthQueryContractMatches,
   assertManagerPrincipalSchoolInSeed,
+  assertManagerPrincipalProvinceScope,
+  verifyManagerPrincipalProvinceScope,
   jalaliMonthForIsoDate,
   assertAttendanceReportMatchesPrincipal,
   resourceLimitsMatch,
   REDIS_RESOURCE_LIMIT,
   cacheWorkerTimerContractMatches,
   redactError,
+  formatFailureDiagnostic,
   redactErrorCode,
   readAlertEvents,
   validateEnvironment

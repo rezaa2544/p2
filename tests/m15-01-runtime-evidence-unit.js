@@ -2,6 +2,7 @@
 'use strict';
 
 const assert = require('assert');
+const { execFileSync } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
@@ -12,6 +13,8 @@ const ciSummary = require('../tools/m15-01-ci-summary');
 const ciSeed = require('../tools/m15-01-ci-seed');
 const relationalSeed = require('../tools/seed-relational-small');
 const receiver = require('../tools/m15-01-alert-receiver');
+const migrationLedger = require('../tools/migrate-ledger');
+const { resolveActorProvince } = require('../server/infrastructure/phase6-production-hardening');
 
 let pass = 0;
 function test(name, fn) {
@@ -161,6 +164,17 @@ try {
     });
     assert.doesNotMatch(unsafeCode, /09999000001|synthetic-db-password/);
     assert.doesNotMatch(unsafeCode, /[^A-Za-z0-9_.-]/);
+    const unlabelledPii = evidence.redactError(
+      'contact synthetic.person@example.test; call +49 176 1234 567890; https://internal.example/reset?token=synthetic-secret-value', {});
+    assert.doesNotMatch(unlabelledPii, /synthetic\.person@example\.test|176 1234 567890|internal\.example|synthetic-secret-value/);
+    assert.match(unlabelledPii, /REDACTED_EMAIL/);
+    assert.match(unlabelledPii, /REDACTED_URL/);
+    const commandFailure = evidence.formatFailureDiagnostic({
+      cmd: 'docker run --env=PAYESH_METRICS_TOKEN=synthetic-bearer-token',
+      stderr: Buffer.from('Error response from daemon: permission denied; token=synthetic-bearer-token; phone=09999000001; email=synthetic.person@example.test; https://internal.example/?token=synthetic-bearer-token')
+    }, { PAYESH_METRICS_TOKEN: 'synthetic-bearer-token' });
+    assert.match(commandFailure, /^docker stderr: Error response from daemon: permission denied/);
+    assert.doesNotMatch(commandFailure, /synthetic-bearer-token|09999000001|synthetic\.person@example\.test|internal\.example/);
   });
 
   test('database manager principal school must exist in the exact runtime JSON store', () => {
@@ -234,10 +248,17 @@ try {
 
   test('CI setup keeps database credentials out of argv/artifacts and redacts temporary command output', () => {
     const runtimeShell = fs.readFileSync(path.join(__dirname, '..', 'tools', 'm15-01-ci-runtime.sh'), 'utf8');
+    const runtimeEvidenceSource = fs.readFileSync(path.join(__dirname, '..', 'tools', 'm15-01-runtime-evidence.js'), 'utf8');
+    assert.match(runtimeEvidenceSource, /console\.log\('M15_FAILURE_MESSAGE=' \+ report\.failure\.message\)/);
     assert.match(runtimeShell, /--env-file "\$POSTGRES_ENV"/);
     assert.match(runtimeShell, /chmod 600 "\$POSTGRES_ENV"/);
     assert.match(runtimeShell, /format_command "\$@"/);
     assert.match(runtimeShell, /redact_file "\$output"/);
+    const redactedFailureSummary = runtimeShell.indexOf('title=M15-01 E3 runtime sanitized failure excerpt');
+    assert(redactedFailureSummary > runtimeShell.indexOf('redact_file "$output"'), 'runtime failure annotation must follow successful log redaction');
+    assert.match(runtimeShell, /if \[\[ "\$command_status" != 0 && "\$label" == "isolated-e3-runtime-evidence" && "\$redact_status" == 0 \]\]/);
+    assert.match(runtimeShell, /sed -n 's\/\^M15_FAILURE_MESSAGE=\/\/p' "\$output"/);
+    assert.match(runtimeShell, /cut -c1-800/);
     assert.match(runtimeShell, /rm -f "\$output"/);
     assert.match(runtimeShell, /remove-transient-.*basename "\$transient_file"/);
     assert.match(runtimeShell, /remove-isolated-runtime-image docker image rm "\$API_IMAGE"/);
@@ -271,10 +292,20 @@ try {
     assert.match(dockerfile, /COPY --chown=node:node tools\/m15-01-route-load\.js/);
     assert.doesNotMatch(dockerfile, /COPY --chown=node:node \. \./, 'the image build must not copy the full repository');
     assert.match(dockerfile, /mkdir -p \/run\/m15 \/app\/server\/data \/app\/tools/);
+    assert.match(dockerfile, /chmod 711 \/run\/m15/);
+    assert.match(dockerfile, /chmod 700 \/app\/server\/data/);
     assert.match(dockerfile, /^USER node$/m);
     const runtimeSource = fs.readFileSync(path.join(__dirname, '..', 'tools', 'm15-01-runtime-evidence.js'), 'utf8');
     assert(runtimeSource.includes("info.user !== 'node'"));
     assert(runtimeSource.includes("info.user !== uid + ':' + gid"));
+    const routeMeasureStart = runtimeSource.indexOf('function measureRouteInContainer(');
+    const routeMeasureEnd = runtimeSource.indexOf('\nfunction ', routeMeasureStart + 1);
+    const routeMeasureSource = runtimeSource.slice(routeMeasureStart, routeMeasureEnd);
+    assert.match(routeMeasureSource, /fs\.chmodSync\(specPath, 0o600\)/);
+    assert.match(routeMeasureSource, /fs\.chmodSync\(resultPath, 0o600\)/);
+    assert.match(routeMeasureSource, /'--user=' \+ uid \+ ':' \+ gid/);
+    assert.match(routeMeasureSource, /target=\/run\/m15\/spec\.json,readonly/);
+    assert.match(routeMeasureSource, /target=\/run\/m15\/result\.json/);
     assert.strictEqual(dockerignore.includes('**'), true, 'Docker context must be denied by default');
     for (const pattern of [
       '.env', '.env.*', '.env*', '**/.env', '**/.env.*', '**/.env*',
@@ -361,6 +392,169 @@ try {
     throwsCode(() => ciSeed.summarizeFixtureResult({ schoolIds: [1, 2], userIds: wrongScope }), 'm15_seed_manager_scope_invalid');
   });
 
+  test('M15 fixture seeds canonical province scope and preserves fail-closed routing', () => {
+    const plan = ciSeed.buildFixtureProvinceScopePlan([101, 202]);
+    assert.deepStrictEqual(plan, [
+      { school_id: 101, province_code: '07', province_name: 'M15 CI fixture province A' },
+      { school_id: 202, province_code: '14', province_name: 'M15 CI fixture province B' }
+    ]);
+    const rows = [
+      { school_id: 101, province_id: 701, province_code: '07', tenant_policy_present: true,
+        tenant_policy_province: '07', tenant_policy_school: '*',
+        tenant_policy_allowed_scope: { match: 'actor_province' }, tenant_policy_version: 1 },
+      { school_id: 202, province_id: 702, province_code: '14', tenant_policy_present: true,
+        tenant_policy_province: '14', tenant_policy_school: '*',
+        tenant_policy_allowed_scope: { match: 'actor_province' }, tenant_policy_version: 1 }
+    ];
+    assert.deepStrictEqual(ciSeed.validateFixtureProvinceScopeRows(rows, [101, 202]), {
+      province_count: 2, scoped_school_count: 2, tenant_policy_count: 2, tenant_policy_validated: true
+    });
+    assert.deepStrictEqual(evidence.assertManagerPrincipalProvinceScope(rows[0], {
+      role: 'manager', school_id: 101
+    }), { province_scope_resolved: true, tenant_policy_present: true, tenant_policy_valid: true });
+    throwsCode(() => ciSeed.buildFixtureProvinceScopePlan([101]), 'm15_seed_province_scope_plan_invalid');
+    throwsCode(() => ciSeed.buildFixtureProvinceScopePlan([101, 101]), 'm15_seed_province_scope_plan_invalid');
+    throwsCode(() => ciSeed.validateFixtureProvinceScopeRows(rows.slice(0, 1), [101, 202]), 'm15_seed_province_scope_rows_invalid');
+    throwsCode(() => ciSeed.validateFixtureProvinceScopeRows([
+      rows[0], { ...rows[1], tenant_policy_present: false }
+    ], [101, 202]), 'm15_seed_province_scope_rows_invalid');
+    throwsCode(() => ciSeed.validateFixtureProvinceScopeRows([
+      rows[0], { ...rows[1], tenant_policy_allowed_scope: { deny: true } }
+    ], [101, 202]), 'm15_seed_province_scope_rows_invalid');
+    throwsCode(() => ciSeed.validateFixtureProvinceScopeRows([
+      rows[0], { ...rows[1], tenant_policy_allowed_scope: { match: 'actor_school' } }
+    ], [101, 202]), 'm15_seed_province_scope_rows_invalid');
+    throwsCode(() => evidence.assertManagerPrincipalProvinceScope({
+      ...rows[0], tenant_policy_present: false
+    }, { role: 'manager', school_id: 101 }), 'seeded_manager_province_scope_invalid');
+    throwsCode(() => evidence.assertManagerPrincipalProvinceScope({
+      ...rows[0], tenant_policy_allowed_scope: { deny: true }
+    }, { role: 'manager', school_id: 101 }), 'seeded_manager_province_scope_invalid');
+    throwsCode(() => evidence.assertManagerPrincipalProvinceScope({
+      ...rows[0], province_code: '7'
+    }, { role: 'manager', school_id: 101 }), 'seeded_manager_province_scope_invalid');
+
+    const hydratedStore = {
+      schools: [
+        { id: 101, province_id: 701 },
+        { id: 202, province_id: 702 }
+      ],
+      provinces: [
+        { id: 701, code: '07' },
+        { id: 702, code: '14' }
+      ]
+    };
+    assert.strictEqual(resolveActorProvince({ id: 1001, role: 'manager', school_id: 101 }, hydratedStore), '07');
+    assert.strictEqual(resolveActorProvince({ id: 1002, role: 'manager', school_id: 202 }, hydratedStore), '14');
+    assert.strictEqual(resolveActorProvince({ id: 1001, role: 'manager', school_id: 101 }, {
+      schools: [{ id: 101, province_id: null }], provinces: []
+    }), null);
+    const dbSource = fs.readFileSync(path.join(__dirname, '..', 'server', 'db.js'), 'utf8');
+    const schemaTablesStart = dbSource.indexOf('const SCHEMA_TABLES');
+    const schemaTablesEnd = dbSource.indexOf('));', schemaTablesStart);
+    assert(schemaTablesStart >= 0 && schemaTablesEnd > schemaTablesStart);
+    assert.match(dbSource.slice(schemaTablesStart, schemaTablesEnd), /\bprovinces\b/,
+      'PG hydration must include provinces so resolveActorProvince can map province_id to code');
+
+    const indexSource = fs.readFileSync(path.join(__dirname, '..', 'server', 'index.js'), 'utf8');
+    const apiV1Start = indexSource.indexOf("if(p.indexOf('/api/v1/') === 0){");
+    const missingProvinceGuard = indexSource.indexOf('if (!effProv)', apiV1Start);
+    const unknownRouteFallback = indexSource.indexOf(
+      "return sendJson(res, 404, { ok: false, code: 'not_found' });", missingProvinceGuard);
+    const failClosedResponse = indexSource.indexOf(
+      'return sendJson(res, err.status === 503 ? 503 : 403', missingProvinceGuard);
+    assert(apiV1Start >= 0 && missingProvinceGuard > apiV1Start);
+    assert(failClosedResponse > missingProvinceGuard && failClosedResponse < unknownRouteFallback);
+    assert(unknownRouteFallback > failClosedResponse,
+      'unknown route stays behind the tenant guard; fixture scope must be repaired, not bypassed');
+  });
+
+  test('M15 province seeding links both tenants and rejects missing authority policy', () => {
+    const script = String.raw`
+      const assert = require('assert');
+      const ciSeed = require('./tools/m15-01-ci-seed');
+      const evidence = require('./tools/m15-01-runtime-evidence');
+      function fakeClient(options = {}) {
+        const calls = [];
+        return {
+          calls,
+          async query(sql, values = []) {
+            const normalized = String(sql).replace(/\s+/g, ' ').trim();
+            calls.push({ sql: normalized, values });
+            if (normalized.startsWith('SELECT count(*)::int AS count FROM provinces')) {
+              return { rows: [{ count: Number(options.catalogCount || 0) }] };
+            }
+            if (normalized.startsWith('INSERT INTO provinces')) {
+              const code = String(values[0]);
+              return { rows: [{ id: code === '07' ? 701 : 702, code }], rowCount: 1 };
+            }
+            if (normalized.startsWith('UPDATE schools')) {
+              return { rows: [{ id: values[1] }], rowCount: 1 };
+            }
+            if (normalized.includes('tenant_policy')) {
+              return { rows: [
+                { school_id: 101, province_id: 701, province_code: '07',
+                  tenant_policy_present: options.policyPresent !== false, tenant_policy_province: '07',
+                  tenant_policy_school: '*', tenant_policy_allowed_scope: options.policyScope || { match: 'actor_province' },
+                  tenant_policy_version: 1 },
+                { school_id: 202, province_id: 702, province_code: '14',
+                  tenant_policy_present: options.policyPresent !== false, tenant_policy_province: '14',
+                  tenant_policy_school: '*', tenant_policy_allowed_scope: options.policyScope || { match: 'actor_province' },
+                  tenant_policy_version: 1 }
+              ], rowCount: 2 };
+            }
+            throw new Error('unexpected_fixture_query');
+          }
+        };
+      }
+      (async () => {
+        const client = fakeClient();
+        const summary = await ciSeed.seedFixtureProvinceScopes(client, [101, 202]);
+        assert.deepStrictEqual(summary, {
+          province_count: 2, scoped_school_count: 2, tenant_policy_count: 2, tenant_policy_validated: true
+        });
+        assert.strictEqual(client.calls.filter((call) => call.sql.startsWith('INSERT INTO provinces')).length, 2);
+        assert.strictEqual(client.calls.filter((call) => call.sql.startsWith('UPDATE schools')).length, 2);
+        assert(client.calls.some((call) => call.sql.includes('LEFT JOIN LATERAL')));
+
+        const scopeQueries = [];
+        const pool = {
+          async query(sql, values) {
+            scopeQueries.push({ sql: String(sql), values });
+            return { rows: [{
+              school_id: 101, province_id: 701, province_code: '07', tenant_policy_present: true,
+              tenant_policy_province: '07', tenant_policy_school: '*',
+              tenant_policy_allowed_scope: { match: 'actor_province' }, tenant_policy_version: 1
+            }] };
+          }
+        };
+        assert.deepStrictEqual(await evidence.verifyManagerPrincipalProvinceScope(pool, {
+          role: 'manager', school_id: 101
+        }), { province_scope_resolved: true, tenant_policy_present: true, tenant_policy_valid: true });
+        assert.deepStrictEqual(scopeQueries[0].values, [101]);
+        assert.match(scopeQueries[0].sql, /LEFT JOIN provinces/);
+        assert.match(scopeQueries[0].sql, /LEFT JOIN LATERAL/);
+        assert.match(scopeQueries[0].sql, /tenant_policy/);
+        await assert.rejects(() => evidence.verifyManagerPrincipalProvinceScope({
+          query: async () => ({ rows: [] })
+        }, { role: 'manager', school_id: 101 }), /seeded_manager_province_scope_invalid/);
+
+        await assert.rejects(() => ciSeed.seedFixtureProvinceScopes(fakeClient({ catalogCount: 1 }), [101, 202]),
+          /m15_seed_refusing_nonempty_province_catalog/);
+        await assert.rejects(() => ciSeed.seedFixtureProvinceScopes(fakeClient({ policyPresent: false }), [101, 202]),
+          /m15_seed_province_scope_rows_invalid/);
+        await assert.rejects(() => ciSeed.seedFixtureProvinceScopes(fakeClient({ policyScope: { deny: true } }), [101, 202]),
+          /m15_seed_province_scope_rows_invalid/);
+      })().catch((error) => {
+        console.error(error && error.message || error);
+        process.exitCode = 1;
+      });
+    `;
+    execFileSync(process.execPath, ['-e', script], {
+      cwd: path.join(__dirname, '..'), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']
+    });
+  });
+
   test('relational fixture dates use valid recent ISO days across month boundaries', () => {
     const dates = relationalSeed.recentIsoDateDays(5, new Date('2026-10-01T00:30:00.000Z'));
     assert.deepStrictEqual(dates, ['2026-10-01', '2026-09-30', '2026-09-29', '2026-09-28', '2026-09-27']);
@@ -376,7 +570,28 @@ try {
     assert.strictEqual(evidence.cacheWorkerTimerContractMatches(index, worker.replace('tickReplicate().catch', 'directTickReplicate().catch'), outbox), false);
     assert.strictEqual(evidence.cacheWorkerTimerContractMatches(index, worker, outbox.replace("type NOT LIKE 'cache.%'", "type LIKE 'cache.%'")), false);
     const runtimeSource = fs.readFileSync(path.join(__dirname, '..', 'tools', 'm15-01-runtime-evidence.js'), 'utf8');
+    assert.match(runtimeSource, /restarted_api_worker_interval_mismatch/);
+    assert.match(runtimeSource, /cache_replication_last_tick_age_ms/);
+    assert.match(runtimeSource, /restarted_api_timer_watermark_timeout/);
+    assert.doesNotMatch(runtimeSource, /worker_interval_ms:\s*250/);
+    assert.ok(runtimeSource.indexOf('await exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState)')
+      < runtimeSource.indexOf('await exerciseRedisAlert(cfg, metricsToken, report, runtimeState)'));
     assert.doesNotMatch(runtimeSource, /require\(['"]\.\.\/server\/index['"]\)/);
+  });
+
+  test('P11 migration chain routes transaction-control migration 012 through psql', () => {
+    const p11 = fs.readFileSync(path.join(__dirname, '..', 'tests', 'p11-phone-auth-live.js'), 'utf8');
+    const migration012 = fs.readFileSync(path.join(__dirname, '..', 'migrations', '012_partition_grades_attendance.sql'), 'utf8');
+    assert.strictEqual(migrationLedger.hasInternalTransactionControl(migration012), true);
+    assert.strictEqual(migrationLedger.hasInternalTransactionControl('SELECT 1;'), false);
+    assert.match(p11, /hasInternalTransactionControl\(sql\)/);
+    assert.match(p11, /execFileSync\('psql'/);
+  });
+
+  test('queue-retention JSONB marker parameters have explicit PostgreSQL types', () => {
+    const runtime = fs.readFileSync(path.join(__dirname, '..', 'tools', 'm15-01-runtime-evidence.js'), 'utf8');
+    assert.match(runtime, /jsonb_build_object\('origin', \$1::text\)/);
+    assert.match(runtime, /jsonb_build_object\('origin', \$2::text\)/);
   });
 
   test('phone-auth EXPLAIN contract matches auth SQL and P11 bind precedent', () => {

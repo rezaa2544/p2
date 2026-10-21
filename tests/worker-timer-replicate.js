@@ -11,6 +11,7 @@
    ═════════════════════════════════════════════════════════════════ */
 'use strict';
 const { createWorker } = require('../server/worker.js');
+process.env.PAYESH_CACHE_DURABLE_INVALIDATION = 'on';
 
 let fail = 0;
 function chk(name, cond, extra) {
@@ -33,6 +34,15 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   w.stop();
   chk('timer path: tick() runs', pend > 3, 'pend=' + pend);
   chk('timer path: tickReplicate() runs (not starved by tick)', repl > 3, 'repl=' + repl);
+  const timerHealth = w.health();
+  chk('health reports the effective interval and cache-replication switch',
+    timerHealth.intervalMs === 20 && timerHealth.cacheReplicationEnabled === true,
+    JSON.stringify(timerHealth));
+  chk('health records that the real timer invoked cache replication',
+    timerHealth.cacheReplicationLastTickAt !== null
+      && timerHealth.cacheReplicationLastTickAgeMs < 1000
+      && timerHealth.cacheReplicationLastProcessed === 0,
+    JSON.stringify(timerHealth));
 
   /* ۲) هر مسیر هنوز در برابر ورودِ دوباره از خودش محافظت می‌شود */
   let inside = 0, maxInside = 0;
