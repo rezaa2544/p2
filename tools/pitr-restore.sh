@@ -93,17 +93,23 @@ run_pbr --stanza="$STANZA" --pg1-path="$RUN_DIR/data" --delta "${RESTORE_OPTS[@]
 
 # ── تنظیمِ ایزوله (محیطِ سنجش؛ هرگز دیتای تولیدی را باز نکنید) ──
 cat > "$RUN_DIR/etc/postgresql.conf" <<CONF
+include_if_exists = '$RUN_DIR/data/postgresql.conf'
+data_directory = '$RUN_DIR/data'
+hba_file = '$RUN_DIR/data/pg_hba.conf'
+ident_file = '$RUN_DIR/data/pg_ident.conf'
 port = $PBR_PORT
 unix_socket_directories = '$RUN_DIR/run'
 listen_addresses = 'localhost'
+archive_mode = off
 fsync = off
 synchronous_commit = off
 full_page_writes = false
 logging_collector = on
 log_directory = '$RUN_DIR/log'
-max_connections = 50
+max_connections = 200
+max_wal_senders = 10
 CONF
-echo "restore_command = 'pgbackrest --stanza=$STANZA archive-get %f %p'" >> "$RUN_DIR/data/postgresql.auto.conf"
+echo "restore_command = 'pgbackrest --stanza=$STANZA --pg1-path=$RUN_DIR/data archive-get %f \"%p\"'" >> "$RUN_DIR/data/postgresql.auto.conf"
 
 if [ "$NO_START" -eq 1 ]; then
   echo "OK (--no-start): دیتا در $RUN_DIR/data آماده است؛ بوتِ دستی:"
@@ -113,7 +119,8 @@ fi
 
 # ── ۳) بوت تا رسیدن به هدف؛ promote خودکار (target-action) ──
 pg_ctl -D "$RUN_DIR/data" -o "-c config_file=$RUN_DIR/etc/postgresql.conf" \
-  -l "$RUN_DIR/log/postgres.log" -w -t 120 start
+  -l "$RUN_DIR/log/postgres.log" -w -t 120 start \
+  || { echo "FAIL: pg_ctl start failed:" >&2; cat "$RUN_DIR/log"/* >&2 2>/dev/null || true; exit 1; }
 
 READY=0
 for _ in $(seq 1 60); do

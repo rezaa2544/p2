@@ -139,18 +139,58 @@ run_logged() {
   fi
   status="$command_status"
   if [[ "$redact_status" != 0 || "$artifact_status" != 0 ]]; then status=1; fi
+  local container_logs_sanitized="$EVIDENCE_DIR/pg-ha-start-container-logs.log"
+  local container_logs_excerpt=""
+  if [[ "$command_status" != 0 && "$label" == "pg-ha-start" ]]; then
+    local container_logs_raw="$RAW_OUTPUT_DIR/pg-ha-start-container-logs.log"
+    local container_logs_status=0 container_logs_redact_status=0 container_logs_artifact_status=0
+    set +e
+    compose_pg logs --no-color --timestamps --tail=100 pg-primary pg-standby > "$container_logs_raw" 2>&1
+    container_logs_status=$?
+    chmod 600 "$container_logs_raw"
+    redact_file "$container_logs_raw"
+    container_logs_redact_status=$?
+    set -e
+    if [[ "$container_logs_redact_status" == 0 ]]; then
+      if mv -- "$container_logs_raw" "$container_logs_sanitized"; then
+        printf '\nCOMMAND[pg-ha-start-container-logs]: docker compose logs --no-color --timestamps --tail=100 pg-primary pg-standby\n' >> "$COMMAND_LOG"
+        cat "$container_logs_sanitized" >> "$COMMAND_LOG"
+      else
+        printf 'REDACTED_OUTPUT_ARTIFACT_FAILED[pg-ha-start-container-logs]: sanitized output could not be preserved\n' >> "$COMMAND_LOG"
+        rm -f "$container_logs_raw"
+        container_logs_artifact_status=1
+      fi
+    else
+      printf 'OUTPUT_REDACTION_FAILED[pg-ha-start-container-logs]: raw container output withheld\n' >> "$COMMAND_LOG"
+      rm -f "$container_logs_raw"
+    fi
+    printf 'EXIT_CODE[pg-ha-start-container-logs]: %s\n' "$container_logs_status" >> "$COMMAND_LOG"
+    if [[ "$container_logs_redact_status" != 0 ]]; then printf 'LOG_REDACTION_EXIT_CODE[pg-ha-start-container-logs]: %s\n' "$container_logs_redact_status" >> "$COMMAND_LOG"; fi
+    if [[ "$container_logs_artifact_status" != 0 ]]; then printf 'OUTPUT_ARTIFACT_EXIT_CODE[pg-ha-start-container-logs]: %s\n' "$container_logs_artifact_status" >> "$COMMAND_LOG"; fi
+    if [[ "$container_logs_redact_status" == 0 && "$container_logs_artifact_status" == 0 && -f "$container_logs_sanitized" ]]; then
+      container_logs_excerpt="$(tail -n 12 "$container_logs_sanitized" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-600)"
+    fi
+  fi
   if [[ "$command_status" != 0 && "$label" == "pg-ha-start" && "$redact_status" == 0 && "$artifact_status" == 0 ]]; then
     local first_error tail_excerpt diagnostic
-    first_error="$(grep -Eim1 '(^|[[:space:]])(E:|Err:)|error response from daemon|failed to solve|failed to (fetch|download|install|configure)|version .* (not found|was not found)|unable to locate package|no installation candidate|package .* has no installation candidate|denied|no such file|not found|invalid|permission denied|process .* did not complete successfully|exit code: [1-9]' "$sanitized_output" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | cut -c1-500 || true)"
+    first_error="$(grep -Eim1 '(^|[[:space:]])(E:|Err:)|error response from daemon|failed to solve|failed to (fetch|download|install|configure|start)|dependency failed to start|unhealthy|version .* (not found|was not found)|unable to locate package|no installation candidate|package .* has no installation candidate|denied|no such file|not found|invalid|permission denied|process .* did not complete successfully|exit code: [1-9]' "$sanitized_output" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | cut -c1-500 || true)"
     tail_excerpt="$(tail -n 8 "$sanitized_output" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-600)"
-    diagnostic="first_error=${first_error:-not-matched}; tail=${tail_excerpt}"
-    diagnostic="$(printf '%s' "$diagnostic" | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-1200)"
+    diagnostic="first_error=${first_error:-not-matched}; container_logs_tail=${container_logs_excerpt:-not-captured}; tail=${tail_excerpt}"
+    diagnostic="$(printf '%s' "$diagnostic" | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-1800)"
     if [[ -n "$diagnostic" ]]; then
       diagnostic="${diagnostic//%/%25}"
       diagnostic="${diagnostic//$'\r'/%0D}"
       diagnostic="${diagnostic//$'\n'/%0A}"
       printf '::error title=M15-01 pg-ha-start sanitized failure excerpt::%s\n' "$diagnostic"
     fi
+  elif [[ "$command_status" != 0 && "$label" != "redis-failover-tool" && "$redact_status" == 0 && "$artifact_status" == 0 ]]; then
+    local stage_tail stage_diag
+    stage_tail="$(tail -n 30 "$sanitized_output" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | tail -c 1600)"
+    stage_diag="stage=${label}; exit=${command_status}; tail=${stage_tail}"
+    stage_diag="${stage_diag//%/%25}"
+    stage_diag="${stage_diag//$'\r'/%0D}"
+    stage_diag="${stage_diag//$'\n'/%0A}"
+    printf '::error title=M15-01 DR stage sanitized failure excerpt::%s\n' "$stage_diag"
   fi
   printf '\nEXIT_CODE[%s]: %s\n' "$label" "$command_status" >> "$COMMAND_LOG"
   if [[ "$redact_status" != 0 ]]; then printf 'LOG_REDACTION_EXIT_CODE[%s]: %s\n' "$label" "$redact_status" >> "$COMMAND_LOG"; fi
@@ -172,6 +212,7 @@ wait_pg_ha_ready() {
     sleep 2
   done
   compose_pg ps || true
+  compose_pg logs --no-color --timestamps --tail=40 pg-primary pg-standby pgbouncer || true
   echo "PostgreSQL primary/standby readiness or streaming replication timed out" >&2
   return 1
 }
@@ -229,6 +270,21 @@ wait_redis_ready() {
   done
 }
 
+wait_redis_ready_loop() {
+  local _
+  for _ in $(seq 1 90); do
+    if wait_redis_ready >/dev/null 2>&1; then
+      wait_redis_ready
+      return 0
+    fi
+    sleep 2
+  done
+  compose_redis ps || true
+  compose_redis logs --no-color --timestamps --tail=40 || true
+  echo "Redis Sentinel stack did not become ready" >&2
+  return 1
+}
+
 wait_redis_promoted() {
   local original="$1" i address host port role
   for i in $(seq 1 90); do
@@ -238,7 +294,7 @@ wait_redis_promoted() {
     if [[ -n "$host" && -n "$port" && "$host,$port" != "$original" ]]; then
       role="$(compose_redis exec -T redis-replica-1 sh -ec \
         'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli -h "$1" -p "$2" INFO replication | grep -E "^role:master"' \
-        sh "$host" "$port" 2>/dev/null || true)"
+        sh "$host" "$port" 2>/dev/null | tr -d '\r' || true)"
       if [[ "$role" == "role:master" ]]; then
         printf 'ORIGINAL_MASTER=%s\nPROMOTED_MASTER=%s,%s\nNEW_MASTER_ROLE=%s\n' "$original" "$host" "$port" "$role"
         REDIS_PROMOTED_MASTER="$host,$port"
@@ -626,13 +682,7 @@ if ! assert_compose_project_unused "$REDIS_PROJECT"; then
 fi
 REDIS_PROJECT_OWNED=1
 run_logged redis-ha-start compose_redis up -d
-redis_ready=0
-for _ in $(seq 1 90); do
-  if wait_redis_ready >/dev/null 2>&1; then redis_ready=1; break; fi
-  sleep 2
-done
-if [[ "$redis_ready" != 1 ]]; then echo "Redis Sentinel stack did not become ready" >&2; exit 1; fi
-run_logged redis-ha-readiness wait_redis_ready
+run_logged redis-ha-readiness wait_redis_ready_loop
 run_logged redis-original-master redis_master_addr
 REDIS_ORIGINAL_MASTER="$(paste -sd, "$EVIDENCE_DIR/redis-original-master.log")"
 if [[ ! "$REDIS_ORIGINAL_MASTER" =~ ^[^,]+,6379$ ]]; then echo "unexpected Sentinel master address: $REDIS_ORIGINAL_MASTER" >&2; exit 1; fi

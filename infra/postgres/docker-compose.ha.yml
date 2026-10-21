@@ -117,7 +117,7 @@ services:
       - -c
       - shared_buffers=1GB
       - -c
-      - shared_preload_libraries=''
+      - "shared_preload_libraries="
     volumes:
       - pgdata-primary:/var/lib/postgresql/data
       - wal-spool:/var/spool/pgbackrest
@@ -183,6 +183,9 @@ services:
       PGDATABASE: payesh
       PGUSER: pgbouncer
       PGPASSWORD: ${PGHA_REPLICATION_PASSWORD}
+      DB_USER: pgbouncer
+      DB_PASSWORD: ${PGHA_REPLICATION_PASSWORD}
+      AUTH_TYPE: scram-sha-256
       AUTH_QUERY: SELECT usename, passwd FROM pg_shadow WHERE usename=$1
       POOL_MODE: transaction
       MAX_CLIENT_CONN: "3500"

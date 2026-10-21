@@ -12,6 +12,7 @@ repo1-type=s3
 repo1-s3-endpoint=__REPO_S3_ENDPOINT__
 repo1-s3-bucket=__REPO_S3_BUCKET__
 repo1-s3-region=__REPO_S3_REGION__
+repo1-s3-uri-style=path
 repo1-s3-verify-tls=__REPO_S3_VERIFY_TLS__
 repo1-retention-full=14
 repo1-retention-archive-type=full

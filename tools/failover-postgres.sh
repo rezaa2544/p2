@@ -78,5 +78,5 @@ echo "  ۱) DATABASE_URL برنامه را به endpoint تازه هم‌راس�
 echo "  ۲) primaryِ کهنه را fence کن تا هرگز دو primary نماند"
 echo "  ۳) standbyِ جدید را از رویِ primaryِ تازه rebuild کن (STANDBY_BOOTSTRAP=repo)"
 echo "  ۴) pg_stat_archiver را رویِ new primary سبز کن (WAL archiving حیاتی است)"
-echo "  ۵) رویداد را در ممیزیِ داخلی ثبت کن: incident=failover-postgres actor=$USER"
+echo "  ۵) رویداد را در ممیزیِ داخلی ثبت کن: incident=failover-postgres actor=${USER:-${PGUSER:-postgres}}"
 echo "════════════════════════════════════════════"

@@ -45,6 +45,9 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
   let lastReplicateTickAt = 0;
   let lastReplicateResult = null;
   let lastReplicateTickErrored = false;
+  let cacheReplicationProcessedTotal = 0;
+  let lastReplicateWatermarkTargetId = null;
+  let lastReplicateWatermarkAdvanceOk = null;
   const cacheReplicationEnabled = () => process.env.PAYESH_CACHE_DURABLE_INVALIDATION !== 'off';
   const inFlight = new Set();
 
@@ -211,8 +214,11 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
           break;
         }
       }
+      cacheReplicationProcessedTotal += processed;
       if (lastOkId > 0 && outbox && typeof outbox.advanceWatermark === 'function') {
-        await outbox.advanceWatermark(lastOkId);
+        lastReplicateWatermarkTargetId = lastOkId;
+        lastReplicateWatermarkAdvanceOk = false;
+        lastReplicateWatermarkAdvanceOk = await outbox.advanceWatermark(lastOkId) === true;
       }
       const result = { processed, failedDelta };
       lastReplicateResult = result;
@@ -247,7 +253,7 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
   }
 
   function health() {
-    return {
+    const snapshot = {
       running,
       active: timer !== null,
       intervalMs,
@@ -261,6 +267,17 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
       cacheReplicationLastTickErrored: lastReplicateTickErrored,
       healthy: isHealthy()
     };
+    /* M15 E3 diagnostics are opt-in and test-only: never expose host/process
+       identity or durable queue IDs on the public production health endpoint. */
+    if (process.env.PAYESH_ENV === 'test' && process.env.PAYESH_M15_RUNTIME_DIAGNOSTICS === '1') {
+      try {
+        if (outbox && typeof outbox.instanceId === 'function') snapshot.outboxInstanceId = String(outbox.instanceId());
+      } catch (_) {}
+      snapshot.cacheReplicationProcessedTotal = cacheReplicationProcessedTotal;
+      snapshot.cacheReplicationLastWatermarkTargetId = lastReplicateWatermarkTargetId;
+      snapshot.cacheReplicationLastWatermarkAdvanceOk = lastReplicateWatermarkAdvanceOk;
+    }
+    return snapshot;
   }
 
   return { start, stop, tick, tickReplicate, isHealthy, health };

@@ -15,7 +15,8 @@ const kit = session('obs-mut-');
 const ROOT = path.join(__dirname, '..');
 const SUITES = { cfg: ['tests/observability-config.js'], dash: ['tests/observability-dashboards.js'] };
 const WATCH = ['infra/observability/alert-rules.yml', 'infra/observability/docker-compose.observability.yml',
-  'infra/observability/prometheus.yml', 'infra/observability/dashboards/payesh-main.json', 'server/metrics.js'];
+  'infra/observability/prometheus.yml', 'infra/observability/loki-config.yml',
+  'infra/observability/dashboards/payesh-main.json', 'server/metrics.js'];
 const FILES = {}; WATCH.forEach((f) => { FILES[f] = fs.readFileSync(f, 'utf8'); });
 const MUTS = [
   { file: 'infra/observability/alert-rules.yml', suite: 'cfg',
@@ -39,7 +40,15 @@ const MUTS = [
   { file: 'server/metrics.js', suite: 'cfg',
     name: 'M5 تغییرِ نامِ متریک در metrics.js (رانشِ یک‌طرفه)',
     bad: 'payesh_sync_queue_depth', mut: 'payesh_outbox_pending_depth', replaceAll: true,
-    expectFail: 'همهٔ متریک‌هایِ قوانین در metrics.js تعریف‌شده‌اند' }
+    expectFail: 'همهٔ متریک‌هایِ قوانین در metrics.js تعریف‌شده‌اند' },
+  { file: 'infra/observability/loki-config.yml', suite: 'cfg',
+    name: 'M6 حذفِ schema_config در loki-config.yml',
+    bad: '      store: tsdb\n      object_store: filesystem\n      schema: v13\n', mut: '',
+    expectFail: 'Loki defines v13 tsdb schema_config' },
+  { file: 'infra/observability/loki-config.yml', suite: 'cfg',
+    name: 'M7 خروجِ retention_enabled به سطح ریشه در loki-config.yml',
+    bad: '  retention_enabled: true', mut: 'retention_enabled: true',
+    expectFail: 'Loki scopes retention_enabled inside compactor block' }
 ];
 let prevAbs = null;
 let killed = 0;

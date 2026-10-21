@@ -18,23 +18,18 @@ daemonize no
 pidfile /var/run/redis-sentinel.pid
 dir /data
 
-sentinel monitor __MASTER_NAME__ __MASTER_HOST__ __MASTER_PORT__ __QUORUM__
-sentinel down-after-milliseconds __MASTER_NAME__ __DOWN_AFTER__
-sentinel failover-timeout __MASTER_NAME__ __FAILOVER_TIMEOUT__
-sentinel parallel-syncs __MASTER_NAME__ 1
-
-# resolve-hostnames برایِ محیطِ container لازم است (master با نام سرویس ثبت می‌شود)
+# resolve-hostnames باید پیش از sentinel monitor بیاید تا نام سرویس Docker حل شود
 sentinel resolve-hostnames yes
 sentinel announce-hostnames yes
 sentinel announce-ip __ANNOUNCE_IP__
 sentinel announce-port 26379
 
-# احراز (Redis ≥ 6.2 — named ACL users؛ برنامه با REDIS_PASSWORD وصل می‌شود):
-requirepass __REDIS_PASSWORD__
-sentinel auth-pass __MASTER_NAME__ __REDIS_PASSWORD__
-masterauth __REDIS_PASSWORD__
+sentinel monitor __MASTER_NAME__ __MASTER_HOST__ __MASTER_PORT__ __QUORUM__
+sentinel down-after-milliseconds __MASTER_NAME__ __DOWN_AFTER__
+sentinel failover-timeout __MASTER_NAME__ __FAILOVER_TIMEOUT__
+sentinel parallel-syncs __MASTER_NAME__ 1
 
-# محافظتِ خودِ API فرمان‌هایِ خطرناک روی sentinel (باز کردنِ failover دستی فقط از شبکهٔ داخلی)
-rename-command FLUSHALL ""
-rename-command FLUSHDB ""
-rename-command DEBUG ""
+# احراز (Redis ≥ 6.2 — هم برای اتصال به master/replica و هم ارتباط متقابل sentinelها برای quorum):
+requirepass __REDIS_PASSWORD__
+sentinel sentinel-pass __REDIS_PASSWORD__
+sentinel auth-pass __MASTER_NAME__ __REDIS_PASSWORD__

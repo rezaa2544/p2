@@ -54,7 +54,7 @@ for i in $(seq 1 45); do
 done
 [ "${NEW:-$CUR}" != "$CUR" ] || { echo "FAIL: بعد از ۴۵ ثانیه master تغییر نکرد — sentinel‌ها را بررسی کن (auth? quorum?)" >&2; exit 1; }
 
-NH="${NEW%%:*}"; NP="${NEW##*:}"
+NH="${NEW%%,*}"; NP="${NEW##*,}"
 REDISCLI_AUTH="${REDIS_PASSWORD:-}" redis-cli -h "$NH" -p "$NP" INFO replication | grep -q 'role:master' \
   && echo "تأیید: $NEW نقشِ master گرفت" || { echo "FAIL: $NEW خود را master معرفی نمی‌کند" >&2; exit 1; }
 echo "چک‌لیستِ پس از اقدام (DR_RUNBOOK §۲.۳):"
