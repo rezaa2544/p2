@@ -95,10 +95,14 @@ function countSecretHits(text) {
   return hits;
 }
 
-function auditZipBuffer(zipBuffer, meta, expectedSha) {
+function auditZipBuffer(zipBuffer, meta, expectedShas) {
   if (!Buffer.isBuffer(zipBuffer) || zipBuffer.length === 0) {
     throw new Error('empty_zip_buffer');
   }
+  const allowedShas = Array.isArray(expectedShas)
+    ? expectedShas.filter(Boolean)
+    : (expectedShas ? [String(expectedShas)] : []);
+
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'm15-zip-audit-'));
   try {
     const zipPath = path.join(tmpRoot, 'artifact.zip');
@@ -111,6 +115,8 @@ function auditZipBuffer(zipBuffer, meta, expectedSha) {
     const files = [];
     let secretHits = 0;
     let evidenceObj = null;
+    let evidencePath = null;
+    let cleanupObj = null;
     let commandsLogSha = null;
 
     for (const full of absFiles) {
@@ -120,27 +126,44 @@ function auditZipBuffer(zipBuffer, meta, expectedSha) {
       files.push({ path: rel, bytes: raw.length, sha256: digest });
       const text = raw.toString('utf8');
       secretHits += countSecretHits(text);
-      if (rel === 'evidence.json' || rel.endsWith('/evidence.json')) {
+      const baseName = path.posix.basename(rel);
+      if (baseName.endsWith('evidence.json')) {
         evidenceObj = JSON.parse(text);
+        evidencePath = rel;
+      } else if (baseName === 'infrastructure-cleanup.json') {
+        cleanupObj = JSON.parse(text);
       }
-      if (rel === 'commands.log' || rel.endsWith('/commands.log')) {
+      if (baseName === 'commands.log') {
         commandsLogSha = digest;
       }
     }
 
-    const sourceSha = evidenceObj && typeof evidenceObj.source_sha === 'string' ? evidenceObj.source_sha : null;
-    const status = evidenceObj && typeof evidenceObj.status === 'string' ? evidenceObj.status : null;
-    const failedStages = evidenceObj && Array.isArray(evidenceObj.failed_stages) ? evidenceObj.failed_stages : null;
+    const manifestLines = files.map((f) => f.path + ':' + f.bytes + ':' + f.sha256).join('\n');
+    const manifestSha256 = sha256Buffer(Buffer.from(manifestLines, 'utf8'));
+
+    const sourceSha = evidenceObj && typeof evidenceObj.source_sha === 'string'
+      ? evidenceObj.source_sha
+      : null;
+    const status = evidenceObj && typeof evidenceObj.status === 'string'
+      ? evidenceObj.status
+      : null;
+    const failedStages = evidenceObj && Array.isArray(evidenceObj.failed_stages)
+      ? evidenceObj.failed_stages
+      : null;
     const expectedCmdSha = evidenceObj && typeof evidenceObj.commands_log_sha256 === 'string'
       ? evidenceObj.commands_log_sha256
-      : null;
+      : (evidenceObj && evidenceObj.command_log && typeof evidenceObj.command_log.sha256 === 'string'
+        ? evidenceObj.command_log.sha256
+        : null);
     const cmdShaMatch = expectedCmdSha ? expectedCmdSha === commandsLogSha : null;
-    const containersRemaining = evidenceObj && typeof evidenceObj.containers_remaining === 'number'
-      ? evidenceObj.containers_remaining
-      : (evidenceObj && evidenceObj.cleanup && typeof evidenceObj.cleanup.containers_remaining === 'number'
-        ? evidenceObj.cleanup.containers_remaining
-        : 0);
-    const sourceShaMatches = Boolean(expectedSha && sourceSha === expectedSha);
+    const containersRemaining = cleanupObj && typeof cleanupObj.remaining_containers_count === 'number'
+      ? cleanupObj.remaining_containers_count
+      : (evidenceObj && typeof evidenceObj.containers_remaining === 'number'
+        ? evidenceObj.containers_remaining
+        : (evidenceObj && evidenceObj.cleanup && typeof evidenceObj.cleanup.containers_remaining === 'number'
+          ? evidenceObj.cleanup.containers_remaining
+          : 0));
+    const sourceShaMatches = Boolean(sourceSha && allowedShas.includes(sourceSha));
     const auditPass = Boolean(
       evidenceObj &&
       sourceShaMatches &&
@@ -160,9 +183,11 @@ function auditZipBuffer(zipBuffer, meta, expectedSha) {
       zip_bytes: zipBuffer.length,
       zip_sha256: sha256Buffer(zipBuffer),
       file_count: files.length,
+      manifest_sha256: manifestSha256,
+      evidence_file: evidencePath,
       files,
       source_sha: sourceSha,
-      expected_sha: expectedSha || null,
+      expected_shas: allowedShas,
       source_sha_matches: sourceShaMatches,
       status,
       failed_stages: failedStages,
@@ -183,6 +208,20 @@ function emitNotice(title, payload) {
   process.stdout.write('::notice title=' + title + '::' + singleLine + '\n');
 }
 
+function emitBoundedAuditNotices(label, audited) {
+  const summary = Object.assign({}, audited);
+  delete summary.files;
+  emitNotice('M15-01 ZIP Summary (' + label + ')', summary);
+  const pageSize = 15;
+  for (let i = 0; i < audited.files.length; i += pageSize) {
+    emitNotice('M15-01 ZIP Files (' + label + ' ' + (Math.floor(i / pageSize) + 1) + ')', {
+      artifact_id: audited.artifact_id,
+      page: Math.floor(i / pageSize) + 1,
+      files: audited.files.slice(i, i + pageSize)
+    });
+  }
+}
+
 function appendStepSummary(markdown) {
   const summaryPath = process.env.GITHUB_STEP_SUMMARY;
   if (summaryPath) {
@@ -190,7 +229,7 @@ function appendStepSummary(markdown) {
   }
 }
 
-async function auditRunArtifacts(apiBase, repo, runId, expectedSha, token, label) {
+async function auditRunArtifacts(apiBase, repo, runId, expectedShas, token, label) {
   const listing = await fetchGithubJson(
     apiBase,
     '/repos/' + repo + '/actions/runs/' + runId + '/artifacts?per_page=100',
@@ -214,16 +253,16 @@ async function auditRunArtifacts(apiBase, repo, runId, expectedSha, token, label
         error: dl.error,
         audit_pass: false
       };
-      emitNotice('M15-01 ZIP Audit (' + label + ')', failure);
+      emitNotice('M15-01 ZIP Summary (' + label + ')', failure);
       results.push(failure);
       continue;
     }
     const audited = auditZipBuffer(
       dl.buffer,
       { run_id: Number(runId), id: art.id, name: art.name, redirect_host: dl.redirect_host },
-      expectedSha
+      expectedShas
     );
-    emitNotice('M15-01 ZIP Audit (' + label + ')', audited);
+    emitBoundedAuditNotices(label, audited);
     results.push(audited);
   }
   return results;
@@ -233,14 +272,16 @@ async function main() {
   const apiBase = process.env.GITHUB_API_URL || 'https://api.github.com';
   const repo = process.env.GITHUB_REPOSITORY;
   const runId = process.env.GITHUB_RUN_ID;
-  const currentSha = process.env.GITHUB_SHA;
+  const githubSha = process.env.GITHUB_SHA || '';
+  const checkoutHead = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
   const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || '';
 
-  if (!repo || !runId || !currentSha || !token) {
+  if (!repo || !runId || !checkoutHead || !token) {
     throw new Error('missing_github_audit_environment');
   }
 
-  const currentResults = await auditRunArtifacts(apiBase, repo, runId, currentSha, token, 'current');
+  const allowedCurrentShas = Array.from(new Set([checkoutHead, githubSha].filter(Boolean)));
+  const currentResults = await auditRunArtifacts(apiBase, repo, runId, allowedCurrentShas, token, 'current');
   const hasRuntimeA = currentResults.some((r) => r.audit_pass && String(r.name || '').startsWith('m15-01-runtime-a-'));
   const hasRuntimeB = currentResults.some((r) => r.audit_pass && String(r.name || '').startsWith('m15-01-runtime-b-'));
   const hasDr = currentResults.some((r) => r.audit_pass && String(r.name || '').startsWith('m15-01-dr-'));
@@ -266,13 +307,13 @@ async function main() {
 
   let histResults = [];
   if (histRunId && histExpectedSha) {
-    histResults = await auditRunArtifacts(apiBase, repo, histRunId, histExpectedSha, token, 'run-' + histRunId);
+    histResults = await auditRunArtifacts(apiBase, repo, histRunId, [histExpectedSha], token, 'run-' + histRunId);
   }
 
   const lines = [
     '## M15-01 Independent ZIP Checksum & Content Audit',
     '',
-    '### Current Run (`' + runId + '` @ `' + currentSha + '`)',
+    '### Current Run (`' + runId + '` @ `' + checkoutHead + '`)',
     '',
     '| Artifact ID | Name | ZIP Bytes | ZIP SHA-256 | Files | Secret Hits | Audit |',
     '| --- | --- | ---: | --- | ---: | ---: | --- |'

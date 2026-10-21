@@ -92,6 +92,14 @@ jobs:
     - name: Comprehensive canonical regression runner
       timeout-minutes: 20
       run: npm run test:all
+    - name: Reset shared test ports, Redis state, and clean payesh_ci schema after canonical runner
+      if: always()
+      run: |
+        pkill -9 -f 'node .*server/index\.js' || true
+        pkill -9 -f '/tmp/at-iso' || true
+        sleep 1
+        redis-cli -u "$REDIS_URL" FLUSHALL
+        psql "$PGURL" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
     - name: Zero-suite fail-closed contract (issue #454 / A-13)
       if: always()
       run: node tests/zero-suite-fail-closed.test.js
