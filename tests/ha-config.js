@@ -129,7 +129,7 @@ grp('CFG-TPL — الگوها');
     !/cat\s*>>\s*"\$PGDATA\/postgresql\.auto\.conf"/.test(primaryEntry));
   const pitrRestore = rd('tools/pitr-restore.sh') || '';
   chk('PITR time target با فاصله به‌صورت یک argv عبور می‌کند و promote می‌شود',
-    /RESTORE_OPTS\+\=\(\-\-type=time "\-\-target=\$2" \-\-target-action=promote\)/.test(pitrRestore)
+    /RESTORE_OPTS\+=\(--type=time "--target=\$2" --target-action=promote\)/.test(pitrRestore)
     && /"\$\{RESTORE_OPTS\[@\]\}"/.test(pitrRestore));
   const recTpl = rd('infra/postgres/recovery.conf.template') || '';
   chk('recovery.template: primary_conninfo + restore_command + hot_standby',

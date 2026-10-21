@@ -183,6 +183,14 @@ run_logged() {
       diagnostic="${diagnostic//$'\n'/%0A}"
       printf '::error title=M15-01 pg-ha-start sanitized failure excerpt::%s\n' "$diagnostic"
     fi
+  elif [[ "$command_status" != 0 && "$label" != "redis-failover-tool" && "$redact_status" == 0 && "$artifact_status" == 0 ]]; then
+    local stage_tail stage_diag
+    stage_tail="$(tail -n 12 "$sanitized_output" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-800)"
+    stage_diag="stage=${label}; exit=${command_status}; tail=${stage_tail}"
+    stage_diag="${stage_diag//%/%25}"
+    stage_diag="${stage_diag//$'\r'/%0D}"
+    stage_diag="${stage_diag//$'\n'/%0A}"
+    printf '::error title=M15-01 DR stage sanitized failure excerpt::%s\n' "$stage_diag"
   fi
   printf '\nEXIT_CODE[%s]: %s\n' "$label" "$command_status" >> "$COMMAND_LOG"
   if [[ "$redact_status" != 0 ]]; then printf 'LOG_REDACTION_EXIT_CODE[%s]: %s\n' "$label" "$redact_status" >> "$COMMAND_LOG"; fi

@@ -568,6 +568,8 @@ function measureRouteInContainer(cfg, route, cookie, seconds, concurrency, index
   fs.writeFileSync(resultPath, '', { mode: 0o600 });
   fs.chmodSync(resultPath, 0o600);
   runtimeState.loadContainers.add(name);
+  let cleanupOwnershipError = null;
+  let routeSummary = null;
   try {
     const uid = typeof process.getuid === 'function' ? process.getuid() : 1000;
     const gid = typeof process.getgid === 'function' ? process.getgid() : 1000;
@@ -594,7 +596,7 @@ function measureRouteInContainer(cfg, route, cookie, seconds, concurrency, index
     }
     execFileSync('docker', ['rm', name], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], timeout: 10000 });
     runtimeState.loadContainers.delete(name);
-    return {
+    routeSummary = {
       route_template: raw.route_template,
       path: route.path,
       requests: Number(raw.requests),
@@ -620,14 +622,17 @@ function measureRouteInContainer(cfg, route, cookie, seconds, concurrency, index
   } finally {
     if (containerExists(name)) {
       if (!containerOwnedByRun(name, cfg.run_instance)) {
-        throw new Error('route_generator_container_cleanup_ownership_mismatch');
+        cleanupOwnershipError = new Error('route_generator_container_cleanup_ownership_mismatch');
+      } else {
+        try { execFileSync('docker', ['rm', '-f', name], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], timeout: 15000 }); } catch (_) { /* best-effort */ }
       }
-      try { execFileSync('docker', ['rm', '-f', name], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], timeout: 15000 }); } catch (_) {}
     }
     runtimeState.loadContainers.delete(name);
-    try { fs.rmSync(specPath, { force: true }); } catch (_) {}
-    try { fs.rmSync(resultPath, { force: true }); } catch (_) {}
+    try { fs.rmSync(specPath, { force: true }); } catch (_) { /* best-effort */ }
+    try { fs.rmSync(resultPath, { force: true }); } catch (_) { /* best-effort */ }
   }
+  if (cleanupOwnershipError) throw cleanupOwnershipError;
+  return routeSummary;
 }
 
 async function testRouteBoundaries(base, cookie, report) {
@@ -986,11 +991,11 @@ async function readRestartReplayDiagnostic(base, pool, eventId, instanceId) {
   try {
     const result = await pool.query('SELECT last_id FROM server_outbox_watermark WHERE instance_id = $1;', [instanceId]);
     if (result.rows.length) watermark = result.rows[0].last_id;
-  } catch (_) {}
+  } catch (_) { /* optional diagnostic */ }
   try {
     const result = await pool.query('SELECT status, retry_count, last_error FROM server_outbox WHERE id = $1;', [eventId]);
     if (result.rows.length) event = result.rows[0];
-  } catch (_) {}
+  } catch (_) { /* optional diagnostic */ }
   try {
     const result = await pool.query(
       "SELECT instance_id, last_id FROM server_outbox_watermark WHERE instance_id LIKE 'm15-e3-%' ORDER BY instance_id;");
@@ -998,11 +1003,11 @@ async function readRestartReplayDiagnostic(base, pool, eventId, instanceId) {
       instance_id: String(row.instance_id),
       last_id: Number(row.last_id)
     }));
-  } catch (_) {}
+  } catch (_) { /* optional diagnostic */ }
   try {
     const health = await fetchText(new URL('/api/health', base), {}, 5000);
     if (health.response.ok) worker = (JSON.parse(health.text).worker || {});
-  } catch (_) {}
+  } catch (_) { /* optional diagnostic */ }
   const finiteOrNull = (value) => value == null || !Number.isFinite(Number(value)) ? null : Number(value);
   const knownStatuses = new Set(['pending', 'processing', 'processed', 'failed', 'dead_letter']);
   const status = event && knownStatuses.has(String(event.status)) ? String(event.status) : 'unknown';
@@ -1039,6 +1044,12 @@ function restartReplayDiagnosticMessage(code, diagnostic) {
       ? 'none' : diagnostic.cache_replication_last_watermark_target_id)
     + '; watermark_advance_ok=' + (diagnostic.cache_replication_last_watermark_advance_ok == null
       ? 'unknown' : diagnostic.cache_replication_last_watermark_advance_ok);
+}
+
+async function queryWatermarkLastId(pool, instanceId) {
+  const result = await pool.query('SELECT last_id FROM server_outbox_watermark WHERE instance_id = $1;', [instanceId]);
+  const rows = result && Array.isArray(result.rows) ? result.rows : [];
+  return rows.length && Number.isFinite(Number(rows[0].last_id)) ? Number(rows[0].last_id) : null;
 }
 
 async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) {
@@ -1088,8 +1099,8 @@ async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) 
   let reached;
   try {
     reached = await waitFor(async () => {
-      const rows = await pool.query('SELECT last_id FROM server_outbox_watermark WHERE instance_id = $1;', [cfg.api_instance_id]);
-      return rows.length && Number(rows[0].last_id) >= queueRun.eventId ? Number(rows[0].last_id) : null;
+      const lastId = await queryWatermarkLastId(pool, cfg.api_instance_id);
+      return lastId != null && lastId >= queueRun.eventId ? lastId : null;
     }, 90000, 'restarted_api_timer_watermark');
   } catch (_) {
     const diagnostic = await readRestartReplayDiagnostic(cfg.base, pool, queueRun.eventId, cfg.api_instance_id);
@@ -1187,8 +1198,8 @@ async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) 
   let replayWatermark;
   try {
     replayWatermark = await waitFor(async () => {
-      const rows = await pool.query('SELECT last_id FROM server_outbox_watermark WHERE instance_id = $1;', [replayId]);
-      return rows.length && Number(rows[0].last_id) >= queueRun.eventId ? Number(rows[0].last_id) : null;
+      const lastId = await queryWatermarkLastId(pool, replayId);
+      return lastId != null && lastId >= queueRun.eventId ? lastId : null;
     }, 90000, 'independent_api_timer_watermark');
   } catch (_) {
     const diagnostic = await readRestartReplayDiagnostic(replayBase, pool, queueRun.eventId, replayId);
@@ -1221,7 +1232,7 @@ async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) 
         worker_instance_id: liveHealthBody.worker.outboxInstanceId,
         worker_timer_active: restarted.health.worker_active,
         worker_interval_ms: restarted.health.worker_interval_ms,
-        cache_replication_enabled: restarted.health.cacheReplicationEnabled === true,
+        cache_replication_enabled: liveHealthBody.worker.cacheReplicationEnabled === true,
         cache_replication_processed_total: restartedProcessedTotal,
         cache_replication_last_watermark_target_id: restartedWatermarkTarget,
         cache_replication_last_watermark_advance_ok: liveHealthBody.worker.cacheReplicationLastWatermarkAdvanceOk === true,
@@ -1300,6 +1311,7 @@ async function exerciseRedisAlert(cfg, token, report, runtimeState) {
   execFileSync('docker', ['stop', '--time', '2', cfg.redis_container], { stdio: 'pipe', timeout: 15000 });
   if (runtimeState) runtimeState.redisStopped = true;
   let stopped = true;
+  let redisRestartError = null;
   try {
     const down = await waitFor(async () => {
       const result = await getMetrics(cfg.base, token);
@@ -1324,12 +1336,14 @@ async function exerciseRedisAlert(cfg, token, report, runtimeState) {
     report.alertmanager.webhook_received_at = firingDelivery.received_at;
   } finally {
     if (!containerOwnedByRun(cfg.redis_container, cfg.run_instance)) {
-      throw new Error('redis_restart_ownership_mismatch');
+      redisRestartError = new Error('redis_restart_ownership_mismatch');
+    } else {
+      execFileSync('docker', ['start', cfg.redis_container], { stdio: 'pipe', timeout: 15000 });
+      stopped = false;
+      if (runtimeState) runtimeState.redisStopped = false;
     }
-    execFileSync('docker', ['start', cfg.redis_container], { stdio: 'pipe', timeout: 15000 });
-    stopped = false;
-    if (runtimeState) runtimeState.redisStopped = false;
   }
+  if (redisRestartError) throw redisRestartError;
   if (stopped) throw new Error('redis_recovery_not_attempted');
   const recovered = await waitFor(async () => {
     const result = await getMetrics(cfg.base, token);
@@ -1698,14 +1712,16 @@ async function run() {
     report.exit_code = 1;
   } finally {
     if (runtimeState.redisStopped) {
+      let ok = false;
       try {
-        if (!containerOwnedByRun(runtimeState.redisContainer, runtimeState.runInstance)) {
-          throw new Error('redis_restart_ownership_mismatch');
+        if (containerOwnedByRun(runtimeState.redisContainer, runtimeState.runInstance)) {
+          execFileSync('docker', ['start', runtimeState.redisContainer], { stdio: 'pipe', timeout: 15000 });
+          runtimeState.redisStopped = false;
+          report.cleanup_redis_restarted = true;
+          ok = true;
         }
-        execFileSync('docker', ['start', runtimeState.redisContainer], { stdio: 'pipe', timeout: 15000 });
-        runtimeState.redisStopped = false;
-        report.cleanup_redis_restarted = true;
-      } catch (_) {
+      } catch (_) { /* recorded via ok=false */ }
+      if (!ok) {
         report.cleanup_redis_restart_failed = true;
         exitCode = 1;
         report.status = 'FAIL';
@@ -1732,19 +1748,24 @@ async function run() {
           if (containerExists(name) && containerOwnedByRun(name, runtimeState.runInstance)) {
             execFileSync('docker', ['rm', '-f', name], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], timeout: 15000 });
           }
-        } catch (_) {}
+        } catch (_) { /* best-effort */ }
         runtimeState.apiContainers.delete(name);
       }
     }
     report.cleanup.load_generator_containers = [];
     for (const name of Array.from(runtimeState.loadContainers)) {
+      let cleanedLoad = false;
       try {
-        if (containerExists(name)) {
-          if (!containerOwnedByRun(name, runtimeState.runInstance)) throw new Error('load_generator_cleanup_ownership_mismatch');
+        if (!containerExists(name)) {
+          cleanedLoad = true;
+        } else if (containerOwnedByRun(name, runtimeState.runInstance)) {
           execFileSync('docker', ['rm', '-f', name], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], timeout: 15000 });
+          cleanedLoad = true;
         }
+      } catch (_) { /* recorded via cleanedLoad=false */ }
+      if (cleanedLoad) {
         report.cleanup.load_generator_containers.push({ name, removed: true });
-      } catch (_) {
+      } else {
         report.cleanup.load_generator_containers.push({ name, removed: false });
         markCleanupFailure('load_generator_container');
       }
@@ -1891,6 +1912,7 @@ module.exports = {
   resourceLimitsMatch,
   REDIS_RESOURCE_LIMIT,
   cacheWorkerTimerContractMatches,
+  queryWatermarkLastId,
   restartReplayDiagnosticMessage,
   redactError,
   formatFailureDiagnostic,

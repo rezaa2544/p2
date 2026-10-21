@@ -21,4 +21,8 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
   END $$;
   GRANT pg_read_all_stats TO pgbouncer;
 EOSQL
+if [ -n "${PGDATA:-}" ] && [ -f "$PGDATA/pg_hba.conf" ]; then
+  grep -qxF 'host replication replicator all scram-sha-256' "$PGDATA/pg_hba.conf" \
+    || echo 'host replication replicator all scram-sha-256' >> "$PGDATA/pg_hba.conf"
+fi
 echo "01-replication.sh: replicator + pgbouncer آماده شدند"

@@ -185,6 +185,95 @@ exit 0
       && fs.readFileSync(countFile, 'utf8').split(/\r?\n/).filter(Boolean).length === 3);
   check('dry-run never invokes pg_promote', !fs.existsSync(promoteFile));
 
+  const unsetUserEnv = Object.assign({}, process.env, commonFailoverEnv, { PG_ISREADY_RESULT: '1' });
+  delete unsetUserEnv.USER;
+  const promoted = spawnSync('bash', [failoverScript], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    env: Object.assign({}, unsetUserEnv, {
+      PATH: path.join(TEMP, 'bin-promote') + path.delimiter + bin + path.delimiter + process.env.PATH
+    })
+  });
+  check('PostgreSQL failover check handles unset USER without nounset failure', (() => {
+    const binPromote = path.join(TEMP, 'bin-promote');
+    fs.mkdirSync(binPromote, { recursive: true });
+    let promotedFlag = false;
+    const stateFile = path.join(TEMP, 'pg-promoted-state');
+    put(path.join(binPromote, 'psql'), `#!/bin/sh
+query=''
+for arg in "$@"; do query="$arg"; done
+case "$query" in
+  *"SELECT pg_is_in_recovery()"*)
+    if [ -f "${stateFile}" ]; then echo f; else echo t; fi ;;
+  *"pg_wal_lsn_diff"*) echo 0 ;;
+  *"pg_promote"*) touch "${stateFile}"; echo t ;;
+esac
+exit 0
+`);
+    const envNoUser = Object.assign({}, unsetUserEnv, {
+      PATH: binPromote + path.delimiter + bin + path.delimiter + process.env.PATH
+    });
+    const res = spawnSync('bash', [failoverScript], { cwd: ROOT, encoding: 'utf8', env: envNoUser });
+    promotedFlag = res.status === 0 && /PROMOTE_OK:/.test(res.stdout);
+    return promotedFlag;
+  })());
+  void promoted;
+
+  check('Redis Sentinel failover splits comma-delimited master host,port after promotion', (() => {
+    const binRedis = path.join(TEMP, 'bin-redis');
+    fs.mkdirSync(binRedis, { recursive: true });
+    const stateFile = path.join(TEMP, 'redis-failover-state');
+    put(path.join(binRedis, 'redis-cli'), `#!/bin/sh
+host=''
+port=''
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h) host="$2"; shift 2 ;;
+    -p) port="$2"; shift 2 ;;
+    *) break ;;
+  esac
+done
+cmd="$1"
+case "$cmd" in
+  ping)
+    if [ "$port" = "26379" ]; then echo PONG; exit 0; fi
+    exit 1 ;;
+  SENTINEL)
+    sub="$2"
+    if [ "$sub" = "get-master-addr-by-name" ]; then
+      if [ -f "${stateFile}" ]; then printf '172.19.0.4\\n6379\\n'; else printf '172.19.0.2\\n6379\\n'; fi
+      exit 0
+    fi
+    if [ "$sub" = "FAILOVER" ]; then touch "${stateFile}"; echo OK; exit 0; fi ;;
+  INFO)
+    if [ "$host" = "172.19.0.4" ] && [ "$port" = "6379" ]; then echo "role:master"; exit 0; fi
+    echo "bad_target=$host:$port" >&2; exit 1 ;;
+esac
+exit 1
+`);
+    const res = spawnSync('bash', [path.join(ROOT, 'tools/failover-redis.sh')], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: Object.assign({}, process.env, {
+        PATH: binRedis + path.delimiter + process.env.PATH,
+        SENTINELS: '127.0.0.1:26379',
+        MASTER_NAME: 'mymaster'
+      })
+    });
+    return res.status === 0 && /NEW_MASTER=172\.19\.0\.4,6379/.test(res.stdout);
+  })());
+
+  const haComposeSource = fs.readFileSync(path.join(ROOT, 'infra/postgres/docker-compose.ha.yml'), 'utf8');
+  const standbyEntrypointSource = fs.readFileSync(path.join(ROOT, 'infra/postgres/entrypoints/standby-entrypoint.sh'), 'utf8');
+  const replicationInitSource = fs.readFileSync(path.join(ROOT, 'infra/postgres/init/01-replication.sh'), 'utf8');
+  check('PostgreSQL HA primary avoids literal single quotes in shared_preload_libraries GUC',
+    !haComposeSource.includes("shared_preload_libraries=''")
+      && haComposeSource.includes('"shared_preload_libraries="'));
+  check('PostgreSQL standby entrypoint clears PGDATA contents without removing the volume mountpoint',
+    !standbyEntrypointSource.includes('rm -rf "$PGDATA"')
+      && standbyEntrypointSource.includes('find "$PGDATA" -mindepth 1 -delete')
+      && replicationInitSource.includes('host replication replicator all scram-sha-256'));
+
   console.log(`M15-01 DR runtime unit tests: ${passed} passed, 0 failed`);
 } catch (error) {
   console.error('M15-01 DR runtime unit tests: FAIL');

@@ -585,6 +585,31 @@ try {
     assert.ok(runtimeSource.indexOf('await exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState)')
       < runtimeSource.indexOf('await exerciseRedisAlert(cfg, metricsToken, report, runtimeState)'));
     assert.doesNotMatch(runtimeSource, /require\(['"]\.\.\/server\/index['"]\)/);
+    assert.doesNotMatch(runtimeSource, /restarted\.health\.cacheReplicationEnabled/);
+    assert.match(runtimeSource, /queryWatermarkLastId\(pool, cfg\.api_instance_id\)/);
+    assert.match(runtimeSource, /queryWatermarkLastId\(pool, replayId\)/);
+  });
+
+  test('queryWatermarkLastId reads node-postgres result.rows objects rather than array-indexing result', () => {
+    const script = `
+      const assert = require('assert');
+      const evidence = require('./tools/m15-01-runtime-evidence');
+      (async () => {
+        const seen = [];
+        const pgResultPool = {
+          async query(sql, params) {
+            seen.push({ sql: String(sql), params });
+            return { rowCount: 1, rows: [{ last_id: '1' }] };
+          }
+        };
+        assert.strictEqual(await evidence.queryWatermarkLastId(pgResultPool, 'm15-e3-api-a-1-1'), 1);
+        assert.strictEqual(await evidence.queryWatermarkLastId({ async query() { return { rowCount: 0, rows: [] }; } }, 'm15-e3-api-a-1-1'), null);
+        assert.deepStrictEqual(seen[0].params, ['m15-e3-api-a-1-1']);
+      })().catch((err) => { console.error(err); process.exitCode = 1; });
+    `;
+    execFileSync(process.execPath, ['-e', script], {
+      cwd: path.join(__dirname, '..'), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']
+    });
   });
 
   test('E3 replay timeout diagnostic reports the event, actual worker, processed total, and watermark result', () => {

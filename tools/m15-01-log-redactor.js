@@ -19,7 +19,7 @@ const PRIVATE_DATA_KEYS = new Set([
   'NATIONALID', 'ONETIMECODE', 'OTP', 'OTPCODE', 'PHONE', 'PHONENUMBER', 'SESSION', 'SESSIONID',
   'SETCOOKIE', 'USER', 'USERNAME'
 ]);
-const KEY_VALUE_PATTERN = /(["']?)([A-Za-z_][A-Za-z0-9_-]*)(["']?)(\s*)([=:])(\s*)("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\{[^{}]*\}|\[[^\[\]]*\]|[^\s,;}\]]+)/gi;
+const KEY_VALUE_PATTERN = /(["']?)([A-Za-z_][A-Za-z0-9_-]*)(["']?)(\s*)([=:])(\s*)("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\{[^{}]*\}|\[[^[\]]*\]|[^\s,;}\]]+)/gi;
 
 function redactText(input, env) {
   env = env || process.env;
