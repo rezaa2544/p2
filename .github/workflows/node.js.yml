@@ -289,7 +289,10 @@ jobs:
       run: |
         set -u
         out="$(mktemp)"
-        timeout 300 env PROBE_LEGACY=1 node tests/b-pg-health-blackhole.js >"$out" 2>&1; rc=$?
+        set +e
+        timeout 300 env PROBE_LEGACY=1 node tests/b-pg-health-blackhole.js >"$out" 2>&1
+        rc=$?
+        set -e
         # A timeout kill (124) is a harness fault, NOT a RED verdict — a probe
         # that hangs past its bound must not pass a negative test.
         if [ "$rc" -eq 124 ]; then
@@ -318,7 +321,10 @@ jobs:
       run: |
         set -u
         out="$(mktemp)"
-        timeout 180 env PAYESH_PG_UNBOUNDED_PROBE=1 node tests/b-pg-canary-sot-bounds.js >"$out" 2>&1; rc=$?
+        set +e
+        timeout 180 env PAYESH_PG_UNBOUNDED_PROBE=1 node tests/b-pg-canary-sot-bounds.js >"$out" 2>&1
+        rc=$?
+        set -e
         if [ "$rc" -eq 124 ]; then
           echo 'NEGATIVE TEST FAILED: LEGACY arm exceeded the 180s bound (hung past its own watchdog)'; cat "$out"; exit 1
         fi

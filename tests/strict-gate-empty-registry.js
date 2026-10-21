@@ -7,6 +7,7 @@ try {
  fs.copyFileSync(path.join(__dirname,'../tools/strict-verification-gate.js'),path.join(root,'tools/strict-verification-gate.js'));
  fs.writeFileSync(path.join(root,'docs/STRICT_VERIFICATION_GATE.md'),'Fixture policy only.');
  fs.writeFileSync(path.join(root,'docs/verification/FALSE_GREEN_ALLOWLIST.json'),JSON.stringify({items:[]}));
+ fs.copyFileSync(path.join(__dirname,'../docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json'),path.join(root,'docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json'));
  cp.execFileSync('git',['init','--quiet',root]);
  for (const status of ['UNKNOWN','BLOCKED_UNTIL_REGISTRY_IS_COMPLETE']) {
   fs.writeFileSync(path.join(root,'docs/verification/VERIFICATION_REGISTRY.json'),JSON.stringify({status,items:[],required_reviewers:['chatgpt','arena','atria']}));

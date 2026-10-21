@@ -839,6 +839,62 @@ try {
         M15_ROUTE_RESULT_FILE: path.join(os.tmpdir(), 'outside-result.json')
       }), options), 'route_generator_files_must_be_distinct_and_under_runner_temp');
     });
+
+    test('artifact ZIP audit verifies SHA-256, commands.log parity, and rejects secret/SHA tampering', () => {
+      const artifactAudit = require('../tools/m15-01-artifact-audit');
+      const zipStage = fs.mkdtempSync(path.join(temp, 'zip-stage-'));
+      const cmdBody = Buffer.from('$ docker ps\nCONTAINER ID\n', 'utf8');
+      const cmdSha = artifactAudit.sha256Buffer(cmdBody);
+      fs.writeFileSync(path.join(zipStage, 'commands.log'), cmdBody);
+      fs.writeFileSync(path.join(zipStage, 'evidence.json'), JSON.stringify({
+        source_sha: '9c1471f71d80e03dfba1ce8f44d66cc2a9db590e',
+        status: 'PASS',
+        failed_stages: [],
+        commands_log_sha256: cmdSha,
+        cleanup: { containers_remaining: 0 }
+      }));
+      const zipOut = path.join(temp, 'valid.zip');
+      execFileSync('python3', ['-c', [
+        'import os, sys, zipfile',
+        'src, dst = sys.argv[1], sys.argv[2]',
+        'with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as z:',
+        '  for fn in sorted(os.listdir(src)):',
+        '    z.write(os.path.join(src, fn), fn)'
+      ].join('\n'), zipStage, zipOut]);
+      const validBuf = fs.readFileSync(zipOut);
+      const okAudit = artifactAudit.auditZipBuffer(
+        validBuf,
+        { run_id: 39642161980, id: 12372535628, name: 'm15-01-runtime-a-PASS-none-none-9c1471f7' },
+        '9c1471f71d80e03dfba1ce8f44d66cc2a9db590e'
+      );
+      assert.strictEqual(okAudit.audit_pass, true);
+      assert.strictEqual(okAudit.secret_hits, 0);
+      assert.strictEqual(okAudit.commands_log_sha256_match, true);
+      assert.strictEqual(okAudit.file_count, 2);
+
+      // Negative 1: wrong expected SHA must fail closed
+      const badSha = artifactAudit.auditZipBuffer(validBuf, { id: 1 }, 'deadbeef');
+      assert.strictEqual(badSha.audit_pass, false);
+
+      // Negative 2: leaked DSN credential must be caught and fail closed
+      fs.appendFileSync(path.join(zipStage, 'commands.log'), 'postgres://payesh:supersecret@127.0.0.1:5432/payesh\n');
+      const leakZip = path.join(temp, 'leak.zip');
+      execFileSync('python3', ['-c', [
+        'import os, sys, zipfile',
+        'src, dst = sys.argv[1], sys.argv[2]',
+        'with zipfile.ZipFile(dst, "w", zipfile.ZIP_DEFLATED) as z:',
+        '  for fn in sorted(os.listdir(src)):',
+        '    z.write(os.path.join(src, fn), fn)'
+      ].join('\n'), zipStage, leakZip]);
+      const leakAudit = artifactAudit.auditZipBuffer(
+        fs.readFileSync(leakZip),
+        { id: 2 },
+        '9c1471f71d80e03dfba1ce8f44d66cc2a9db590e'
+      );
+      assert.strictEqual(leakAudit.audit_pass, false);
+      assert.strictEqual(leakAudit.secret_hits > 0, true);
+      assert.strictEqual(leakAudit.commands_log_sha256_match, false);
+    });
   } finally {
     fs.rmSync(temp, { recursive: true, force: true });
   }

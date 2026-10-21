@@ -98,7 +98,7 @@ const check = (name, fn) => {
       const src = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
       const entity = file.split('/').pop().replace('.js', '');
       check('A-20 inventory: strict OCC wired in ' + entity, () => {
-        const re = /checkOcc\\([\\s\\S]{0,220}?,\\s*body,\\s*['"][^'"]+['"],\\s*true\\s*\\)/g;
+        const re = /checkOcc\([\s\S]{0,220}?,\s*body,\s*['"][^'"]+['"],\s*true\s*\)/g;
         assert.ok(re.test(src), 'no checkOcc(..., true) found');
       });
     }

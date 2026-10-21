@@ -182,6 +182,7 @@ function mkReportLogOp(actor, uid, school_id) {
 }
 
 async function main() {
+  if (!fs.existsSync(REAL_STORE)) require('../server/seed');
   const seed = JSON.parse(fs.readFileSync(REAL_STORE, 'utf8'));
   const users = seed.users || [];
   const find = (role, school_id) => users.find(u => u.role === role && u.active !== 0 && (school_id == null || u.school_id === school_id));
