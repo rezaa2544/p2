@@ -212,6 +212,7 @@ wait_pg_ha_ready() {
     sleep 2
   done
   compose_pg ps || true
+  compose_pg logs --no-color --timestamps --tail=40 pg-primary pg-standby pgbouncer || true
   echo "PostgreSQL primary/standby readiness or streaming replication timed out" >&2
   return 1
 }

@@ -240,10 +240,11 @@ function main(argv = process.argv) {
     const statusMatch = summary.match(/Evidence report: \*\*([A-Z]+)\*\*/);
     const stageMatch = summary.match(/First failed command stage: `([A-Za-z0-9_.-]{1,100})`/);
     const codeMatch = summary.match(/Failure code: `([A-Za-z0-9_.:-]{1,120})`/);
-    const slug = (value, fallback) => /^[A-Za-z0-9_.-]{1,64}$/.test(String(value || '')) ? String(value) : fallback;
+    const slug = (value, fallback = 'none') => /^[A-Za-z0-9_.-]{1,64}$/.test(String(value || '')) ? String(value) : fallback;
+    const resolvedStatus = slug(statusMatch && statusMatch[1], 'UNKNOWN');
     const values = {
-      status: slug(statusMatch && statusMatch[1], 'UNKNOWN'),
-      failure_code: slug(codeMatch && codeMatch[1], 'unknown'),
+      status: resolvedStatus,
+      failure_code: slug(codeMatch && codeMatch[1], resolvedStatus === 'PASS' ? 'none' : 'unknown'),
       failed_stage: slug(stageMatch && stageMatch[1], 'none')
     };
     fs.appendFileSync(outputFile, Object.entries(values).map(([key, value]) => `${key}=${value}`).join('\n') + '\n', { mode: 0o600 });

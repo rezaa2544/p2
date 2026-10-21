@@ -274,6 +274,37 @@ exit 1
       && standbyEntrypointSource.includes('find "$PGDATA" -mindepth 1 -delete')
       && replicationInitSource.includes('host replication replicator all scram-sha-256'));
 
+  check('PostgreSQL init replication script avoids shell PID expansion and updates pg_hba.conf', (() => {
+    const binInit = path.join(TEMP, 'bin-init');
+    const fakePgData = path.join(TEMP, 'fake-pgdata');
+    const sqlCapture = path.join(TEMP, 'replication-init.sql');
+    fs.mkdirSync(binInit, { recursive: true });
+    fs.mkdirSync(fakePgData, { recursive: true });
+    fs.writeFileSync(path.join(fakePgData, 'pg_hba.conf'), 'host all all all scram-sha-256\n');
+    put(path.join(binInit, 'psql'), `#!/bin/sh
+cat > "${sqlCapture}"
+exit 0
+`);
+    const res = spawnSync('bash', [path.join(ROOT, 'infra/postgres/init/01-replication.sh')], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: Object.assign({}, process.env, {
+        PATH: binInit + path.delimiter + process.env.PATH,
+        PGDATA: fakePgData,
+        POSTGRES_USER: 'postgres',
+        POSTGRES_DB: 'payesh',
+        REPLICATION_PASSWORD: 'test-repl-password'
+      })
+    });
+    const capturedSql = fs.readFileSync(sqlCapture, 'utf8');
+    const hba = fs.readFileSync(path.join(fakePgData, 'pg_hba.conf'), 'utf8');
+    return res.status === 0
+      && !/\bDO\s+\d+\s+BEGIN\b/.test(capturedSql)
+      && capturedSql.includes('CREATE ROLE replicator WITH LOGIN REPLICATION PASSWORD %L')
+      && capturedSql.includes('CREATE ROLE pgbouncer WITH LOGIN PASSWORD %L')
+      && hba.includes('host replication replicator all scram-sha-256');
+  })());
+
   console.log(`M15-01 DR runtime unit tests: ${passed} passed, 0 failed`);
 } catch (error) {
   console.error('M15-01 DR runtime unit tests: FAIL');
