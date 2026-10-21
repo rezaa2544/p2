@@ -7,7 +7,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev \
   && mkdir -p /run/m15 /app/server/data /app/tools \
-  && chmod 700 /run/m15 /app/server/data \
+  && chmod 711 /run/m15 \
+  && chmod 700 /app/server/data \
   && chown -R node:node /run/m15 /app/server /app/tools
 
 COPY --chown=node:node server/ ./server/

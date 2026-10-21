@@ -79,7 +79,7 @@ exit 0
   check('failed pg-ha-start exposes bounded first-error/tail context only after secret redaction',
     redactionPos >= 0 && firstErrorPos > redactionPos && diagnosticTailPos > firstErrorPos
       && diagnosticBoundPos > diagnosticTailPos && diagnosticPos > diagnosticBoundPos
-      && drRuntimeSource.includes('(E:|Err:|error response from daemon|failed to solve')
+      && drRuntimeSource.includes('(^|[[:space:]])(E:|Err:)|error response from daemon|failed to solve')
       && !drRuntimeSource.includes('|cannot|unable)')
       && drRuntimeSource.includes('cut -c1-500') && drRuntimeSource.includes('cut -c1-600')
       && drRuntimeSource.includes('diagnostic="${diagnostic//%/%25}"'));

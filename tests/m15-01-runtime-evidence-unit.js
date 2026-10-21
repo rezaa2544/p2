@@ -292,10 +292,20 @@ try {
     assert.match(dockerfile, /COPY --chown=node:node tools\/m15-01-route-load\.js/);
     assert.doesNotMatch(dockerfile, /COPY --chown=node:node \. \./, 'the image build must not copy the full repository');
     assert.match(dockerfile, /mkdir -p \/run\/m15 \/app\/server\/data \/app\/tools/);
+    assert.match(dockerfile, /chmod 711 \/run\/m15/);
+    assert.match(dockerfile, /chmod 700 \/app\/server\/data/);
     assert.match(dockerfile, /^USER node$/m);
     const runtimeSource = fs.readFileSync(path.join(__dirname, '..', 'tools', 'm15-01-runtime-evidence.js'), 'utf8');
     assert(runtimeSource.includes("info.user !== 'node'"));
     assert(runtimeSource.includes("info.user !== uid + ':' + gid"));
+    const routeMeasureStart = runtimeSource.indexOf('function measureRouteInContainer(');
+    const routeMeasureEnd = runtimeSource.indexOf('\nfunction ', routeMeasureStart + 1);
+    const routeMeasureSource = runtimeSource.slice(routeMeasureStart, routeMeasureEnd);
+    assert.match(routeMeasureSource, /fs\.chmodSync\(specPath, 0o600\)/);
+    assert.match(routeMeasureSource, /fs\.chmodSync\(resultPath, 0o600\)/);
+    assert.match(routeMeasureSource, /'--user=' \+ uid \+ ':' \+ gid/);
+    assert.match(routeMeasureSource, /target=\/run\/m15\/spec\.json,readonly/);
+    assert.match(routeMeasureSource, /target=\/run\/m15\/result\.json/);
     assert.strictEqual(dockerignore.includes('**'), true, 'Docker context must be denied by default');
     for (const pattern of [
       '.env', '.env.*', '.env*', '**/.env', '**/.env.*', '**/.env*',
