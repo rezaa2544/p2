@@ -147,7 +147,7 @@ function mkFixture(name) {
   });
   const allow = {
     schema_version: 1,
-    items: ['assert(true', 'process.exit(0)', '|| true', '0/0 checks'].map(mk)
+    items: ['assert(true', 'process.exit(0)', '|| true', '0/0 checks', 'self-skip', 'self-only', 'expect-true-toBe'].map(mk)
   };
   fs.writeFileSync(path.join(dir, 'docs', 'verification', 'FALSE_GREEN_ALLOWLIST.json'), JSON.stringify(allow, null, 2));
   git(dir, ['init', '-q']);
@@ -191,8 +191,11 @@ function finishFixture(dir, reg) {
   return head;
 }
 
-function runGate(dir) {
-  const r = spawnSync(process.execPath, ['tools/strict-verification-gate.js'], { cwd: dir, encoding: 'utf8', timeout: 60000 });
+function runGate(dir, eventName) {
+  const r = spawnSync(process.execPath, ['tools/strict-verification-gate.js'], {
+    cwd: dir, encoding: 'utf8', timeout: 60000,
+    env: { ...process.env, GITHUB_EVENT_NAME: eventName || 'push', GITHUB_BASE_REF: eventName === 'pull_request' ? 'main' : '' }
+  });
   return { code: r.status, out: (r.stdout || '') + (r.stderr || '') };
 }
 
@@ -245,7 +248,7 @@ addCase('V-06', 'V-06', 'HEAD not contained in origin/main (unpushed local line)
 addCase('V-06b', 'V-06', 'origin/main ref missing (cannot prove remote binding)', null, { noOrigin: true });
 
 /* V-07: scanner misses shell false-greens */
-addCase('V-07', 'fake-green.sh', 'false-green || true hidden in a .sh test', null, { addFile: { path: 'tests/fake-green.sh', content: '#!/bin/sh\ncmd_volatile || true\necho "all good"\n' } });
+addCase('V-07', 'G7 || true has no unapproved hits', 'false-green || true hidden in a .sh test', null, { addFile: { path: 'tests/fake-green.sh', content: '#!/bin/sh\ncmd_volatile || true\necho "all good"\n' } });
 
 /* V-08: certification evidence solely from self-attesting module */
 addCase('V-08', 'V-08', 'all evidence commands run the self-certification module', (r) => {
@@ -291,8 +294,10 @@ addCase('V-12b', 'V-12', 'registry missing schema keys (no policy/status/allowed
 
 addCase('V-12c', 'V-12', 'schema file weakened (evidence keys stripped) — pinned contract must notice', null, { tamperSchema: true });
 
-/* GOOD control: must stay accepted */
+/* GOOD control: must stay accepted in push/main context and PR context. */
 cases.push({ id: 'GOOD', expectFail: null, description: 'fully valid registry stays VERIFIED', mutate: null, extra: {} });
+cases.push({ id: 'GOOD-PR-ANCESTRY', expectFail: null, description: 'valid PR HEAD descends from origin/main', mutate: null, extra: { prContext: true } });
+addCase('V-06-PR-DIVERGENT', 'V-06 PR base contained in HEAD', 'PR HEAD does not descend from origin/main', null, { prContext: true, divergentPrOrigin: true });
 
 /* ── runner ─────────────────────────────────────────────────────────────── */
 console.log('==== A-30 V-01..V-12 NEGATIVE GATE FIXTURES ====');
@@ -305,9 +310,21 @@ for (const c of cases) {
       fs.writeFileSync(path.join(dir, c.extra.addFile.path), c.extra.addFile.content);
     }
     const head = finishFixture(dir, reg);
+    if (c.extra && c.extra.prContext) {
+      if (c.extra.divergentPrOrigin) {
+        /* Create a sibling commit directly so the fixture's rewritten registry
+           in the working tree is not disturbed by checkout/stash operations. */
+        const parent = git(dir, ['rev-parse', 'HEAD~1']);
+        const tree = git(dir, ['rev-parse', parent + '^{tree}']);
+        const divergent = git(dir, ['commit-tree', tree, '-p', parent, '-m', 'divergent origin main']);
+        git(dir, ['update-ref', 'refs/remotes/origin/main', divergent]);
+      } else {
+        /* Valid PR context: origin/main is the parent of this PR HEAD. */
+        git(dir, ['update-ref', 'refs/remotes/origin/main', 'HEAD~1']);
+      }
+    }
     if (c.extra && c.extra.divergentOrigin) {
-      /* local-only line: origin/main stays on the PARENT commit while HEAD is the
-         crafted child — original gate never consults origin/main (V-06). */
+      /* Push/main negative fixture: HEAD is a local-only child beyond origin/main. */
       git(dir, ['update-ref', 'refs/remotes/origin/main', 'HEAD~1']);
     }
     if (c.extra && c.extra.noOrigin) {
@@ -321,9 +338,9 @@ for (const c of cases) {
         fs.writeFileSync(sp, JSON.stringify(sc, null, 2));
       }
     }
-    const r = runGate(dir);
+    const r = runGate(dir, c.extra && c.extra.prContext ? 'pull_request' : 'push');
     if (c.expectFail === null) {
-      rec('GOOD control accepted (exit 0)', r.code === 0, 'exit=' + r.code + (r.code !== 0 ? '\n' + r.out.split('\n').filter((l) => l.includes('FAIL') || l.includes('BLOCKERS')).slice(0, 12).join('\n') : ''));
+      rec('GOOD control accepted (exit 0)', r.code === 0, 'exit=' + r.code + (r.code !== 0 ? '\n' + r.out.split('\n').slice(-30).join('\n') : ''));
     } else {
       const rejected = r.code !== 0 && r.out.includes(c.expectFail);
       const detail = 'exit=' + r.code + (rejected ? '' : (r.code === 0 ? ' — ACCEPTED by gate (defect)' : ' — exit1 but expected check missing: ' + c.expectFail));
@@ -335,6 +352,59 @@ for (const c of cases) {
     try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {}
   }
 }
+
+/* Issue #472: exercise the two-phase registry binding using a real temporary git history.
+   A valid metadata commit must bind to its immutable source parent. A merge commit
+   with the same registry-only first-parent tree delta must be rejected explicitly. */
+function runMetadataBindingFixture(name, mergeCommit) {
+  const dir = mkFixture('metadata-' + name);
+  try {
+    writeArtifacts(dir);
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-qm', 'immutable source evidence commit']);
+    const sourceSha = git(dir, ['rev-parse', 'HEAD']);
+
+    const reg = goodRegistry(sourceSha, null, dir);
+    reg.expected_ids = reg.items.map((it) => String(it.id));
+    fs.writeFileSync(path.join(dir, 'docs', 'verification', 'VERIFICATION_REGISTRY.json'), JSON.stringify(reg, null, 2));
+    git(dir, ['add', 'docs/verification/VERIFICATION_REGISTRY.json']);
+    git(dir, ['commit', '-qm', 'registry-only metadata commit']);
+    const metadataSha = git(dir, ['rev-parse', 'HEAD']);
+    git(dir, ['update-ref', 'refs/remotes/origin/main', sourceSha]);
+
+    if (mergeCommit) {
+      /* A merge commit whose final tree differs from first parent only by registry
+         must still be rejected for metadata binding because multi-parent history is
+         not the protocol's allowed evidence-finalization shape. */
+      git(dir, ['checkout', '-qb', 'side-source', sourceSha]);
+      fs.writeFileSync(path.join(dir, 'tests', 'smoke.js'), '// side-parent source mutation\n');
+      git(dir, ['add', 'tests/smoke.js']);
+      git(dir, ['commit', '-qm', 'side parent source change']);
+      const sideSha = git(dir, ['rev-parse', 'HEAD']);
+      git(dir, ['checkout', '--detach', metadataSha]);
+      const tree = git(dir, ['rev-parse', metadataSha + '^{tree}']);
+      const mergeSha = git(dir, ['commit-tree', tree, '-p', sourceSha, '-p', sideSha, '-m', 'merge-shaped metadata commit']);
+      git(dir, ['update-ref', 'HEAD', mergeSha]);
+    }
+
+    const result = runGate(dir, 'pull_request');
+    if (mergeCommit) {
+      rec('Issue #472 merge commit rejected for metadata binding',
+        result.code !== 0 && result.out.includes('metadata-only binding requires a non-merge commit'),
+        'exit=' + result.code);
+    } else {
+      rec('Issue #472 single-parent registry-only commit binds immutable parent',
+        result.code === 0,
+        'exit=' + result.code + (result.code !== 0 ? '\n' + result.out.split('\n').filter((l) => l.includes('FAIL') || l.includes('BLOCKERS')).slice(0, 12).join('\n') : ''));
+    }
+  } catch (e) {
+    rec('Issue #472 metadata fixture harness error (' + name + ')', false, String(e && e.message || e));
+  } finally {
+    try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {}
+  }
+}
+runMetadataBindingFixture('positive', false);
+runMetadataBindingFixture('merge-negative', true);
 
 console.log('==== A-30 NEGATIVE RESULT ' + pass + ' pass / ' + fail + ' fail ====');
 if (fail) {

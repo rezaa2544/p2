@@ -18,7 +18,7 @@ const REVIEWER_VERDICTS = ['PASS', 'FAIL', 'BLOCKED'];
 const EVIDENCE_KINDS = ['positive_test', 'negative_test', 'adversarial_test', 'runtime_evidence', 'failure_recovery_evidence', 'data_evidence', 'review_note'];
 const POSITIVE_KINDS = ['positive_test', 'runtime_evidence', 'data_evidence'];
 const ADVERSARIAL_KINDS = ['negative_test', 'adversarial_test', 'failure_recovery_evidence'];
-const REQUIRED_REGISTRY_KEYS = ['schema_version', 'policy', 'status', 'head_bound', 'required_reviewers', 'allowed_statuses', 'reviews_recorded', 'human_governance', 'items'];
+const REQUIRED_REGISTRY_KEYS = ['schema_version', 'policy', 'status', 'head_bound', 'required_reviewers', 'allowed_statuses', 'reviews_recorded', 'human_governance', 'expected_ids', 'items'];
 const REQUIRED_ITEM_KEYS = ['id', 'status', 'requirement', 'head_sha', 'reviews', 'known_limitations', 'evidence'];
 const REQUIRED_EVIDENCE_KEYS = ['reviewer', 'kind', 'command', 'exit_code', 'checks_total', 'checks_passed', 'artifact', 'sha256', 'head_sha', 'runtime', 'ts'];
 const SELF_CERT_SOURCES = /(?:^|\s)(?:server\/analytics\/intelligence-release-certification\.js|server\/infrastructure\/phase4-release-certification\.js)(?=\s|$)/;
@@ -36,8 +36,40 @@ const norm = (v) => JSON.stringify(v);
 
 let head = '';
 try { head = cp.execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT }).toString().trim(); } catch (e) { }
+
+/* Two-phase binding: a registry commit may bind evidence to its immutable parent
+   only when the registry is the sole changed path. This avoids self-reference
+   (editing the registry changes HEAD) without allowing code/workflow/test drift
+   after evidence collection. All ancestry checks continue to use checkout HEAD. */
+let evidenceHead = head;
+let metadataOnlyBinding = false;
+let metadataBindingReason = 'registry commit is not proven metadata-only';
+try {
+  /* Reject merge commits: a first-parent diff alone does not prove the second
+     parent introduced no source changes. A metadata-only binding is a single-
+     parent commit with exactly one changed path, the registry itself. */
+  const parentLine = cp.execFileSync('git', ['rev-list', '--parents', '-n', '1', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
+  const commitAndParents = parentLine ? parentLine.split(/\s+/) : [];
+  if (commitAndParents.length !== 2) {
+    metadataBindingReason = 'metadata-only binding requires a non-merge commit with exactly one parent; parent_count=' + Math.max(0, commitAndParents.length - 1);
+  } else {
+    const parent = commitAndParents[1];
+    const changed = cp.execFileSync('git', ['diff', '--name-only', '--no-renames', parent, 'HEAD'], { cwd: ROOT, encoding: 'utf8' })
+      .split(/\r?\n/).map((s) => s.trim()).filter(Boolean).sort();
+    if (isSha1(parent) && changed.length === 1 && changed[0] === 'docs/verification/VERIFICATION_REGISTRY.json') {
+      evidenceHead = parent;
+      metadataOnlyBinding = true;
+      metadataBindingReason = 'single-parent registry-only metadata commit; evidence binds parent ' + parent;
+    } else {
+      metadataBindingReason = 'changed paths=' + JSON.stringify(changed) + '; expected registry only';
+    }
+  }
+} catch (e) {
+  metadataBindingReason = 'no verifiable parent/diff: ' + String(e.message || e);
+}
 console.log('==== PAYESH STRICT VERIFICATION GATE ====');
 chk('G1 current HEAD known', /^[0-9a-f]{40}$/.test(head), head);
+chk('V-02 evidence binding mode explicit', !metadataOnlyBinding || evidenceHead !== head, metadataBindingReason);
 chk('G2 mandatory policy exists', fs.existsSync(path.join(ROOT, 'docs', 'STRICT_VERIFICATION_GATE.md')));
 chk('G3 registry exists', fs.existsSync(REG));
 let reg = null; try { reg = JSON.parse(read(REG)); } catch (e) { }
@@ -136,16 +168,27 @@ for (const pair of pats) {
   chk('G7 ' + label + ' has no unapproved hits', bad.length === 0, bad.slice(0, 15).join(', '));
 }
 
-/* ── V-06: HEAD binding must be provable against the remote, not just local ── */
+/* ── V-06: prove the checkout is related to the remote in the correct direction.
+   On main/push, HEAD must not be a local-only line beyond origin/main.
+   On pull_request, the base (origin/main) must be an ancestor of the PR HEAD.
+   Requiring PR HEAD to be an ancestor of main makes every unmerged PR fail by
+   construction; branch-aware ancestry preserves the remote-binding contract. */
 const rev = cp.spawnSync('git', ['rev-parse', '--verify', '--quiet', 'origin/main'], { cwd: ROOT, encoding: 'utf8' });
 const originMain = (rev.status === 0 ? (rev.stdout || '').trim() : '');
 chk('V-06 origin/main resolvable', isSha1(originMain) && originMain.length === 40, originMain || 'missing');
+const isPullRequest = process.env.GITHUB_EVENT_NAME === 'pull_request';
 let contained = false;
 if (isSha1(originMain)) {
-  const anc = cp.spawnSync('git', ['merge-base', '--is-ancestor', 'HEAD', 'origin/main'], { cwd: ROOT });
+  const ancestry = isPullRequest
+    ? ['merge-base', '--is-ancestor', 'origin/main', 'HEAD']
+    : ['merge-base', '--is-ancestor', 'HEAD', 'origin/main'];
+  const anc = cp.spawnSync('git', ancestry, { cwd: ROOT });
   contained = anc.status === 0;
 }
-chk('V-06 HEAD contained in origin/main (not a local-only line)', contained, 'head=' + head + ' origin/main=' + originMain);
+const ancestryLabel = isPullRequest
+  ? 'V-06 PR base contained in HEAD'
+  : 'V-06 HEAD contained in origin/main (not a local-only line)';
+chk(ancestryLabel, contained, 'head=' + head + ' origin/main=' + originMain);
 
 if (reg && isObj(reg)) {
   /* ── registry-level machine: V-01, V-04a, V-05, V-02, V-10 ── */
@@ -155,15 +198,15 @@ if (reg && isObj(reg)) {
     norm(reg.allowed_statuses));
   const top = String(reg.status || '');
   chk('V-05 top-level status in machine & not BLOCKED*', CANONICAL_STATUSES.includes(top) && !/^BLOCKED/i.test(top), top || '(absent)');
-  chk('V-02 registry head_bound matches HEAD', reg.head_bound === head, 'head_bound=' + reg.head_bound + ' head=' + head);
+  chk('V-02 registry head_bound matches immutable evidence SHA', reg.head_bound === evidenceHead, 'head_bound=' + reg.head_bound + ' evidence_sha=' + evidenceHead + ' checkout_head=' + head + (metadataOnlyBinding ? ' [metadata-only]' : ''));
   const hg = reg.human_governance;
   const hgOk = isObj(hg) &&
     hg.requires_human_approval === true &&          /* absent key must NOT pass (V-10) */
     hg.human_approved === true &&                   /* absent key must NOT pass (V-10) */
     isStr(hg.approver) && !REVIEWERS.includes(String(hg.approver).toLowerCase()) &&
-    isDate(hg.decided_at) && hg.head_sha === head;
+    isDate(hg.decided_at) && hg.head_sha === evidenceHead;
   chk('V-10 human governance present, approved, human (not AI reviewer), head-bound', hgOk,
-    isObj(hg) ? JSON.stringify({ r: hg.requires_human_approval, a: hg.human_approved, approver: hg.approver, head: hg.head_sha }) : 'absent');
+    isObj(hg) ? JSON.stringify({ r: hg.requires_human_approval, a: hg.human_approved, approver: hg.approver, head: hg.head_sha, evidence_sha: evidenceHead }) : 'absent');
   chk('V-12 registry has all required keys', REQUIRED_REGISTRY_KEYS.every((k) => k in reg),
     REQUIRED_REGISTRY_KEYS.filter((k) => !(k in reg)).join(',') || 'complete');
 
@@ -188,7 +231,7 @@ if (reg && isObj(reg)) {
       const id = isObj(item) ? String(item.id || '') : '';
       chk('G8 unique item ' + id, !!id && !ids.has(id));
       ids.add(id);
-      chk('G9 ' + id + ' binds current HEAD', item.head_sha === head, 'item=' + item.head_sha + ' head=' + head);
+      chk('G9 ' + id + ' binds immutable evidence SHA', item.head_sha === evidenceHead, 'item=' + item.head_sha + ' evidence_sha=' + evidenceHead + ' checkout_head=' + head);
       for (const r of REVIEWERS) {
         const v = item[r] || {};
         chk('G10 ' + id + ' ' + r + ' PASS + evidence', v.status === 'PASS' && Array.isArray(v.evidence) && v.evidence.length > 0, v.status || 'missing');
@@ -253,14 +296,14 @@ if (reg && isObj(reg)) {
       for (const f of flat) {
         const e = f.e;
         if (!isObj(e)) { bindErrs.push(f.where + ': not an object'); continue; }
-        if (e.head_sha !== head) bindErrs.push(f.where + ': head_sha mismatch');
+        if (e.head_sha !== evidenceHead) bindErrs.push(f.where + ': head_sha mismatch (expected evidence SHA ' + evidenceHead + ')');
         if (!isStr(e.artifact) || !isSha256(e.sha256)) { bindErrs.push(f.where + ': artifact/sha256 missing'); continue; }
         const ap = path.resolve(ROOT, e.artifact);
         if (!ap.startsWith(ROOT + path.sep) || !fs.existsSync(ap)) { bindErrs.push(f.where + ': artifact not in repo: ' + e.artifact); continue; }
         const actual = crypto.createHash('sha256').update(fs.readFileSync(ap)).digest('hex');
         if (actual !== e.sha256) bindErrs.push(f.where + ': sha256 mismatch');
       }
-      chk('V-02 ' + id + ' evidence binds HEAD+artifact+hash', bindErrs.length === 0, bindErrs.slice(0, 4).join(' | '));
+      chk('V-02 ' + id + ' evidence binds immutable SHA+artifact+hash', bindErrs.length === 0, bindErrs.slice(0, 4).join(' | '));
 
       /* V-03: the three reviewers' evidence must be independent (not byte-clones) */
       const reviewerSlots = REVIEWERS.map((r) => ({ r, entries: slots.find((s) => s.slot === r).entries }));
@@ -337,6 +380,7 @@ if (reg && isObj(reg)) {
 const certified = reg && Array.isArray(reg.items) ? reg.items.filter((x) => x && x.status === 'CERTIFIED').length : 0;
 console.log('RESULT ' + pass + ' pass / ' + fail + ' fail');
 console.log('HEAD ' + head);
+console.log('EVIDENCE_SHA ' + evidenceHead + (metadataOnlyBinding ? ' (metadata-only registry commit)' : ''));
 console.log('CERTIFIED ' + certified);
 console.log('VERDICT ' + (fail ? 'NOT VERIFIED' : 'VERIFIED'));
 if (fail) { console.log('BLOCKERS'); failures.forEach((x) => console.log(' - ' + x.n + (x.d ? ' — ' + x.d : ''))); }
