@@ -141,11 +141,15 @@ grp('CFG-TPL — الگوها');
     /sentinel down-after-milliseconds __MASTER_NAME__ __DOWN_AFTER__/.test(sentT)
     && /sentinel failover-timeout __MASTER_NAME__ __FAILOVER_TIMEOUT__/.test(sentT)
     && /sentinel parallel-syncs/.test(sentT));
-  chk('sentinel: resolve-hostnames برایِ محیطِ container', /sentinel resolve-hostnames yes/.test(sentT));
-  chk('sentinel: احرازِ placeholder-محور (requirepass/auth-pass/masterauth)',
+  chk('sentinel: resolve-hostnames پیش از sentinel monitor برایِ محیطِ container',
+    /sentinel resolve-hostnames yes/.test(sentT)
+    && sentT.indexOf('sentinel resolve-hostnames yes') < sentT.indexOf('sentinel monitor __MASTER_NAME__'));
+  chk('sentinel: احرازِ placeholder-محور (requirepass/auth-pass/sentinel-pass)',
     /requirepass __REDIS_PASSWORD__/.test(sentT) && /sentinel auth-pass __MASTER_NAME__ __REDIS_PASSWORD__/.test(sentT)
-    && /masterauth __REDIS_PASSWORD__/.test(sentT));
-  chk('sentinel: فرمان‌هایِ تخریبیِ sentinel بسته', /rename-command FLUSHALL ""/.test(sentT));
+    && /sentinel sentinel-pass __REDIS_PASSWORD__/.test(sentT));
+  chk('redis HA: فرمان‌هایِ تخریبی روی تمام نودهای داده بسته و در sentinel موجب خطای ناشناخته نمی‌شوند',
+    (redisCompose.match(/--rename-command FLUSHALL ""/g) || []).length >= 3
+    && !/^rename-command FLUSHALL/m.test(sentT));
 }
 
 /* ── CFG-ENV ── */

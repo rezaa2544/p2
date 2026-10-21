@@ -270,6 +270,21 @@ wait_redis_ready() {
   done
 }
 
+wait_redis_ready_loop() {
+  local _
+  for _ in $(seq 1 90); do
+    if wait_redis_ready >/dev/null 2>&1; then
+      wait_redis_ready
+      return 0
+    fi
+    sleep 2
+  done
+  compose_redis ps || true
+  compose_redis logs --no-color --timestamps --tail=40 || true
+  echo "Redis Sentinel stack did not become ready" >&2
+  return 1
+}
+
 wait_redis_promoted() {
   local original="$1" i address host port role
   for i in $(seq 1 90); do
@@ -667,13 +682,7 @@ if ! assert_compose_project_unused "$REDIS_PROJECT"; then
 fi
 REDIS_PROJECT_OWNED=1
 run_logged redis-ha-start compose_redis up -d
-redis_ready=0
-for _ in $(seq 1 90); do
-  if wait_redis_ready >/dev/null 2>&1; then redis_ready=1; break; fi
-  sleep 2
-done
-if [[ "$redis_ready" != 1 ]]; then echo "Redis Sentinel stack did not become ready" >&2; exit 1; fi
-run_logged redis-ha-readiness wait_redis_ready
+run_logged redis-ha-readiness wait_redis_ready_loop
 run_logged redis-original-master redis_master_addr
 REDIS_ORIGINAL_MASTER="$(paste -sd, "$EVIDENCE_DIR/redis-original-master.log")"
 if [[ ! "$REDIS_ORIGINAL_MASTER" =~ ^[^,]+,6379$ ]]; then echo "unexpected Sentinel master address: $REDIS_ORIGINAL_MASTER" >&2; exit 1; fi
