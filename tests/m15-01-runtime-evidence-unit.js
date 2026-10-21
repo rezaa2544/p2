@@ -571,12 +571,41 @@ try {
     assert.strictEqual(evidence.cacheWorkerTimerContractMatches(index, worker, outbox.replace("type NOT LIKE 'cache.%'", "type LIKE 'cache.%'")), false);
     const runtimeSource = fs.readFileSync(path.join(__dirname, '..', 'tools', 'm15-01-runtime-evidence.js'), 'utf8');
     assert.match(runtimeSource, /restarted_api_worker_interval_mismatch/);
+    assert.match(runtimeSource, /restarted_api_worker_instance_id_mismatch/);
+    assert.match(runtimeSource, /independent_api_worker_instance_id_mismatch/);
     assert.match(runtimeSource, /cache_replication_last_tick_age_ms/);
+    assert.match(runtimeSource, /cache_replication_processed_total/);
+    assert.match(runtimeSource, /cache_replication_last_watermark_target_id/);
+    assert.match(runtimeSource, /cache_replication_last_watermark_advance_ok/);
+    assert.match(runtimeSource, /known_watermarks/);
+    assert.match(runtimeSource, /event_id: Number\(eventId\)/);
+    assert.match(runtimeSource, /worker_outbox_instance_id: worker\.outboxInstanceId/);
     assert.match(runtimeSource, /restarted_api_timer_watermark_timeout/);
     assert.doesNotMatch(runtimeSource, /worker_interval_ms:\s*250/);
     assert.ok(runtimeSource.indexOf('await exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState)')
       < runtimeSource.indexOf('await exerciseRedisAlert(cfg, metricsToken, report, runtimeState)'));
     assert.doesNotMatch(runtimeSource, /require\(['"]\.\.\/server\/index['"]\)/);
+  });
+
+  test('E3 replay timeout diagnostic reports the event, actual worker, processed total, and watermark result', () => {
+    const workerInstance = 'm15-e3-api-a-1234567890-1';
+    const message = evidence.restartReplayDiagnosticMessage('restarted_api_timer_watermark_timeout', {
+      event_id: 61,
+      event_status: 'processed',
+      worker_outbox_instance_id: workerInstance,
+      watermark_last_id: 1,
+      cache_replication_processed_total: 12,
+      cache_replication_last_watermark_target_id: 61,
+      cache_replication_last_watermark_advance_ok: false
+    });
+    assert.match(message, /event_id=61/);
+    assert.match(message, /event=processed/);
+    assert.ok(message.includes('worker_instance=' + workerInstance));
+    assert.match(message, /watermark=1/);
+    assert.match(message, /processed_total=12/);
+    assert.match(message, /watermark_target=61/);
+    assert.match(message, /watermark_advance_ok=false/);
+    assert.ok(message.length <= 240, 'diagnostic must fit the existing bounded E3 failure message');
   });
 
   test('P11 migration chain routes transaction-control migration 012 through psql', () => {
@@ -677,7 +706,8 @@ try {
     const apiEnvFile = path.join(temp, 'api.env');
     fs.writeFileSync(apiEnvFile, [
       'TZ=UTC', 'NODE_ENV=test', 'PAYESH_ENV=test', 'PAYESH_DEV_OTP_BYPASS=1',
-      'PAYESH_CACHE_DURABLE_INVALIDATION=on', 'PAYESH_METRICS_TOKEN=' + token,
+      'PAYESH_CACHE_DURABLE_INVALIDATION=on', 'PAYESH_M15_RUNTIME_DIAGNOSTICS=1',
+      'PAYESH_METRICS_TOKEN=' + token,
       'PAYESH_JWT_SECRET=' + jwtSecret, 'DATABASE_URL=' + databaseUrl,
       'REDIS_URL=' + redisUrl, 'PAYESH_INSTANCE_ID=' + instanceId,
       'PAYESH_WORKER_INTERVAL_MS=3600000', 'HOST=0.0.0.0', 'PORT=3000'

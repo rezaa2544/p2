@@ -228,7 +228,8 @@ function validateEnvironment(env, options) {
   if (!/^[a-f0-9]{64}$/i.test(jwtSecret)) throw new Error('api_jwt_secret_missing_or_weak');
   for (const line of [
     'TZ=UTC', 'NODE_ENV=test', 'PAYESH_ENV=test', 'PAYESH_DEV_OTP_BYPASS=1',
-    'PAYESH_CACHE_DURABLE_INVALIDATION=on', 'PAYESH_METRICS_TOKEN=' + metricsToken,
+    'PAYESH_CACHE_DURABLE_INVALIDATION=on', 'PAYESH_M15_RUNTIME_DIAGNOSTICS=1',
+    'PAYESH_METRICS_TOKEN=' + metricsToken,
     'PAYESH_JWT_SECRET=' + jwtSecret, 'DATABASE_URL=' + env.DATABASE_URL,
     'REDIS_URL=' + env.REDIS_URL, 'PAYESH_INSTANCE_ID=' + apiInstanceId,
     'PAYESH_WORKER_INTERVAL_MS=' + workerIntervalMs, 'HOST=0.0.0.0', 'PORT=3000'
@@ -513,6 +514,7 @@ async function waitForApiReady(name, base, timeoutMs) {
               status: health.response.status,
               worker_active: healthBody.worker.active === true,
               worker_interval_ms: Number(healthBody.worker.intervalMs),
+              worker_instance_id: healthBody.worker.outboxInstanceId || null,
               worker_last_tick_at: healthBody.worker.lastTickAt || null,
               worker_last_tick_age_ms: Number(healthBody.worker.lastTickAgeMs || 0),
               cache_replication_enabled: healthBody.worker.cacheReplicationEnabled === true,
@@ -521,6 +523,11 @@ async function waitForApiReady(name, base, timeoutMs) {
                 ? null : Number(healthBody.worker.cacheReplicationLastTickAgeMs),
               cache_replication_last_processed: healthBody.worker.cacheReplicationLastProcessed == null
                 ? null : Number(healthBody.worker.cacheReplicationLastProcessed),
+              cache_replication_processed_total: Number(healthBody.worker.cacheReplicationProcessedTotal || 0),
+              cache_replication_last_watermark_target_id: healthBody.worker.cacheReplicationLastWatermarkTargetId == null
+                ? null : Number(healthBody.worker.cacheReplicationLastWatermarkTargetId),
+              cache_replication_last_watermark_advance_ok: healthBody.worker.cacheReplicationLastWatermarkAdvanceOk == null
+                ? null : healthBody.worker.cacheReplicationLastWatermarkAdvanceOk === true,
               cache_replication_last_failed_delta: healthBody.worker.cacheReplicationLastFailedDelta == null
                 ? null : Number(healthBody.worker.cacheReplicationLastFailedDelta),
               cache_replication_last_tick_errored: healthBody.worker.cacheReplicationLastTickErrored === true,
@@ -840,6 +847,12 @@ function cacheWorkerTimerContractMatches(indexSource, workerSource, outboxSource
     && timerBlock.includes('tickReplicate().catch')
     && workerSource.includes('cacheReplicationEnabled: cacheReplicationEnabled()')
     && workerSource.includes('cacheReplicationLastTickAgeMs:')
+    && workerSource.includes('snapshot.cacheReplicationProcessedTotal = cacheReplicationProcessedTotal')
+    && workerSource.includes('snapshot.cacheReplicationLastWatermarkTargetId = lastReplicateWatermarkTargetId')
+    && workerSource.includes('snapshot.cacheReplicationLastWatermarkAdvanceOk = lastReplicateWatermarkAdvanceOk')
+    && workerSource.includes('snapshot.outboxInstanceId = String(outbox.instanceId())')
+    && workerSource.includes("process.env.PAYESH_M15_RUNTIME_DIAGNOSTICS === '1'")
+    && outboxSource.includes('instanceId: () => INSTANCE_ID')
     && workerSource.includes('intervalMs,');
 }
 
@@ -969,6 +982,7 @@ async function readRestartReplayDiagnostic(base, pool, eventId, instanceId) {
   let watermark = null;
   let event = null;
   let worker = {};
+  let knownWatermarks = [];
   try {
     const result = await pool.query('SELECT last_id FROM server_outbox_watermark WHERE instance_id = $1;', [instanceId]);
     if (result.rows.length) watermark = result.rows[0].last_id;
@@ -978,6 +992,14 @@ async function readRestartReplayDiagnostic(base, pool, eventId, instanceId) {
     if (result.rows.length) event = result.rows[0];
   } catch (_) {}
   try {
+    const result = await pool.query(
+      "SELECT instance_id, last_id FROM server_outbox_watermark WHERE instance_id LIKE 'm15-e3-%' ORDER BY instance_id;");
+    knownWatermarks = result.rows.map((row) => ({
+      instance_id: String(row.instance_id),
+      last_id: Number(row.last_id)
+    }));
+  } catch (_) {}
+  try {
     const health = await fetchText(new URL('/api/health', base), {}, 5000);
     if (health.response.ok) worker = (JSON.parse(health.text).worker || {});
   } catch (_) {}
@@ -985,31 +1007,38 @@ async function readRestartReplayDiagnostic(base, pool, eventId, instanceId) {
   const knownStatuses = new Set(['pending', 'processing', 'processed', 'failed', 'dead_letter']);
   const status = event && knownStatuses.has(String(event.status)) ? String(event.status) : 'unknown';
   return {
+    event_id: Number(eventId),
+    watermark_instance_id: String(instanceId),
     watermark_last_id: finiteOrNull(watermark),
+    known_watermarks: knownWatermarks,
     event_status: status,
     retry_count: finiteOrNull(event && event.retry_count),
     last_error: event && event.last_error ? redactError(event.last_error, process.env) : null,
     worker_active: worker.active === true,
     worker_interval_ms: finiteOrNull(worker.intervalMs),
+    worker_outbox_instance_id: worker.outboxInstanceId || null,
     cache_replication_enabled: worker.cacheReplicationEnabled === true,
     cache_replication_last_tick_age_ms: finiteOrNull(worker.cacheReplicationLastTickAgeMs),
     cache_replication_last_processed: finiteOrNull(worker.cacheReplicationLastProcessed),
+    cache_replication_processed_total: finiteOrNull(worker.cacheReplicationProcessedTotal),
+    cache_replication_last_watermark_target_id: finiteOrNull(worker.cacheReplicationLastWatermarkTargetId),
+    cache_replication_last_watermark_advance_ok: worker.cacheReplicationLastWatermarkAdvanceOk == null
+      ? null : worker.cacheReplicationLastWatermarkAdvanceOk === true,
     cache_replication_last_tick_errored: worker.cacheReplicationLastTickErrored === true
   };
 }
 
 function restartReplayDiagnosticMessage(code, diagnostic) {
-  return code + ': watermark=' + (diagnostic.watermark_last_id == null ? 'unknown' : diagnostic.watermark_last_id)
+  return code + ': event_id=' + diagnostic.event_id
     + '; event=' + diagnostic.event_status
-    + '; retry_count=' + (diagnostic.retry_count == null ? 'unknown' : diagnostic.retry_count)
-    + '; interval_ms=' + (diagnostic.worker_interval_ms == null ? 'unknown' : diagnostic.worker_interval_ms)
-    + '; replicate_enabled=' + diagnostic.cache_replication_enabled
-    + '; replicate_tick_age_ms=' + (diagnostic.cache_replication_last_tick_age_ms == null
-      ? 'never' : diagnostic.cache_replication_last_tick_age_ms)
-    + '; replicate_processed=' + (diagnostic.cache_replication_last_processed == null
-      ? 'unknown' : diagnostic.cache_replication_last_processed)
-    + '; replicate_error=' + diagnostic.cache_replication_last_tick_errored
-    + (diagnostic.last_error ? '; last_error=' + diagnostic.last_error : '');
+    + '; worker_instance=' + (diagnostic.worker_outbox_instance_id || 'unknown')
+    + '; watermark=' + (diagnostic.watermark_last_id == null ? 'unknown' : diagnostic.watermark_last_id)
+    + '; processed_total=' + (diagnostic.cache_replication_processed_total == null
+      ? 'unknown' : diagnostic.cache_replication_processed_total)
+    + '; watermark_target=' + (diagnostic.cache_replication_last_watermark_target_id == null
+      ? 'none' : diagnostic.cache_replication_last_watermark_target_id)
+    + '; watermark_advance_ok=' + (diagnostic.cache_replication_last_watermark_advance_ok == null
+      ? 'unknown' : diagnostic.cache_replication_last_watermark_advance_ok);
 }
 
 async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) {
@@ -1042,12 +1071,16 @@ async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) 
     restarted_container: restarted.container.name,
     restarted_host_pid: restarted.container.host_pid,
     worker_interval_ms: restarted.health.worker_interval_ms,
+    worker_instance_id: restarted.health.worker_instance_id,
     worker_timer_active: restarted.health.worker_active,
     cache_replication_enabled: restarted.health.cache_replication_enabled,
     cache_replication_last_tick_age_ms: restarted.health.cache_replication_last_tick_age_ms
   };
   if (restarted.health.worker_interval_ms !== 250) {
     throw new Error('restarted_api_worker_interval_mismatch:' + String(restarted.health.worker_interval_ms));
+  }
+  if (restarted.health.worker_instance_id !== cfg.api_instance_id) {
+    throw new Error('restarted_api_worker_instance_id_mismatch:' + String(restarted.health.worker_instance_id));
   }
   if (restarted.health.cache_replication_enabled !== true) {
     throw new Error('restarted_api_cache_replication_disabled');
@@ -1069,6 +1102,16 @@ async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) 
   if (!liveHealth.response.ok) throw new Error('restarted_api_health_http_' + liveHealth.response.status);
   const liveHealthBody = JSON.parse(liveHealth.text);
   if (!liveHealthBody.worker || liveHealthBody.worker.active !== true) throw new Error('restarted_api_worker_timer_not_active');
+  if (liveHealthBody.worker.outboxInstanceId !== cfg.api_instance_id) {
+    throw new Error('restarted_api_live_worker_instance_id_mismatch');
+  }
+  const restartedProcessedTotal = Number(liveHealthBody.worker.cacheReplicationProcessedTotal);
+  const restartedWatermarkTarget = Number(liveHealthBody.worker.cacheReplicationLastWatermarkTargetId);
+  if (!Number.isFinite(restartedProcessedTotal) || restartedProcessedTotal < 1
+      || !Number.isFinite(restartedWatermarkTarget) || restartedWatermarkTarget < queueRun.eventId
+      || liveHealthBody.worker.cacheReplicationLastWatermarkAdvanceOk !== true) {
+    throw new Error('restarted_api_live_worker_replication_diagnostics_mismatch');
+  }
   report.queue.restart = {
     prior_container: report.application.container,
     prior_container_exit_code: stopped.exit_code,
@@ -1076,6 +1119,7 @@ async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) 
     restarted_host_pid: restarted.container.host_pid,
     instance_id_preserved: true,
     worker_interval_ms: restarted.health.worker_interval_ms,
+    worker_instance_id: liveHealthBody.worker.outboxInstanceId || null,
     worker_timer_active: restarted.health.worker_active,
     worker_last_tick_age_ms: Number(liveHealthBody.worker.lastTickAgeMs || 0),
     cache_replication_enabled: restarted.health.cache_replication_enabled,
@@ -1083,6 +1127,10 @@ async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) 
       ? null : Number(liveHealthBody.worker.cacheReplicationLastTickAgeMs),
     cache_replication_last_processed: liveHealthBody.worker.cacheReplicationLastProcessed == null
       ? null : Number(liveHealthBody.worker.cacheReplicationLastProcessed),
+    cache_replication_processed_total: restartedProcessedTotal,
+    cache_replication_last_watermark_target_id: restartedWatermarkTarget,
+    cache_replication_last_watermark_advance_ok: liveHealthBody.worker.cacheReplicationLastWatermarkAdvanceOk == null
+      ? null : liveHealthBody.worker.cacheReplicationLastWatermarkAdvanceOk === true,
     boot_replay_cache_exclusion_verified: true,
     event_status: processed.rows[0].status,
     event_retry_count: Number(processed.rows[0].retry_count || 0),
@@ -1122,12 +1170,16 @@ async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) 
     container: replay.container.name,
     host_pid: replay.container.host_pid,
     worker_interval_ms: replay.health.worker_interval_ms,
+    worker_instance_id: replay.health.worker_instance_id,
     worker_timer_active: replay.health.worker_active,
     cache_replication_enabled: replay.health.cache_replication_enabled,
     cache_replication_last_tick_age_ms: replay.health.cache_replication_last_tick_age_ms
   };
   if (replay.health.worker_interval_ms !== 250) {
     throw new Error('independent_api_worker_interval_mismatch:' + String(replay.health.worker_interval_ms));
+  }
+  if (replay.health.worker_instance_id !== replayId) {
+    throw new Error('independent_api_worker_instance_id_mismatch:' + String(replay.health.worker_instance_id));
   }
   if (replay.health.cache_replication_enabled !== true) {
     throw new Error('independent_api_cache_replication_disabled');
@@ -1145,6 +1197,20 @@ async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) 
   }
   const replayStatus = await pool.query('SELECT status FROM server_outbox WHERE id = $1;', [queueRun.eventId]);
   if (!replayStatus.rows.length || replayStatus.rows[0].status !== 'processed') throw new Error('independent_api_timer_did_not_replay_cache_event');
+  const replayLiveHealth = await fetchText(new URL('/api/health', replayBase), {}, 5000);
+  if (!replayLiveHealth.response.ok) throw new Error('independent_api_live_health_http_' + replayLiveHealth.response.status);
+  const replayLiveHealthBody = JSON.parse(replayLiveHealth.text);
+  if (!replayLiveHealthBody.worker || replayLiveHealthBody.worker.active !== true
+      || replayLiveHealthBody.worker.outboxInstanceId !== replayId) {
+    throw new Error('independent_api_live_worker_instance_id_mismatch');
+  }
+  const replayProcessedTotal = Number(replayLiveHealthBody.worker.cacheReplicationProcessedTotal);
+  const replayWatermarkTarget = Number(replayLiveHealthBody.worker.cacheReplicationLastWatermarkTargetId);
+  if (!Number.isFinite(replayProcessedTotal) || replayProcessedTotal < 1
+      || !Number.isFinite(replayWatermarkTarget) || replayWatermarkTarget < queueRun.eventId
+      || replayLiveHealthBody.worker.cacheReplicationLastWatermarkAdvanceOk !== true) {
+    throw new Error('independent_api_live_worker_replication_diagnostics_mismatch');
+  }
   report.queue.independent_replay = {
     consumers: 2,
     api_processes: [
@@ -1152,18 +1218,26 @@ async function exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState) 
         container: cfg.api_restart_container,
         host_pid: restarted.container.host_pid,
         instance_id: cfg.api_instance_id,
+        worker_instance_id: liveHealthBody.worker.outboxInstanceId,
         worker_timer_active: restarted.health.worker_active,
         worker_interval_ms: restarted.health.worker_interval_ms,
-        cache_replication_enabled: restarted.health.cache_replication_enabled,
+        cache_replication_enabled: restarted.health.cacheReplicationEnabled === true,
+        cache_replication_processed_total: restartedProcessedTotal,
+        cache_replication_last_watermark_target_id: restartedWatermarkTarget,
+        cache_replication_last_watermark_advance_ok: liveHealthBody.worker.cacheReplicationLastWatermarkAdvanceOk === true,
         watermark: Number(reached)
       },
       {
         container: cfg.api_replay_container,
         host_pid: replay.container.host_pid,
         instance_id: replayId,
+        worker_instance_id: replayLiveHealthBody.worker.outboxInstanceId,
         worker_timer_active: replay.health.worker_active,
         worker_interval_ms: replay.health.worker_interval_ms,
-        cache_replication_enabled: replay.health.cache_replication_enabled,
+        cache_replication_enabled: replayLiveHealthBody.worker.cacheReplicationEnabled === true,
+        cache_replication_processed_total: replayProcessedTotal,
+        cache_replication_last_watermark_target_id: replayWatermarkTarget,
+        cache_replication_last_watermark_advance_ok: replayLiveHealthBody.worker.cacheReplicationLastWatermarkAdvanceOk === true,
         watermark: Number(replayWatermark)
       }
     ],
@@ -1362,6 +1436,9 @@ async function run() {
     if (apiBoot.health.worker_interval_ms !== cfg.worker_interval_ms) {
       throw new Error('initial_api_worker_interval_mismatch:' + String(apiBoot.health.worker_interval_ms));
     }
+    if (apiBoot.health.worker_instance_id !== cfg.api_instance_id) {
+      throw new Error('initial_api_worker_instance_id_mismatch:' + String(apiBoot.health.worker_instance_id));
+    }
     if (apiBoot.health.cache_replication_enabled !== true) {
       throw new Error('initial_api_cache_replication_disabled');
     }
@@ -1406,6 +1483,7 @@ async function run() {
       redis_driver: apiBoot.readiness.redis_driver,
       worker_interval_ms: apiBoot.health.worker_interval_ms,
       configured_worker_interval_ms: cfg.worker_interval_ms,
+      worker_instance_id: apiBoot.health.worker_instance_id,
       worker_timer_active_on_boot: apiBoot.health.worker_active === true,
       worker_timer_started_at: apiBoot.health.worker_last_tick_at,
       worker_last_tick_age_ms_on_boot: apiBoot.health.worker_last_tick_age_ms,
@@ -1813,6 +1891,7 @@ module.exports = {
   resourceLimitsMatch,
   REDIS_RESOURCE_LIMIT,
   cacheWorkerTimerContractMatches,
+  restartReplayDiagnosticMessage,
   redactError,
   formatFailureDiagnostic,
   redactErrorCode,

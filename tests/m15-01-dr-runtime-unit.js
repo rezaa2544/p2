@@ -73,12 +73,18 @@ exit 0
     drRuntimeSource.includes('format-command') && drRuntimeSource.includes('redact-file')
       && drRuntimeSource.includes('OUTPUT_REDACTION_FAILED'));
   const redactionPos = drRuntimeSource.indexOf('redact_file "$output"');
-  const firstErrorPos = drRuntimeSource.indexOf('grep -Eim1', redactionPos);
+  const containerLogsPos = drRuntimeSource.indexOf('compose_pg logs --no-color --timestamps --tail=100 pg-primary pg-standby');
+  const containerLogsRedactionPos = drRuntimeSource.indexOf('redact_file "$container_logs_raw"', containerLogsPos);
+  const containerLogsArtifactPos = drRuntimeSource.indexOf('cat "$container_logs_sanitized" >> "$COMMAND_LOG"', containerLogsRedactionPos);
+  const containerLogsExcerptPos = drRuntimeSource.indexOf('tail -n 12 "$container_logs_sanitized"', containerLogsRedactionPos);
+  const firstErrorPos = drRuntimeSource.indexOf('grep -Eim1', containerLogsExcerptPos);
   const diagnosticTailPos = drRuntimeSource.indexOf('tail -n 8 "$sanitized_output"', firstErrorPos);
-  const diagnosticBoundPos = drRuntimeSource.indexOf('cut -c1-1200', diagnosticTailPos);
+  const diagnosticBoundPos = drRuntimeSource.indexOf('cut -c1-1800', diagnosticTailPos);
   const diagnosticPos = drRuntimeSource.indexOf('pg-ha-start sanitized failure excerpt');
-  check('failed pg-ha-start exposes bounded first-error/tail context only after secret redaction',
-    redactionPos >= 0 && firstErrorPos > redactionPos && diagnosticTailPos > firstErrorPos
+  check('failed pg-ha-start records PostgreSQL container logs, then emits only bounded redacted diagnostics',
+    redactionPos >= 0 && containerLogsPos > redactionPos && containerLogsRedactionPos > containerLogsPos
+      && containerLogsArtifactPos > containerLogsRedactionPos && containerLogsExcerptPos > containerLogsRedactionPos
+      && firstErrorPos > containerLogsExcerptPos && diagnosticTailPos > firstErrorPos
       && diagnosticBoundPos > diagnosticTailPos && diagnosticPos > diagnosticBoundPos
       && drRuntimeSource.includes('(^|[[:space:]])(E:|Err:)|error response from daemon|failed to solve')
       && !drRuntimeSource.includes('|cannot|unable)')
