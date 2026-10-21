@@ -147,9 +147,9 @@ function auditZipBuffer(zipBuffer, meta, expectedShas) {
     const status = evidenceObj && typeof evidenceObj.status === 'string'
       ? evidenceObj.status
       : null;
-    const failedStages = evidenceObj && Array.isArray(evidenceObj.failed_stages)
+    const failedStages = Array.isArray(evidenceObj && evidenceObj.failed_stages)
       ? evidenceObj.failed_stages
-      : null;
+      : [];
     const expectedCmdSha = evidenceObj && typeof evidenceObj.commands_log_sha256 === 'string'
       ? evidenceObj.commands_log_sha256
       : (evidenceObj && evidenceObj.command_log && typeof evidenceObj.command_log.sha256 === 'string'
@@ -208,10 +208,11 @@ function emitNotice(title, payload) {
   process.stdout.write('::notice title=' + title + '::' + singleLine + '\n');
 }
 
-function emitBoundedAuditNotices(label, audited) {
+function emitBoundedAuditNotices(label, audited, includeFilePages) {
   const summary = Object.assign({}, audited);
   delete summary.files;
   emitNotice('M15-01 ZIP Summary (' + label + ')', summary);
+  if (!includeFilePages) return;
   const pageSize = 15;
   for (let i = 0; i < audited.files.length; i += pageSize) {
     emitNotice('M15-01 ZIP Files (' + label + ' ' + (Math.floor(i / pageSize) + 1) + ')', {
@@ -229,7 +230,7 @@ function appendStepSummary(markdown) {
   }
 }
 
-async function auditRunArtifacts(apiBase, repo, runId, expectedShas, token, label) {
+async function auditRunArtifacts(apiBase, repo, runId, expectedShas, token, label, includeFilePages) {
   const listing = await fetchGithubJson(
     apiBase,
     '/repos/' + repo + '/actions/runs/' + runId + '/artifacts?per_page=100',
@@ -262,7 +263,7 @@ async function auditRunArtifacts(apiBase, repo, runId, expectedShas, token, labe
       { run_id: Number(runId), id: art.id, name: art.name, redirect_host: dl.redirect_host },
       expectedShas
     );
-    emitBoundedAuditNotices(label, audited);
+    emitBoundedAuditNotices(label, audited, includeFilePages);
     results.push(audited);
   }
   return results;
@@ -279,12 +280,6 @@ async function main() {
   if (!repo || !runId || !checkoutHead || !token) {
     throw new Error('missing_github_audit_environment');
   }
-
-  const allowedCurrentShas = Array.from(new Set([checkoutHead, githubSha].filter(Boolean)));
-  const currentResults = await auditRunArtifacts(apiBase, repo, runId, allowedCurrentShas, token, 'current');
-  const hasRuntimeA = currentResults.some((r) => r.audit_pass && String(r.name || '').startsWith('m15-01-runtime-a-'));
-  const hasRuntimeB = currentResults.some((r) => r.audit_pass && String(r.name || '').startsWith('m15-01-runtime-b-'));
-  const hasDr = currentResults.some((r) => r.audit_pass && String(r.name || '').startsWith('m15-01-dr-'));
 
   const histRunId = process.env.HISTORICAL_RUN_ID || '';
   const histExpectedSha = process.env.HISTORICAL_EXPECTED_SHA || '';
@@ -307,8 +302,14 @@ async function main() {
 
   let histResults = [];
   if (histRunId && histExpectedSha) {
-    histResults = await auditRunArtifacts(apiBase, repo, histRunId, [histExpectedSha], token, 'run-' + histRunId);
+    histResults = await auditRunArtifacts(apiBase, repo, histRunId, [histExpectedSha], token, 'run-' + histRunId, true);
   }
+
+  const allowedCurrentShas = Array.from(new Set([checkoutHead, githubSha].filter(Boolean)));
+  const currentResults = await auditRunArtifacts(apiBase, repo, runId, allowedCurrentShas, token, 'current', false);
+  const hasRuntimeA = currentResults.some((r) => r.audit_pass && String(r.name || '').startsWith('m15-01-runtime-a-'));
+  const hasRuntimeB = currentResults.some((r) => r.audit_pass && String(r.name || '').startsWith('m15-01-runtime-b-'));
+  const hasDr = currentResults.some((r) => r.audit_pass && String(r.name || '').startsWith('m15-01-dr-'));
 
   const lines = [
     '## M15-01 Independent ZIP Checksum & Content Audit',

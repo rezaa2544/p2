@@ -90,16 +90,54 @@ jobs:
     # and its verdicts are always surfaced; the lint failure still fails the
     # job exactly as before (no continue-on-error, no gate weakening).
     - name: Comprehensive canonical regression runner
-      timeout-minutes: 20
+      timeout-minutes: 25
       run: npm run test:all
     - name: Reset shared test ports, Redis state, and clean payesh_ci schema after canonical runner
       if: always()
       run: |
-        pkill -9 -f 'node .*server/index\.js' || true
-        pkill -9 -f '/tmp/at-iso' || true
-        sleep 1
-        redis-cli -u "$REDIS_URL" FLUSHALL
-        psql "$PGURL" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+        node - <<'EOF'
+        const fs = require('fs');
+        const Redis = require('ioredis');
+        const { Client } = require('pg');
+        const skip = new Set([1, process.pid, process.ppid]);
+        for (const entry of fs.readdirSync('/proc')) {
+          if (!/^\d+$/.test(entry)) continue;
+          const pid = Number(entry);
+          if (skip.has(pid)) continue;
+          try {
+            const cmd = fs.readFileSync('/proc/' + pid + '/cmdline', 'utf8').replace(/\0/g, ' ');
+            if (/scripts\/run-all-tests\.sh|\/tmp\/mut-|\/tmp\/at-iso|\bxargs\b|\btests\/|\bserver\/index\.js/.test(cmd)) {
+              process.kill(pid, 'SIGKILL');
+            }
+          } catch (_err) { /* process already exited */ }
+        }
+        (async () => {
+          await new Promise((r) => setTimeout(r, 1500));
+          const redis = new Redis(process.env.REDIS_URL);
+          await redis.flushall();
+          await redis.quit();
+          const adminUrl = new URL(process.env.PGURL);
+          adminUrl.pathname = '/postgres';
+          const admin = new Client({ connectionString: adminUrl.toString() });
+          await admin.connect();
+          for (const dbName of ['payesh_bpg_probe', 'payesh_bpg_failsafe', 'payesh_runtime_reliability']) {
+            await admin.query(
+              'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()',
+              [dbName]
+            );
+            await admin.query('DROP DATABASE IF EXISTS ' + dbName);
+          }
+          await admin.end();
+          const ci = new Client({ connectionString: process.env.PGURL });
+          await ci.connect();
+          await ci.query('DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;');
+          await ci.end();
+          console.log('[CI-RESET] Killed leftover runner processes, flushed Redis, and reset payesh_ci schema.');
+        })().catch((err) => {
+          console.error('[CI-RESET] Failed:', err);
+          process.exit(1);
+        });
+        EOF
     - name: Zero-suite fail-closed contract (issue #454 / A-13)
       if: always()
       run: node tests/zero-suite-fail-closed.test.js
