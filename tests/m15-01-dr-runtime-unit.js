@@ -60,11 +60,13 @@ exit 0
   check('PITR preserves timestamp as a single target argument', pgBackRestArgs.includes('ARG=<--target=' + target + '>'));
   const pitrDirs = fs.readdirSync(path.join(TEMP, 'pitr-runs'));
   const pitrConf = fs.readFileSync(path.join(TEMP, 'pitr-runs', pitrDirs[0], 'etc', 'postgresql.conf'), 'utf8');
+  const pitrAutoConf = fs.readFileSync(path.join(TEMP, 'pitr-runs', pitrDirs[0], 'data', 'postgresql.auto.conf'), 'utf8');
   check('PITR isolated postgresql.conf points hba_file/ident_file at restored PGDATA and keeps max_connections >= primary default',
     pitrConf.includes("hba_file = '") && pitrConf.includes("/data/pg_hba.conf'")
       && pitrConf.includes("ident_file = '") && pitrConf.includes("/data/pg_ident.conf'")
       && pitrConf.includes('archive_mode = off')
-      && pitrConf.includes('max_connections = 200'));
+      && pitrConf.includes('max_connections = 200')
+      && pitrAutoConf.includes('--pg1-path=') && pitrAutoConf.includes('/data archive-get %f'));
   check('PITR verification connects to the restored application database, not postgres',
     fs.readFileSync(dbLog, 'utf8').split(/\r?\n/).filter(Boolean).length > 0
       && fs.readFileSync(dbLog, 'utf8').split(/\r?\n/).filter(Boolean).every((line) => line === 'PGDATABASE=payesh'));

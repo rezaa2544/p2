@@ -109,7 +109,7 @@ log_directory = '$RUN_DIR/log'
 max_connections = 200
 max_wal_senders = 10
 CONF
-echo "restore_command = 'pgbackrest --stanza=$STANZA archive-get %f %p'" >> "$RUN_DIR/data/postgresql.auto.conf"
+echo "restore_command = 'pgbackrest --stanza=$STANZA --pg1-path=$RUN_DIR/data archive-get %f \"%p\"'" >> "$RUN_DIR/data/postgresql.auto.conf"
 
 if [ "$NO_START" -eq 1 ]; then
   echo "OK (--no-start): دیتا در $RUN_DIR/data آماده است؛ بوتِ دستی:"
