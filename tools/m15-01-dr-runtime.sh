@@ -185,7 +185,7 @@ run_logged() {
     fi
   elif [[ "$command_status" != 0 && "$label" != "redis-failover-tool" && "$redact_status" == 0 && "$artifact_status" == 0 ]]; then
     local stage_tail stage_diag
-    stage_tail="$(tail -n 12 "$sanitized_output" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-800)"
+    stage_tail="$(tail -n 30 "$sanitized_output" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | tail -c 1600)"
     stage_diag="stage=${label}; exit=${command_status}; tail=${stage_tail}"
     stage_diag="${stage_diag//%/%25}"
     stage_diag="${stage_diag//$'\r'/%0D}"
