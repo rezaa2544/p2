@@ -1606,6 +1606,9 @@ async function run() {
     }
     console.log('M15-01 isolated runtime evidence: ' + report.status + ' · SHA=' + (report.source_sha || 'unbound')
       + ' · exit=' + exitCode + (report.failure ? ' · ' + report.failure.code : ''));
+    if (report.failure && report.failure.message) {
+      console.log('M15_FAILURE_MESSAGE=' + report.failure.message);
+    }
     if (report.status === 'PASS') {
       for (const route of report.routes || []) {
         console.log('ROUTE ' + route.route_template + ' requests=' + route.successes + ' rps=' + route.rps
@@ -1628,9 +1631,11 @@ async function run() {
 function redactError(message, env) {
   const { redactText } = require('./m15-01-log-redactor');
   let out = redactText(String(message || 'unknown'), env || {});
-  // Error-only numeric identifiers can appear without a field label.
-  out = out.replace(/\b\d{10,}\b/g, '[REDACTED_NUMERIC_IDENTIFIER]');
-  return out.slice(0, 240);
+  out = out.replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[REDACTED_EMAIL]');
+  out = out.replace(/\bhttps?:\/\/[^\s"'`<>]+/gi, '[REDACTED_URL]');
+  // Error-only numeric identifiers and formatted phone numbers can lack field labels.
+  out = out.replace(/\+?\d(?:[\d .()/-]*\d){7,}/g, '[REDACTED_NUMERIC_IDENTIFIER]');
+  return out.replace(/[\r\n\t ]+/g, ' ').trim().slice(0, 240);
 }
 
 function redactErrorCode(value, env) {

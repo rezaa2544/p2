@@ -38,6 +38,12 @@ docker compose ... exec pg-backup pgbackrest --stanza=payesh --type=full backup
 bash infra/postgres/post-checks.sh        # walsender/walreceiver/lag/archiver → PASS
 ```
 
+سرویس‌های `minio` و `minio-init` از کدِ upstreamِ MinIO/MC در
+`infra/minio/Dockerfile` ساخته می‌شوند؛ tag و commit هر دو صریحاً پین شده‌اند،
+چون image توزیع‌شدهٔ Community برای server در دسترس نیست. Build به دسترسی GitHub
+و Go module proxy نیاز دارد. MinIO محلیِ این Compose فقط برای آزمون S3/PITR است؛
+بکاپِ off-site یا failure-domain مستقل را ثابت نمی‌کند.
+
 پس از بالا آمدن، برنامه فقط **دو** متغیر محیط لازم دارد (`server/db.js`):
 
 ```

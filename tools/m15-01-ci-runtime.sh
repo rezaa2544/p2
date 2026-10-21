@@ -87,6 +87,21 @@ run_logged() {
   else
     printf 'OUTPUT_REDACTION_FAILED[%s]: raw command output withheld\n' "$label" | tee -a "$COMMAND_LOG"
   fi
+  if [[ "$command_status" != 0 && "$label" == "isolated-e3-runtime-evidence" && "$redact_status" == 0 ]]; then
+    local first_error diagnostic
+    first_error="$(sed -n 's/^M15_FAILURE_MESSAGE=//p' "$output" | head -n 1 | cut -c1-500 || true)"
+    if [[ -z "$first_error" ]]; then
+      first_error="$(grep -Eim1 '(error|failed|failure|denied|no such|not found|invalid|cannot|unable)' "$output" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | cut -c1-500 || true)"
+    fi
+    diagnostic="failure_message=${first_error:-not-captured}"
+    diagnostic="$(printf '%s' "$diagnostic" | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-800)"
+    if [[ -n "$diagnostic" ]]; then
+      diagnostic="${diagnostic//%/%25}"
+      diagnostic="${diagnostic//$'\r'/%0D}"
+      diagnostic="${diagnostic//$'\n'/%0A}"
+      printf '::error title=M15-01 E3 runtime sanitized failure excerpt::%s\n' "$diagnostic"
+    fi
+  fi
   rm -f "$output"
   status="$command_status"
   if [[ "$redact_status" != 0 ]]; then status=1; fi

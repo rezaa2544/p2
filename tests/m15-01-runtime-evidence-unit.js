@@ -164,6 +164,11 @@ try {
     });
     assert.doesNotMatch(unsafeCode, /09999000001|synthetic-db-password/);
     assert.doesNotMatch(unsafeCode, /[^A-Za-z0-9_.-]/);
+    const unlabelledPii = evidence.redactError(
+      'contact synthetic.person@example.test; call +49 176 1234 567890; https://internal.example/reset?token=synthetic-secret-value', {});
+    assert.doesNotMatch(unlabelledPii, /synthetic\.person@example\.test|176 1234 567890|internal\.example|synthetic-secret-value/);
+    assert.match(unlabelledPii, /REDACTED_EMAIL/);
+    assert.match(unlabelledPii, /REDACTED_URL/);
   });
 
   test('database manager principal school must exist in the exact runtime JSON store', () => {
@@ -237,10 +242,17 @@ try {
 
   test('CI setup keeps database credentials out of argv/artifacts and redacts temporary command output', () => {
     const runtimeShell = fs.readFileSync(path.join(__dirname, '..', 'tools', 'm15-01-ci-runtime.sh'), 'utf8');
+    const runtimeEvidenceSource = fs.readFileSync(path.join(__dirname, '..', 'tools', 'm15-01-runtime-evidence.js'), 'utf8');
+    assert.match(runtimeEvidenceSource, /console\.log\('M15_FAILURE_MESSAGE=' \+ report\.failure\.message\)/);
     assert.match(runtimeShell, /--env-file "\$POSTGRES_ENV"/);
     assert.match(runtimeShell, /chmod 600 "\$POSTGRES_ENV"/);
     assert.match(runtimeShell, /format_command "\$@"/);
     assert.match(runtimeShell, /redact_file "\$output"/);
+    const redactedFailureSummary = runtimeShell.indexOf('title=M15-01 E3 runtime sanitized failure excerpt');
+    assert(redactedFailureSummary > runtimeShell.indexOf('redact_file "$output"'), 'runtime failure annotation must follow successful log redaction');
+    assert.match(runtimeShell, /if \[\[ "\$command_status" != 0 && "\$label" == "isolated-e3-runtime-evidence" && "\$redact_status" == 0 \]\]/);
+    assert.match(runtimeShell, /sed -n 's\/\^M15_FAILURE_MESSAGE=\/\/p' "\$output"/);
+    assert.match(runtimeShell, /cut -c1-800/);
     assert.match(runtimeShell, /rm -f "\$output"/);
     assert.match(runtimeShell, /remove-transient-.*basename "\$transient_file"/);
     assert.match(runtimeShell, /remove-isolated-runtime-image docker image rm "\$API_IMAGE"/);
