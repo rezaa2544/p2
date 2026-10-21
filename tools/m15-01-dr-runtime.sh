@@ -139,12 +139,44 @@ run_logged() {
   fi
   status="$command_status"
   if [[ "$redact_status" != 0 || "$artifact_status" != 0 ]]; then status=1; fi
+  local container_logs_sanitized="$EVIDENCE_DIR/pg-ha-start-container-logs.log"
+  local container_logs_excerpt=""
+  if [[ "$command_status" != 0 && "$label" == "pg-ha-start" ]]; then
+    local container_logs_raw="$RAW_OUTPUT_DIR/pg-ha-start-container-logs.log"
+    local container_logs_status=0 container_logs_redact_status=0 container_logs_artifact_status=0
+    set +e
+    compose_pg logs --no-color --timestamps --tail=100 pg-primary pg-standby > "$container_logs_raw" 2>&1
+    container_logs_status=$?
+    chmod 600 "$container_logs_raw"
+    redact_file "$container_logs_raw"
+    container_logs_redact_status=$?
+    set -e
+    if [[ "$container_logs_redact_status" == 0 ]]; then
+      if mv -- "$container_logs_raw" "$container_logs_sanitized"; then
+        printf '\nCOMMAND[pg-ha-start-container-logs]: docker compose logs --no-color --timestamps --tail=100 pg-primary pg-standby\n' >> "$COMMAND_LOG"
+        cat "$container_logs_sanitized" >> "$COMMAND_LOG"
+      else
+        printf 'REDACTED_OUTPUT_ARTIFACT_FAILED[pg-ha-start-container-logs]: sanitized output could not be preserved\n' >> "$COMMAND_LOG"
+        rm -f "$container_logs_raw"
+        container_logs_artifact_status=1
+      fi
+    else
+      printf 'OUTPUT_REDACTION_FAILED[pg-ha-start-container-logs]: raw container output withheld\n' >> "$COMMAND_LOG"
+      rm -f "$container_logs_raw"
+    fi
+    printf 'EXIT_CODE[pg-ha-start-container-logs]: %s\n' "$container_logs_status" >> "$COMMAND_LOG"
+    if [[ "$container_logs_redact_status" != 0 ]]; then printf 'LOG_REDACTION_EXIT_CODE[pg-ha-start-container-logs]: %s\n' "$container_logs_redact_status" >> "$COMMAND_LOG"; fi
+    if [[ "$container_logs_artifact_status" != 0 ]]; then printf 'OUTPUT_ARTIFACT_EXIT_CODE[pg-ha-start-container-logs]: %s\n' "$container_logs_artifact_status" >> "$COMMAND_LOG"; fi
+    if [[ "$container_logs_redact_status" == 0 && "$container_logs_artifact_status" == 0 && -f "$container_logs_sanitized" ]]; then
+      container_logs_excerpt="$(tail -n 12 "$container_logs_sanitized" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-600)"
+    fi
+  fi
   if [[ "$command_status" != 0 && "$label" == "pg-ha-start" && "$redact_status" == 0 && "$artifact_status" == 0 ]]; then
     local first_error tail_excerpt diagnostic
-    first_error="$(grep -Eim1 '(^|[[:space:]])(E:|Err:)|error response from daemon|failed to solve|failed to (fetch|download|install|configure)|version .* (not found|was not found)|unable to locate package|no installation candidate|package .* has no installation candidate|denied|no such file|not found|invalid|permission denied|process .* did not complete successfully|exit code: [1-9]' "$sanitized_output" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | cut -c1-500 || true)"
+    first_error="$(grep -Eim1 '(^|[[:space:]])(E:|Err:)|error response from daemon|failed to solve|failed to (fetch|download|install|configure|start)|dependency failed to start|unhealthy|version .* (not found|was not found)|unable to locate package|no installation candidate|package .* has no installation candidate|denied|no such file|not found|invalid|permission denied|process .* did not complete successfully|exit code: [1-9]' "$sanitized_output" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | cut -c1-500 || true)"
     tail_excerpt="$(tail -n 8 "$sanitized_output" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-600)"
-    diagnostic="first_error=${first_error:-not-matched}; tail=${tail_excerpt}"
-    diagnostic="$(printf '%s' "$diagnostic" | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-1200)"
+    diagnostic="first_error=${first_error:-not-matched}; container_logs_tail=${container_logs_excerpt:-not-captured}; tail=${tail_excerpt}"
+    diagnostic="$(printf '%s' "$diagnostic" | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-1800)"
     if [[ -n "$diagnostic" ]]; then
       diagnostic="${diagnostic//%/%25}"
       diagnostic="${diagnostic//$'\r'/%0D}"
