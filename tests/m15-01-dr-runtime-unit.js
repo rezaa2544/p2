@@ -349,6 +349,9 @@ exit 0
       && fs.readFileSync(httpsOut, 'utf8').includes('repo1-s3-endpoint=s3.eu-central-1.amazonaws.com');
   })());
 
+  check('wait_redis_promoted strips CRLF from Redis INFO replication output',
+    drRuntimeSource.includes("2>/dev/null | tr -d '\\r' || true"));
+
   console.log(`M15-01 DR runtime unit tests: ${passed} passed, 0 failed`);
 } catch (error) {
   console.error('M15-01 DR runtime unit tests: FAIL');

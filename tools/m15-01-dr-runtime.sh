@@ -294,7 +294,7 @@ wait_redis_promoted() {
     if [[ -n "$host" && -n "$port" && "$host,$port" != "$original" ]]; then
       role="$(compose_redis exec -T redis-replica-1 sh -ec \
         'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli -h "$1" -p "$2" INFO replication | grep -E "^role:master"' \
-        sh "$host" "$port" 2>/dev/null || true)"
+        sh "$host" "$port" 2>/dev/null | tr -d '\r' || true)"
       if [[ "$role" == "role:master" ]]; then
         printf 'ORIGINAL_MASTER=%s\nPROMOTED_MASTER=%s,%s\nNEW_MASTER_ROLE=%s\n' "$original" "$host" "$port" "$role"
         REDIS_PROMOTED_MASTER="$host,$port"
