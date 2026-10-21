@@ -6,21 +6,13 @@ permissions:
 
 on:
   push:
-    paths:
-      - 'server/metrics.js'
-      - 'server/index.js'
-      - 'infra/observability/**'
-      - 'tests/observability-*.js'
-      - 'tests/wave14-observability*.js'
-      - '.github/workflows/observability-regression.yml'
+    branches:
+      - 'main'
+      - 'arena/**'
   pull_request:
-    paths:
-      - 'server/metrics.js'
-      - 'server/index.js'
-      - 'infra/observability/**'
-      - 'tests/observability-*.js'
-      - 'tests/wave14-observability*.js'
-      - '.github/workflows/observability-regression.yml'
+    branches:
+      - 'main'
+  workflow_dispatch:
 
 jobs:
   static-and-promtool:
@@ -32,10 +24,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
+      - name: Install locked dependencies
+        run: npm ci
       - name: Semantic metric/label drift guard
         run: node tests/observability-semantic-guard.js
       - name: Configuration regression
         run: node tests/observability-config.js
+      - name: Configuration mutation sensitivity
+        run: node tests/observability-config-mutations.js
       - name: Create protected test metrics-token file
         run: |
           set -euo pipefail
@@ -146,13 +143,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
+      - name: Install locked dependencies
+        run: npm ci
       - name: Healthy metric runtime
         run: node tests/wave14-observability.js
       - name: Failure and mutation runtime
         run: node tests/wave14-observability-mutations.js
       - name: Independent dashboard regression
         run: node tests/observability-dashboards.js
-
 
   promtail-runtime:
     runs-on: ubuntu-latest
@@ -172,26 +171,38 @@ jobs:
         run: |
           set -e
           mkdir -p /tmp/payesh-logs
+          chmod 755 /tmp/payesh-logs
           : > /tmp/payesh-logs/server.log
           : > /tmp/payesh-logs/audit.log
+          chmod 644 /tmp/payesh-logs/server.log /tmp/payesh-logs/audit.log
           PAYESH_LOG_DIR=/tmp/payesh-logs docker compose -f infra/observability/docker-compose.observability.yml up -d loki promtail
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:3100/ready >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:3100/ready
       - name: Inject real server and audit log lines
         run: |
           set -e
           printf '%s\n' 'runtime-promtail-server-line' >> /tmp/payesh-logs/server.log
           printf '%s\n' '{"event":"runtime-promtail-audit","trace_id":"runtime-trace-001"}' >> /tmp/payesh-logs/audit.log
-      - name: Verify Loki received both streams
+      - name: Verify Loki received both streams and structured trace_id metadata
         run: |
           set -e
           for i in $(seq 1 60); do
-            curl -fsS http://127.0.0.1:3100/ready >/dev/null 2>&1 || true
             end_ns="$(date +%s%N)"
-            start_ns="$((end_ns - 300000000000))"
-            server_json="$(curl -gsS --get 'http://127.0.0.1:3100/loki/api/v1/query_range' --data-urlencode 'query={service="payesh",log_source="server-log"}' --data-urlencode 'limit=20' --data-urlencode "start=${start_ns}" --data-urlencode "end=${end_ns}" --data-urlencode 'direction=forward' || true)"
-            audit_json="$(curl -gsS --get 'http://127.0.0.1:3100/loki/api/v1/query_range' --data-urlencode 'query={service="payesh",log_source="audit-log"}' --data-urlencode 'limit=20' --data-urlencode "start=${start_ns}" --data-urlencode "end=${end_ns}" --data-urlencode 'direction=forward' || true)"
-            printf '%s' "$server_json" | grep -F 'runtime-promtail-server-line' >/dev/null 2>&1 &&
-            printf '%s' "$audit_json" | grep -F 'runtime-promtail-audit' >/dev/null 2>&1 &&
-            printf '%s' "$audit_json" | grep -F 'runtime-trace-001' >/dev/null 2>&1 && exit 0
+            start_ns="$((end_ns - 600000000000))"
+            query_end_ns="$((end_ns + 60000000000))"
+            server_json="$(curl -gsS --get 'http://127.0.0.1:3100/loki/api/v1/query_range' --data-urlencode 'query={service="payesh",log_source="server-log"}' --data-urlencode 'limit=20' --data-urlencode "start=${start_ns}" --data-urlencode "end=${query_end_ns}" --data-urlencode 'direction=forward' || true)"
+            audit_json="$(curl -gsS --get 'http://127.0.0.1:3100/loki/api/v1/query_range' --data-urlencode 'query={service="payesh",log_source="audit-log"} | trace_id="runtime-trace-001"' --data-urlencode 'limit=20' --data-urlencode "start=${start_ns}" --data-urlencode "end=${query_end_ns}" --data-urlencode 'direction=forward' || true)"
+            if printf '%s' "$server_json" | grep -F 'runtime-promtail-server-line' >/dev/null 2>&1 &&
+               printf '%s' "$audit_json" | grep -F 'runtime-promtail-audit' >/dev/null 2>&1 &&
+               printf '%s' "$audit_json" | grep -F 'runtime-trace-001' >/dev/null 2>&1; then
+              echo "::notice title=Observability promtail verified::Both server-log and structured-metadata trace_id audit-log streams verified on SHA ${GITHUB_SHA}."
+              exit 0
+            fi
             sleep 2
           done
           echo 'Loki did not receive both Promtail streams in time' >&2
@@ -205,14 +216,15 @@ jobs:
                    -e 's/(password|token|secret|authorization|cookie)[^=: ]*[[:space:]]*[:=][[:space:]]*[^[:space:]]+/[REDACTED]/Ig' \
                    -e 's/[A-Fa-f0-9]{64,}/[LONG_HEX-REDACTED]/g'
           }
+          diag_ps="$(PAYESH_LOG_DIR=/tmp/payesh-logs docker compose -f infra/observability/docker-compose.observability.yml ps --all --format '{{.Service}} {{.State}} {{.Health}}' 2>&1 | redact_ci_output | tail -n 10 | tr '\n' '; ')"
+          diag_logs="$(PAYESH_LOG_DIR=/tmp/payesh-logs docker compose -f infra/observability/docker-compose.observability.yml logs --no-color --tail=20 loki promtail 2>&1 | redact_ci_output | tail -n 15 | tr '\n' ' | ')"
+          echo "::notice title=Observability promtail diagnostics::ps=${diag_ps} logs=${diag_logs}"
           {
             echo '## Loki/Promtail bounded failure diagnostics'
             echo '### Container state'
-            PAYESH_LOG_DIR=/tmp/payesh-logs docker compose -f infra/observability/docker-compose.observability.yml \
-              ps --all --format '{{.Service}} {{.State}} {{.Health}}' 2>&1 | redact_ci_output | tail -n 20
+            printf '%s\n' "$diag_ps"
             echo '### Recent Loki/Promtail warnings and errors'
-            PAYESH_LOG_DIR=/tmp/payesh-logs docker compose -f infra/observability/docker-compose.observability.yml \
-              logs --no-color --tail=40 loki promtail 2>&1 | redact_ci_output | tail -n 40
+            printf '%s\n' "$diag_logs"
           } >> "$GITHUB_STEP_SUMMARY"
           exit 0
       - name: Stop isolated observability services and remove test token
