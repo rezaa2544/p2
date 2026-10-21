@@ -139,7 +139,7 @@ run_logged() {
   if [[ "$redact_status" != 0 || "$artifact_status" != 0 ]]; then status=1; fi
   if [[ "$command_status" != 0 && "$label" == "pg-ha-start" && "$redact_status" == 0 && "$artifact_status" == 0 ]]; then
     local first_error tail_excerpt diagnostic
-    first_error="$(grep -Eim1 '(error|failed|failure|denied|no such|not found|invalid|cannot|unable)' "$sanitized_output" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | cut -c1-500 || true)"
+    first_error="$(grep -Eim1 '(E:|Err:|error response from daemon|failed to solve|failed to (fetch|download|install|configure)|version .* (not found|was not found)|unable to locate package|no installation candidate|package .* has no installation candidate|denied|no such file|not found|invalid|permission denied|process .* did not complete successfully|exit code: [1-9])' "$sanitized_output" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | cut -c1-500 || true)"
     tail_excerpt="$(tail -n 8 "$sanitized_output" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-600)"
     diagnostic="first_error=${first_error:-not-matched}; tail=${tail_excerpt}"
     diagnostic="$(printf '%s' "$diagnostic" | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-1200)"

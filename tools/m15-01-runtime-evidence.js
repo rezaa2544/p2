@@ -1475,7 +1475,7 @@ async function run() {
     const rawCode = err && err.code || rawMessage.split(/[:\s]/)[0] || err && err.name || 'error';
     report.failure = {
       code: redactErrorCode(rawCode, process.env),
-      message: redactError(rawMessage, process.env)
+      message: formatFailureDiagnostic(err, process.env)
     };
     report.completed_at = new Date().toISOString();
     report.exit_code = 1;
@@ -1638,6 +1638,13 @@ function redactError(message, env) {
   return out.replace(/[\r\n\t ]+/g, ' ').trim().slice(0, 240);
 }
 
+function formatFailureDiagnostic(error, env) {
+  const output = String(error && (error.stderr || error.stdout) || '').trim();
+  if (!output) return redactError(error && error.message || error || 'unknown', env);
+  const command = String(error && error.cmd || '').trim().split(/\s+/)[0] || 'command';
+  return redactError(path.basename(command) + ' stderr: ' + output, env);
+}
+
 function redactErrorCode(value, env) {
   const safe = redactError(String(value || 'error'), env)
     .replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 80);
@@ -1668,6 +1675,7 @@ module.exports = {
   REDIS_RESOURCE_LIMIT,
   cacheWorkerTimerContractMatches,
   redactError,
+  formatFailureDiagnostic,
   redactErrorCode,
   readAlertEvents,
   validateEnvironment

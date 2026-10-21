@@ -169,6 +169,12 @@ try {
     assert.doesNotMatch(unlabelledPii, /synthetic\.person@example\.test|176 1234 567890|internal\.example|synthetic-secret-value/);
     assert.match(unlabelledPii, /REDACTED_EMAIL/);
     assert.match(unlabelledPii, /REDACTED_URL/);
+    const commandFailure = evidence.formatFailureDiagnostic({
+      cmd: 'docker run --env=PAYESH_METRICS_TOKEN=synthetic-bearer-token',
+      stderr: Buffer.from('Error response from daemon: permission denied; token=synthetic-bearer-token; phone=09999000001; email=synthetic.person@example.test; https://internal.example/?token=synthetic-bearer-token')
+    }, { PAYESH_METRICS_TOKEN: 'synthetic-bearer-token' });
+    assert.match(commandFailure, /^docker stderr: Error response from daemon: permission denied/);
+    assert.doesNotMatch(commandFailure, /synthetic-bearer-token|09999000001|synthetic\.person@example\.test|internal\.example/);
   });
 
   test('database manager principal school must exist in the exact runtime JSON store', () => {
