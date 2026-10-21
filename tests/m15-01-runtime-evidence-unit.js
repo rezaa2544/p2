@@ -2,6 +2,7 @@
 'use strict';
 
 const assert = require('assert');
+const { execFileSync } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
@@ -13,6 +14,7 @@ const ciSeed = require('../tools/m15-01-ci-seed');
 const relationalSeed = require('../tools/seed-relational-small');
 const receiver = require('../tools/m15-01-alert-receiver');
 const migrationLedger = require('../tools/migrate-ledger');
+const { resolveActorProvince } = require('../server/infrastructure/phase6-production-hardening');
 
 let pass = 0;
 function test(name, fn) {
@@ -360,6 +362,169 @@ try {
     const wrongScope = userIds.map((u) => Object.assign({}, u));
     wrongScope[2].school_id = 99;
     throwsCode(() => ciSeed.summarizeFixtureResult({ schoolIds: [1, 2], userIds: wrongScope }), 'm15_seed_manager_scope_invalid');
+  });
+
+  test('M15 fixture seeds canonical province scope and preserves fail-closed routing', () => {
+    const plan = ciSeed.buildFixtureProvinceScopePlan([101, 202]);
+    assert.deepStrictEqual(plan, [
+      { school_id: 101, province_code: '07', province_name: 'M15 CI fixture province A' },
+      { school_id: 202, province_code: '14', province_name: 'M15 CI fixture province B' }
+    ]);
+    const rows = [
+      { school_id: 101, province_id: 701, province_code: '07', tenant_policy_present: true,
+        tenant_policy_province: '07', tenant_policy_school: '*',
+        tenant_policy_allowed_scope: { match: 'actor_province' }, tenant_policy_version: 1 },
+      { school_id: 202, province_id: 702, province_code: '14', tenant_policy_present: true,
+        tenant_policy_province: '14', tenant_policy_school: '*',
+        tenant_policy_allowed_scope: { match: 'actor_province' }, tenant_policy_version: 1 }
+    ];
+    assert.deepStrictEqual(ciSeed.validateFixtureProvinceScopeRows(rows, [101, 202]), {
+      province_count: 2, scoped_school_count: 2, tenant_policy_count: 2, tenant_policy_validated: true
+    });
+    assert.deepStrictEqual(evidence.assertManagerPrincipalProvinceScope(rows[0], {
+      role: 'manager', school_id: 101
+    }), { province_scope_resolved: true, tenant_policy_present: true, tenant_policy_valid: true });
+    throwsCode(() => ciSeed.buildFixtureProvinceScopePlan([101]), 'm15_seed_province_scope_plan_invalid');
+    throwsCode(() => ciSeed.buildFixtureProvinceScopePlan([101, 101]), 'm15_seed_province_scope_plan_invalid');
+    throwsCode(() => ciSeed.validateFixtureProvinceScopeRows(rows.slice(0, 1), [101, 202]), 'm15_seed_province_scope_rows_invalid');
+    throwsCode(() => ciSeed.validateFixtureProvinceScopeRows([
+      rows[0], { ...rows[1], tenant_policy_present: false }
+    ], [101, 202]), 'm15_seed_province_scope_rows_invalid');
+    throwsCode(() => ciSeed.validateFixtureProvinceScopeRows([
+      rows[0], { ...rows[1], tenant_policy_allowed_scope: { deny: true } }
+    ], [101, 202]), 'm15_seed_province_scope_rows_invalid');
+    throwsCode(() => ciSeed.validateFixtureProvinceScopeRows([
+      rows[0], { ...rows[1], tenant_policy_allowed_scope: { match: 'actor_school' } }
+    ], [101, 202]), 'm15_seed_province_scope_rows_invalid');
+    throwsCode(() => evidence.assertManagerPrincipalProvinceScope({
+      ...rows[0], tenant_policy_present: false
+    }, { role: 'manager', school_id: 101 }), 'seeded_manager_province_scope_invalid');
+    throwsCode(() => evidence.assertManagerPrincipalProvinceScope({
+      ...rows[0], tenant_policy_allowed_scope: { deny: true }
+    }, { role: 'manager', school_id: 101 }), 'seeded_manager_province_scope_invalid');
+    throwsCode(() => evidence.assertManagerPrincipalProvinceScope({
+      ...rows[0], province_code: '7'
+    }, { role: 'manager', school_id: 101 }), 'seeded_manager_province_scope_invalid');
+
+    const hydratedStore = {
+      schools: [
+        { id: 101, province_id: 701 },
+        { id: 202, province_id: 702 }
+      ],
+      provinces: [
+        { id: 701, code: '07' },
+        { id: 702, code: '14' }
+      ]
+    };
+    assert.strictEqual(resolveActorProvince({ id: 1001, role: 'manager', school_id: 101 }, hydratedStore), '07');
+    assert.strictEqual(resolveActorProvince({ id: 1002, role: 'manager', school_id: 202 }, hydratedStore), '14');
+    assert.strictEqual(resolveActorProvince({ id: 1001, role: 'manager', school_id: 101 }, {
+      schools: [{ id: 101, province_id: null }], provinces: []
+    }), null);
+    const dbSource = fs.readFileSync(path.join(__dirname, '..', 'server', 'db.js'), 'utf8');
+    const schemaTablesStart = dbSource.indexOf('const SCHEMA_TABLES');
+    const schemaTablesEnd = dbSource.indexOf('));', schemaTablesStart);
+    assert(schemaTablesStart >= 0 && schemaTablesEnd > schemaTablesStart);
+    assert.match(dbSource.slice(schemaTablesStart, schemaTablesEnd), /\bprovinces\b/,
+      'PG hydration must include provinces so resolveActorProvince can map province_id to code');
+
+    const indexSource = fs.readFileSync(path.join(__dirname, '..', 'server', 'index.js'), 'utf8');
+    const apiV1Start = indexSource.indexOf("if(p.indexOf('/api/v1/') === 0){");
+    const missingProvinceGuard = indexSource.indexOf('if (!effProv)', apiV1Start);
+    const unknownRouteFallback = indexSource.indexOf(
+      "return sendJson(res, 404, { ok: false, code: 'not_found' });", missingProvinceGuard);
+    const failClosedResponse = indexSource.indexOf(
+      'return sendJson(res, err.status === 503 ? 503 : 403', missingProvinceGuard);
+    assert(apiV1Start >= 0 && missingProvinceGuard > apiV1Start);
+    assert(failClosedResponse > missingProvinceGuard && failClosedResponse < unknownRouteFallback);
+    assert(unknownRouteFallback > failClosedResponse,
+      'unknown route stays behind the tenant guard; fixture scope must be repaired, not bypassed');
+  });
+
+  test('M15 province seeding links both tenants and rejects missing authority policy', () => {
+    const script = String.raw`
+      const assert = require('assert');
+      const ciSeed = require('./tools/m15-01-ci-seed');
+      const evidence = require('./tools/m15-01-runtime-evidence');
+      function fakeClient(options = {}) {
+        const calls = [];
+        return {
+          calls,
+          async query(sql, values = []) {
+            const normalized = String(sql).replace(/\s+/g, ' ').trim();
+            calls.push({ sql: normalized, values });
+            if (normalized.startsWith('SELECT count(*)::int AS count FROM provinces')) {
+              return { rows: [{ count: Number(options.catalogCount || 0) }] };
+            }
+            if (normalized.startsWith('INSERT INTO provinces')) {
+              const code = String(values[0]);
+              return { rows: [{ id: code === '07' ? 701 : 702, code }], rowCount: 1 };
+            }
+            if (normalized.startsWith('UPDATE schools')) {
+              return { rows: [{ id: values[1] }], rowCount: 1 };
+            }
+            if (normalized.includes('tenant_policy')) {
+              return { rows: [
+                { school_id: 101, province_id: 701, province_code: '07',
+                  tenant_policy_present: options.policyPresent !== false, tenant_policy_province: '07',
+                  tenant_policy_school: '*', tenant_policy_allowed_scope: options.policyScope || { match: 'actor_province' },
+                  tenant_policy_version: 1 },
+                { school_id: 202, province_id: 702, province_code: '14',
+                  tenant_policy_present: options.policyPresent !== false, tenant_policy_province: '14',
+                  tenant_policy_school: '*', tenant_policy_allowed_scope: options.policyScope || { match: 'actor_province' },
+                  tenant_policy_version: 1 }
+              ], rowCount: 2 };
+            }
+            throw new Error('unexpected_fixture_query');
+          }
+        };
+      }
+      (async () => {
+        const client = fakeClient();
+        const summary = await ciSeed.seedFixtureProvinceScopes(client, [101, 202]);
+        assert.deepStrictEqual(summary, {
+          province_count: 2, scoped_school_count: 2, tenant_policy_count: 2, tenant_policy_validated: true
+        });
+        assert.strictEqual(client.calls.filter((call) => call.sql.startsWith('INSERT INTO provinces')).length, 2);
+        assert.strictEqual(client.calls.filter((call) => call.sql.startsWith('UPDATE schools')).length, 2);
+        assert(client.calls.some((call) => call.sql.includes('LEFT JOIN LATERAL')));
+
+        const scopeQueries = [];
+        const pool = {
+          async query(sql, values) {
+            scopeQueries.push({ sql: String(sql), values });
+            return { rows: [{
+              school_id: 101, province_id: 701, province_code: '07', tenant_policy_present: true,
+              tenant_policy_province: '07', tenant_policy_school: '*',
+              tenant_policy_allowed_scope: { match: 'actor_province' }, tenant_policy_version: 1
+            }] };
+          }
+        };
+        assert.deepStrictEqual(await evidence.verifyManagerPrincipalProvinceScope(pool, {
+          role: 'manager', school_id: 101
+        }), { province_scope_resolved: true, tenant_policy_present: true, tenant_policy_valid: true });
+        assert.deepStrictEqual(scopeQueries[0].values, [101]);
+        assert.match(scopeQueries[0].sql, /LEFT JOIN provinces/);
+        assert.match(scopeQueries[0].sql, /LEFT JOIN LATERAL/);
+        assert.match(scopeQueries[0].sql, /tenant_policy/);
+        await assert.rejects(() => evidence.verifyManagerPrincipalProvinceScope({
+          query: async () => ({ rows: [] })
+        }, { role: 'manager', school_id: 101 }), /seeded_manager_province_scope_invalid/);
+
+        await assert.rejects(() => ciSeed.seedFixtureProvinceScopes(fakeClient({ catalogCount: 1 }), [101, 202]),
+          /m15_seed_refusing_nonempty_province_catalog/);
+        await assert.rejects(() => ciSeed.seedFixtureProvinceScopes(fakeClient({ policyPresent: false }), [101, 202]),
+          /m15_seed_province_scope_rows_invalid/);
+        await assert.rejects(() => ciSeed.seedFixtureProvinceScopes(fakeClient({ policyScope: { deny: true } }), [101, 202]),
+          /m15_seed_province_scope_rows_invalid/);
+      })().catch((error) => {
+        console.error(error && error.message || error);
+        process.exitCode = 1;
+      });
+    `;
+    execFileSync(process.execPath, ['-e', script], {
+      cwd: path.join(__dirname, '..'), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']
+    });
   });
 
   test('relational fixture dates use valid recent ISO days across month boundaries', () => {

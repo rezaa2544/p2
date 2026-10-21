@@ -10,6 +10,7 @@ const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
 const { execFileSync } = require('child_process');
+const { isValidActorProvinceTenantPolicy } = require('./m15-01-tenant-policy');
 
 const ROOT = path.join(__dirname, '..');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -673,6 +674,43 @@ function assertManagerPrincipalSchoolInSeed(principal, seedPath) {
   return { role: 'manager', school_id: Number(principal.school_id), runtime_store_school_found: true };
 }
 
+function assertManagerPrincipalProvinceScope(scope, principal) {
+  const schoolId = Number(principal && principal.school_id);
+  const scopeSchoolId = Number(scope && scope.school_id);
+  const provinceId = Number(scope && scope.province_id);
+  const provinceCode = String(scope && scope.province_code || '');
+  if (!principal || principal.role !== 'manager' || !Number.isSafeInteger(schoolId) || schoolId < 1
+      || !scope || scopeSchoolId !== schoolId || !Number.isSafeInteger(provinceId) || provinceId < 1
+      || !/^\d{2}$/.test(provinceCode)
+      || !isValidActorProvinceTenantPolicy(scope, { school_id: schoolId, province_code: provinceCode })) {
+    throw new Error('seeded_manager_province_scope_invalid');
+  }
+  return { province_scope_resolved: true, tenant_policy_present: true, tenant_policy_valid: true };
+}
+
+async function verifyManagerPrincipalProvinceScope(pool, principal) {
+  if (!principal || principal.role !== 'manager' || !Number.isSafeInteger(Number(principal.school_id))
+      || Number(principal.school_id) < 1) throw new Error('seeded_manager_province_scope_invalid');
+  const result = await pool.query(
+    `SELECT s.id AS school_id, s.province_id, p.code AS province_code,
+            (tp.province IS NOT NULL) AS tenant_policy_present,
+            tp.province AS tenant_policy_province, tp.school AS tenant_policy_school,
+            tp.allowed_scope AS tenant_policy_allowed_scope, tp.version AS tenant_policy_version
+       FROM schools AS s
+       LEFT JOIN provinces AS p ON p.id = s.province_id
+       LEFT JOIN LATERAL (
+         SELECT province, school, allowed_scope, version
+           FROM tenant_policy
+          WHERE province = p.code AND (school = s.id::text OR school = '*')
+          ORDER BY CASE WHEN school = s.id::text THEN 0 ELSE 1 END
+          LIMIT 1
+       ) AS tp ON TRUE
+      WHERE s.id = $1;`,
+    [Number(principal.school_id)]);
+  if (!result.rows || result.rows.length !== 1) throw new Error('seeded_manager_province_scope_invalid');
+  return assertManagerPrincipalProvinceScope(result.rows[0], principal);
+}
+
 function jalaliMonthForIsoDate(rawDate) {
   const isoDate = String(rawDate || '').slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) throw new Error('fixture_attendance_date_invalid');
@@ -1292,6 +1330,7 @@ async function run() {
 
     const principal = await findDatabaseManagerPrincipal(pool);
     report.database.manager_principal_scope = assertManagerPrincipalSchoolInSeed(principal);
+    report.database.manager_principal_province_scope = await verifyManagerPrincipalProvinceScope(pool, principal);
     const latestAttendance = await pool.query('SELECT max(date) AS latest_date FROM attendance WHERE school_id = $1;', [principal.school_id]);
     const fixtureAttendanceDate = latestAttendance.rows[0] && latestAttendance.rows[0].latest_date;
     if (!fixtureAttendanceDate) throw new Error('seeded_manager_attendance_date_missing');
@@ -1616,6 +1655,8 @@ module.exports = {
   counterDeltaMatches,
   phoneAuthQueryContractMatches,
   assertManagerPrincipalSchoolInSeed,
+  assertManagerPrincipalProvinceScope,
+  verifyManagerPrincipalProvinceScope,
   jalaliMonthForIsoDate,
   assertAttendanceReportMatchesPrincipal,
   resourceLimitsMatch,

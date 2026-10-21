@@ -71,6 +71,16 @@ exit 0
   check('DR command and output logging uses the shared secret redactor',
     drRuntimeSource.includes('format-command') && drRuntimeSource.includes('redact-file')
       && drRuntimeSource.includes('OUTPUT_REDACTION_FAILED'));
+  const redactionPos = drRuntimeSource.indexOf('redact_file "$output"');
+  const firstErrorPos = drRuntimeSource.indexOf('grep -Eim1', redactionPos);
+  const diagnosticTailPos = drRuntimeSource.indexOf('tail -n 8 "$sanitized_output"', firstErrorPos);
+  const diagnosticBoundPos = drRuntimeSource.indexOf('cut -c1-1200', diagnosticTailPos);
+  const diagnosticPos = drRuntimeSource.indexOf('pg-ha-start sanitized failure excerpt');
+  check('failed pg-ha-start exposes bounded first-error/tail context only after secret redaction',
+    redactionPos >= 0 && firstErrorPos > redactionPos && diagnosticTailPos > firstErrorPos
+      && diagnosticBoundPos > diagnosticTailPos && diagnosticPos > diagnosticBoundPos
+      && drRuntimeSource.includes('cut -c1-500') && drRuntimeSource.includes('cut -c1-600')
+      && drRuntimeSource.includes('diagnostic="${diagnostic//%/%25}"'));
   check('DR evidence requires a clean source tree in addition to the GitHub SHA match',
     drRuntimeSource.includes('git status --porcelain --untracked-files=all')
       && drRuntimeSource.includes('SOURCE_TREE_CLEAN="true"'));
