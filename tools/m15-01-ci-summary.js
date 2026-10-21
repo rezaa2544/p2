@@ -208,7 +208,7 @@ function createSummary(kind, directory) {
     lines.push(`- Evidence exit code: ${Number(report.exit_code)}`);
   }
   if (kind === 'runtime') {
-    const code = report && report.failure && String(report.failure.code || '');
+    const code = report && report.failure ? String(report.failure.code || '') : '';
     lines.push(`- Failure code: ${/^[a-zA-Z0-9_.:-]{1,120}$/.test(code) ? `\`${code}\`` : report && status === 'FAIL' ? 'withheld/unavailable' : 'none'}`);
     lines.push(`- Cleanup report: **${cleanup ? safeEnum(cleanup.status, ['PASS', 'FAIL', 'RUNNING']) : 'MISSING'}**`);
   } else {

@@ -10,6 +10,9 @@ PB_REPO_S3_BUCKET="${PB_REPO_S3_BUCKET:-payesh-pgbackrest}"
 PB_REPO_S3_ENDPOINT="${PB_REPO_S3_ENDPOINT:?PB_REPO_S3_ENDPOINT لازم است (مثلاً minio:9000)}"
 PB_REPO_S3_REGION="${PB_REPO_S3_REGION:-us-east-1}"
 PB_REPO_S3_VERIFY_TLS="${PB_REPO_S3_VERIFY_TLS:-n}"
+if [ "$PB_REPO_S3_VERIFY_TLS" = "n" ] && [[ "$PB_REPO_S3_ENDPOINT" != http://* ]] && [[ "$PB_REPO_S3_ENDPOINT" != https://* ]]; then
+  PB_REPO_S3_ENDPOINT="http://${PB_REPO_S3_ENDPOINT}"
+fi
 
 [ -r "$RENDER_TEMPLATE" ] || { echo "render-config: template یافت نشد: $RENDER_TEMPLATE" >&2; exit 1; }
 mkdir -p "$(dirname "$RENDER_TARGET")"

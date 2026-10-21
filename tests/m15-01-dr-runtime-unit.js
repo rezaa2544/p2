@@ -307,6 +307,39 @@ exit 0
       && hba.includes('host replication replicator all scram-sha-256');
   })());
 
+  check('pgBackRest render-config prefixes plain HTTP scheme when TLS verification is disabled for bare internal endpoints', (() => {
+    const httpOut = path.join(TEMP, 'pgbackrest-http.conf');
+    const httpsOut = path.join(TEMP, 'pgbackrest-https.conf');
+    const mockChownBin = path.join(TEMP, 'bin-render');
+    fs.mkdirSync(mockChownBin, { recursive: true });
+    put(path.join(mockChownBin, 'chown'), '#!/bin/sh\nexit 0\n');
+    const rHttp = spawnSync('bash', [path.join(ROOT, 'infra/postgres/entrypoints/render-config.sh')], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: Object.assign({}, process.env, {
+        PATH: mockChownBin + path.delimiter + process.env.PATH,
+        PGHA_CONF_TEMPLATE: path.join(ROOT, 'infra/postgres/pgbackrest.conf.template'),
+        PGHA_CONF_TARGET: httpOut,
+        PB_REPO_S3_ENDPOINT: 'minio:9000',
+        PB_REPO_S3_VERIFY_TLS: 'n'
+      })
+    });
+    const rHttps = spawnSync('bash', [path.join(ROOT, 'infra/postgres/entrypoints/render-config.sh')], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: Object.assign({}, process.env, {
+        PATH: mockChownBin + path.delimiter + process.env.PATH,
+        PGHA_CONF_TEMPLATE: path.join(ROOT, 'infra/postgres/pgbackrest.conf.template'),
+        PGHA_CONF_TARGET: httpsOut,
+        PB_REPO_S3_ENDPOINT: 's3.eu-central-1.amazonaws.com',
+        PB_REPO_S3_VERIFY_TLS: 'y'
+      })
+    });
+    return rHttp.status === 0 && rHttps.status === 0
+      && fs.readFileSync(httpOut, 'utf8').includes('repo1-s3-endpoint=http://minio:9000')
+      && fs.readFileSync(httpsOut, 'utf8').includes('repo1-s3-endpoint=s3.eu-central-1.amazonaws.com');
+  })());
+
   console.log(`M15-01 DR runtime unit tests: ${passed} passed, 0 failed`);
 } catch (error) {
   console.error('M15-01 DR runtime unit tests: FAIL');
