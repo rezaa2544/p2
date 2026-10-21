@@ -266,9 +266,11 @@ exit 1
   const haComposeSource = fs.readFileSync(path.join(ROOT, 'infra/postgres/docker-compose.ha.yml'), 'utf8');
   const standbyEntrypointSource = fs.readFileSync(path.join(ROOT, 'infra/postgres/entrypoints/standby-entrypoint.sh'), 'utf8');
   const replicationInitSource = fs.readFileSync(path.join(ROOT, 'infra/postgres/init/01-replication.sh'), 'utf8');
-  check('PostgreSQL HA primary avoids literal single quotes in shared_preload_libraries GUC',
+  const pgBackRestTemplateSource = fs.readFileSync(path.join(ROOT, 'infra/postgres/pgbackrest.conf.template'), 'utf8');
+  check('PostgreSQL HA primary avoids literal single quotes in shared_preload_libraries GUC and uses path-style S3 URI for MinIO',
     !haComposeSource.includes("shared_preload_libraries=''")
-      && haComposeSource.includes('"shared_preload_libraries="'));
+      && haComposeSource.includes('"shared_preload_libraries="')
+      && pgBackRestTemplateSource.includes('repo1-s3-uri-style=path'));
   check('PostgreSQL standby entrypoint clears PGDATA contents without removing the volume mountpoint',
     !standbyEntrypointSource.includes('rm -rf "$PGDATA"')
       && standbyEntrypointSource.includes('find "$PGDATA" -mindepth 1 -delete')

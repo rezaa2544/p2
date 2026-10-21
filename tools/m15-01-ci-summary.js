@@ -32,7 +32,7 @@ function safeBool(value) {
 
 function safeId(value) {
   const text = String(value == null ? '' : value);
-  return /^[A-Za-z0-9_.:/-]{1,80}$/.test(text) ? text : null;
+  return /^[A-Za-z0-9_.:/+~-]{1,80}$/.test(text) ? text : null;
 }
 
 function createDigest(kind, directory) {
