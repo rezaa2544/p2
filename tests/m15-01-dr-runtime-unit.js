@@ -63,6 +63,7 @@ exit 0
       && fs.readFileSync(dbLog, 'utf8').split(/\r?\n/).filter(Boolean).every((line) => line === 'PGDATABASE=payesh'));
 
   const drRuntimeSource = fs.readFileSync(path.join(ROOT, 'tools/m15-01-dr-runtime.sh'), 'utf8');
+  const pgDockerfileSource = fs.readFileSync(path.join(ROOT, 'infra/postgres/Dockerfile'), 'utf8');
   const workflowSource = fs.readFileSync(path.join(ROOT, '.github/workflows/m15-01-runtime-evidence.yml'), 'utf8');
   check('workflow fails when either required runtime or DR evidence artifact is missing',
     (workflowSource.match(/if-no-files-found: error/g) || []).length === 2);
@@ -116,6 +117,18 @@ exit 0
     !pitrCatalogContract(pitrCatalogBlock.replace('|| checksum FROM schema_migrations', '|| name FROM schema_migrations')));
   check('pg-backup renders restrictive pgBackRest config as root before handing it to postgres',
     drRuntimeSource.includes('compose_pg exec -T -u root pg-backup /opt/payesh/entrypoints/render-config.sh'));
+  check('pgBackRest build exact-installs the current Debian candidate and verifies the installed package version',
+    pgDockerfileSource.includes('apt-cache policy pgbackrest')
+      && pgDockerfileSource.includes('"pgbackrest=$candidate"')
+      && pgDockerfileSource.includes('"$installed" != "$candidate"')
+      && pgDockerfileSource.includes('/usr/local/share/payesh-pgbackrest-package-version')
+      && !pgDockerfileSource.includes('2.47-1'));
+  check('DR records and re-verifies the actual pgBackRest Debian package version against the build record',
+    drRuntimeSource.includes("dpkg-query -W '-f=${Version}' pgbackrest")
+      && drRuntimeSource.includes('pgbackrest-build-recorded-package-version')
+      && drRuntimeSource.includes('M15_DR_PGBACKREST_PACKAGE_VERSION')
+      && drRuntimeSource.includes('pgbackrest_debian_package_version')
+      && !drRuntimeSource.includes('pgbackrest package 2.47-1'));
 
   const badDb = spawnSync('bash', [path.join(ROOT, 'tools/pitr-restore.sh'), '--time', target, '--no-start'], {
     cwd: ROOT,

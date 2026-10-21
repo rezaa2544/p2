@@ -570,6 +570,12 @@ try {
     assert.strictEqual(evidence.cacheWorkerTimerContractMatches(index, worker.replace('tickReplicate().catch', 'directTickReplicate().catch'), outbox), false);
     assert.strictEqual(evidence.cacheWorkerTimerContractMatches(index, worker, outbox.replace("type NOT LIKE 'cache.%'", "type LIKE 'cache.%'")), false);
     const runtimeSource = fs.readFileSync(path.join(__dirname, '..', 'tools', 'm15-01-runtime-evidence.js'), 'utf8');
+    assert.match(runtimeSource, /restarted_api_worker_interval_mismatch/);
+    assert.match(runtimeSource, /cache_replication_last_tick_age_ms/);
+    assert.match(runtimeSource, /restarted_api_timer_watermark_timeout/);
+    assert.doesNotMatch(runtimeSource, /worker_interval_ms:\s*250/);
+    assert.ok(runtimeSource.indexOf('await exerciseRestartReplay(cfg, pool, queueRun, report, runtimeState)')
+      < runtimeSource.indexOf('await exerciseRedisAlert(cfg, metricsToken, report, runtimeState)'));
     assert.doesNotMatch(runtimeSource, /require\(['"]\.\.\/server\/index['"]\)/);
   });
 

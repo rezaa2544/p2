@@ -74,6 +74,8 @@ PITR_SCHEMA_MIGRATION_COUNT="NOT_RUN"
 PITR_SCHEMA_LATEST_MIGRATION="NOT_RUN"
 PITR_SCHEMA_CATALOG_MATCH="NOT_RUN"
 PGBACKREST_VERSION="NOT_RUN"
+PGBACKREST_PACKAGE_VERSION="NOT_RUN"
+PGBACKREST_BUILD_RECORD_VERSION="NOT_RUN"
 PG_CONFIG_ACCESS="NOT_RUN"
 PG_STANDBY_STREAMING="NOT_RUN"
 PG_BACKUP_STATUS="NOT_RUN"
@@ -265,7 +267,10 @@ write_report() {
   export M15_DR_PG_SCHEMA_CATALOG_MATCH="$PG_SCHEMA_CATALOG_MATCH"
   export M15_DR_PITR_SCHEMA_MIGRATION_COUNT="$PITR_SCHEMA_MIGRATION_COUNT" M15_DR_PITR_SCHEMA_LATEST_MIGRATION="$PITR_SCHEMA_LATEST_MIGRATION"
   export M15_DR_PITR_SCHEMA_CATALOG_MATCH="$PITR_SCHEMA_CATALOG_MATCH"
-  export M15_DR_PGBACKREST_VERSION="$PGBACKREST_VERSION" M15_DR_PG_CONFIG_ACCESS="$PG_CONFIG_ACCESS"
+  export M15_DR_PGBACKREST_VERSION="$PGBACKREST_VERSION"
+  export M15_DR_PGBACKREST_PACKAGE_VERSION="$PGBACKREST_PACKAGE_VERSION"
+  export M15_DR_PGBACKREST_BUILD_RECORD_VERSION="$PGBACKREST_BUILD_RECORD_VERSION"
+  export M15_DR_PG_CONFIG_ACCESS="$PG_CONFIG_ACCESS"
   export M15_DR_PG_STANDBY_STREAMING="$PG_STANDBY_STREAMING" M15_DR_PG_BACKUP_STATUS="$PG_BACKUP_STATUS"
   export M15_DR_ARCHIVE_STATUS="$ARCHIVE_STATUS" M15_DR_REDIS_ORIGINAL_MASTER="$REDIS_ORIGINAL_MASTER"
   export M15_DR_REDIS_PROMOTED_MASTER="$REDIS_PROMOTED_MASTER" M15_DR_REDIS_FAILOVER_TOOL_EXIT="$REDIS_FAILOVER_TOOL_EXIT"
@@ -314,7 +319,9 @@ const evidence = {
     github_run_attempt: process.env.GITHUB_RUN_ATTEMPT || null,
     pg_compose_project: val('M15_DR_PG_PROJECT'),
     redis_compose_project: val('M15_DR_REDIS_PROJECT'),
-    postgres_image_ref: 'postgres:16-bookworm + pgbackrest package 2.47-1 (Dockerfile build)',
+    postgres_image_ref: 'postgres:16-bookworm + pgbackrest Debian package '
+      + (val('M15_DR_PGBACKREST_PACKAGE_VERSION') && val('M15_DR_PGBACKREST_PACKAGE_VERSION') !== 'NOT_RUN'
+        ? val('M15_DR_PGBACKREST_PACKAGE_VERSION') : 'version not observed'),
     redis_image_ref: 'redis:7.4.2-bookworm',
     minio_endpoint_scope: 'local Compose service only; not offsite'
   },
@@ -329,6 +336,12 @@ const evidence = {
       verified_against_current_migration_catalog: val('M15_DR_PG_SCHEMA_CATALOG_MATCH') === 'true'
     },
     pgbackrest_version: val('M15_DR_PGBACKREST_VERSION'),
+    pgbackrest_debian_package_version: val('M15_DR_PGBACKREST_PACKAGE_VERSION'),
+    pgbackrest_build_recorded_package_version: val('M15_DR_PGBACKREST_BUILD_RECORD_VERSION'),
+    pgbackrest_package_version_matches_build_record:
+      !!val('M15_DR_PGBACKREST_PACKAGE_VERSION')
+      && val('M15_DR_PGBACKREST_PACKAGE_VERSION') !== 'NOT_RUN'
+      && val('M15_DR_PGBACKREST_PACKAGE_VERSION') === val('M15_DR_PGBACKREST_BUILD_RECORD_VERSION'),
     pgbackrest_config_readable_by_postgres: val('M15_DR_PG_CONFIG_ACCESS'),
     standby_streaming_before_failure: val('M15_DR_PG_STANDBY_STREAMING'),
     full_backup_status: val('M15_DR_PG_BACKUP_STATUS'),
@@ -471,6 +484,16 @@ run_logged pg-server-version compose_pg exec -T -u postgres pg-primary psql -XAt
 PG_VERSION_TEXT="$(tr -d '\r\n' < "$EVIDENCE_DIR/pg-server-version.log")"
 run_logged pgbackrest-version compose_pg exec -T -u postgres pg-primary pgbackrest version
 PGBACKREST_VERSION="$(tr -d '\r\n' < "$EVIDENCE_DIR/pgbackrest-version.log")"
+if [[ -z "$PGBACKREST_VERSION" ]]; then echo "pgbackrest binary version was not reported" >&2; exit 1; fi
+run_logged pgbackrest-package-version compose_pg exec -T -u postgres pg-primary dpkg-query -W '-f=${Version}' pgbackrest
+PGBACKREST_PACKAGE_VERSION="$(tr -d '\r\n' < "$EVIDENCE_DIR/pgbackrest-package-version.log")"
+run_logged pgbackrest-build-recorded-package-version compose_pg exec -T -u postgres pg-primary \
+  cat /usr/local/share/payesh-pgbackrest-package-version
+PGBACKREST_BUILD_RECORD_VERSION="$(tr -d '\r\n' < "$EVIDENCE_DIR/pgbackrest-build-recorded-package-version.log")"
+if [[ -z "$PGBACKREST_PACKAGE_VERSION" || "$PGBACKREST_PACKAGE_VERSION" != "$PGBACKREST_BUILD_RECORD_VERSION" ]]; then
+  echo "installed pgbackrest Debian package version does not match its build record" >&2
+  exit 1
+fi
 
 export DATABASE_URL="postgres://postgres:${PG_PASSWORD}@127.0.0.1:5432/payesh"
 run_logged migrate-current-schema node tools/migrate-ledger.js up
