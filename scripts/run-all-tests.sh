@@ -425,9 +425,13 @@ run_live_one() {
     code=$?
     psql "$LIVE_ADMIN_URL" -c "DROP DATABASE IF EXISTS payesh_bench;" >/dev/null 2>&1 || true
   else
-    if [ "$f" = "tests/pg-relational-seed.js" ]; then
+    if [ "$f" = "tests/pg-relational-seed.js" ] || [ "$f" = "tests/sync-occ-adversarial-live.js" ] || [ "$f" = "tests/sync-replay-adversarial-live.js" ] || [ "$f" = "tests/multi-instance.js" ]; then
       psql "$LIVE_PG_URL" -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;" >/dev/null 2>&1 || true
       DATABASE_URL="$LIVE_PG_URL" node tools/migrate-ledger.js up >/dev/null 2>&1 || true
+      if [ "$f" = "tests/multi-instance.js" ]; then
+        node server/seed.js >/dev/null 2>&1 || true
+        DATABASE_URL="$LIVE_PG_URL" node tools/migrate-pg.js >/dev/null 2>&1 || true
+      fi
     fi
     node server/seed.js >/dev/null 2>&1 || true
     env DATABASE_URL="$LIVE_PG_URL" PGURL="$LIVE_PG_URL" PG_LIVE_PG="$LIVE_PG_URL" SYNC_TEST_DATABASE_URL="$LIVE_PG_URL" REDIS_URL="$LIVE_REDIS_URL" REDIS_LIVE_URL="$LIVE_REDIS_URL" QOD_LIVE_PG=1 PGHOST=127.0.0.1 PGPORT=5432 PGUSER=payesh PGPASSWORD=payesh PGDATABASE=payesh_ci \
