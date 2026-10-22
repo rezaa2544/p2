@@ -1,0 +1,2 @@
+# canonical Prometheus alert catalogue: infra/observability/alert-rules.yml
+# Retired compatibility path; keep this file free of active alert rules.

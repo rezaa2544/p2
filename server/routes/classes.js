@@ -248,8 +248,10 @@ function createClassRoutes(ctx) {
        را به کلاس منتسب کند (cross-tenant escalation via teacherClassIds). */
     if (body.homeroom_teacher_id) {
       const ht = (store.users || []).find((u) => Number(u.id) === Number(body.homeroom_teacher_id));
-      if (!ht || ht.role !== 'teacher' || Number(ht.school_id) !== Number(cls.school_id))
-        return { status: 400, body: { ok: false, code: 'invalid_homeroom_teacher', message: 'معلمِ مسئول باید دبیرِ همین مدرسه باشد' } };
+      if (!ht || ht.role !== 'teacher')
+        return { status: 400, body: { ok: false, code: 'invalid_homeroom_teacher', message: 'معلمِ مسئول باید دبیر معتبر باشد' } };
+      if (ht.school_id == null || Number(ht.school_id) !== Number(cls.school_id))
+        return { status: 403, body: { ok: false, code: 'out_of_scope', message: 'معلمِ مسئول باید دبیرِ همین مدرسه باشد' } };
     }
 
     /* Wave 1: patch روی کپی محاسبه می‌شود؛ store فقط پس از کامیت PG لمس می‌شود. */

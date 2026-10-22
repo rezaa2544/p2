@@ -33,13 +33,18 @@ fi
 
 # ۲) تاییدِ مرگِ primary (۳ تلاش) — مگر --force
 if [ "$FORCE" != 1 ]; then
-  DEAD=1
+  PRIMARY_REACHABLE=0
   for i in 1 2 3; do
-    if pg_isready -h "$OLD_PGHOST" -p "$OLD_PGPORT" -t 2 >/dev/null 2>&1; then DEAD=0; fi
-    [ "$DEAD" = 1 ] && break; sleep 5
+    if pg_isready -h "$OLD_PGHOST" -p "$OLD_PGPORT" -t 2 >/dev/null 2>&1; then
+      PRIMARY_REACHABLE=1
+      echo "FAIL: primary responded to death probe ${i}/3" >&2
+      break
+    fi
+    if [ "$i" -lt 3 ]; then sleep 5; fi
   done
-  if [ "$DEAD" = 0 ]; then
-    echo "FAIL: primary همچنان پاسخ می‌دهد — failover بدونِ مرگِ primary یعنی ریسکِ split-brain؛ یا قطعیِ شبکه را رفع کن یا --force (با مسئولیتِ اپراتور، پس از fence کردنِ primaryِ کهنه)" >&2; exit 1
+  if [ "$PRIMARY_REACHABLE" = 1 ]; then
+    echo "FAIL: primary همچنان پاسخ می‌دهد — failover بدونِ مرگِ primary یعنی ریسکِ split-brain؛ یا قطعیِ شبکه را رفع کن یا --force (با مسئولیتِ اپراتور، پس از fence کردنِ primaryِ کهنه)" >&2
+    exit 1
   fi
 fi
 
@@ -73,5 +78,5 @@ echo "  ۱) DATABASE_URL برنامه را به endpoint تازه هم‌راس�
 echo "  ۲) primaryِ کهنه را fence کن تا هرگز دو primary نماند"
 echo "  ۳) standbyِ جدید را از رویِ primaryِ تازه rebuild کن (STANDBY_BOOTSTRAP=repo)"
 echo "  ۴) pg_stat_archiver را رویِ new primary سبز کن (WAL archiving حیاتی است)"
-echo "  ۵) رویداد را در ممیزیِ داخلی ثبت کن: incident=failover-postgres actor=$USER"
+echo "  ۵) رویداد را در ممیزیِ داخلی ثبت کن: incident=failover-postgres actor=${USER:-${PGUSER:-postgres}}"
 echo "════════════════════════════════════════════"

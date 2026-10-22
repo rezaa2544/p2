@@ -72,3 +72,7 @@
 ## تثبیت ترتیب gate آزمون DLQ — 2026-09-22
 
 آزمون DLQ بلافاصله پس از نصب وابستگی‌ها اجرا می‌شود تا failure این حوزه مستقل از gateهای طولانی مشاهده شود.
+
+## وضعیت M15-01 — 2026-10-19
+
+Harnessهای CI-only برای E3 runtime و DR در ورک‌تری پیاده شده‌اند و آزمون‌های محلی/ساختاری می‌گذرند؛ اجرای workflow، Docker/PostgreSQL/Redis، route-RPS، EXPLAIN زنده، alert routing، queue replay، PITR و failover هنوز **NOT RUN** هستند. M15-01 **BLOCKED / REVALIDATION_REQUIRED** و M15-02 **NOT STARTED** باقی می‌مانند. برای evidence و محدودیت‌ها به `docs/CURRENT_WORK_EXECUTION_PLAN.md` و addendum در `docs/audit/PAYESH_SYSTEM_SCALE_RELIABILITY_GAP_AUDIT_2026-10-05.md` رجوع کنید.

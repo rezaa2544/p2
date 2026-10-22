@@ -38,6 +38,12 @@ docker compose ... exec pg-backup pgbackrest --stanza=payesh --type=full backup
 bash infra/postgres/post-checks.sh        # walsender/walreceiver/lag/archiver → PASS
 ```
 
+سرویس‌های `minio` و `minio-init` از کدِ upstreamِ MinIO/MC در
+`infra/minio/Dockerfile` ساخته می‌شوند؛ tag و commit هر دو صریحاً پین شده‌اند،
+چون image توزیع‌شدهٔ Community برای server در دسترس نیست. Build به دسترسی GitHub
+و Go module proxy نیاز دارد. MinIO محلیِ این Compose فقط برای آزمون S3/PITR است؛
+بکاپِ off-site یا failure-domain مستقل را ثابت نمی‌کند.
+
 پس از بالا آمدن، برنامه فقط **دو** متغیر محیط لازم دارد (`server/db.js`):
 
 ```
@@ -115,3 +121,10 @@ tools/failover-postgres.sh            # گاردها؛ سپس SELECT pg_promote(
   (امروز `wal_keep_size=1GB` — مانده از تنظیمِ compose).
 - `pause_at_recovery_target` منسوخ است؛ روی PG16 با `recovery_target_action=promote`
   کار می‌شود (`recovery.conf.template` فقط الگویِ انسانی است).
+- نکاتِ تأییدشده در مانورِ E3 (`tools/m15-01-dr-runtime.sh`, اجراهای `39642161980` و `39657186882`):
+  `shared_preload_libraries=pg_stat_statements` بدون کوتیشنِ تکی در فرمانِ `postgres`,
+  قاعدهٔ صریحِ `host replication ... scram-sha-256` در `infra/postgres/init/01-replication.sh`,
+  پاک‌سازیِ محتویاتِ `$PGDATA` بدون حذفِ mountpointِ volume در `infra/postgres/entrypoints/standby-entrypoint.sh`,
+  الگویِ `PGBACKREST_REPO1_S3_URI_STYLE=path` و پیشوندِ صریحِ `http://` در `infra/postgres/entrypoints/render-config.sh`
+  هنگامِ غیرفعال بودنِ TLS داخلی، و بازیابیِ ایزولهٔ `tools/pitr-restore.sh` روی پورتِ مجزا (`54329`)؛
+  تغییرِ خودکارِ مسیرِ `pgbouncer` در E4 همچنان **NOT RUN** است (`pgbouncer_reroute_tested=false`).

@@ -1,6 +1,6 @@
 # 🐣 راهنمای توسعه‌دهندهٔ تازه‌وارد — ONBOARDING_NEW_DEVELOPER
 
-**نسخه:** ۱.۰.۰ | **تاریخ:** 2026-09-10 | **مالک:** چت ۶ (مستندساز و مهندس انتشار)
+**نسخه:** ۱.۰.۱ | **تاریخ:** 2026-10-19 | **مالک:** چت ۶ (مستندساز و مهندس انتشار)
 **مخاطب:** توسعه‌دهنده‌ای که امروز وارد پروژهٔ پایش شده و می‌خواهد تا پایان هفته اولین مشارکت معتبر را داشته باشد.
 
 ---
@@ -62,8 +62,8 @@ node build.js --check           # انتظار: خروجی ۰ (شامل مُهر
 | جزء | فایل(ها) | مسئولیت |
 |---|---|---|
 | روت‌ها | `server/routes/{attendance,bootstrap,classes,grades,students,users}.js` — سوارشدن در `server/index.js` با `createXRoutes` | شش مسیر اصلی ای‌پی‌آی |
-| میان‌افزار | `server/middleware/{auth,scope,pagination,projection}.js` | احراز، ایزولاسیون مستأجر (`school_id`)، صفحه‌بندی |
-| داده | `server/db.js` + `server/dbquery.js` | اتصال پستگرس + فال‌بک حافظه‌ای (مسیر رسمی تا تکمیل موج ۱) · کوئری‌های صفحه‌بندی‌شده |
+| میان‌افزار و دامنهٔ دسترسی | `server/middleware/{auth,pagination,projection}.js`؛ سیاستِ یکتا در `server/policy.js` و predicateهایِ PG در `server/dbquery.js` | احراز، ایزولاسیون مستأجر (`school_id`)، صفحه‌بندی؛ REST و sync باید از همان مدلِ policy استفاده کنند |
+| داده | `server/db.js` + `server/dbquery.js` | PostgreSQL در حالت PG منبع حقیقت است؛ mirror حافظه فقط در حالت JSON/مسیر fallback مجاز استفاده می‌شود · query builderهای فهرست از DB scope تبعیت می‌کنند |
 | کش/حالت | `server/cache.js` + `server/redis.js` | کش ال۱ + ریت‌لیمیت توزیع‌شده + ابطال نشست |
 | همگام‌سازی | `server/sync.js` + `server/pull.js` + `server/syncdelta.js` + `server/conflicts.js` | پوش/پول، کرسر، تعارض‌ها |
 | اوت‌باکس | `server/outbox.js` + `server/worker.js`/`worker-service.js` + `server/workers/` | صف نوشتن چندنمونه‌ای + پردازش پس‌زمینه |
@@ -102,7 +102,7 @@ node build.js --check           # انتظار: خروجی ۰ (شامل مُهر
 
 ### ۵.۱ افزودن مسیر جدید
 
-الگو: شش مسیر موجود. گام‌ها: ساخت `server/routes/<name>.js` با خروجی `createXRoutes` ← سوارکردن در `server/index.js` (رجوع: خط‌های ۴۳–۴۸ برای الگوی `createStudentRoutes`) ← اعمال `server/middleware/scope.js` روی همهٔ روت‌ها (قاعدهٔ ایزولاسیون) ← افزودن مجوز نوشتن در `authz/write-perms.json` با بازتولید رسمی (`node build.js` — دستی نه؛ گیت `check-authz` مغایرت را قرمز می‌کند) ← تست در `tests/api/`.
+الگو: مسیرهای فعلی در `server/routes/`. گام‌ها: ساخت `server/routes/<name>.js` با خروجی `createXRoutes` ← سوارکردن در `server/index.js` (الگوی `createStudentRoutes`) ← استفاده از `server/policy.js` برای `filterReadable`, `restReadGate`, `restWriteRoleOk` و `inScope`؛ کوئری‌های DB باید از scope متناظر در `server/dbquery.js` استفاده کنند (middleware جداگانه‌ای به نام `scope.js` وجود ندارد) ← افزودن مجوز نوشتن در `authz/write-perms.json` با بازتولید رسمی (`node build.js` — دستی نه؛ گیت `check-authz` مغایرت را قرمز می‌کند) ← تست در `tests/api/` و سناریوهای مجوز مرتبط.
 
 ### ۵.۲ افزودن ویوی جدید سمت کلاینت
 
@@ -135,7 +135,7 @@ node build.js --check           # انتظار: خروجی ۰ (شامل مُهر
 
 | نیاز | مسیر |
 |---|---|
-| تاریخچهٔ کارها و وضعیت لحظه‌ای | `HANDOFF.md` (جدیدترین ورودی بالا) |
+| تاریخچهٔ کارها و وضعیت لحظه‌ای | `docs/HANDOFF.md` (جدیدترین ورودی بالا) |
 | حافظهٔ اشتراکی تیم | روفلو (`CLAUDE_FLOW_MEMORY_PATH=/tmp/ruflo-unified ruflo memory list`) — اجرا **بیرون** درخت ریپو تا اسکن راز قرمز نشود |
 | پرسش معماری | `docs/NATIONAL_ARCHITECTURE.md` + ضدالگوهایش؛ ابهام = پرسش از ناظر، نه حدس |
 | پرسش امنیت | چت ۲ (مالک `docs/SECURITY_MODEL.md`) |
@@ -149,4 +149,5 @@ node build.js --check           # انتظار: خروجی ۰ (شامل مُهر
 
 | نسخه | تاریخ | تغییر |
 |---|---|---|
+| ۱.۰.۱ | ۲۰۲۶-۱۰-۱۹ | اصلاح مسیرِ handoff به `docs/HANDOFF.md` و مرزبندی دسترسی به `policy.js`/`dbquery.js`؛ همسان‌سازی شرح PostgreSQL با کد جاری |
 | ۱.۰.۰ | ۲۰۲۶-۰۹-۱۰ | نسخهٔ اولیه — چت ۶؛ از فهرست «اسناد آینده» نمایهٔ مرکزی |

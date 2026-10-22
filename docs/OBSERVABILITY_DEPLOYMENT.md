@@ -9,12 +9,12 @@
 - میزبانِ Docker Compose v2؛ شبکهٔ داخلیِ قابل‌اسکرپ (Prometheus از داخلِ کانتینر به `host.docker.internal:3000` می‌رسد — `extra_hosts: host-gateway` در compose ست)
 - برنامه با envهایِ ترسینگ (پیش‌فرض‌ها کار می‌کنند):
   `TRACING_ENABLED=1` — export به `http://127.0.0.1:4318/v1/traces` (پیش‌فرضِ `server/tracing.js`)؛ برایِ collector دور از localhost: `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=...`
-- اختیاریِ سخت‌شده: `METRICS_TOKEN=<توکن>` روی همهٔ instanceها؛ آنگاه Prometheus هم باید هدرِ `X-Metrics-Token` بفرستد (scrape_config → `authorization: { credentials: "<توکن>" }` در prometheus.yml میزبان — عمداً در فایلِ ریپو نیاورده‌ایم تا راز در git ننشیند)
+- production: `PAYESH_METRICS_TOKEN=<راز تصادفی بلند>` روی همهٔ instanceهای API و `PAYESH_METRICS_TOKEN_FILE` در env-fileِ Compose؛ فایلِ اشاره‌شده باید همان راز را بدون newline انتهایی داشته باشد، mode آن `0600` و مالک numeric آن UID اجرای Prometheus باشد (پیش‌فرض pinned image: `65534:65534`; با `PROMETHEUS_UID`/`PROMETHEUS_GID` قابل تنظیم). Prometheus می‌خواندش با `authorization.credentials_file`; secret در config/repo نیست. `/metrics` احراز bearer را با `Authorization: Bearer ...` انجام می‌دهد.
 
 ## ۲) بالا آوردن
 ```bash
 cp infra/observability/env.observability.example infra/observability/.env.observability
-$EDITOR infra/observability/.env.observability    # GRAFANA_PASSWORD (+PAYESH_LOG_DIR)
+$EDITOR infra/observability/.env.observability    # GRAFANA_PASSWORD, PAYESH_LOG_DIR, PAYESH_METRICS_TOKEN_FILE
 docker compose -f infra/observability/docker-compose.observability.yml \
   --env-file infra/observability/.env.observability up -d
 curl -s http://127.0.0.1:9090/-/ready && echo prom-ok

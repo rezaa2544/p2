@@ -66,10 +66,11 @@ function tableName(t) {
  * for the future cursor-v3 pull mode. Same allowlist discipline as
  * deltaRowsSql; scope is still applied by the caller (scope only removes).
  *
- * NOT wired into pull.js yet — pull still speaks timestamp `since`. This
- * builder + migration 008's 14 (chg_id) indexes are the ready-to-flip
- * substrate; the wire-up (cursor v3 carrying the watermark) is the scoped
- * follow-up recorded in docs/WAVE10_DB_SCALE.md.
+ * Wired into `server/pull.js` for cursor-v3 pulls when PostgreSQL is live
+ * and a valid watermark is present; unsupported schemas or query failures
+ * return to the documented full-pull fallback. The legacy timestamp-delta
+ * builder remains available for older cursor modes. Runtime plan/latency
+ * still require current-schema EXPLAIN and E3 measurement.
  *
  * @param {string} table
  * @param {Object} o { afterChgId:number }

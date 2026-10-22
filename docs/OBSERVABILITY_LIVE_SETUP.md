@@ -33,6 +33,10 @@ cp infra/observability/env.observability.example infra/observability/.env.observ
 $EDITOR infra/observability/.env.observability
 #    GRAFANA_PASSWORD=<گذرواژهٔ قوی>
 #    PAYESH_LOG_DIR=/var/log/payesh        # یا در ریپو: server/data
+#    PAYESH_METRICS_TOKEN_FILE=/run/secrets/payesh_metrics_token
+#    PROMETHEUS_UID=65534
+#    PROMETHEUS_GID=65534
+# پیش از up، فایل توکن mode 0600 با مالکیت بالا را طبق infra/observability/README.md بسازید.
 
 # 2) بالا آوردن استک (از ریشهٔ ریپو)
 docker compose -f infra/observability/docker-compose.observability.yml \
@@ -45,8 +49,12 @@ TRACING_ENABLED=1 node server/index.js    # OTLP → http://127.0.0.1:4318/v1/tr
 curl -s http://127.0.0.1:9090/-/ready && echo prom-ok
 ```
 
-اختیاری سخت‌شده: `METRICS_TOKEN=<توکن>` روی همهٔ نمونه‌های برنامه، و در `prometheus.yml`
-میزبان `authorization: { credentials: "<توکن>" }` برای اسکرپ (عمداً در فایل ریپو نیست تا راز در گیت ننشیند).
+برای production، `PAYESH_METRICS_TOKEN` را روی همهٔ نمونه‌های برنامه و همان راز را در فایل
+`PAYESH_METRICS_TOKEN_FILE` (فایل واقعی با دسترسی `0600`، بدون newline انتهایی، بیرون از گیت)
+قرار دهید. مالک numeric فایل باید UID/GID اجرای Prometheus باشد (پیش‌فرض pinned image:
+`65534:65534`; در صورت تغییر image آن را با `PROMETHEUS_UID`/`PROMETHEUS_GID` تنظیم کنید)،
+تا فرآیند غیرریشه بتواند آن را بخواند. Prometheus از `authorization.credentials_file` می‌خواند؛
+خود توکن در config یا repo قرار نمی‌گیرد. مسیر فایل را در env-file Compose تنظیم کنید.
 
 ---
 
@@ -54,7 +62,7 @@ curl -s http://127.0.0.1:9090/-/ready && echo prom-ok
 
 ترتیب اهمیت سرویس‌ها: پرومتهوس ← آلرت‌منیجر ← گرافانا ← (لوکی/پروم‌تیل و کلکتور/جیگر).
 
-1. **پرومتهوس:** `docker run -d --name prom -p 127.0.0.1:9090:9090 --add-host host.docker.internal:host-gateway -v $PWD/infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro -v $PWD/infra/observability/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro prom/prometheus:v2.54.1 --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.retention.time=30d --web.enable-lifecycle`
+1. **پرومتهوس:** `docker run -d --name prom -p 127.0.0.1:9090:9090 --add-host host.docker.internal:host-gateway -v $PWD/infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro -v $PWD/infra/observability/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro -v "${PAYESH_METRICS_TOKEN_FILE:?}:/etc/prometheus/payesh_metrics_token:ro" prom/prometheus:v2.54.1 --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.retention.time=30d --web.enable-lifecycle`
 2. **آلرت‌منیجر:** همین الگو با `prom/alertmanager:v0.27.0` و پورت ۹۰۹۳؛ کانفیگ `alertmanager.yml` فقط مانت شود.
 3. **گرافانا:** `grafana/grafana:11.2.0` با پورت میزبان ۳۰۰۱ به ۳۰۰۰ کانتینر؛ `GF_SECURITY_ADMIN_PASSWORD` از محیط؛ دو مانت: `grafana/provisioning` و `dashboards` (هر دو `:ro`).
 4. **لوکی + پروم‌تیل:** `grafana/loki:3.1.1` با `loki-config.yml`؛ پروم‌تیل همان نسخه با `promtail.yml` و برچسب `PAYESH_LOG_DIR`.

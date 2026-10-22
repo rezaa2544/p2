@@ -317,6 +317,15 @@ test('تعداد فایل‌های تست با مانیفست قفل برابر 
   assert(unfa(m[3]) === apiN, `قفل ${m[3]} می‌گوید ولی ${apiN} فایل در tests/api/ است`);
 });
 
+// ───────────────────────────── یکپارچگی دفترچهٔ تحویل
+group('یکپارچگی handoff');
+test('دفترچهٔ canonical سالم و فقط-افزودنی است', () => {
+  const output = execFileSync(process.execPath, [path.join(ROOT, 'tests/handoff-integrity.js')], {
+    cwd: ROOT, encoding: 'utf8'
+  });
+  assert(/handoff-integrity: 4\/4/.test(output), 'گزارش handoff-integrity غیرمنتظره است');
+});
+
 // ───────────────────────────── نحو JavaScript
 group('صحت نحوی');
 

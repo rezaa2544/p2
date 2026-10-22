@@ -38,7 +38,7 @@ has $DOCS/PILOT_ROLLOUT_PLAN.md "۲۰هزار ریت ملی"; chk "پایلوت:
 BAD=""
 for f in $DOCS/*.md; do
   case "$f" in *DOCS_CONSISTENCY_REPORT.md) continue;; esac
-  if grep -qE "(^|[^٫۰-۹])۵ میلیون کاربر هم ?زمان|(^|[^٫۰-۹])۵ میلیون کاربر هم‌زمان|۵٬۰۰۰٬۰۰۰ کاربر" "$f" 2>/dev/null; then
+  if grep -qE "(^|[^٫۰-۹0-9.])۵ میلیون کاربر هم ?زمان|(^|[^٫۰-۹0-9.])۵ میلیون کاربر هم‌زمان|۵٬۰۰۰٬۰۰۰ کاربر" "$f" 2>/dev/null; then
     grep -qF "یادداشت جایگزینی (ممیزی" "$f" || BAD="$BAD ${f##*/}";
   fi
 done

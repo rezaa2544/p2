@@ -50,7 +50,7 @@ let bad = [];
 for (const f of docs) {
   if (f === 'DOCS_CONSISTENCY_REPORT.md') continue; // گزارش، خودش الگوها را نقل می‌کند
   const s = fs.readFileSync(path.join(ROOT, 'docs', f), 'utf8');
-  if (/(^|[^٫۰-۹])۵ میلیون کاربر هم ?زمان|(^|[^٫۰-۹])۵ میلیون کاربر هم‌زمان|۵٬۰۰۰٬۰۰۰ کاربر/.test(s) && !s.includes('یادداشت جایگزینی (ممیزی')) bad.push(f);
+  if (/(^|[^٫۰-۹0-9.])۵ میلیون کاربر هم ?زمان|(^|[^٫۰-۹0-9.])۵ میلیون کاربر هم‌زمان|۵٬۰۰۰٬۰۰۰ کاربر/.test(s) && !s.includes('یادداشت جایگزینی (ممیزی')) bad.push(f);
 }
 chk('هر پیک ۵ میلیونی با یادداشت جایگزینی پرچم دارد', bad.length === 0, bad.join(','));
 bad = [];

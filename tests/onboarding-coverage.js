@@ -44,7 +44,7 @@ chk('هشدار کلوبوم خالی (رفتار شناخته‌شده)', /بی
 
 grp('OB-TOUR — تور کدبیس واقعی');
 chk('روت‌های واقعی سرور', /routes\/\{?attendance/.test(doc) || /server\/routes/.test(doc));
-chk('میان‌افزار ایزولاسیون', /middleware\/scope\.js|scope\.js/.test(doc));
+chk('ایزولاسیون از policy/dbquery جاری استفاده می‌کند', /server\/policy\.js/.test(doc) && /server\/dbquery\.js/.test(doc) && !/server\/middleware\/scope\.js/.test(doc));
 chk('اوت‌باکس و ورکر', /outbox\.js/.test(doc) && /worker/.test(doc));
 chk('ماژول‌های کلاینت + ترتیب الحاق', /src\/js/.test(doc) && /_order\.json/.test(doc));
 chk('ممنوعیت ویرایش دستی ایندکس', /هرگز.*دستی|دستی ویرایش نکنید/.test(doc));

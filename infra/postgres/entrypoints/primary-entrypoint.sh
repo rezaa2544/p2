@@ -5,10 +5,6 @@ set -euo pipefail
 
 /opt/payesh/entrypoints/render-config.sh
 
-# archive فقط پس از initdb اعمال می‌شود (flagهای زیر با -c از command
-# compose هم پاس می‌شوند؛ اینجا برایِ اطمینان در restartها):
-cat >> "$PGDATA/postgresql.auto.conf" 2>/dev/null <<'CONF' || true
-# payesh-ha (primary) — بازنویسیِ idempotent نیست؛ compose flag مرجع است
-CONF
-
+# Archive-WAL flags are supplied explicitly by Compose after initdb. Do not
+# create postgresql.auto.conf here: a new PGDATA must stay empty for initdb.
 exec /usr/local/bin/docker-entrypoint.sh "$@"

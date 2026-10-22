@@ -37,7 +37,7 @@
 | ۶ | `docs/GO_LIVE_PACKAGE.md` | تصمیم انتشار: ماتریس گو/نو-گو، مانع‌های باز، ترتیب روز صفر |
 | ۷ | `docs/LESSONS_LEARNED.md` | **آخرین سند پیشنهادی مطالعه:** درس‌آموختهٔ ۳۴ مأموریت برای تیم بعدی — حوادث، الگوها، ضدالگوها |
 
-مسیر ادامه بسته به نقش: فنی ← §۲ معماری · عملیات ← §۲ پایایی/بهره‌برداری · کیفیت ← `docs/ARENA5_QA_RELIABILITY.md` · کسب‌وکار/حقوقی ← `docs/IRAN_COMPLIANCE_PACKAGE.md` (تصمیم‌های کارفرما) · وضعیت لحظه‌ای ← `docs/P0_BLOCKER_TRACKER.md` + `HANDOFF.md`.
+مسیر ادامه بسته به نقش: فنی ← §۲ معماری · عملیات ← §۲ پایایی/بهره‌برداری · کیفیت ← `docs/ARENA5_QA_RELIABILITY.md` · کسب‌وکار/حقوقی ← `docs/IRAN_COMPLIANCE_PACKAGE.md` (تصمیم‌های کارفرما) · وضعیت لحظه‌ای ← `docs/P0_BLOCKER_TRACKER.md` + `docs/HANDOFF.md`.
 **بستهٔ تحویل یکپارچه:** برای انتخاب اسناد بر اساس نقش و سناریو، `docs/DOCUMENTATION_HANDOVER.md` را ببینید (چهار بستهٔ مخاطب‌محور + ۱۷ سناریوی پرجست‌وجو).
 **قفل مستندات:** کتابخانه در `docs/DOCS_FREEZE_v1.0.0-rc33.md` قفل شده است (جایگزین `rc1` تا `rc32`)؛ ویرایشِ درجای اسناد فهرست‌شده فقط `--freeze` روی همان rc می‌خواهد و بامپ نسخه برای تغییرِ شمار/ترکیبِ مانیفست است (استثنا: اسناد زنده). راستی‌آزمایی: `node tests/docs-freeze-marker.js`.
 
@@ -207,7 +207,7 @@
 | `RECOVERY_INSTRUCTIONS.md` | راهنمای ورود باندل جامع چت ۶ به ریپو: مرج/ری‌بیس، گیت‌ها، راستی‌آزمایی و بازیابی از پشتیبان فشرده | ✅ | ۲۰۲۶-۰۹-۱۱ |
 | `OPENCODE_USER_GUIDE.md` | راهنمای تحویل باندل به OpenCode (Push Collector): مسیرها، راستی‌آزمایی پوش و وضعیت صف پی‌آر | ✅ | ۲۰۲۶-۰۹-۱۱ |
 | `DEPLOY.md` | خلاصهٔ کوتاه استقرار | ✅ | پیش از نقشهٔ راه |
-| `MIGRATION_GUIDE.md` | قرارداد مهاجرت‌ها §۳۰ + فهرست واقعی ۰۰۱–۰۱۲ | ✅ | ۲۰۲۶-۰۹-۱۱ |
+| `MIGRATION_GUIDE.md` | قرارداد مهاجرت‌ها §۳۰ + فهرست جاری مهاجرت‌های روی دیسک ۰۰۱–۰۲۶ (نه وضعیت اعمال‌شدهٔ محیط) | ✅ | ۲۰۲۶-۱۰-۱۹ |
 | `A11Y_GUIDE.md` | راهنمای دسترس‌پذیری WCAG 2.1 AA: پنج نقش × ده محور، کنتراست و فوکوس | ✅ | ۲۰۲۶-۰۹-۱۱ |
 | `OFFLINE_FIRST.md` | قرارداد آفلاین-اول کلاینت: رویدادلاگ، IndexedDB و صف نوشتن | ✅ | ۲۰۲۶-۰۹-۱۱ |
 | `OPENCODE_BUNDLE_GUIDE.md` | راهنمای تحویل باندل به OpenCode: مسیرها، راستی‌آزمایی پوش و صف پی‌آر | ✅ | ۲۰۲۶-۰۹-۱۱ |
@@ -215,7 +215,7 @@
 | `RED_TEAM_EXERCISE_2026_Q3.md` | گزارش تمرین تیم قرمز ۲۰۲۶-Q3: سناریوها، یافته‌ها و رفع‌ها | ✅ | ۲۰۲۶-۰۹-۱۱ |
 | `SUPPLY_CHAIN_AUDIT_2026_Q3.md` | ممیزی زنجیرهٔ تأمین ۲۰۲۶-Q3: ‏SBOM/SPDX، گیت دریفت و SCA | ✅ | ۲۰۲۶-۰۹-۱۱ |
 | `WAVE21_MULTIGRADE_REPORT.md` | گزارش موج ۲۱ — مدارس روستایی و چندپایه: نمای ماتریسی حضور و نمرهٔ گروهی | ✅ | ۲۰۲۶-۰۹-۱۲ |
-| `MIGRATION_AUDIT.md` | ممیزیِ زنجیرهٔ مهاجرت: موجودیِ ۰۰۱–۰۱۲، ریشهٔ تصادمِ ۰۰۴، نقشهٔ ارجاع‌ها، تحلیلِ وابستگی، نبودِ دفترِ کل، باگِ `.gitignore` | ✅ | ۲۰۲۶-۰۹-۱۱ |
+| `MIGRATION_AUDIT.md` | ممیزیِ تاریخیِ زنجیره تا ۲۰۲۶-۰۹-۱۱: موجودیِ آن‌زمانِ ۰۰۱–۰۱۲، تصادمِ ۰۰۴، نقشهٔ ارجاع‌ها، وابستگی، نبودِ دفترِ کل و مسئلهٔ `.gitignore`؛ فهرست جاری در `MIGRATION_GUIDE.md` است | ✅ | ۲۰۲۶-۰۹-۱۱ |
 | `MIGRATION_DECISION.md` | رکوردِ تصمیمِ فنی: رنیمِ `004_wave3` → `007` در برابرِ پذیرشِ استثنا، با شرط‌های ابطال و جدولِ جهش‌آزمایی | ✅ | ۲۰۲۶-۰۹-۱۱ |
 | `PR_MERGE_PLAN.md` | برنامهٔ ادغام پی‌آرها + چک‌لیست مرج (وارسی چت ۱) | 🟡 | ۲۰۲۶-۰۹-۱۰ |
 
@@ -223,7 +223,7 @@
 
 | سند | توضیح یک‌خطی | وضعیت | آخرین به‌روزرسانی |
 |---|---|---|---|
-| `RELEASE_NOTES.md` | یادداشت انتشار — نسخهٔ جاری وی۱.۰.۰-آرسی۱۷ + تاریخچهٔ ۱۷ قفل و پیوست آرسی۱ | ✅ | ۲۰۲۶-۰۹-۱۱ |
+| `RELEASE_NOTES.md` | یادداشت تاریخیِ انتشار وی۱.۰.۰-آرسی۱۷ + الحاقیهٔ ۲۰۲۶-۱۰-۱۹ برای موجودیِ مهاجرت‌های جاری ۰۰۱–۰۲۶ | ✅ | ۲۰۲۶-۱۰-۱۹ |
 | `LOAD_TEST_RESULTS.md` | نتایج آزمون بار — **قالب آماده** (پر شدن پس از اجرا) | 🟡 قالب؛ اعداد نه | ۲۰۲۶-۰۹-۱۰ |
 | `RELEASE_GATE_CHECKLIST.md` · `RELEASE_GATE_EVIDENCE.md` | چک‌لیست و شواهد گیت انتشار | ✅ | ۲۰۲۶-۰۹-۱۰ |
 | `TEST_COVERAGE_REPORT.md` | گزارش جامع پوشش تست: ۳۵۵ فایل در ۱۱ دسته + گیت‌ها و شکاف‌ها | ✅ | ۲۰۲۶-۰۹-۱۱ |
@@ -258,7 +258,7 @@
 
 | سند | توضیح یک‌خطی | وضعیت |
 |---|---|---|
-| `../HANDOFF.md` | دفترچهٔ تحویل — جدیدترین ورودی بالا | 🟡 زنده |
+| `HANDOFF.md` | دفترچهٔ تحویل در `docs/HANDOFF.md` — جدیدترین ورودی بالا | 🟡 زنده |
 | `HANDOFF_ARCHIVE.md` | بایگانی ورودی‌های قدیمی هندآف | ✅ |
 | `SUPERVISOR_BRIEF.md` | ابلاغ ناظر به چت‌ها + قواعد تیم | ✅ |
 | `OPEN_ITEMS.md` · `OPEN_WORK.md` | اقلام باز (وارسی‌شده / فهرست کار) | 🟡 |
@@ -286,7 +286,7 @@
 | `DOCUMENTATION_HANDOVER.md` | بستهٔ تحویل: چهار بستهٔ مخاطب‌محور + مسیر مطالعه + ۱۷ سناریو (v1.0.0-rc1) | ✅ | ۲۰۲۶-۰۹-۱۰ |
 | `DOCUMENTATION_MAINTENANCE.md` | راهنمای نگهداری کتابخانه: اصول، چرخه‌ها، فرآیند افزودن/آرشیو/بامپ قفل، نقش‌ها، ابزارها، بدهی مستنداتی | ✅ | ۲۰۲۶-۰۹-۱۱ |
 | `ONBOARDING_CHECKLIST.md` | چک‌لیست عملی آنبوردینگ: روز اول، هفتهٔ اول، ماه اول + مسئولیت‌های جاری | ✅ | ۲۰۲۶-۰۹-۱۱ |
-| `DOCUMENTATION_MAP.md` | نقشه و کاتالوگ جستجوی کتابخانه: نمای کلی، حرارتی، کلیدواژه، نقش/موج/مأموریت، یتیم‌ها و قطب‌ها (تولید از `tools/docs-metadata.js`) | ✅ | ۲۰۲۶-۰۹-۱۱ |
+| `DOCUMENTATION_MAP.md` | نقشه و کاتالوگ جستجو: شمار وضعیت و توکنِ نمایه با `docs-metadata` هم‌تراز؛ جدول‌های heatmap/کلیدواژه/hub صریحاً snapshot تاریخی‌اند | ✅ | ۲۰۲۶-۱۰-۱۹ |
 | `DOCS_EXPORT_GUIDE.md` | راهنمای برون‌برد اچ‌تی‌ام‌ال/پی‌دی‌اف کتابخانه با پنداک | ✅ | ۲۰۲۶-۰۹-۱۰ |
 | `DOCS_METRICS.md` | سنجه‌های کتابخانه در لحظهٔ قفل (شمارها، لینک‌ها، پوشش) | ✅ | ۲۰۲۶-۰۹-۱۰ |
 | `DOCS_FREEZE_v1.0.0-rc1.md` | 🔒 قفل رسمی (نخست): فهرست ۲۱۴ سند با اثر — با `rc2` جایگزین شد | ✅ منجمد | ۲۰۲۶-۰۹-۱۰ |
@@ -606,3 +606,9 @@ The repository is the durable project memory. During every material analysis or 
 - `docs/PREQUISITES.md` → "M15 V2 Architecture Prerequisites".
 - `docs/PAYESH_ADAPTIVE_CACHE_ARCHITECTURE.md` → "M15 V2 PACMA-lite reconciliation"; `docs/PAYESH_OBSERVABILITY_OPERATIONS_ARCHITECTURE.md` → "M15 V2 observability reconciliation".
 - No new standalone architecture document was created (single-source rule).
+
+## 2026-10-19 — Documentation-reference reconciliation
+- `docs/audit/INDEX.md` — navigable top-level audit inventory; all reports are explicitly labeled point-in-time unless revalidated.
+- `docs/README.md`, `docs/experience-store/README.md`, and `docs/external-memory/SUPERVISING_ENGINEER.md` now provide direct references to their report/architecture documents.
+- The canonical handoff path is `docs/HANDOFF.md`; the stale `../HANDOFF.md` reference was corrected.
+- `docs/MIGRATION_GUIDE.md` and `docs/RELEASE_NOTES.md` now distinguish the 26 file-backed migrations (001–026) from historical environment/application claims; status totals were reconciled to the canonical catalog (530 active / 45 frozen / 3 live / 20 archived); the consistency check no longer reads 2.5 million as 5 million.

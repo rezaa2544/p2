@@ -24,8 +24,8 @@
 - **تست و امنیت:** TESTING_GUIDE، Engineering Policy، Security و audit
 - **عملیات و مقیاس:** CAPACITY_MODEL، SCALE_10M، SLO، DEPLOY و runbookها
 - **برنامه‌ریزی:** ROADMAP، Master Schedule، Ground Truth
-- **ممیزی و شواهد جاری:** [docs/audit/](audit/)
-- **سوابق تاریخی Root:** [docs/audit/history/](audit/history/) — گزارش‌های قدیمی، handoffها، baselineها و تصمیم‌های نقطه‌درزمانی منتقل‌شده از Root.
+- **ممیزی و شواهد جاری:** [فهرست ممیزی‌ها](audit/INDEX.md) — دسترسی به گزارش‌های جاری و تاریخی، با یادآوری الزام revalidation روی current HEAD.
+- **سوابق تاریخی Root:** [آرشیو ممیزی](audit/history/README.md) — گزارش‌های قدیمی، handoffها، baselineها و تصمیم‌های نقطه‌درزمانی منتقل‌شده از Root.
 
 ## قانون مهم
 

@@ -124,8 +124,17 @@ async function boot(extraEnv) {
     PAYESH_AUDIT: path.join(d, 'a.log'),
     PAYESH_KEY: path.join(d, 'k.key'),
     PAYESH_DEMO_CODE: '1',
-    PAYESH_OTP_PEPPER: 'a01-repro-pepper'
+    PAYESH_OTP_PEPPER: 'a01-repro-pepper',
+    NODE_ENV: 'test',
+    PAYESH_ENV: 'test',
+    PAYESH_ALLOW_DEV_MEMORY_AUTHORITY: '1'
   }, extraEnv || {});
+  /* This reproduction proves the JSON-store report_logs authorization contract.
+     CI exports live PG/Redis variables globally; inheriting them silently moves
+     this child onto PostgreSQL, whose isolated schema lacks the seeded demo users.
+     Remove infrastructure URLs from this child so the identity and write canary
+     exercise the same isolated PAYESH_STORE fixture that the assertions inspect. */
+  for (const key of ['DATABASE_URL', 'PGURL', 'READ_DATABASE_URL', 'REDIS_URL', 'REDIS_CLUSTER_NODES', 'REDIS_SENTINELS', 'REDIS_SENTINEL_NAME', 'REDIS_PASSWORD']) delete env[key];
   fs.copyFileSync(REAL_STORE, env.PAYESH_STORE);
   const p = spawnServer(env);
   for (let i = 0; i < 60; i++) {
@@ -173,6 +182,7 @@ function mkReportLogOp(actor, uid, school_id) {
 }
 
 async function main() {
+  if (!fs.existsSync(REAL_STORE)) require('../server/seed');
   const seed = JSON.parse(fs.readFileSync(REAL_STORE, 'utf8'));
   const users = seed.users || [];
   const find = (role, school_id) => users.find(u => u.role === role && u.active !== 0 && (school_id == null || u.school_id === school_id));
@@ -194,6 +204,7 @@ async function main() {
 
   console.log('— A01-0: بوت سرور روی current HEAD —');
   const srv = MUT ? null : await boot();
+  if (process.env.A01_TEST_THROW_AFTER_BOOT === '1') throw new Error('A01 forced exception after child spawn');
   chk('سرور روی پورت ' + PORT + ' بالا آمد', !!srv || !!MUT);
   if (!srv && !MUT) {
     /* تلهٔ false-green: return زودهنگام بدونِ این انتصاب، یک شکستِ بوت
@@ -251,7 +262,7 @@ async function main() {
 
   /* ── A01-2: مورد P1 اصلی — teacher → report_logs ins ─────── */
   console.log('— A01-2: موردِ P1 اصلی — teacher → report_logs registration —');
-  if (!MUT) {
+  if (!MUT && sessions.manager && sessions.teacher) {
     /* کنترلِ مثبتِ زنده‌بودنِ write-check: یک actorِ مجاز اول یک رکورد
        می‌نویسد و باید در فایل دیده شود. بدون این کنترل، اگر persist
        غیرفعال باشد، چکِ «نوشته نشد» برای teacher کاذب سبز می‌شود
@@ -268,6 +279,10 @@ async function main() {
     } else { chk('CANARY: نشستِ manager وجود داشت', false); }
 
     const s = sessions.teacher;
+    /* Snapshot BEFORE the unauthorized request. Taking the baseline after
+       syncOp() can absorb a fast persisted write and make the no-write check
+       falsely green. The manager canary above already proved persistence. */
+    const base = countReportLogs();
     const r = await syncOp(s.cookie, [mkReportLogOp(s.user, 'a01-teacher-1')]);
     console.log('  HTTP status  : ' + r.status);
     console.log('  body ok      : ' + (r.json && r.json.ok));
@@ -279,7 +294,6 @@ async function main() {
     chk('teacher: code رد پاسخ‌ داده شد', !!res0.code, res0.code || '');
     /* سیگنالِ بارگذارِ اصلی: آیا رکورد واقعاً نوشته شد؟ یک چرخهٔ کاملِ
        تیکر صبر می‌کنیم تا هر نوشتنِ به‌تعویق‌افتاده رس برسد. */
-    const base = countReportLogs();
     const after = await settleCount();
     chk('teacher: رکورد در store نوشته نشد (مهم‌ترین سیگنال)', after === base,
       'base=' + base + ' after=' + after);
@@ -288,7 +302,12 @@ async function main() {
       console.log('  ℹ توضیح: HTTP 200 + per-op ok:false قراردادِ دستهٔ sync است (خطِ 1398 sync.js + 865).');
       console.log('     این یک bypass نیست — مگر اینکه رکورد نوشته شده باشد (چکِ بالا).');
     }
-  } else { console.log('  ⏳ حالتِ جهش: skip شد'); }
+  } else if (MUT) {
+    console.log('  ⏳ حالتِ جهش: skip شد');
+  } else {
+    chk('A01-2 preconditions: manager + teacher sessions available', false,
+      'manager=' + !!sessions.manager + ' teacher=' + !!sessions.teacher + '; actor login checks above contain the primary failure');
+  }
 
   /* ── A01-3: actorهای مجاز — آیا مسیرِ مشروع حفظ می‌شود؟ ─── */
   console.log('— A01-3: actorهای مجاز (model: manager/counselor/edu_office/superadmin) —');
@@ -414,4 +433,15 @@ async function main() {
   process.exit(fail ? 1 : 0);
 }
 
-main().catch((e) => { console.error('CRASH', e); process.exitCode = 2; });
+function cleanupAfterCrash() {
+  for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} }
+  for (const d of tmpdirs) { try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {} }
+}
+
+main().catch((e) => {
+  console.error('CRASH', e);
+  cleanupAfterCrash();
+  /* Exit immediately after killing children: otherwise their open stdio pipes
+     can keep the parent event loop alive forever and strand the CI step. */
+  process.exit(2);
+});
