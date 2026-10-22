@@ -28,21 +28,22 @@ console.log('\n▸ P1-13 — اینوارینت‌های دیتابیس (DDL + �
 /* ── بخش ۱: DDL ── */
 const ddl = fs.readFileSync(path.join(ROOT, 'server', 'schema.sql'), 'utf8');
 function tableBlock(t) {
-  const m = ddl.match(new RegExp('CREATE TABLE IF NOT EXISTS ' + t + ' \\(([\\s\\S]*?)\\n\\);'));
+  const m = ddl.match(new RegExp('CREATE TABLE (?:IF NOT EXISTS )?(?:public\\.)?' + t + ' \\(([\\s\\S]*?)\\n\\)(?: PARTITION BY [^;]+)?;'));
   return m ? m[1] : null;
 }
 const classes = tableBlock('classes'), enroll = tableBlock('enrollments'),
-      sched = tableBlock('schedule'), users = tableBlock('users'), grades = tableBlock('grades');
+      sched = tableBlock('schedule'), users = tableBlock('users'), grades = tableBlock('grades'),
+      gradesDdl = ((grades || '') + '\n' + (ddl.match(/ALTER TABLE(?: ONLY)? (?:public\.)?grades\s+ADD CONSTRAINT [\s\S]*?;/g) || []).join('\n')).replace(/public\./g, '');
 chk('C-capacity در DDL هست', !!classes && classes.indexOf('CONSTRAINT chk_classes_capacity CHECK (capacity > 0)') >= 0);
 chk('C-enrollment در DDL هست', !!enroll && enroll.indexOf('CONSTRAINT uq_enrollments_student_year UNIQUE (student_id, year)') >= 0);
 chk('C-schedule در DDL هست', !!sched && sched.indexOf('CONSTRAINT uq_schedule_teacher_slot UNIQUE (teacher_id, day, period)') >= 0);
 chk('C-status در DDL هست با هر ۴ مقدار validate.js', !!users
   && users.indexOf("CONSTRAINT chk_users_status CHECK (status IN ('active', 'dropped_out', 'graduated', 'awaiting_transfer'))") >= 0);
-chk('C-grades-student در DDL هست', !!grades && grades.indexOf('CONSTRAINT fk_grades_student FOREIGN KEY (student_id) REFERENCES users(id)') >= 0);
-chk('C-grades-class در DDL هست', !!grades && grades.indexOf('CONSTRAINT fk_grades_class FOREIGN KEY (class_id) REFERENCES classes(id)') >= 0);
-chk('C-grades-subject در DDL هست', !!grades && grades.indexOf('CONSTRAINT fk_grades_subject FOREIGN KEY (subject_id) REFERENCES subjects(id)') >= 0);
-chk('C-grades-teacher در DDL هست', !!grades && grades.indexOf('CONSTRAINT fk_grades_teacher FOREIGN KEY (teacher_id) REFERENCES users(id)') >= 0);
-chk('C-deferrable هر ۴ FK نمره معوق‌اند', !!grades && (grades.match(/fk_grades_(student|class|subject|teacher)[\s\S]*?DEFERRABLE INITIALLY DEFERRED/g) || []).length === 4);
+chk('C-grades-student در DDL هست', !!grades && gradesDdl.indexOf('CONSTRAINT fk_grades_student FOREIGN KEY (student_id) REFERENCES users(id)') >= 0);
+chk('C-grades-class در DDL هست', !!grades && gradesDdl.indexOf('CONSTRAINT fk_grades_class FOREIGN KEY (class_id) REFERENCES classes(id)') >= 0);
+chk('C-grades-subject در DDL هست', !!grades && gradesDdl.indexOf('CONSTRAINT fk_grades_subject FOREIGN KEY (subject_id) REFERENCES subjects(id)') >= 0);
+chk('C-grades-teacher در DDL هست', !!grades && gradesDdl.indexOf('CONSTRAINT fk_grades_teacher FOREIGN KEY (teacher_id) REFERENCES users(id)') >= 0);
+chk('C-deferrable هر ۴ FK نمره معوق‌اند', !!grades && (gradesDdl.match(/fk_grades_(student|class|subject|teacher)[\s\S]*?DEFERRABLE INITIALLY DEFERRED/g) || []).length === 4);
 
 /* ── بخش ۲: داده ── */
 const STORE = path.join(ROOT, 'server', 'data', 'payesh.json');

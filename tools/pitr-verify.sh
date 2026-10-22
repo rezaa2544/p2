@@ -34,7 +34,12 @@ q(){ if [ -n "$HDIR" ]; then psql -h "$HDIR" -p "$PORT" -U "${PGUSER:-postgres}"
 if q "SELECT 1" >/dev/null 2>&1; then note "اتصال به instanceِ بازیابی‌شده" ok; else note "اتصال به instanceِ بازیابی‌شده" bad; exit 1; fi
 
 # ۲) promote شده
-rec="$(q "SELECT pg_is_in_recovery()")"
+rec=""
+for _ in $(seq 1 60); do
+  rec="$(q "SELECT pg_is_in_recovery()" || true)"
+  [ "$rec" = "f" ] && break
+  sleep 1
+done
 [ "$rec" = "f" ] && note "ریکاوری تمام و promote شده (pg_is_in_recovery=f)" ok || note "همچنان در recovery است" bad
 
 # ۳) جدول‌هایِ حیاتی + non-empty

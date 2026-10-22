@@ -141,8 +141,8 @@ async function main() {
   chk('G6 GC: jtiِ کهنه (9 ساعت) پاک شد', !after.__revoked_jti['gc-old-jti']);
   chk('G6b GC: jtiِ زنده (1 ساعت) ماند', !!after.__revoked_jti['gc-new-jti']);
   const otpAfter = JSON.parse(fs.readFileSync(path.join(tmp, 'otp.json'), 'utf8')); /* R101: کدها در otp.json (مهاجرت از __auth) */
-  chk('G7 GC: کدِ منقضی (10 دقیقه) پاک شد', !(otpAfter.codes || {})['+989900000001']);
-  chk('G7b GC: کدِ زنده (1 دقیقه) ماند', !!((otpAfter.codes || {})['+989900000002']));
+  chk('G7 GC: کدِ منقضی (10 دقیقه) پاک شد', !(otpAfter.codes || {})['9900000001'] && !(otpAfter.codes || {})['+989900000001']);
+  chk('G7b GC: کدِ زنده (1 دقیقه) ماند', !!((otpAfter.codes || {})['9900000002'] || (otpAfter.codes || {})['+989900000002']));
 
   const oldKeys = (st) => (st.__processed_uids['gc-old-uid'] ? 1 : 0)
                          + (st.__revoked_jti['gc-old-jti'] ? 1 : 0)

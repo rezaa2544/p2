@@ -41,11 +41,11 @@ chk('A3 حداقل یک دبیرِ تحویلدار (asset_staff=1)', assets.len
 skip++;
 console.log('  ⏭️  A4 is_head — SKIP صریح: قراردادِ چت ۲ تثبیت نشده (tools/seed-office-data.js پیش‌نویس است؛ policy/UI مصرف نمی‌کند)');
 
-/* B4 — الگوی امن دانه: کاربرانِ جدید همان قراردادِ دمو (رمز 123456، nid/phone از مولد) */
+/* B4 — الگوی امن دانه (PUB-01: OTP-only — هیچ رکورد کاربری password ندارد؛ nid/phone از مولد) */
 const simUsers = guards.concat(libs, assets);
-chk('B4 کاربرانِ SIM الگوی دانه را دارند (password دمو + national_id + phone)',
-  simUsers.length === 0 || simUsers.every((u) => u.password === '123456' && u.national_id && u.phone),
-  simUsers.filter((u) => !(u.password === '123456' && u.national_id && u.phone)).map((u) => u.username).join(','));
+chk('B4 کاربرانِ SIM الگوی دانه را دارند (PUB-01 بدون password + national_id + phone)',
+  simUsers.length === 0 || simUsers.every((u) => u.password === undefined && u.national_id && u.phone),
+  simUsers.filter((u) => !(u.password === undefined && u.national_id && u.phone)).map((u) => u.username).join(','));
 
 /* B1 — قطعیتِ *هویت‌ها*: بازتولیدِ دانه ⇒ همان کاربران/idها/نقش‌ها/پرچم‌ها.
    یافتهٔ ممیزیِ همین سوئیت (red-فاز): دانه بایت‌قطعی *نیست* — ۱۸ کالکشنِ

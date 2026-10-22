@@ -73,8 +73,7 @@ function buildClient(e) {
 
   /* M2: fail-open حذف — خطای موتور پرتاب می‌شود */
   orig = mutate('server/sync.js',
-    "} catch (_) { r = null; /* fail-open — همان قراردادِ rate-limit.js */ }",
-    "} catch (e) { throw e; /*MUT: fail-open حذف*/ }");
+    "      } catch (rlE) {",    "      } catch (rlE) { throw rlE; /*MUT: uncaught limiter crash*/");
   chk('M2 جهشِ «fail-open حذف» کشته شد', runSuite(kit.env()) !== 0);
   kit.clear(path.join(ROOT, 'server/sync.js'));
 

@@ -84,7 +84,7 @@ test('W18-G1a: --dir that escapes the repo root (relative) is rejected with exit
 });
 
 test('W18-G1b: --dir that escapes the repo root (absolute) is rejected with exit 2', () => {
-  const r = run(['--dir', 'C:/Windows']);
+  const r = run(['--dir', process.platform === 'win32' ? 'C:/Windows' : '/etc']);
   assert.strictEqual(r.status, 2, 'expected exit 2, got ' + r.status);
   assert.ok(/خارج از ریشه/.test(r.stderr), 'containment message missing: ' + r.stderr);
 });

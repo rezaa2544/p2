@@ -229,7 +229,13 @@ async function init() {
       isRedisActive = true;
     });
 
-    await client.connect();
+    await Promise.race([
+      client.connect(),
+      new Promise((_, reject) => setTimeout(
+        () => reject(new Error('Redis connect timeout during init')),
+        (cfg.options && cfg.options.connectTimeout ? cfg.options.connectTimeout : 3000) + 1000
+      ).unref())
+    ]);
 
     /* کلاینت اختصاصیِ Pub/Sub — هم‌حالت با کلاینت اصلی */
     if (cfg.mode === 'cluster') {
@@ -301,16 +307,21 @@ function getStatus() {
  */
 let _realClient = null;
 let _realActive = false;
+let _realMode = 'memory';
 function __setClientForTests(c) {
   if (c) {
     _realClient = client;
     _realActive = isRedisActive;
+    _realMode = activeMode;
     client = c;
     isRedisActive = true;
+    activeMode = 'standalone';
   } else {
     client = _realClient;
     isRedisActive = _realActive;
-  }}
+    activeMode = _realMode;
+  }
+}
 
 /**
  * P0-13: Readiness gate — در تولید فقط با ردیسِ زنده «آماده» است؛
@@ -824,7 +835,7 @@ async function ping() {
     }
   }
   if (isProduction()) {
-    return { ok: false, driver: 'none', mode: activeMode, alive: false, error: 'REDIS_UNAVAILABLE' };
+    return { ok: false, driver: activeMode !== 'memory' ? 'redis' : 'none', mode: activeMode, alive: false, error: 'REDIS_UNAVAILABLE' };
   }
   return { ok: true, driver: 'memory', alive: true };
 }

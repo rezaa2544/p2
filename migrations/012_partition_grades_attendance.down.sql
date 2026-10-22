@@ -25,21 +25,21 @@ BEGIN
     RAISE EXCEPTION 'rollback of 009 requires mig009_w0 recovery watermark';
   END IF;
   IF EXISTS (SELECT 1 FROM attendance n
-             WHERE n.chg_id IS NULL
-                OR n.chg_id > (SELECT w0 FROM mig009_w0 WHERE id = 1)) THEN
+             WHERE (n.chg_id IS NULL OR n.chg_id > (SELECT w0 FROM mig009_w0 LIMIT 1))
+                OR NOT EXISTS (SELECT 1 FROM attendance_old o WHERE o.id = n.id AND o.created_at = n.created_at)) THEN
     EXECUTE 'CREATE TABLE attendance_recovered AS
              SELECT n.* FROM attendance n
-             WHERE n.chg_id IS NULL
-                OR n.chg_id > (SELECT w0 FROM mig009_w0 WHERE id = 1)';
+             WHERE (n.chg_id IS NULL OR n.chg_id > (SELECT w0 FROM mig009_w0 LIMIT 1))
+                OR NOT EXISTS (SELECT 1 FROM attendance_old o WHERE o.id = n.id AND o.created_at = n.created_at)';
   END IF;
 
   IF EXISTS (SELECT 1 FROM grades n
-             WHERE n.chg_id IS NULL
-                OR n.chg_id > (SELECT w0 FROM mig009_w0 WHERE id = 1)) THEN
+             WHERE (n.chg_id IS NULL OR n.chg_id > (SELECT w0 FROM mig009_w0 LIMIT 1))
+                OR NOT EXISTS (SELECT 1 FROM grades_old o WHERE o.id = n.id AND o.created_at = n.created_at)) THEN
     EXECUTE 'CREATE TABLE grades_recovered AS
              SELECT n.* FROM grades n
-             WHERE n.chg_id IS NULL
-                OR n.chg_id > (SELECT w0 FROM mig009_w0 WHERE id = 1)';
+             WHERE (n.chg_id IS NULL OR n.chg_id > (SELECT w0 FROM mig009_w0 LIMIT 1))
+                OR NOT EXISTS (SELECT 1 FROM grades_old o WHERE o.id = n.id AND o.created_at = n.created_at)';
   END IF;
 END $$;
 

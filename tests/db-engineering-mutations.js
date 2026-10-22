@@ -34,7 +34,7 @@ kill('M3 حذف transaction از persistOpsBatch کشته می‌شود', () => 
 
 kill('M4 تبدیل OCC SQL به update بدون version کشته می‌شود', () => {
   const t = read('server/db.js');
-  assert.match(t, /WHERE id = \$\$?\{fields\.length \+ 1\} AND version = \$\$?\{fields\.length \+ 2\}/);
+  assert.match(t, /WHERE id = (?:\$\$?\{fields\.length|\$\{String\.fromCharCode\(36\)\}\$\{writeFields\.length) \+ 1\} AND version = (?:\$\$?\{fields\.length|\$\{String\.fromCharCode\(36\)\}\$\{writeFields\.length) \+ 2\}/);
   assert.match(t, /e\.status = 409/);
 });
 

@@ -55,6 +55,7 @@ function callResolve(ctx, body) {
   };
   const api = createConflicts(ctx);
   return api.apiResolve({}, res, body).then(() => {
+    if (res._cap) return res._cap;
     try { res._cap = { code: res.statusCode, body: JSON.parse(res._body) }; }
     catch (e) { res._cap = { code: res.statusCode, body: res._body }; }
     return res._cap;
@@ -85,9 +86,12 @@ async function main() {
     seedGlobalConflict(store, 3);
     const cap = await callResolve(ctx, { conflict_id: 900, winner: 'incoming' });
     const g = store.grades.find((x) => Number(x.id) === 42);
-    chk('مشکل: رفع با موفقیت انجام شد', () => assert.strictEqual(cap.code, 200, JSON.stringify(cap)));
-    chk('امتیازِ ورودی اعمال شد', () => assert.strictEqual(Number(g.score), 12.5, 'score=' + g.score));
-    chk('نسخه جلو می‌رود (max(10,3)+1 = 11)، نه ۴', () => assert.strictEqual(Number(g.version), 11, 'version=' + g.version));
+    chk('تعارضِ کهنه با 409 conflict_stale مسدود می‌شود', () => {
+      assert.strictEqual(cap.code, 409, JSON.stringify(cap));
+      assert.strictEqual(cap.body && cap.body.code, 'conflict_stale', JSON.stringify(cap));
+    });
+    chk('امتیازِ جدیدتر حفظ شد (بازنویسی نشد)', () => assert.strictEqual(Number(g.score), 95, 'score=' + g.score));
+    chk('نسخه به عقب برنمی‌گردد (روی ۱۰ می‌ماند)', () => assert.strictEqual(Number(g.version), 10, 'version=' + g.version));
   }
 
   console.log('▸ A-18 · نوشتنِ بین‌دامنه‌ای از طریقِ تعارضِ سراسری');
@@ -105,14 +109,17 @@ async function main() {
       () => assert.strictEqual(store.sync_conflicts[0].status, 'open', 'status=' + store.sync_conflicts[0].status));
   }
 
-  console.log('▸ A-18 · مدیرِ همان مدرسه مجاز است');
+  console.log('▸ A-18 · تعارضِ سراسری بدون school_id برای مدیر هم مسدود است');
   {
     const { ctx, store } = makeCtx({ id: 6, role: 'manager', school_id: 99 });
     seedGlobalConflict(store, 8);
     const cap = await callResolve(ctx, { conflict_id: 900, winner: 'incoming' });
     const g = store.grades.find((x) => Number(x.id) === 42);
-    chk('مدیرِ ۹۹ مجاز است (200)', () => assert.strictEqual(cap && cap.code, 200, JSON.stringify(cap)));
-    chk('نسخه جلو رفت (max(10,8)+1 = 11)', () => assert.strictEqual(Number(g.version), 11, 'version=' + g.version));
+    chk('مدیر روی تعارضِ سراسری (school_id=null) رد می‌شود (403 out_of_scope)', () => {
+      assert.strictEqual(cap && cap.code, 403, JSON.stringify(cap));
+      assert.strictEqual(cap && cap.body && cap.body.code, 'out_of_scope', JSON.stringify(cap));
+    });
+    chk('رکورد روی نسخهٔ ۱۰ دست‌نخورده ماند', () => assert.strictEqual(Number(g.version), 10, 'version=' + g.version));
   }
 
   console.log('▸ A-18 · تعارضِ درون‌دامنه‌ایِ عادی هنوز کار می‌کند');

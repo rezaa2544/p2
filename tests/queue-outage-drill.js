@@ -297,8 +297,11 @@ const liveState = { pool: null, ok: false, metrics: { scenarios: {} } };
     m.drainMs = Date.now() - tDrain;
     m.maxLag = maxLag;
     m.throughputPerSec = +(20 / (m.drainMs / 1000)).toFixed(2);
-    /* ترتیبِ ملاک = ترتیبِ واقعیِ ورود به صف (push)، نه ترتیبِ idها */
-    const enqueued = fx.store.outbox.map((e) => e.id);
+    /* در PG زنده (OUTBOX-002)، کارگر بر اساس id صعودی از server_outbox برداشت می‌کند؛
+       در حالت حافظه، از store.outbox به ترتیب push می‌خواند. */
+    const enqueued = liveState.ok
+      ? fx.store.outbox.map((e) => e.id).slice().sort((a, b) => a - b)
+      : fx.store.outbox.map((e) => e.id);
     const ig = integrity(enqueued, fx.applied);
     m.integrity = { ok: ig.ok, dupes: ig.dupes.length, lost: ig.lost.length, orderOk: ig.orderOk };
     chk('Q2a صف انباشته شد و سپس کامل تخلیه (۲۰/۲۰)', drained && fx.applied.length === 20,

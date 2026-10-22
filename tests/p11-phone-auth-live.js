@@ -21,6 +21,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { hasInternalTransactionControl } = require('../tools/migrate-ledger');
 
 const PGURL = process.env.P11_LIVE_PG || '';
 let pg = null;
@@ -48,9 +49,12 @@ function chk(name, cond, extra){
   for(const m of migs){
     try {
       const sql = fs.readFileSync(path.join(migDir, m), 'utf8');
-      /* ری‌تارگت (مرج #82): مهاجرتِ 012 متاکامندِ psql دارد (\gset) و از
-         pool.query عبور نمی‌کند — قراردادِ خودِ مهاجرت اجرایِ psql است. */
-      if (/^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql)) {
+      /* Migration 012 contains procedures that COMMIT internally. Sending its
+         whole file through one node-postgres query creates an implicit
+         transaction block, so PostgreSQL rejects the procedure COMMIT with
+         SQLSTATE 2D000. Use psql's per-statement file execution for transaction-
+         control migrations as well as files with psql meta-commands. */
+      if (/^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql) || hasInternalTransactionControl(sql)) {
         require('child_process').execFileSync('psql',
           ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(migDir, m), PGURL], { stdio: 'pipe' });
       } else {
@@ -74,6 +78,10 @@ function chk(name, cond, extra){
     (9002, 1, 'parent',  'tie-a',     '09121112222',   '0022222222', true, now(), now()),
     (9003, 1, 'parent',  'tie-b',     '00 98 912-111-2222', '0033333333', true, now(), now()),
     (9004, 1, 'student', 'نرمال',     '09350000111',   '0044444444', true, now(), now())`);
+  await pool.query(`INSERT INTO users (id, school_id, role, full_name, phone, national_id, active, created_at, updated_at)
+    SELECT g, 1, 'student', 'u' || g, '0939' || lpad((g % 1000000)::text, 6, '0'), lpad(g::text, 10, '0'), true, now(), now()
+    FROM generate_series(10000, 11500) g ON CONFLICT (id) DO NOTHING`);
+  await pool.query('ANALYZE users');
   const AUTH_SQL = 'SELECT id, role, school_id, national_id, active, full_name, phone ' +
     'FROM users WHERE right(regexp_replace(phone, $2, \'\', \'g\'), 10) = $1 ORDER BY id LIMIT 1';
   const AUTH_ARGS = (tail) => [tail, '[\\s\\-()]'];

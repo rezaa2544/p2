@@ -34,6 +34,18 @@ const MODES = {
   }
 };
 
+if (process.argv.length <= 2) {
+  const { spawnSync } = require('child_process');
+  for (const [m, expectStr] of [['dev-noflag', 'DRIVER memory'], ['dev-flag', 'DRIVER memory'], ['prod-flag', 'ALLOW false']]) {
+    const r = spawnSync(process.execPath, [__filename, m], { encoding: 'utf8' });
+    if (r.status !== 0 || !String(r.stdout || '').includes(expectStr)) {
+      console.error('pg-prod-fallback-probe self-check failed for mode ' + m + ': status=' + r.status + ' out=' + r.stdout);
+      process.exit(1);
+    }
+  }
+  console.log('pg-prod-fallback-probe: 3/3 self-checks موفق ✅');
+  process.exit(0);
+}
 const mode = process.argv[2];
 if (!Object.prototype.hasOwnProperty.call(MODES, mode)) {
   console.error('pg-prod-fallback-probe: unknown mode: ' + String(mode));

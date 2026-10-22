@@ -19,6 +19,28 @@ const cacheEvents = require('./cache-invalidation-events'); /* N-36 — مسیر
 
 const DENY_PREFIX = 'revoked:';
 const VER_PREFIX = 'sessver:';
+const pendingRevocations = new Map();
+
+async function replayPendingRevocations() {
+  if (!pendingRevocations.size) return;
+  const now = Date.now();
+  for (const [jti, expiresAt] of pendingRevocations.entries()) {
+    const remSec = Math.floor((expiresAt - now) / 1000);
+    if (remSec <= 0) {
+      pendingRevocations.delete(jti);
+      continue;
+    }
+    try {
+      await redis.set(DENY_PREFIX + jti, '1', 'EX', remSec);
+      pendingRevocations.delete(jti);
+    } catch (_) {
+      return;
+    }
+  }
+}
+setInterval(() => {
+  replayPendingRevocations().catch(() => {});
+}, 500).unref();
 
 /* ابطالِ یک نشست (jti) تا ttlSeconds آینده. خروجی: true = در denylist ثبت شد. */
 async function revokeSession(jti, ttlSeconds) {
@@ -26,8 +48,10 @@ async function revokeSession(jti, ttlSeconds) {
   const ttl = Math.max(1, Math.floor(Number(ttlSeconds)) || 28800);
   try {
     await redis.set(DENY_PREFIX + jti, '1', 'EX', ttl);
+    pendingRevocations.delete(jti);
     return true;
   } catch (e) {
+    pendingRevocations.set(jti, Date.now() + ttl * 1000);
     return false;
   }
 }

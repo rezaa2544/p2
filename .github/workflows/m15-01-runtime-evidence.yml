@@ -142,3 +142,28 @@ jobs:
           path: ${{ runner.temp }}/m15-01-dr-${{ github.run_id }}-${{ github.run_attempt }}/
           if-no-files-found: error
           retention-days: 30
+
+  artifact-audit:
+    name: Independent artifact ZIP checksum and content audit
+    needs: [isolated-e3-runtime, isolated-dr-drill]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      HISTORICAL_RUN_ID: "39642161980"
+      HISTORICAL_EXPECTED_SHA: "9c1471f71d80e03dfba1ce8f44d66cc2a9db590e"
+      HISTORICAL_ATTEMPT1_IDS: "12366605456,12365184942,12366156323"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+      - name: Download and audit current + historical E3/DR ZIP archives
+        run: node tools/m15-01-artifact-audit.js
+

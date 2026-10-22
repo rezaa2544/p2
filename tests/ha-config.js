@@ -29,7 +29,7 @@ const rd = (p) => { try { return fs.readFileSync(path.join(ROOT, p), 'utf8'); } 
 /* ── CFG-FILE ── */
 grp('CFG-FILE — وجودِ فایل‌ها');
 const FILES = [
-  'infra/postgres/docker-compose.ha.yml', 'infra/postgres/Dockerfile',
+  'infra/postgres/docker-compose.ha.yml', 'infra/postgres/Dockerfile', 'infra/minio/Dockerfile',
   'infra/postgres/recovery.conf.template', 'infra/postgres/pgbackrest.conf.template',
   'infra/postgres/pgbouncer/pgbouncer.ini', 'infra/postgres/env.ha.example',
   'infra/postgres/entrypoints/render-config.sh', 'infra/postgres/entrypoints/primary-entrypoint.sh',
@@ -79,6 +79,31 @@ const minioInitBlock = (pgCompose.split('  minio-init:')[1] || '').split('  pg-p
 chk('MinIO init همان bucket را می‌سازد که pgBackRest از Compose می‌گیرد',
   /PB_REPO_S3_BUCKET:\s*\$\{PB_REPO_S3_BUCKET:-payesh-pgbackrest\}/.test(minioInitBlock)
   && /mc mb -p "local\/\$\$\{PB_REPO_S3_BUCKET:-payesh-pgbackrest\}"/.test(minioInitBlock));
+const minioServerBlock = (pgCompose.split('  minio:')[1] || '').split('  minio-init:')[0];
+const minioClientBlock = minioInitBlock;
+const minioDockerfile = rd('infra/minio/Dockerfile') || '';
+chk('MinIO server uses a locally built image pinned to the official source commit',
+  /image:\s*payesh-minio:RELEASE\.2025-04-22T22-12-26Z/.test(minioServerBlock)
+  && !/image:\s*minio\/minio:/.test(minioServerBlock)
+  && /target:\s*minio-runtime/.test(minioServerBlock)
+  && /MINIO_COMMIT:\s*0d7408fc9969caf07de6a8c3a84f9fbb10a6739e/.test(minioServerBlock));
+chk('MinIO client uses a locally built image pinned to the official source commit',
+  /image:\s*payesh-minio-mc:RELEASE\.2025-04-16T18-13-26Z/.test(minioClientBlock)
+  && !/image:\s*minio\/mc:/.test(minioClientBlock)
+  && /target:\s*mc-runtime/.test(minioClientBlock)
+  && /MC_COMMIT:\s*b00526b153a31b36767991a4f5ce2cced435ee8e/.test(minioClientBlock));
+chk('MinIO source builds verify upstream tag commits before compiling both binaries',
+  /FROM golang:1\.24\.2-bookworm AS go-build-base/.test(minioDockerfile)
+  && /git clone --depth 1 --branch "\$\{MINIO_REF\}" https:\/\/github\.com\/minio\/minio\.git/.test(minioDockerfile)
+  && /git clone --depth 1 --branch "\$\{MC_REF\}" https:\/\/github\.com\/minio\/mc\.git/.test(minioDockerfile)
+  && /rev-parse HEAD\)" = "\$\{MINIO_COMMIT\}"/.test(minioDockerfile)
+  && /rev-parse HEAD\)" = "\$\{MC_COMMIT\}"/.test(minioDockerfile)
+  && /ARG TARGETOS=linux/.test(minioDockerfile)
+  && /ARG TARGETARCH=amd64/.test(minioDockerfile)
+  && /go build -trimpath/.test(minioDockerfile)
+  && /COPY --from=minio-builder \/src\/LICENSE \/licenses\/minio\/LICENSE/.test(minioDockerfile)
+  && /COPY --from=mc-builder \/src\/LICENSE \/licenses\/mc\/LICENSE/.test(minioDockerfile)
+  && /USER 10001:10001/.test(minioDockerfile));
 
 /* ── CFG-SH ── */
 grp('CFG-SH — اسکریپت‌ها');
@@ -104,7 +129,7 @@ grp('CFG-TPL — الگوها');
     !/cat\s*>>\s*"\$PGDATA\/postgresql\.auto\.conf"/.test(primaryEntry));
   const pitrRestore = rd('tools/pitr-restore.sh') || '';
   chk('PITR time target با فاصله به‌صورت یک argv عبور می‌کند و promote می‌شود',
-    /RESTORE_OPTS\+\=\(\-\-type=time "\-\-target=\$2" \-\-target-action=promote\)/.test(pitrRestore)
+    /RESTORE_OPTS\+=\(--type=time "--target=\$2" --target-action=promote\)/.test(pitrRestore)
     && /"\$\{RESTORE_OPTS\[@\]\}"/.test(pitrRestore));
   const recTpl = rd('infra/postgres/recovery.conf.template') || '';
   chk('recovery.template: primary_conninfo + restore_command + hot_standby',
@@ -116,11 +141,15 @@ grp('CFG-TPL — الگوها');
     /sentinel down-after-milliseconds __MASTER_NAME__ __DOWN_AFTER__/.test(sentT)
     && /sentinel failover-timeout __MASTER_NAME__ __FAILOVER_TIMEOUT__/.test(sentT)
     && /sentinel parallel-syncs/.test(sentT));
-  chk('sentinel: resolve-hostnames برایِ محیطِ container', /sentinel resolve-hostnames yes/.test(sentT));
-  chk('sentinel: احرازِ placeholder-محور (requirepass/auth-pass/masterauth)',
+  chk('sentinel: resolve-hostnames پیش از sentinel monitor برایِ محیطِ container',
+    /sentinel resolve-hostnames yes/.test(sentT)
+    && sentT.indexOf('sentinel resolve-hostnames yes') < sentT.indexOf('sentinel monitor __MASTER_NAME__'));
+  chk('sentinel: احرازِ placeholder-محور (requirepass/auth-pass/sentinel-pass)',
     /requirepass __REDIS_PASSWORD__/.test(sentT) && /sentinel auth-pass __MASTER_NAME__ __REDIS_PASSWORD__/.test(sentT)
-    && /masterauth __REDIS_PASSWORD__/.test(sentT));
-  chk('sentinel: فرمان‌هایِ تخریبیِ sentinel بسته', /rename-command FLUSHALL ""/.test(sentT));
+    && /sentinel sentinel-pass __REDIS_PASSWORD__/.test(sentT));
+  chk('redis HA: فرمان‌هایِ تخریبی روی تمام نودهای داده بسته و در sentinel موجب خطای ناشناخته نمی‌شوند',
+    (redisCompose.match(/--rename-command FLUSHALL ""/g) || []).length >= 3
+    && !/^rename-command FLUSHALL/m.test(sentT));
 }
 
 /* ── CFG-ENV ── */

@@ -62,8 +62,8 @@ function generateExtras(){
       t.paid=paidSum; t.status = paidSum>=payable?'settled':paidSum>0?'partial':'open';
     });
 
-    // یک قسطِ معوق بخشیده می‌شود (نمایشِ وضعیتِ canceled + کاهشِ بدهی)
-    {
+    // یک قسطِ معوق بخشیده می‌شود (نمایشِ وضعیتِ canceled + کاهشِ بدهی — یک‌بار به ازای مدرسه)
+    if(!db.installments.some(i=>i.school_id===school.id&&i.status==='canceled')){
       const od=db.installments.filter(i=>i.school_id===school.id&&i.status!=='paid'&&i.status!=='canceled'&&i.due_date<todayISO());
       if(od.length){
         const w=od[0];

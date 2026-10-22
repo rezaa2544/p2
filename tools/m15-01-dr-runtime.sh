@@ -74,6 +74,8 @@ PITR_SCHEMA_MIGRATION_COUNT="NOT_RUN"
 PITR_SCHEMA_LATEST_MIGRATION="NOT_RUN"
 PITR_SCHEMA_CATALOG_MATCH="NOT_RUN"
 PGBACKREST_VERSION="NOT_RUN"
+PGBACKREST_PACKAGE_VERSION="NOT_RUN"
+PGBACKREST_BUILD_RECORD_VERSION="NOT_RUN"
 PG_CONFIG_ACCESS="NOT_RUN"
 PG_STANDBY_STREAMING="NOT_RUN"
 PG_BACKUP_STATUS="NOT_RUN"
@@ -137,6 +139,59 @@ run_logged() {
   fi
   status="$command_status"
   if [[ "$redact_status" != 0 || "$artifact_status" != 0 ]]; then status=1; fi
+  local container_logs_sanitized="$EVIDENCE_DIR/pg-ha-start-container-logs.log"
+  local container_logs_excerpt=""
+  if [[ "$command_status" != 0 && "$label" == "pg-ha-start" ]]; then
+    local container_logs_raw="$RAW_OUTPUT_DIR/pg-ha-start-container-logs.log"
+    local container_logs_status=0 container_logs_redact_status=0 container_logs_artifact_status=0
+    set +e
+    compose_pg logs --no-color --timestamps --tail=100 pg-primary pg-standby > "$container_logs_raw" 2>&1
+    container_logs_status=$?
+    chmod 600 "$container_logs_raw"
+    redact_file "$container_logs_raw"
+    container_logs_redact_status=$?
+    set -e
+    if [[ "$container_logs_redact_status" == 0 ]]; then
+      if mv -- "$container_logs_raw" "$container_logs_sanitized"; then
+        printf '\nCOMMAND[pg-ha-start-container-logs]: docker compose logs --no-color --timestamps --tail=100 pg-primary pg-standby\n' >> "$COMMAND_LOG"
+        cat "$container_logs_sanitized" >> "$COMMAND_LOG"
+      else
+        printf 'REDACTED_OUTPUT_ARTIFACT_FAILED[pg-ha-start-container-logs]: sanitized output could not be preserved\n' >> "$COMMAND_LOG"
+        rm -f "$container_logs_raw"
+        container_logs_artifact_status=1
+      fi
+    else
+      printf 'OUTPUT_REDACTION_FAILED[pg-ha-start-container-logs]: raw container output withheld\n' >> "$COMMAND_LOG"
+      rm -f "$container_logs_raw"
+    fi
+    printf 'EXIT_CODE[pg-ha-start-container-logs]: %s\n' "$container_logs_status" >> "$COMMAND_LOG"
+    if [[ "$container_logs_redact_status" != 0 ]]; then printf 'LOG_REDACTION_EXIT_CODE[pg-ha-start-container-logs]: %s\n' "$container_logs_redact_status" >> "$COMMAND_LOG"; fi
+    if [[ "$container_logs_artifact_status" != 0 ]]; then printf 'OUTPUT_ARTIFACT_EXIT_CODE[pg-ha-start-container-logs]: %s\n' "$container_logs_artifact_status" >> "$COMMAND_LOG"; fi
+    if [[ "$container_logs_redact_status" == 0 && "$container_logs_artifact_status" == 0 && -f "$container_logs_sanitized" ]]; then
+      container_logs_excerpt="$(tail -n 12 "$container_logs_sanitized" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-600)"
+    fi
+  fi
+  if [[ "$command_status" != 0 && "$label" == "pg-ha-start" && "$redact_status" == 0 && "$artifact_status" == 0 ]]; then
+    local first_error tail_excerpt diagnostic
+    first_error="$(grep -Eim1 '(^|[[:space:]])(E:|Err:)|error response from daemon|failed to solve|failed to (fetch|download|install|configure|start)|dependency failed to start|unhealthy|version .* (not found|was not found)|unable to locate package|no installation candidate|package .* has no installation candidate|denied|no such file|not found|invalid|permission denied|process .* did not complete successfully|exit code: [1-9]' "$sanitized_output" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | cut -c1-500 || true)"
+    tail_excerpt="$(tail -n 8 "$sanitized_output" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-600)"
+    diagnostic="first_error=${first_error:-not-matched}; container_logs_tail=${container_logs_excerpt:-not-captured}; tail=${tail_excerpt}"
+    diagnostic="$(printf '%s' "$diagnostic" | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-1800)"
+    if [[ -n "$diagnostic" ]]; then
+      diagnostic="${diagnostic//%/%25}"
+      diagnostic="${diagnostic//$'\r'/%0D}"
+      diagnostic="${diagnostic//$'\n'/%0A}"
+      printf '::error title=M15-01 pg-ha-start sanitized failure excerpt::%s\n' "$diagnostic"
+    fi
+  elif [[ "$command_status" != 0 && "$label" != "redis-failover-tool" && "$redact_status" == 0 && "$artifact_status" == 0 ]]; then
+    local stage_tail stage_diag
+    stage_tail="$(tail -n 30 "$sanitized_output" | sed -E 's/\x1B\[[0-9;]*[[:alpha:]]//g' | tr -d '\r' | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | tail -c 1600)"
+    stage_diag="stage=${label}; exit=${command_status}; tail=${stage_tail}"
+    stage_diag="${stage_diag//%/%25}"
+    stage_diag="${stage_diag//$'\r'/%0D}"
+    stage_diag="${stage_diag//$'\n'/%0A}"
+    printf '::error title=M15-01 DR stage sanitized failure excerpt::%s\n' "$stage_diag"
+  fi
   printf '\nEXIT_CODE[%s]: %s\n' "$label" "$command_status" >> "$COMMAND_LOG"
   if [[ "$redact_status" != 0 ]]; then printf 'LOG_REDACTION_EXIT_CODE[%s]: %s\n' "$label" "$redact_status" >> "$COMMAND_LOG"; fi
   if [[ "$artifact_status" != 0 ]]; then printf 'OUTPUT_ARTIFACT_EXIT_CODE[%s]: %s\n' "$label" "$artifact_status" >> "$COMMAND_LOG"; fi
@@ -157,6 +212,7 @@ wait_pg_ha_ready() {
     sleep 2
   done
   compose_pg ps || true
+  compose_pg logs --no-color --timestamps --tail=40 pg-primary pg-standby pgbouncer || true
   echo "PostgreSQL primary/standby readiness or streaming replication timed out" >&2
   return 1
 }
@@ -214,6 +270,21 @@ wait_redis_ready() {
   done
 }
 
+wait_redis_ready_loop() {
+  local _
+  for _ in $(seq 1 90); do
+    if wait_redis_ready >/dev/null 2>&1; then
+      wait_redis_ready
+      return 0
+    fi
+    sleep 2
+  done
+  compose_redis ps || true
+  compose_redis logs --no-color --timestamps --tail=40 || true
+  echo "Redis Sentinel stack did not become ready" >&2
+  return 1
+}
+
 wait_redis_promoted() {
   local original="$1" i address host port role
   for i in $(seq 1 90); do
@@ -223,7 +294,7 @@ wait_redis_promoted() {
     if [[ -n "$host" && -n "$port" && "$host,$port" != "$original" ]]; then
       role="$(compose_redis exec -T redis-replica-1 sh -ec \
         'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli -h "$1" -p "$2" INFO replication | grep -E "^role:master"' \
-        sh "$host" "$port" 2>/dev/null || true)"
+        sh "$host" "$port" 2>/dev/null | tr -d '\r' || true)"
       if [[ "$role" == "role:master" ]]; then
         printf 'ORIGINAL_MASTER=%s\nPROMOTED_MASTER=%s,%s\nNEW_MASTER_ROLE=%s\n' "$original" "$host" "$port" "$role"
         REDIS_PROMOTED_MASTER="$host,$port"
@@ -252,7 +323,10 @@ write_report() {
   export M15_DR_PG_SCHEMA_CATALOG_MATCH="$PG_SCHEMA_CATALOG_MATCH"
   export M15_DR_PITR_SCHEMA_MIGRATION_COUNT="$PITR_SCHEMA_MIGRATION_COUNT" M15_DR_PITR_SCHEMA_LATEST_MIGRATION="$PITR_SCHEMA_LATEST_MIGRATION"
   export M15_DR_PITR_SCHEMA_CATALOG_MATCH="$PITR_SCHEMA_CATALOG_MATCH"
-  export M15_DR_PGBACKREST_VERSION="$PGBACKREST_VERSION" M15_DR_PG_CONFIG_ACCESS="$PG_CONFIG_ACCESS"
+  export M15_DR_PGBACKREST_VERSION="$PGBACKREST_VERSION"
+  export M15_DR_PGBACKREST_PACKAGE_VERSION="$PGBACKREST_PACKAGE_VERSION"
+  export M15_DR_PGBACKREST_BUILD_RECORD_VERSION="$PGBACKREST_BUILD_RECORD_VERSION"
+  export M15_DR_PG_CONFIG_ACCESS="$PG_CONFIG_ACCESS"
   export M15_DR_PG_STANDBY_STREAMING="$PG_STANDBY_STREAMING" M15_DR_PG_BACKUP_STATUS="$PG_BACKUP_STATUS"
   export M15_DR_ARCHIVE_STATUS="$ARCHIVE_STATUS" M15_DR_REDIS_ORIGINAL_MASTER="$REDIS_ORIGINAL_MASTER"
   export M15_DR_REDIS_PROMOTED_MASTER="$REDIS_PROMOTED_MASTER" M15_DR_REDIS_FAILOVER_TOOL_EXIT="$REDIS_FAILOVER_TOOL_EXIT"
@@ -301,7 +375,9 @@ const evidence = {
     github_run_attempt: process.env.GITHUB_RUN_ATTEMPT || null,
     pg_compose_project: val('M15_DR_PG_PROJECT'),
     redis_compose_project: val('M15_DR_REDIS_PROJECT'),
-    postgres_image_ref: 'postgres:16-bookworm + pgbackrest package 2.47-1 (Dockerfile build)',
+    postgres_image_ref: 'postgres:16-bookworm + pgbackrest Debian package '
+      + (val('M15_DR_PGBACKREST_PACKAGE_VERSION') && val('M15_DR_PGBACKREST_PACKAGE_VERSION') !== 'NOT_RUN'
+        ? val('M15_DR_PGBACKREST_PACKAGE_VERSION') : 'version not observed'),
     redis_image_ref: 'redis:7.4.2-bookworm',
     minio_endpoint_scope: 'local Compose service only; not offsite'
   },
@@ -316,6 +392,12 @@ const evidence = {
       verified_against_current_migration_catalog: val('M15_DR_PG_SCHEMA_CATALOG_MATCH') === 'true'
     },
     pgbackrest_version: val('M15_DR_PGBACKREST_VERSION'),
+    pgbackrest_debian_package_version: val('M15_DR_PGBACKREST_PACKAGE_VERSION'),
+    pgbackrest_build_recorded_package_version: val('M15_DR_PGBACKREST_BUILD_RECORD_VERSION'),
+    pgbackrest_package_version_matches_build_record:
+      !!val('M15_DR_PGBACKREST_PACKAGE_VERSION')
+      && val('M15_DR_PGBACKREST_PACKAGE_VERSION') !== 'NOT_RUN'
+      && val('M15_DR_PGBACKREST_PACKAGE_VERSION') === val('M15_DR_PGBACKREST_BUILD_RECORD_VERSION'),
     pgbackrest_config_readable_by_postgres: val('M15_DR_PG_CONFIG_ACCESS'),
     standby_streaming_before_failure: val('M15_DR_PG_STANDBY_STREAMING'),
     full_backup_status: val('M15_DR_PG_BACKUP_STATUS'),
@@ -458,6 +540,16 @@ run_logged pg-server-version compose_pg exec -T -u postgres pg-primary psql -XAt
 PG_VERSION_TEXT="$(tr -d '\r\n' < "$EVIDENCE_DIR/pg-server-version.log")"
 run_logged pgbackrest-version compose_pg exec -T -u postgres pg-primary pgbackrest version
 PGBACKREST_VERSION="$(tr -d '\r\n' < "$EVIDENCE_DIR/pgbackrest-version.log")"
+if [[ -z "$PGBACKREST_VERSION" ]]; then echo "pgbackrest binary version was not reported" >&2; exit 1; fi
+run_logged pgbackrest-package-version compose_pg exec -T -u postgres pg-primary dpkg-query -W '-f=${Version}' pgbackrest
+PGBACKREST_PACKAGE_VERSION="$(tr -d '\r\n' < "$EVIDENCE_DIR/pgbackrest-package-version.log")"
+run_logged pgbackrest-build-recorded-package-version compose_pg exec -T -u postgres pg-primary \
+  cat /usr/local/share/payesh-pgbackrest-package-version
+PGBACKREST_BUILD_RECORD_VERSION="$(tr -d '\r\n' < "$EVIDENCE_DIR/pgbackrest-build-recorded-package-version.log")"
+if [[ -z "$PGBACKREST_PACKAGE_VERSION" || "$PGBACKREST_PACKAGE_VERSION" != "$PGBACKREST_BUILD_RECORD_VERSION" ]]; then
+  echo "installed pgbackrest Debian package version does not match its build record" >&2
+  exit 1
+fi
 
 export DATABASE_URL="postgres://postgres:${PG_PASSWORD}@127.0.0.1:5432/payesh"
 run_logged migrate-current-schema node tools/migrate-ledger.js up
@@ -488,6 +580,8 @@ run_logged pgbackrest-check compose_pg exec -T -u postgres pg-primary pgbackrest
 run_logged pgbackrest-full-backup compose_pg exec -T -u postgres pg-primary pgbackrest --stanza=payesh backup --type=full
 run_logged pgbackrest-backup-info compose_pg exec -T -u postgres pg-primary pgbackrest --stanza=payesh info
 PG_BACKUP_STATUS="full_backup_completed_and_info_verified"
+# Ensure wall-clock PITR target timestamp is strictly past integer backup stop second.
+sleep 2
 
 PITR_BEFORE_MARKER="m15-dr-before-${RUN_KEY}"
 PITR_AFTER_MARKER="m15-dr-after-${RUN_KEY}"
@@ -590,13 +684,7 @@ if ! assert_compose_project_unused "$REDIS_PROJECT"; then
 fi
 REDIS_PROJECT_OWNED=1
 run_logged redis-ha-start compose_redis up -d
-redis_ready=0
-for _ in $(seq 1 90); do
-  if wait_redis_ready >/dev/null 2>&1; then redis_ready=1; break; fi
-  sleep 2
-done
-if [[ "$redis_ready" != 1 ]]; then echo "Redis Sentinel stack did not become ready" >&2; exit 1; fi
-run_logged redis-ha-readiness wait_redis_ready
+run_logged redis-ha-readiness wait_redis_ready_loop
 run_logged redis-original-master redis_master_addr
 REDIS_ORIGINAL_MASTER="$(paste -sd, "$EVIDENCE_DIR/redis-original-master.log")"
 if [[ ! "$REDIS_ORIGINAL_MASTER" =~ ^[^,]+,6379$ ]]; then echo "unexpected Sentinel master address: $REDIS_ORIGINAL_MASTER" >&2; exit 1; fi

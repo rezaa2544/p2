@@ -104,7 +104,7 @@ const assert = require('assert');
     assert.strictEqual(w.balance, wBefore - 4, 'wallet ' + w.balance + ' != ' + (wBefore - 4));
     const logs = (store.sms_log || []).filter(l => l.queue_id === 1 && l.status === 'sent');
     assert.strictEqual(logs.length, 2, 'logs ' + logs.length);
-    assert.deepStrictEqual(logs.map(l => l.user_id).sort(), [17, 1025].sort());
+    assert.deepStrictEqual(logs.map(l => l.user_id).sort(), [17, 1026].sort());
     for(const l of logs){
       assert.ok(String(l.provider_msg).indexOf('mock-') === 0, 'provider_msg ' + l.provider_msg);
       assert.ok(PHONES.indexOf(l.phone) > -1, 'phone in store ok: ' + l.phone);

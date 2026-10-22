@@ -36,7 +36,10 @@ function fakeRedis() {
     return it;
   };
   return {
-    commands, m,
+    commands,
+    async sadd(k, ...vals) { commands.push(["SADD", k, ...vals]); let s = sets.get(k); if (!s) { s = new Set(); sets.set(k, s); } let added = 0; for (const v of vals) { const sv = String(v); if (!s.has(sv)) { s.add(sv); added++; } } return added; },
+    async smembers(k) { commands.push(["SMEMBERS", k]); const s = sets.get(k); return s ? Array.from(s) : []; },
+    async srem(k, ...vals) { commands.push(["SREM", k, ...vals]); const s = sets.get(k); if (!s) return 0; let n = 0; for (const v of vals) { if (s.delete(String(v))) n++; } return n; }, m,
     async get(k) { commands.push(['GET', k]); const it = live(k); return it ? it.v : null; },
     async set(k, v, ...rest) {
       commands.push(['SET', k, ...rest.map(String)]);

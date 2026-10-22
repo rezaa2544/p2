@@ -39,11 +39,11 @@
 #   /tmp < 250MB free                       -> exit 4   (tmpfs shared with platform snapshots)
 set -u
 cd "$(dirname "$0")/.." || exit 2
-export NODE_PATH="$PWD/node_modules"
+export NODE_PATH="$PWD/node_modules${PW_NODE_MODULES:+:$PW_NODE_MODULES}:/var/tmp/pw-tools/node_modules"
 OUT=/tmp/all-tests.log
 : > $OUT
 START=$(date +%s)
-WORKERS=2
+WORKERS="${WORKERS:-4}"
 
 # ── self-heal ──────────────────────────────────────────────────────────────
 if ! node -e "require('$PWD/node_modules/jsdom')" >/dev/null 2>&1; then
@@ -85,6 +85,7 @@ fi
 # (tools/migrate-ledger.js reads DATABASE_URL first, PGURL second), so export it
 # from PGURL when only PGURL is set — then the probe sees one canonical variable
 # instead of two divergent ones.
+unset WAVE23_REQUIRE_PG
 if [ -z "${DATABASE_URL:-}" ] && [ -n "${PGURL:-}" ]; then
   export DATABASE_URL="$PGURL"
   echo "-- DATABASE_URL derived from PGURL (canonical connection variable)" | tee -a $OUT
@@ -147,34 +148,159 @@ if [ "$AVAIL_KB" -lt 250000 ]; then
   exit 4
 fi
 
-# ── suite lists ────────────────────────────────────────────────────────────
-# S7-2 (Bug Hunt session 7): worker scripts are spawned *by* their parent suite
-# with arguments (`node tests/<x>-child.js <root> <mode>`); running them
-# standalone crashes on argv[2]=undefined and showed up as a false RED.
-# Exclude the whole *-child.js family instead of naming one file.
-ALL=$(ls tests/*.js | grep -v -- '-mutations.js$' | grep -v -- '-child.js$')
-# موج ۲۰: سابت‌های REST فاز ۳ (زیرپوشهٔ tests/api) هم جزو رگرسیون‌اند —
-# دونده‌شان متوالی اجرا می‌کند و استور را ایزوله می‌کند؛ یک واحدِ موازی‌پذیر.
-if [ -f tests/api/runner.js ]; then
-  ALL="$ALL"$'\n'"tests/api/runner.js"
+# ── environment isolation (Step 6: prevent PGURL/DATABASE_URL/REDIS_URL leakage into JSON lanes) ──
+LIVE_PG_URL="${DATABASE_URL:-postgres://payesh:payesh@127.0.0.1:5432/payesh_ci}"
+LIVE_ADMIN_URL="${LIVE_PG_URL%/*}/postgres"
+LIVE_BENCH_URL="${LIVE_PG_URL%/*}/payesh_bench"
+LIVE_IDOR_URL="${LIVE_PG_URL%/*}/payesh_db_idor"
+LIVE_REDIS_URL="${REDIS_URL:-redis://127.0.0.1:6379}"
+unset DATABASE_URL PGURL REDIS_URL SYNC_TEST_DATABASE_URL
+mkdir -p /tmp/chaos-drill-tmpfs 2>/dev/null || true
+if [ -z "${CHROMIUM_PATH:-}" ]; then
+  for cb in /usr/local/bin/chromium-headless /usr/bin/chromium /usr/bin/chromium-browser /usr/bin/google-chrome; do
+    if [ -x "$cb" ]; then export CHROMIUM_PATH="$cb"; break; fi
+  done
 fi
-REBUILDING=$(grep -l "build.js" tests/*.js 2>/dev/null | grep -v -- '-mutations.js$' | grep -v -- '-child.js$')
+if [ -d /var/tmp/pw-tools/node_modules ]; then
+  export NODE_PATH="$PWD/node_modules:/var/tmp/pw-tools/node_modules${NODE_PATH:+:$NODE_PATH}"
+fi
+export ROOT_GIT_DIR="$PWD/.git"
+
+LIVE_INFRA_SUITES="
+tests/otp-ratelimit-mutations.js
+tests/schema-migrations-live-pg.test.js
+tests/migration-012-crash-recovery-live.js
+tests/migration-009-live.js
+tests/pg-relational-seed.js
+tests/migrate-pg-constraints.js
+tests/migrate-pg-constraints-mutations.js
+tests/wave3-query.js
+tests/wave3-query3.js
+tests/wave3-parity.js
+tests/wave3-parity-mutations.js
+tests/wave4-sync.js
+tests/wave6-11-redis-live.js
+tests/wave6-11-redis-live-mutations.js
+tests/wave10-pg-live.js
+tests/wave10-pg-live-mutations.js
+tests/wave10-tenant-live.js
+tests/wave10-tenant-live-mutations.js
+tests/wave18w19-multinode-live.js
+tests/wave23-reports-pg.js
+tests/wave23-reports-mutations.js
+tests/wave23-norm-edge-mutations.js
+tests/bench-phone-lookup-p11.js
+tests/wave1-gate.js
+tests/arena5-recovery.js
+tests/b-pg-health-blackhole.js
+tests/b-pg-migration-midflight-kill.js
+tests/b-pg-timeout-failsafe.js
+tests/canary-atomic-postgres-live-runtime.js
+tests/canary-persistence.js
+tests/n17-n18-tombstones-sms-wallet.test.js
+tests/n21-schema-drift.test.js
+tests/n22-hydrate-cap.test.js
+tests/otp-redis.js
+tests/outbox-lease-race-live.js
+tests/p11-phone-auth-live.js
+tests/partitioning.js
+tests/pg-prod-boot-with-db.js
+tests/pg-prod-client-error.js
+tests/pg-prod-fallback-probe.js
+tests/pg-prod-persistence-failure.js
+tests/pg-prod-two-instance.js
+tests/pg-prod-uid-idempotency.js
+tests/phase2-occ-multi.js
+tests/phase2-outbox-failover.js
+tests/phase2-redis-fail-closed.js
+tests/phase65-runtime-truth.js
+tests/r5-prod-redis-boot-gate.js
+tests/redis-sentinel-failover.js
+tests/sync-occ-adversarial-live.js
+tests/sync-replay-adversarial-live.js
+tests/unified-production-verifier.js
+tests/multi-instance.js
+tests/queue-outage-drill.js
+tests/chaos-drill-api-kill.js
+tests/chaos-drill-redis-outage.js
+tests/chaos-drill-pg-outage.js
+tests/chaos-drill-queue-outage.js
+tests/chaos-drill-network-degradation.js
+tests/chaos-drill-disk-pressure.js
+tests/chaos-suite.js
+tests/idor-runtime.js
+tests/idor-runtime-r4.js
+tests/a35-regression.js
+tests/wal-disk-full.js
+"
+
+DEV_MEM_AUTH_SUITES="
+tests/a-next-health-blackhole.js
+tests/bounded-delta-resume.js
+tests/bounded-delta-resume-mutations.js
+tests/delta-sync-hardening.js
+tests/pull-bootstrap.js
+tests/reaudit-a19-student-id-ownership.js
+tests/reaudit-occ-stale-write.js
+tests/reports-basic.js
+tests/reports-bounded-cache.js
+tests/reports-bounded-cache-mutations.js
+tests/reports-export.js
+tests/reports-pdf-e2e.js
+tests/reports-tenant-isolation.js
+tests/seed-completeness.js
+tests/server11.js
+tests/server13.js
+tests/server4.js
+tests/truncation-telemetry.js
+tests/truncation-telemetry-mutations.js
+tests/wave1-multi-instance.js
+tests/wave1-reads.js
+tests/wave1-regression-gate.js
+tests/wave1-writes.js
+tests/wave1-writes-mutations.js
+tests/wave4-sync-all-collections.js
+tests/wave5-authz.js
+tests/wave5-authz-mutations.js
+tests/wave9-performance.js
+"
+
+export LIVE_PG_URL LIVE_ADMIN_URL LIVE_BENCH_URL LIVE_IDOR_URL LIVE_REDIS_URL LIVE_INFRA_SUITES DEV_MEM_AUTH_SUITES
+
+EXCLUSIVE_SUITES="
+tests/g7-ci-database-env.test.js
+tests/false-green-defense.test.js
+tests/docs-metrics.js
+tests/f1-boot-syntax-five-pass.js
+tests/a11y-audit.js
+tests/a11y-interactive.js
+tests/a11y-keyboard.js
+tests/a11y-runtime.js
+tests/reports-export.js
+tests/reports-pdf-e2e.js
+tests/tracing-performance.js
+tests/wave18-load.js
+"
+
+# ── suite lists ────────────────────────────────────────────────────────────
+ALL_RAW=$(ls tests/*.js | grep -v -- '-mutations.js$' | grep -v -- '-child.js$')
+if [ -f tests/api/runner.js ]; then
+  ALL_RAW="$ALL_RAW"$'\n'"tests/api/runner.js"
+fi
+LIVE_PRESENT=$(echo "$LIVE_INFRA_SUITES" | sed '/^$/d' | while read -r s; do [ -f "$s" ] && echo "$s"; done)
+EXCL_PRESENT=$(echo "$EXCLUSIVE_SUITES" | sed '/^$/d' | while read -r s; do [ -f "$s" ] && echo "$s"; done)
+ALL=$(echo "$ALL_RAW" | grep -vxFf <(echo "$LIVE_PRESENT") | grep -vxFf <(echo "$EXCL_PRESENT"))
+REBUILDING=$(grep -l "build.js" tests/*.js 2>/dev/null | grep -v -- '-mutations.js$' | grep -v -- '-child.js$' | grep -vxFf <(echo "$LIVE_PRESENT") | grep -vxFf <(echo "$EXCL_PRESENT"))
 SERVERS=$(echo "$ALL" | grep '^tests/server')
-MUTS=$(ls tests/*-mutations.js)
+MUTS=$(ls tests/*-mutations.js | grep -vxFf <(echo "$LIVE_PRESENT"))
 PHASE2_SET=$( { echo "$REBUILDING"; echo "$SERVERS"; echo "$MUTS"; } | sed '/^$/d' | sort -u )
 PHASE1_SET=$(echo "$ALL" | grep -vxFf <(echo "$PHASE2_SET"))
 
-# port-holding detection: literal 89xx/90xx port in the suite file, OR (for
-# mutation suites) in any suite file they boot — both `suite: 'tests/x.js'`
-# fields and quoted 'tests/x.js' arguments (R92: old-style mutate() calls)
 uses_port() {
   local f="$1"
   grep -qE "89[0-9]{2}|90[0-9]{2}" "$f" && return 0
   local refs r
   refs=$(grep -ohE "['\"]tests/[^'\"]+\.js['\"]" "$f" | tr -d "'\"" | sort -u)
-  # دروازهٔ انتشار: ارجاع‌های ‍path.join(..., 'tests', 'X.js') مسیرِ تحتانیِ
-  # «‍tests/» ندارند و از تورِ بالا می‌افتادند (نمونه: جهش‌های ‍wave5 که سوئیتِ
-  # پایه‌شان پورت ۹۰۳۴ دارد و موازی اجرا می‌شد). این‌جا آن‌ها را هم کشف می‌کنیم.
   refs="$refs
 $(grep -ohE "path\.join\([^)]*'tests'[^)]*'[A-Za-z0-9_.-]+\.js'\)" "$f" | grep -oE "'[A-Za-z0-9_.-]+\.js'\)" | tr -d "'\")" | sed 's|^|tests/|' | sort -u)"
   for r in $refs; do
@@ -189,27 +315,25 @@ for f in $ALL $MUTS; do
 done
 PORT_P1=$(echo $PORT_ALL | tr ' ' '\n' | grep -vxFf <(echo "$PHASE2_SET") | sed '/^$/d')
 PORT_P2=$(echo $PORT_ALL | tr ' ' '\n' | grep -xFf <(echo "$PHASE2_SET") | sed '/^$/d')
-LANE_A=$(echo "$PHASE1_SET" | grep -vxFf <(echo "$PORT_P1") | sed '/^$/d')   # main dir, @2
-LANE_B=$(echo "$PHASE2_SET" | grep -vxFf <(echo "$PORT_P2") | sed '/^$/d')   # copies, @2
+LANE_A=$(echo "$PHASE1_SET" | grep -vxFf <(echo "$PORT_P1") | sed '/^$/d')
+LANE_B=$(echo "$PHASE2_SET" | grep -vxFf <(echo "$PORT_P2") | sed '/^$/d')
 
-# ── runner: in-place (read-only suites, main dir) ──────────────────────────
-# Root C (PAYESH-CI-RECOVERY-02, 2026-10-14): a suite that never exits used to
-# hold the WHOLE job hostage until GitHub's 6-hour job timeout, with zero
-# signal in the step log (progress went only to /tmp/all-tests.log, which the
-# CI log never shows). Two honesty-preserving changes:
-#   1. START/DONE lines go to STDOUT, so the CI step log is a live progress
-#      feed — that is how a stuck suite gets identified instead of guessed at.
-#   2. every suite gets a bounded budget (SUITE_TIMEOUT, default 900s ≈ 7.5x
-#      the longest suite ever measured locally). Exceeding it is scored RED
-#      with the elapsed time and counted in $RED — never green. The gate is
-#      not weakened: an unfinishable suite becomes a visible, counted failure
-#      instead of an infinite job.
 SUITE_TIMEOUT="${SUITE_TIMEOUT:-900}"
+suite_env_prefix() {
+  if echo "$DEV_MEM_AUTH_SUITES" | grep -qxF "$1"; then
+    echo "PAYESH_ALLOW_DEV_MEMORY_AUTHORITY=1"
+  fi
+}
 run_one() {
   f="$1"; name=$(basename "$f" .js)
   start=$(date +%s)
   echo "[suite] START $name"
-  timeout -k 30 "$SUITE_TIMEOUT" node "$f" > /tmp/at-$name.log 2>&1
+  extra_env=$(suite_env_prefix "$f")
+  if [ -n "$extra_env" ]; then
+    env $extra_env timeout -k 30 "$SUITE_TIMEOUT" node "$f" > /tmp/at-$name.log 2>&1
+  else
+    timeout -k 30 "$SUITE_TIMEOUT" node "$f" > /tmp/at-$name.log 2>&1
+  fi
   code=$?
   end=$(date +%s)
   last=$(grep -E "موفق|بررسی — |✅ /|کشته" /tmp/at-$name.log | tail -1 | tr '\n' ' ' | cut -c1-100)
@@ -225,16 +349,21 @@ run_one() {
   fi
 }
 
-# ── runner: isolated copy (rebuilders + server + mutations) ────────────────
 run_copy() {
   f="$1"; name=$(basename "$f" .js)
   dir=/tmp/mut-$name
   rm -rf "$dir"; mkdir -p "$dir"
   tar cf - --exclude=node_modules --exclude=.git --exclude=tmp . | (cd "$dir" && tar xf -)
   ln -s "$PWD/node_modules" "$dir/node_modules"
+  ln -s "$ROOT_GIT_DIR" "$dir/.git"
   start=$(date +%s)
   echo "[suite] START $name (isolated copy)"
-  ( cd "$dir" && timeout -k 30 "$SUITE_TIMEOUT" node "tests/$name.js" > /tmp/at-$name.log 2>&1 )
+  extra_env=$(suite_env_prefix "$f")
+  if [ -n "$extra_env" ]; then
+    ( cd "$dir" && env $extra_env timeout -k 30 "$SUITE_TIMEOUT" node "tests/$name.js" > /tmp/at-$name.log 2>&1 )
+  else
+    ( cd "$dir" && timeout -k 30 "$SUITE_TIMEOUT" node "tests/$name.js" > /tmp/at-$name.log 2>&1 )
+  fi
   code=$?
   end=$(date +%s)
   rm -rf "$dir"
@@ -251,17 +380,82 @@ run_copy() {
   fi
 }
 
-# ── serial lane: port-holding suites (fixed 89xx/90xx — never in parallel) ─
-# R92: after each suite, kill any leaked server (crashed suites leave them holding
-# fixed ports → next suite dies before its expected check → env false-verdicts)
+run_live_one() {
+  f="$1"; name=$(basename "$f" .js)
+  start=$(date +%s)
+  echo "[suite] START $name (live-infra)"
+  redis-cli -u "$LIVE_REDIS_URL" FLUSHALL >/dev/null 2>&1 || true
+  if [ "$f" = "tests/otp-ratelimit-mutations.js" ]; then
+    timeout -k 30 "$SUITE_TIMEOUT" node "$f" > /tmp/at-$name.log 2>&1
+    code=$?
+  elif [ "$f" = "tests/wave1-gate.js" ]; then
+    env PGURL="$LIVE_PG_URL" timeout -k 30 "$SUITE_TIMEOUT" node "$f" > /tmp/at-$name.log 2>&1
+    code=$?
+  elif [ "$f" = "tests/bench-phone-lookup-p11.js" ]; then
+    psql "$LIVE_ADMIN_URL" -c "DROP DATABASE IF EXISTS payesh_bench;" >/dev/null 2>&1 || true
+    psql "$LIVE_ADMIN_URL" -c "CREATE DATABASE payesh_bench;" >/dev/null 2>&1 || true
+    env P11_LIVE_PG="$LIVE_BENCH_URL" P11_BENCH_N=5000 timeout -k 30 "$SUITE_TIMEOUT" node "$f" > /tmp/at-$name.log 2>&1
+    code=$?
+    psql "$LIVE_ADMIN_URL" -c "DROP DATABASE IF EXISTS payesh_bench;" >/dev/null 2>&1 || true
+  elif [ "$f" = "tests/wal-disk-full.js" ]; then
+    PG_EXE="$(ps -eo args | awk '/\/postgres( |$)/ {print $1; exit}')"
+    if [ -z "$PG_EXE" ]; then PG_EXE="$(ls /usr/lib/postgresql/*/bin/postgres 2>/dev/null | head -1)"; fi
+    PGBIN_DIR="$(dirname "${PG_EXE:-/usr/bin/postgres}")"
+    id postgres >/dev/null 2>&1 || sudo useradd -r -m -s /bin/bash postgres 2>/dev/null || true
+    if ! pg_isready -h 127.0.0.1 -p 55432 >/dev/null 2>&1; then
+      sudo PGBIN="$PGBIN_DIR" bash infra/wal-drill/bootstrap.sh >/dev/null 2>&1 || true
+    fi
+    sudo -E env PATH="$PGBIN_DIR:$PATH" PGBIN="$PGBIN_DIR" NODE_PATH="${NODE_PATH:-}" timeout -k 30 "$SUITE_TIMEOUT" node "$f" > /tmp/at-$name.log 2>&1
+    code=$?
+  elif [ "$f" = "tests/redis-sentinel-failover.js" ]; then
+    env REDIS_URL="$LIVE_REDIS_URL" timeout -k 30 "$SUITE_TIMEOUT" node "$f" > /tmp/at-$name.log 2>&1
+    code=$?
+  elif [ "$f" = "tests/idor-runtime.js" ] || [ "$f" = "tests/idor-runtime-r4.js" ] || [ "$f" = "tests/a35-regression.js" ]; then
+    DATABASE_URL="$LIVE_PG_URL" node tools/seed-idor-fixture.js > /tmp/at-$name-seed.log 2>&1
+    env DATABASE_URL="$LIVE_IDOR_URL" PGURL="$LIVE_IDOR_URL" IDOR_DATABASE_URL="$LIVE_IDOR_URL" REDIS_URL="$LIVE_REDIS_URL" \
+      PAYESH_DEMO_CODE=1 PAYESH_SMS_PHONE_LIMIT=1000 PAYESH_SMS_IP_LIMIT=1000 PAYESH_SMS_COOLDOWN_S=0 \
+      timeout -k 30 "$SUITE_TIMEOUT" node "$f" > /tmp/at-$name.log 2>&1
+    code=$?
+  elif [ "$f" = "tests/p11-phone-auth-live.js" ]; then
+    psql "$LIVE_ADMIN_URL" -c "DROP DATABASE IF EXISTS payesh_bench;" >/dev/null 2>&1 || true
+    psql "$LIVE_ADMIN_URL" -c "CREATE DATABASE payesh_bench;" >/dev/null 2>&1 || true
+    node server/seed.js >/dev/null 2>&1 || true
+    env P11_LIVE_PG="$LIVE_BENCH_URL" PAYESH_ALLOW_DEV_MEMORY_AUTHORITY=1 \
+      timeout -k 30 "$SUITE_TIMEOUT" node "$f" > /tmp/at-$name.log 2>&1
+    code=$?
+    psql "$LIVE_ADMIN_URL" -c "DROP DATABASE IF EXISTS payesh_bench;" >/dev/null 2>&1 || true
+  else
+    if [ "$f" = "tests/pg-relational-seed.js" ]; then
+      psql "$LIVE_PG_URL" -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;" >/dev/null 2>&1 || true
+      DATABASE_URL="$LIVE_PG_URL" node tools/migrate-ledger.js up >/dev/null 2>&1 || true
+    fi
+    node server/seed.js >/dev/null 2>&1 || true
+    env DATABASE_URL="$LIVE_PG_URL" PGURL="$LIVE_PG_URL" PG_LIVE_PG="$LIVE_PG_URL" SYNC_TEST_DATABASE_URL="$LIVE_PG_URL" REDIS_URL="$LIVE_REDIS_URL" REDIS_LIVE_URL="$LIVE_REDIS_URL" QOD_LIVE_PG=1 PGHOST=127.0.0.1 PGPORT=5432 PGUSER=payesh PGPASSWORD=payesh PGDATABASE=payesh_ci \
+      timeout -k 30 "$SUITE_TIMEOUT" node "$f" > /tmp/at-$name.log 2>&1
+    code=$?
+  fi
+  pkill -f 'node .*server/index\.js' 2>/dev/null || true
+  end=$(date +%s)
+  last=$(grep -E "موفق|بررسی — |✅ /|کشته|PASS|SECURE" /tmp/at-$name.log | tail -1 | tr '\n' ' ' | cut -c1-100)
+  if [ $code -eq 124 ]; then
+    echo "RED   $name (TIMEOUT after ${SUITE_TIMEOUT}s — unfinishable suite, counted as failure)" >> $OUT
+    echo "[suite] RED-TIMEOUT $name (live-infra, ${SUITE_TIMEOUT}s)"
+  elif [ $code -eq 0 ]; then
+    echo "GREEN $name ($((end-start))s)" >> $OUT
+    echo "[suite] GREEN $name ($((end-start))s)"
+  else
+    echo "RED   $name ($((end-start))s) :: $last" >> $OUT
+    echo "[suite] RED $name ($((end-start))s) :: $last"
+  fi
+}
+
 lane_sweep() { pkill -f 'node .*server/index\.js' 2>/dev/null; sleep 1; return 0; }
 port_lane() {
   for f in $PORT_P1; do run_one "$f"; lane_sweep; done
   for f in $PORT_P2; do run_copy "$f"; lane_sweep; done
 }
-export -f run_one run_copy uses_port port_lane
-# SUITE_TIMEOUT must be exported: run_one/run_copy execute in xargs children.
-export OUT PORT_P1 PORT_P2 SUITE_TIMEOUT
+export -f suite_env_prefix run_one run_copy run_live_one uses_port port_lane
+export OUT PORT_P1 PORT_P2 SUITE_TIMEOUT ROOT_GIT_DIR
 
 NA=$(echo "$LANE_A" | sed '/^$/d' | wc -l)
 NB=$(echo "$LANE_B" | sed '/^$/d' | wc -l)
@@ -270,17 +464,21 @@ NC2=$(echo "$PORT_P2" | sed '/^$/d' | wc -l)
 echo "=== LANES: A=$NA (main, $WORKERS workers) B=$NB (copies, $WORKERS workers) PORT-serial=$NC1+$NC2" >> $OUT
 echo "[lanes] A=$NA (main) B=$NB (copies) PORT-serial=$NC1+$NC2 suite_timeout=${SUITE_TIMEOUT}s"
 
-port_lane &
-PORT_PID=$!
+for f in $EXCL_PRESENT; do
+  run_one "$f"
+  lane_sweep
+done
 echo "$LANE_A" | sed '/^$/d' | xargs -d '\n' -P $WORKERS -I{} bash -c 'run_one "$@"' _ {}
-# mid-run sweep: server suites leak /tmp/payesh-*/store.json (5.6MB each).
-# R92: only delete idle dirs (modified >2 min ago) — the port lane may be
-# inside /tmp/mut-* or /tmp/payesh-* concurrently (sim_full3 store!);
-# -mmin +2 protects live suites, still cleans leaks
 find /tmp -maxdepth 1 \( -name 'mut-*' -o -name 'payesh-*' \) -mmin +2 -exec rm -rf {} + 2>/dev/null || true
 rm -rf /tmp/authzchk-* 2>/dev/null || true
 echo "$LANE_B" | sed '/^$/d' | xargs -d '\n' -P $WORKERS -I{} bash -c 'run_copy "$@"' _ {}
-wait $PORT_PID
+port_lane
+psql "$LIVE_PG_URL" -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;" >/dev/null 2>&1 || true
+DATABASE_URL="$LIVE_PG_URL" node tools/migrate-ledger.js up >/dev/null 2>&1 || true
+for f in $LIVE_PRESENT; do
+  run_live_one "$f"
+done
+node server/seed.js >/dev/null 2>&1 || true
 
 GREEN=$(grep -c '^GREEN' $OUT)
 RED=$(grep -c '^RED' $OUT)
@@ -288,13 +486,8 @@ echo "=== TOTAL: green=$GREEN red=$RED" >> $OUT
 grep '^RED' $OUT | awk '{print $2}' | sed 's/^/=== RED: /' >> $OUT
 echo "=== elapsed: $(( $(date +%s) - START ))s" >> $OUT
 echo "DONE" >> $OUT
-# Root C: the verdict must reach the CI step log, not only /tmp/all-tests.log —
-# a job that times out at 6h otherwise leaves no evidence of what ran at all.
 echo "=== TOTAL: green=$GREEN red=$RED (elapsed: $(( $(date +%s) - START ))s)"
 grep '^RED' $OUT | sed 's/^/=== RED: /'
-# Issue #454 item 6 (fail-closed): zero executed suites must never be green.
-# An empty lane set previously fell through to `[ $RED -eq 0 ]` with
-# GREEN=0 RED=0 and exited 0 — a "no suites ran" run reported as success.
 if [ "$GREEN" -eq 0 ]; then
   echo "=== FATAL: green=0 — no suites executed; refusing to report green ===" >&2
   exit 1

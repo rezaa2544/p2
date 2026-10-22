@@ -185,9 +185,10 @@ function applyOp(op,record=true){
       // All queued updates carry the version originally observed, including
       // structural/LWW collections. Replay must never rebase an existing intent.
       if (op.base_version == null) op.base_version = it.version || 1;
-      const nextVersion = (it.version || 1) + 1;
+      const changed = op.data && Object.keys(op.data).some(k => k !== 'version' && it[k] !== op.data[k]);
+      const nextVersion = changed ? (it.version || 1) + 1 : (it.version || 1);
       Object.assign(it,op.data);
-      it.version = nextVersion;
+      it.version = (op.data && Number.isInteger(op.data.version) && op.data.version > nextVersion) ? op.data.version : nextVersion;
     }
   }
   else if(op.t==='del'){

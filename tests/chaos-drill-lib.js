@@ -24,16 +24,14 @@ const crypto = require('crypto');
 const { spawn, execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
-const PG_BIN = process.env.CHAOS_PG_BIN || '/usr/lib/postgresql/17/bin';
-/* 🔴 دروازهٔ امنیتی: مسیرِ کاملِ آمده از env قابل اجرا نیست (untrusted program
-   selection). فقط نامِ مجازِ literal اجرا می‌شود. در محیطِ CI لینوکس،
-   ابزارها در PG_BIN هستند و مسیرِ مطلقِ پیش‌فرض مجاز است؛ در غیرِ آن صورت
-   نامِ ساده از PATH حل می‌شود. */
+const PG_CANDIDATE_BINS = ['/usr/lib/postgresql/18/bin', '/usr/lib/postgresql/17/bin', '/usr/lib/postgresql/16/bin', '/usr/lib/postgresql/15/bin', '/usr/local/bin', '/usr/bin'];
+const PG_DISCOVERED_BIN = PG_CANDIDATE_BINS.find((d) => fs.existsSync(path.join(d, 'initdb')) && fs.existsSync(path.join(d, 'pg_ctl'))) || '/usr/lib/postgresql/17/bin';
+const PG_BIN = process.env.CHAOS_PG_BIN || PG_DISCOVERED_BIN;
 const PG_TOOLS = new Set(['initdb', 'pg_ctl', 'createdb', 'psql', 'pg_dump', 'pg_isready']);
-const PG_DEFAULT_BIN = '/usr/lib/postgresql/17/bin';
+const PG_TRUSTED_BINS = new Set(PG_CANDIDATE_BINS);
 function pgBin(n) {
   if (!PG_TOOLS.has(n)) throw new Error('disallowed pg tool: ' + n);
-  const dir = (PG_BIN === PG_DEFAULT_BIN) ? PG_DEFAULT_BIN : null;
+  const dir = PG_TRUSTED_BINS.has(PG_BIN) ? PG_BIN : null;
   if (dir && fs.existsSync(path.join(dir, n))) return path.join(dir, n);
   return n;
 }
@@ -88,9 +86,14 @@ const CHAOS_JWT_SECRET = crypto.randomBytes(32).toString('hex');
 const CHAOS_METRICS_TOKEN = crypto.randomBytes(24).toString('hex');
 
 function have(bin) {
-  /* command -v مستقیم — فقط نامِ دودوییِ مجاز، بدون ارسالِ رشته به sh -c */
+  /* جست‌وجوی مستقیم در PATH بدونِ shell — در لینوکس Debian/Ubuntu دستورِ
+     command یک builtin پوسته است نه باینریِ اجرایی در /usr/bin/command. */
   if (!PG_TOOLS.has(bin) && bin !== 'redis-server' && bin !== 'redis-cli') return false;
-  try { execFileSync('command', ['-v', bin], { stdio: 'ignore' }); return true; } catch (e) { return false; }
+  const dirs = String(process.env.PATH || '/usr/local/bin:/usr/bin:/bin').split(path.delimiter).filter(Boolean);
+  for (const d of dirs.concat(['/usr/local/bin', '/usr/bin', '/bin'])) {
+    try { if (fs.existsSync(path.join(d, bin))) return true; } catch (_) {}
+  }
+  return false;
 }
 function infraAvailable() {
   return { postgres: fs.existsSync(pgBinPath('initdb')), redis: have('redis-server'), redisCli: have('redis-cli') };
@@ -188,7 +191,7 @@ function httpReq(port, method, p, body, opts) {
   return new Promise((resolve) => {
     const t0 = Date.now();
     const data = body == null ? null : JSON.stringify(body);
-    const headers = { 'Content-Type': 'application/json' };
+    const headers = { 'Content-Type': 'application/json', 'Origin': 'http://127.0.0.1:' + port };
     if (jar) headers['Cookie'] = jar.headers().join('; ');
     if (opts.bearer) headers['Authorization'] = 'Bearer ' + opts.bearer;
     if (opts.headers) Object.assign(headers, opts.headers);
@@ -306,6 +309,7 @@ class Infra {
     it.dir = fs.mkdtempSync(path.join(os.tmpdir(), 'chaos-drill-'));
     it.pgPort = opts.pgPort || await freePort();
     it.redisPort = opts.redisPort || await freePort();
+    Infra._lastRedisPort = it.redisPort;
     /* disk: { mount:true, sizeMb } ⇒ دادهٔ PG/استور/آدیت روی یک tmpfs با اندازهٔ محدود
        نصب می‌شود تا فشارِ دیسک (ENOSPC) واقعاً تزریق‌شدنی باشد. */
     let base = it.dir;
@@ -328,11 +332,12 @@ class Infra {
       it.diskDir = path.join(base, 'mnt');
       console.log('[disk] tmpfs نصب شد روی ' + mnt + ' (size=' + sizeMb + 'MB) — free=' + it.diskFreeKb() + 'KB');
     }
-    it.pgData = path.join(base, 'pgdata');
-    it.pgLog = path.join(base, 'pg.log');
-    it.storeFile = path.join(base, 'payesh.json');
-    it.auditFile = path.join(base, 'audit.log');
-    it.keyFile = path.join(base, 'jwt.key');
+    const dataRoot = it.diskDir || base;
+    it.pgData = path.join(dataRoot, 'pgdata');
+    it.pgLog = path.join(dataRoot, 'pg.log');
+    it.storeFile = path.join(dataRoot, 'payesh.json');
+    it.auditFile = path.join(dataRoot, 'audit.log');
+    it.keyFile = path.join(dataRoot, 'jwt.key');
     it.schemaLog = path.join(it.dir, 'schema.log');
 
     // تجهیزِ دیتابیس
@@ -434,14 +439,15 @@ class Infra {
     try { return Number(execFileSync('df', ['--output=avail', '-k', this.diskDir], { encoding: 'utf8' }).trim().split('\n').pop().trim()); }
     catch (e) { return null; }
   }
-  /** پر کردنِ tmpfs تا وقتی که فقط targetKb آزاد بماند (با fallocate) */
+  /** پر کردنِ tmpfs تا وقتی که فقط targetKb آزاد بماند (با fallocate افزایشی) */
   fillDiskToFreeKb(targetKb) {
     const free = this.diskFreeKb();
     if (free == null) return { ok: false, error: 'df failed' };
     const allocKb = free - targetKb;
     if (allocKb <= 0) return { ok: true, allocatedKb: 0, freeKb: free };
     this.filler = path.join(this.diskDir, 'filler.bin');
-    execFileSync('fallocate', ['-l', allocKb + 'K', this.filler], { stdio: 'ignore' });
+    const curKb = fs.existsSync(this.filler) ? Math.ceil(fs.statSync(this.filler).size / 1024) : 0;
+    execFileSync('fallocate', ['-l', (curKb + allocKb) + 'K', this.filler], { stdio: 'ignore' });
     return { ok: true, allocatedKb: allocKb, freeKb: this.diskFreeKb() };
   }
   clearDiskFiller() {
@@ -526,8 +532,9 @@ async function startApi(opts) {
   const launch = () => {
     proc = spawn(process.execPath, ['server/index.js'], { cwd: ROOT, env, stdio: ['ignore', out, out], detached: true });
     if (opts.supervisor) {
-      proc.on('exit', (code) => {
-        try { fs.appendFileSync(logFile, '[supervisor] api exited rc=' + code + ' at ' + nowIso() + '\n'); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ }
+      proc.on('exit', (code, signal) => {
+        const rc = code != null ? code : (signal === 'SIGKILL' ? 137 : 1);
+        try { fs.appendFileSync(logFile, '[supervisor] api exited rc=' + rc + ' at ' + nowIso() + '\n'); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ }
         if (!stopped) setTimeout(launch, 50);
       });
     }
@@ -562,7 +569,26 @@ async function startApi(opts) {
 async function loginAs(port, user) {
   const jar = makeJar();
   const s = await httpReq(port, 'POST', '/api/auth/send-code', { phone: user.phone }, { jar, timeoutMs: 10000 });
-  const code = (s.json && (s.json.demo_code || (s.json.data && s.json.data.demo_code))) || null;
+  let code = (s.json && (s.json.demo_code || (s.json.data && s.json.data.demo_code))) || null;
+  if (!code && Infra._lastRedisPort) {
+    const ckey = String(user.phone || '').replace(/\D/g, '').slice(-10);
+    for (let w = 0; w < 20 && !code; w++) {
+      const raw = redisCli(Infra._lastRedisPort, ['GET', 'payesh:otp:state']);
+      try {
+        const doc = JSON.parse(raw);
+        const rec = doc && doc.codes && (doc.codes[ckey] || doc.codes[user.phone]);
+        if (rec && rec.h) {
+          for (let cNum = 100000; cNum < 1000000; cNum++) {
+            const cand = String(cNum);
+            const h1 = crypto.createHmac('sha256', CHAOS_JWT_SECRET).update(cand + '|' + ckey).digest('hex');
+            if (h1 === rec.h) { code = cand; break; }
+          }
+          break;
+        }
+      } catch (_) {}
+      await sleep(50);
+    }
+  }
   const l = await httpReq(port, 'POST', '/api/auth/login', { phone: user.phone, code: String(code || ''), national_id: user.national_id }, { jar, timeoutMs: 10000 });
   return { jar, send: s, login: l, ok: l.status === 200 };
 }

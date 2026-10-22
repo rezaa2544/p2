@@ -59,7 +59,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const r = W(`JSON.stringify(restoreBackup(buildBackup()))`);
   chk('G4a بازیابی موفق', JSON.parse(r).ok === true, String(r).slice(0, 160));
   chk('G4b پس از بازیابی: نمرهٔ سال‌گذشته بازتولید شد',
-    W(`db.grades.some(function(g){var y=yearOfDate(g.created_at);return y&&y!==yearCode();})`) === true);
+    W(`db.grades.some(function(g){var y=yearOfDate(g.created_at);return y&&y!==yearCode();})`) === true &&
+    W(`(function(){var b={format:'payesh-backup',version:1,ops:[]};db.grades=[];db.attendance=[];log.length=0;restoreBackup(b);return db.grades.some(function(g){var y=yearOfDate(g.created_at);return y&&y!==yearCode();}) && db.attendance.some(function(a){var y=yearOfDate(a.date);return y&&y!==yearCode();});})()`) === true);
   chk('G4c پس از بازیابی: مشاور بازتولید شد',
     W(`db.users.some(function(u){return u.role==='counselor';})`) === true);
 

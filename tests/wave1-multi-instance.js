@@ -47,8 +47,10 @@ const MGR = { id: 5, role: 'manager', school_id: 1 };
 
 function makeInstance(tag) {
   const store = {
+    schools: [{ id: 1, name: 'S1', active: true }],
+    subjects: [{ id: 3, school_id: 1, name: 'Math' }],
     announcements: [], grades: [], notifications: [], sync_conflicts: [],
-    users: [{ id: 5, role: 'manager', school_id: 1, full_name: 'M', active: true }],
+    users: [{ id: 5, role: 'manager', school_id: 1, full_name: 'M', active: true }, { id: 9, role: 'student', school_id: 1, full_name: 'S', active: true }],
     tombstones: [], outbox: [], __deleted_records: [],
     __processed_uids: {}, __server_version: 0
   };
@@ -99,18 +101,21 @@ async function apiSyncOf(inst, ops) {
   const pool = new Pool();
   const ANN_DDL = `CREATE TABLE announcements
     (id INTEGER PRIMARY KEY, school_id INTEGER, title TEXT, body TEXT,
-     scope TEXT, version INTEGER, updated_at TEXT, created_at TEXT)`;
+     scope TEXT, by INTEGER, at TEXT, author_id INTEGER, created_by INTEGER, target_role TEXT, target_class_id INTEGER, pinned INTEGER, version INTEGER, updated_at TEXT, created_at TEXT)`;
   await pool.query(ANN_DDL);
   await pool.query(`CREATE TABLE grades
     (id INTEGER PRIMARY KEY, school_id INTEGER, student_id INTEGER, teacher_id INTEGER,
-     subject_id INTEGER, score NUMERIC, type TEXT, term TEXT,
+     subject_id INTEGER, score NUMERIC, type TEXT, term TEXT, by INTEGER, at TEXT,
      version INTEGER, updated_at TEXT, created_at TEXT)`);
   await pool.query(`CREATE TABLE notifications
     (id INTEGER PRIMARY KEY, school_id INTEGER, user_id INTEGER, type TEXT,
-     title TEXT, body TEXT, link TEXT, "read" INTEGER, created_at TEXT)`);
+     title TEXT, body TEXT, link TEXT, "read" INTEGER, is_read BOOLEAN, meta JSONB,
+     version INTEGER, updated_at TEXT, created_at TEXT)`);
   await pool.query(`CREATE TABLE server_outbox
     (id INTEGER PRIMARY KEY, type TEXT, collection TEXT, record_id INTEGER,
      actor_id INTEGER, version INTEGER, payload TEXT, created_at TIMESTAMPTZ)`);
+  await pool.query(`CREATE TABLE subjects
+    (id INTEGER PRIMARY KEY, school_id INTEGER, name TEXT)`);
   /* stub tables: hydrate iterates every store key — these exist only to keep the
      stand-in quiet (empty SELECTs); assertions never depend on them. */
   await pool.query(`CREATE TABLE users
@@ -126,10 +131,21 @@ async function apiSyncOf(inst, ops) {
     (id INTEGER PRIMARY KEY, school_id INTEGER, class_id INTEGER, student_id INTEGER)`);
   await pool.query(`CREATE TABLE parent_links
     (id INTEGER PRIMARY KEY, parent_id INTEGER, student_id INTEGER)`);
-  await pool.query('CREATE TABLE sync_conflicts (id INTEGER PRIMARY KEY)');
-  for (const s of ['users', 'grades', 'attendance', 'classes'])
+  await pool.query(`CREATE TABLE server_processed_uids
+    (uid TEXT PRIMARY KEY, processed_at TIMESTAMPTZ)`);
+  await pool.query(`CREATE TABLE sync_conflicts
+    (id INTEGER PRIMARY KEY, collection TEXT, record_id INTEGER, school_id INTEGER,
+     user_id INTEGER, client_uid TEXT, base_version INTEGER, incoming_version INTEGER,
+     current_version INTEGER, server_version INTEGER, client_data JSONB, server_data JSONB,
+     server_state JSONB, incoming JSONB, server_snapshot JSONB,
+     resolution_strategy TEXT, status TEXT, winner TEXT, resolved_by INTEGER,
+     resolved_at TIMESTAMPTZ, reason TEXT, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ, version INTEGER)`);
+  for (const s of ['users', 'grades', 'attendance', 'classes', 'announcements', 'sync_conflicts'])
     await pool.query('CREATE SEQUENCE payesh_' + s + '_id_seq');
   await pool.query('CREATE SEQUENCE payesh_outbox_id_seq');
+  await pool.query(`INSERT INTO schools (id, name, active, version) VALUES (1, 'S1', true, 1)`);
+  await pool.query(`INSERT INTO users (id, role, school_id, active, full_name, version) VALUES (5, 'manager', 1, true, 'M', 1), (9, 'student', 1, true, 'S', 1)`);
+  await pool.query(`INSERT INTO subjects (id, school_id, name) VALUES (3, 1, 'Math')`);
   db.__setPoolForTests(pool);
   chk('T0 تزریقِ pool: حالتِ PG فعال است', db.isPostgres() === true);
 
@@ -245,7 +261,7 @@ async function apiSyncOf(inst, ops) {
     A.store.tombstones.some(t => t.collection === 'grades' && t.record && t.record.id === idG));
   const r6b = await B.grades.updateGrade({ user: MGR }, idG, { score: 5 });
   chk('T6d خوانشِ تکیِ PG-first در B: ۴۰۴', r6b.status === 404, JSON.stringify(r6b.body));
-  await db.hydrateStoreFromPg(B.store);
+  await db.hydrateStoreFromPg(B.store, { force: true });
   chk('T6e پس از hydrate، کشِ B همگرا شد (خالی)',
     (B.store.grades || []).filter(g => g.id === idG).length === 0);
 
@@ -270,7 +286,7 @@ async function apiSyncOf(inst, ops) {
   chk('T8c ردیف از PG رفت', !(await pgRows('grades')).some(r => r.id === idN));
 
   /* ── T9: احراز هویت و وضعیت مدرسه در چند نمونه (PG Authority) ── */
-  await pool.query("INSERT INTO schools (id, name, active) VALUES (1, 'مدرسه ۱', true), (2, 'مدرسه ۲', false)");
+  await pool.query("INSERT INTO schools (id, name, active) VALUES (2, 'مدرسه ۲', false)");
   await pool.query("INSERT INTO users (id, role, school_id, national_id, active, full_name, phone) VALUES " +
     "(101, 'teacher', 1, '1111111111', true, 'دبیر ۱', '09121111111'), " +
     "(102, 'teacher', 2, '2222222222', true, 'دبیر ۲', '09122222222'), " +
@@ -282,8 +298,10 @@ async function apiSyncOf(inst, ops) {
   B.store.users = [{ id: 101, active: true, role: 'teacher', school_id: 1, full_name: 'دبیر ۱', phone: '09121111111', national_id: '1111111111' }];
   B.store.schools = [{ id: 1, active: true, name: 'مدرسه ۱' }, { id: 2, active: false, name: 'مدرسه ۲' }];
 
-  const otpA = createOtpStore({ file: '/tmp/wave1-otp-a.json', ttlMs: 60000, store: A.store });
-  const otpB = createOtpStore({ file: '/tmp/wave1-otp-b.json', ttlMs: 60000, store: B.store });
+  const otpDir = require('fs').mkdtempSync(require('path').join(require('os').tmpdir(), 'wave1-otp-'));
+  process.on('exit', () => { try { require('fs').rmSync(otpDir, { recursive: true, force: true }); } catch (_) {} });
+  const otpA = createOtpStore({ file: require('path').join(otpDir, 'otp-a.json'), ttlMs: 60000, store: A.store });
+  const otpB = createOtpStore({ file: require('path').join(otpDir, 'otp-b.json'), ttlMs: 60000, store: B.store });
   const JWT_SECRET = 'wave1-multi-instance-test-secret-at-least-32-chars';
 
   const authA = createAuth({ store: A.store, db, JWT_SECRET, SESSION_NAME: 'sid', SESSION_TTL_S: 3600, CODE_TTL_MS: 60000, DEMO_CODE_ECHO: true, audit: () => {}, isHttps: () => false, otp: otpA });
@@ -300,19 +318,27 @@ async function apiSyncOf(inst, ops) {
   const sess101Init = await authB.sessionFrom(reqWithTok101);
   chk('T9a ورود و نشست کاربر فعال در PG معتبر است', sess101Init && sess101Init.id === 101);
 
+  // کد OTP معتبر در نمونهٔ B صادر می‌شود در حالی که کاربر هنوز فعال است
+  const sendRes = {
+    writeHead: (c) => { sendRes._code = c; },
+    setHeader: () => {},
+    end: (b) => { try { sendRes._body = JSON.parse(b); } catch (e) { sendRes._body = b; } }
+  };
+  await authB.apiSendCode({ headers: {} }, sendRes, { phone: '09121111111' });
+  const realOtpCode = String((sendRes._body && sendRes._body.demo_code) || '123456');
+
   // T9c: نمونهٔ A کاربر ۱۰۱ را در PG غیرفعال می‌کند
   await pool.query('UPDATE users SET active = false WHERE id = 101');
   const sess101Deact = await authB.sessionFrom(reqWithTok101);
   chk('T9b کاربرِ غیرفعال‌شده در PG بلافاصله در نمونهٔ B رد می‌شود (sessionFrom -> null)', sess101Deact === null);
 
-  // T9d: ورود مجدد ۱۰۱ در B با کد و رمز
-  otpB.data.codes['09121111111'] = { h: require('crypto').createHash('sha256').update('123456|09121111111').digest('hex'), at: Date.now(), user_id: 101, tries: 0 };
+  // T9d: ورود مجدد ۱۰۱ در B با کد واقعی و رمز
   const loginRes = {
     writeHead: (c) => { loginRes._code = c; },
     setHeader: () => {},
     end: (b) => { try { loginRes._body = JSON.parse(b); } catch (e) { loginRes._body = b; } }
   };
-  await authB.apiLogin({ headers: {} }, loginRes, { phone: '09121111111', code: '123456', national_id: '1111111111' });
+  await authB.apiLogin({ headers: {} }, loginRes, { phone: '09121111111', code: realOtpCode, national_id: '1111111111' });
   chk('T9c تلاش ورود کاربر غیرفعال‌شده در PG رد می‌شود (401 inactive)', loginRes._code === 401 && loginRes._body && loginRes._body.code === 'inactive');
 
   // T9e: کاربر در PG حذف می‌شود -> نشست در B رد می‌شود

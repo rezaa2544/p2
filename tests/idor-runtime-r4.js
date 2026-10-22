@@ -55,7 +55,7 @@ function log(id, desc, status, expect, extra) {
 async function req(method, p, { body, cookie } = {}) {
   const res = await fetch(BASE + p, {
     method,
-    headers: Object.assign(body ? { 'Content-Type': 'application/json' } : {}, cookie ? { Cookie: cookie } : {}),
+    headers: Object.assign({ Origin: BASE }, body ? { 'Content-Type': 'application/json' } : {}, cookie ? { Cookie: cookie } : {}),
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();

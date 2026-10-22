@@ -66,8 +66,11 @@ function createIds({ db, cache }){
       const seqRes = await db.query('SELECT pg_get_serial_sequence($1, $2) AS seq', [col, 'id']);
       const ownedSeq = seqRes && seqRes.rows && seqRes.rows[0] && seqRes.rows[0].seq;
       if(ownedSeq){
-        const r = await db.query('SELECT nextval($1)', [ownedSeq]);
-        return Number(r.rows[0].nextval);
+        const r = await db.query(
+          `SELECT setval($1, GREATEST(nextval($1), (SELECT COALESCE(MAX(id), 0) + 1 FROM "${col}")), true) AS next_id`,
+          [ownedSeq]
+        );
+        return Number(r.rows[0].next_id);
       }
     }catch(e){/* swallowed: intentional — e unused */}
     const seq = seqName(col);

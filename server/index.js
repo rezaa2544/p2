@@ -114,7 +114,8 @@ const AT_DRIFT_MS = 24 * 3600 * 1000;  /* §3.3: do not reject, log */
    comes from the real SMS gateway, so the echo must require an explicit
    opt-in: PAYESH_DEMO_CODE=1. (DEPLOY.md §env already documented this
    default — the code now matches the docs.) */
-const DEMO_CODE_ECHO = (process.env.PAYESH_DEMO_CODE === '1') &&
+const DEMO_CODE_ECHO = process.env.PAYESH_DEMO_CODE === '1';
+const DEMO_CODE_EFFECTIVE = DEMO_CODE_ECHO &&
   process.env.NODE_ENV !== 'production' &&
   process.env.PAYESH_ENV !== 'production';
 
@@ -833,7 +834,7 @@ function securityHeaders(res, nonce, https){
    P0-15: وقتی ردیس فعال است، همان کلیدِ مشترکِ ردیس منبع حقیقت می‌شود
    و فایل فقط فال‌بکِ توسعهٔ بدون ردیس است. */
 const otp = createOtpStore({ file: OTP_FILE, ttlMs: CODE_TTL_MS, store, markDirty, redis, cache });
-const auth = createAuth({ store, db, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty, otp, revocationDataDir: DATA_DIR });
+const auth = createAuth({ store, db, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO: DEMO_CODE_EFFECTIVE, audit, isHttps, markDirty, otp, revocationDataDir: DATA_DIR });
 /* R97: همهٔ ماژول‌هایِ /api با sendJsonCounting می‌چرخند تا رد‌ها شمرده
    شوند؛ auth استثناست (سقفِ OTP سقفِ خودش را می‌سازد). */
 /* P0-16: شناسه‌های بدون‌برخورد — دنبالهٔ پستگرس یا مکس+۱ قفل‌دار (پیش از sync: حلقهٔ اعمال از آن استفاده می‌کند) */
@@ -1396,7 +1397,7 @@ const onRequest = async (req, res) => {
       // Phase 6 (B8): Zero-Trust Tenant & Provincial Isolation Guardrail
       const targetSchool = url.searchParams.get('school_id') || req.headers['x-school-id'];
       const targetProv = req.headers['x-province-code'];
-      if (s.role !== 'superadmin' || targetSchool || targetProv) {
+      if (s.role !== 'superadmin') {
         try {
           /* P1: استانِ عامل از یک منبعِ واحد حل می‌شود (resolveActorProvince:
              session.province_code → province_id → school → office). پیش از این

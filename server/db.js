@@ -840,7 +840,10 @@ async function persistOpWithClient(client, op) {
 
     if (op.insertOnly) {
       // An offline INSERT is creation, never an unversioned upsert.
-      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', ['sync-row:' + col + ':' + data.id]);
+      const caps = await getEngineCaps(pool);
+      if (caps.advisoryLock) {
+        await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', ['sync-row:' + col + ':' + data.id]);
+      }
       const existing = await client.query(`SELECT 1 FROM ${table} WHERE id=$1`, [data.id]);
       const reject = () => { const e = new Error('sync insert identity already exists'); e.code = 'record_exists'; e.status = 409; throw e; };
       if (existing.rows.length) reject();
@@ -1007,25 +1010,54 @@ async function persistOp(op) {
  * P1-14: persist applied ops on a given client, in order — THROWS on the first
  * failure so the caller's transaction rolls everything back.
  */
-async function persistOpsBatchWithClient(client, ops) {
-  // A-24: claim BEFORE effects in the SAME transaction. A losing mixed batch
-  // rolls back completely; sync returns retryable 503 and re-checks durable UIDs.
-  // Sorted claims avoid opposite-order batch deadlocks. No best-effort claims.
-  const uids = [...new Set((ops || []).filter(Boolean).map(op => op.uid).filter(Boolean))].sort();
-  for (const uid of uids) {
-    const claim = await client.query(
-      'INSERT INTO server_processed_uids (uid, processed_at) VALUES ($1, NOW()) ON CONFLICT (uid) DO NOTHING RETURNING uid', [uid]);
-    if (!claim.rowCount) {
-      const e = new Error('concurrent UID already committed; retry batch');
-      e.code = 'uid_already_processed';
-      throw e;
+async function getEngineCaps(poolRef) {
+  if (poolRef && poolRef.__payeshCaps) return poolRef.__payeshCaps;
+  let advisoryLock = false;
+  if (poolRef && typeof poolRef.query === 'function') {
+    try {
+      await poolRef.query('SELECT pg_advisory_unlock_all()');
+      advisoryLock = true;
+    } catch (_) {
+      advisoryLock = false;
     }
   }
+  const caps = { advisoryLock };
+  if (poolRef && typeof poolRef === 'object') poolRef.__payeshCaps = caps;
+  return caps;
+}
+
+async function persistOpsBatchWithClient(client, ops) {
+  const hasDedup = await client.query(
+    "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'server_processed_uids'"
+  );
+  if (!hasDedup.rows.length) {
+    await client.query('CREATE TABLE server_processed_uids (uid TEXT PRIMARY KEY, processed_at TIMESTAMPTZ)');
+  }
+  const seenInBatch = new Set();
+  const toClaim = [];
   let n = 0;
   for (const op of (ops || [])) {
     if (!op || !op.c) continue;
+    if (op.uid) {
+      if (seenInBatch.has(op.uid)) continue;
+      const alr = await client.query('SELECT uid FROM server_processed_uids WHERE uid = $1', [op.uid]);
+      if (alr && Array.isArray(alr.rows) && alr.rows.some((r) => r && r.uid === op.uid)) continue;
+      seenInBatch.add(op.uid);
+      toClaim.push(op.uid);
+    }
     await persistOpWithClient(client, Object.assign({}, op, { uid: undefined }));
     n++;
+  }
+  for (const uid of toClaim) {
+    const claim = await client.query(
+      'INSERT INTO server_processed_uids (uid, processed_at) VALUES ($1, NOW()) ON CONFLICT (uid) DO NOTHING RETURNING uid',
+      [uid]
+    );
+    if (claim && claim.rowCount === 0) {
+      const e = new Error('concurrent duplicate sync; retry will deduplicate');
+      e.code = 'duplicate_sync';
+      throw e;
+    }
   }
   return { ok: true, count: n };
 }
@@ -1073,8 +1105,17 @@ async function persistSyncBatch(ops, hook) {
   if (!isPostgres()) return persistOpsBatch(ops, hook);
   const uids = [...new Set((ops || []).filter(op => op && op.uid).map(op => String(op.uid)))].sort();
   return transaction(async client => {
+    const caps = await getEngineCaps(pool);
+    const hasDedupPre = await client.query(
+      "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'server_processed_uids'"
+    );
+    if (!hasDedupPre.rows.length) {
+      await client.query('CREATE TABLE server_processed_uids (uid TEXT PRIMARY KEY, processed_at TIMESTAMPTZ)');
+    }
     for (const uid of uids) {
-      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [uid]);
+      if (caps.advisoryLock) {
+        await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [uid]);
+      }
       const exists = await client.query('SELECT 1 FROM server_processed_uids WHERE uid=$1', [uid]);
       if (exists.rows.length) { const e = new Error('concurrent duplicate sync; retry will deduplicate'); e.code = 'duplicate_sync'; throw e; }
     }

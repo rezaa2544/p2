@@ -26,8 +26,21 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      JSCRAMBLER_CREDENTIALS_PRESENT: ${{ secrets.JSCRAMBLER_APPLICATION_ID != '' && secrets.JSCRAMBLER_SECRET_KEY != '' && secrets.JSCRAMBLER_ACCESS_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
+      - name: Fail closed when Jscrambler credentials or configuration are missing
+        if: ${{ env.JSCRAMBLER_CREDENTIALS_PRESENT != 'true' || hashFiles('jscrambler.json') == '' }}
+        shell: bash
+        run: |
+          {
+            echo '## Jscrambler Code Integrity — BLOCKED'
+            echo ''
+            echo 'Required repository secrets (JSCRAMBLER_APPLICATION_ID, JSCRAMBLER_SECRET_KEY, JSCRAMBLER_ACCESS_KEY) or tracked configuration file (jscrambler.json) are missing.'
+            echo 'No Jscrambler protection run was executed; this gate remains fail-closed.'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
       - uses: actions/setup-node@v4
         with:
           node-version: 20

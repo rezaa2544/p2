@@ -2207,9 +2207,10 @@ const it = im? im.get(Number(op.id)) : arr.find(x=>x.id===op.id);
 if(typeof idxInvalidate==='function') idxInvalidate(op.c);
 if(it){
 if (op.base_version == null) op.base_version = it.version || 1;
-const nextVersion = (it.version || 1) + 1;
+const changed = op.data && Object.keys(op.data).some(k => k !== 'version' && it[k] !== op.data[k]);
+const nextVersion = changed ? (it.version || 1) + 1 : (it.version || 1);
 Object.assign(it,op.data);
-it.version = nextVersion;
+it.version = (op.data && Number.isInteger(op.data.version) && op.data.version > nextVersion) ? op.data.version : nextVersion;
 }
 }
 else if(op.t==='del'){
@@ -2935,10 +2936,10 @@ out += (bytes[i] % 36).toString(36);
 return out;
 }
 function enqueueOp(op){
-if(op && op.data && (op.data.id !== undefined || op.data.by !== undefined)){
+if(op && op.data && (op.data.id !== undefined || op.data.by !== undefined || op.data.version !== undefined)){
 const clean = {};
 for(const k in op.data){
-if(k === 'id' || k === 'by') continue;
+if(k === 'id' || k === 'by' || k === 'version') continue;
 clean[k] = op.data[k];
 }
 op = Object.assign({}, op, { data: clean });
@@ -4571,7 +4572,7 @@ return `<a href="#" class="skip-link" data-act="skip-to-main">پرش به محت
     <header class="topbar"><button class="burger" data-act="opennav" aria-label="باز کردن منوی ناوبری">☰</button>
       ${(S.stack.length||S.route!==(u.role==='edu_office'?'officedash':'dashboard'))?`<button class="icon-btn back-btn" data-act="back" title="بازگشت" aria-label="بازگشت">→</button>`:''}
       <div><h1>${t[0]}</h1><div class="sub">${t[1]}</div></div><div class="spacer"></div>
-      <button class="icon-btn" data-act="go" data-r="notifications" title="اعلان‌ها" aria-label="اعلان‌ها" style="position:relative;font-size:17px">🔔${(()=>{const n=unreadCount();return n?`<span style="position:absolute;top:-4px;inset-inline-end:-4px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px;border:2px solid #fff">${n>99?'۹۹+':fa(n)}</span>`:''})()}</button>
+      ${(()=>{const n=unreadCount(),b=n?(n>99?'۹۹+':fa(n)):'';return`<button class="icon-btn" data-act="go" data-r="notifications" title="اعلان‌ها" aria-label="${b?'اعلان‌ها '+b:'اعلان‌ها'}" style="position:relative;font-size:17px"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>${b?`<span style="position:absolute;top:-4px;inset-inline-end:-4px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px;border:2px solid #fff">${b}</span>`:''}</button>`;})()}
       ${typeof syncBadge==='function'?syncBadge():''}
       ${typeof themeSegHtml==='function'?themeSegHtml():''}
       ${(()=>{try{if(typeof activeYearOf!=='function')return '';var yc=activeYearOf(u.school_id||null);if(!yc)return '';var t=(typeof yearCodeTitle==='function')?yearCodeTitle(yc):yc;return `<span class="badge b-gray" title="سال تحصیلی عملیاتی">📅 ${esc(t)}</span>`;}catch(e){return '';}})()}
@@ -13898,7 +13899,7 @@ if(paid>0) add('transactions',{school_id:school.id,kind:'income',category:'شه�
 }
 t.paid=paidSum; t.status = paidSum>=payable?'settled':paidSum>0?'partial':'open';
 });
-{
+if(!db.installments.some(i=>i.school_id===school.id&&i.status==='canceled')){
 const od=db.installments.filter(i=>i.school_id===school.id&&i.status!=='paid'&&i.status!=='canceled'&&i.due_date<todayISO());
 if(od.length){
 const w=od[0];
@@ -20647,6 +20648,9 @@ if(typeof db === 'undefined' || !db.users) return 0;
 if(typeof add !== 'function') return 0;
 var already = (db.grades || []).some(function(g){
 var y = yearOfDate(g.created_at);
+return y && typeof yearCode === 'function' && y !== yearCode();
+}) && (db.attendance || []).some(function(a){
+var y = yearOfDate(a.date);
 return y && typeof yearCode === 'function' && y !== yearCode();
 });
 if(already) return 0;

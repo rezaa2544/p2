@@ -366,6 +366,12 @@ function createSemanticAnalyticsRoutes(ctx) {
     }
     /* مدرسهٔ دانش‌آموز (از پروندهٔ کاربر، در صورت موجود بودن) */
     const studentUser = (store.users || []).find((u) => Number(u.id) === studentId) || {};
+    /* A-19: دیدنِ مدرسه کافی نیست — دبیر/مشاور فقط پروندهٔ دانش‌آموزانِ کلاس‌های تدریسیِ خود را می‌بیند. */
+    if (user && (user.role === 'teacher' || user.role === 'counselor')) {
+      if (!studentUser.id || !policy.studentRecordOk(store, user, studentUser)) {
+        return { status: 403, body: { ok: false, code: 'forbidden', message: 'دسترسی به پرونده این دانش‌آموز مجاز نیست' } };
+      }
+    }
     const schoolId = Number(searchParams.get('school_id') || studentUser.school_id || 0) || null;
 
     const profile = buildParent360Profile({

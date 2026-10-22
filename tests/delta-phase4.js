@@ -156,14 +156,14 @@ await test('BP4 429: sync_backpressure + retry_after_s + Retry-After + متری�
   assert(after === before + 1, 'backpressure metric +1 (' + before + '→' + after + ')');
 });
 
-await test('BP5 خطای موتورِ نرخ = fail-open (۲۰۰)، مثلِ قراردادِ rate-limit.js', async () => {
+await test('BP5 خطای موتورِ نرخ = fail-closed (۵۰۳ rate_limit_unavailable)', async () => {
   const boom = async () => { throw new Error('redis down'); };
   const { ctx, store } = makeSyncCtx({ rateLimit: boom, syncOpsPerMin: 100 });
   const s = createSync(ctx);
   const res = mkRes();
   await s.apiSync({}, res, { ops: mkOps(5, 'bp5') });
-  assert(res._cap.code === 200, 'fail-open 200, got ' + res._cap.code);
-  assert(store.visitors.length === 5, 'ops applied');
+  assert(res._cap.code === 503, 'fail-closed 503, got ' + res._cap.code);
+  assert(store.visitors.length === 0, 'no ops applied');
 });
 
 await test('BP6 کلاینت (jsdom): 429 ← opها pending می‌مانند و دوباره زمان‌بندی می‌شوند', async () => {
@@ -400,10 +400,11 @@ function bootServer(tmp, port) {
       PAYESH_KEY: path.join(tmp, 'jwt.key'),
       PORT: String(port),
       PAYESH_DEMO_CODE: '1',
-      PAYESH_ENV: '', REDIS_URL: '', NODE_ENV: ''
+      PAYESH_ALLOW_DEV_MEMORY_AUTHORITY: '1',
+      PAYESH_ENV: '', REDIS_URL: '', DATABASE_URL: '', PGURL: '', NODE_ENV: ''
     });
     delete env.PAYESH_CURSOR_SECRET; delete env.PAYESH_JWT_SECRET;
-    delete env.PAYESH_ENV; delete env.REDIS_URL; delete env.NODE_ENV;
+    delete env.PAYESH_ENV; delete env.REDIS_URL; delete env.DATABASE_URL; delete env.PGURL; delete env.NODE_ENV;
     const child = spawn(process.execPath, [path.join(ROOT, 'server', 'index.js')], { env, stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '', done = false;
     const t = setTimeout(() => { if (!done) { done = true; reject(new Error('boot timeout: ' + out.slice(-300))); } }, 25000);

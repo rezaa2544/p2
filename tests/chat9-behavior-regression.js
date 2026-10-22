@@ -14,10 +14,10 @@
  *   R2 معلم‌ها با پرچم‌هایِ lib_staff/asset_staff غنی شده‌اند ≥ ۱ مورد (دور ۱۵: lib-lend/as-status)
  *   R3 واژۀ محصول `out_at` است، نه `exited_at` (یافتۀ بازِ ممیزی؛ اگر کسی در کدِ محصول
  *      `exited_at` تولید کند، این تست می‌گوید سند و کد دوشده شده‌اند)
- *   R4 پینِ شمارشِ دانه (tests/donations2.js:55 · `users.length === 1036`) و اینکه
+ *   R4 پینِ شمارشِ دانه (tests/donations2.js:55 · `users.length === 1040`) و اینکه
  *      `tools/relational-seed-manifest.json` هیچ ادعایِ ظرفیتی نکند (`benchmark_claim: NONE`)
  *   R5 [اختیاری] اگر jsdom + `server/data/payesh.json` موجود باشد: شمارشِ store
- *      (users=1036 · active=1016 · guard=1) — همان censusِ هارنس. نبودش ⇒ NOT-RUN با
+ *      (users=1040 · active=1016 · guard=1) — همان censusِ هارنس. نبودش ⇒ NOT-RUN با
  *      پیامِ صریح (قراردادِ att3/att4)، چون `server/data/` در .gitignore:29 است و
  *      تولیدش نیازمندِ `node server/seed.js` است (یافتۀ F-6 در گزارشِ Chat9).
  *
@@ -67,8 +67,8 @@ ok('R3b محصول `exited_at` تولید نمی‌کند', !/exited_at/.test(sr
 /* R4 — پینِ شمارشِ دانه در آزمونِ موجود (منشأ: tests/donations2.js:55 با کامنت SIM-01) */
 const pin = read('tests/donations2.js');
 if (!pin) skipped('R4 پینِ شمارشِ دانه', 'tests/donations2.js خوانده نشد');
-else ok('R4 پینِ users.length == 1036 در tests/donations2.js', /===\s*1036/.test(pin),
-  /===\s*1036/.test(pin) ? 'پین موجود است ⇒ رشدِ تصادفیِ دانه این‌جا می‌شکند' : 'پین 1036 پیدا نشد');
+else ok('R4 پینِ users.length == 1040 در tests/donations2.js', /===\s*1040/.test(pin),
+  /===\s*1040/.test(pin) ? 'پین موجود است ⇒ رشدِ تصادفیِ دانه این‌جا می‌شکند' : 'پین 1040 پیدا نشد');
 ok('R4b manifest ادعایِ ظرفیت نمی‌کند', /"benchmark_claim"\s*:\s*"NONE/.test(read('tools/relational-seed-manifest.json') || ''),
   'کلید benchmark_claim = NONE باید بماند (ظرفیت مالِ چت ۴ است)');
 
@@ -82,7 +82,7 @@ if (!fs.existsSync(storePath)) {
     const users = (st.users || []);
     const active = users.filter((u) => u && !u.deleted && u.active !== false); /* اطلاعاتی — با تعریفِ active در باندل مقایسه نشود */
     const g = users.filter((u) => u && u.role === 'guard');
-    ok('R5 users == 1036', users.length === 1036, 'users=' + users.length);
+    ok('R5 users == 1040', users.length === 1040, 'users=' + users.length);
     ok('R5b guard == 1', g.length === 1, 'guard=' + g.length + (g[0] ? '/' + g[0].username : ''));
     console.log('  · active(store) = ' + active.length + ' (اطلاعاتی)');
   } catch (e) {

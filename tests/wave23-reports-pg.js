@@ -74,7 +74,7 @@ async function main() {
   const dbUrl = BASE_URL.replace(/\/[^/]*$/, '/' + TEST_DB);
   for (const f of migs) {
     const sql = fs.readFileSync(path.join(ROOT, 'migrations', f), 'utf8');
-    if (/^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql)) {
+    if (/^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql) || /\bCALL\s+[A-Za-z0-9_]+\s*\(/i.test(sql)) {
       execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', f), dbUrl], { stdio: 'pipe' });
     } else {
       await c.query(sql);

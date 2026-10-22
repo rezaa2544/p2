@@ -21,7 +21,7 @@ const mutants = [
   },
   {
     name: 'async flush skips rotation decision',
-    from: 'try { await checkRotationAsync(); } catch (e) {}',
+    from: 'try { await checkRotationAsync(); } catch (e) {/* swallowed: intentional — e unused */}',
     to: 'try { await Promise.resolve(null); } catch (e) {}'
   }
 ];

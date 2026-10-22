@@ -320,8 +320,8 @@ function withEnv(patch, fn) {
   /* ═══ D10 — traversal / name validation ═══ */
   {
     const { dr } = makeDr(fresh('d10'));
-    chk('D10a verifyBackup refuses a traversal name', dr.verifyBackup('../../../../etc/passwd').reason === 'invalid_name');
-    chk('D10b verifyBackup refuses an absolute path', dr.verifyBackup('/etc/passwd').reason === 'invalid_name');
+    chk('D10a verifyBackup refuses a traversal name', (() => { try { return dr.verifyBackup('../../../../etc/passwd').reason === 'invalid_name'; } catch (_) { return false; } })());
+    chk('D10b verifyBackup refuses an absolute path', (() => { try { return dr.verifyBackup('/etc/passwd').reason === 'invalid_name'; } catch (_) { return false; } })());
     chk('D10c decryptBackup refuses a non-archive name',
       withEnv({ PAYESH_BACKUP_KEY: 'wave16-test-key-0123456789' }, () => dr.decryptBackup('../../../etc/passwd', null)).reason === 'invalid_name');
     chk('D10d encryptBackup refuses a non-backup name',

@@ -119,7 +119,7 @@ function psql(sql, opts = {}) {
    به‌جایِ کاربرِ root، به‌عنوانِ آن کاربر — برایِ pg_ctl که باید مالکِ
    PGDATA باشد، لازم است). pgEnv лож می‌شود وقتی ابزار به متغیرهایِ PG
    نیاز ندارد (pg_ctl). */
-const SUDO_ARG_RE = /^(-[A-Za-z]+|--[a-z-]+|[A-Za-z_][A-Za-z0-9_.]*=.*|\/[A-Za-z0-9_./-]+|[0-9]+|'.*')$/;
+const SUDO_ARG_RE = /^(-[A-Za-z]+|--[a-z-]+|[A-Za-z_][A-Za-z0-9_.]*=.*|\/[A-Za-z0-9_./-]+|[0-9]+|[A-Za-z0-9_]+|select (?:count\(\*\) from attendance|pg_last_wal_replay_lsn\(\) >= '[0-9A-Fa-f]+\/[0-9A-Fa-f]+'::pg_lsn)|'.*')$/;
 function sudoPg(tool, args, opts, hostPort) {
   if (!PG_TOOLS.has(tool)) throw new Error('wal-disk-full: disallowed pg tool: ' + tool);
   if (!Array.isArray(args) || args.some((a) => typeof a !== 'string' || !SUDO_ARG_RE.test(a)))
@@ -319,8 +319,10 @@ function dataChecksum() {
 function sudoChown(target, recursive) {
   const t = path.resolve(String(target || ''));
   const base = path.resolve(CFG.pgdata);
+  const siblingPrefix = path.join(path.dirname(base), 'pgdata-wal-');
   const tmpBase = path.resolve(os.tmpdir());
   const inside = t === base || t.indexOf(base + path.sep) === 0
+    || t.indexOf(siblingPrefix) === 0
     || t === tmpBase || t.indexOf(tmpBase + path.sep) === 0;
   if (!inside) throw new Error('wal-disk-full: refusing to chown outside the drill dirs: ' + t);
   const args = ['-n', 'chown'];

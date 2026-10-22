@@ -73,15 +73,16 @@ async function bootPage(context) {
   }, null, { timeout: 60000 });
   return page;
 }
-async function login(page, picker) {
-  return page.evaluate((find) => {
-    const u = find(db);
+async function login(page, spec) {
+  return page.evaluate((sp) => {
+    const u = (sp.username && db.users.find(x => x.username === sp.username))
+      || (sp.role && db.users.find(x => x.role === sp.role));
     if (!u) return null;
     finishLogin(u); S.showPicker=false;
     if (typeof closeModal==='function') closeModal();
     render();
     return u.username;
-  }, picker);
+  }, spec);
 }
 const activeInModal = (page) => page.evaluate(() =>
   !!document.querySelector('#modal .modal') &&
@@ -119,31 +120,31 @@ const atEdge = (page, which) => page.evaluate((w) => {
 /* nav: ناوبری (render کامل) — جدا از open تا مثلِ جریانِ واقعی، trigger بعدِ
    ناوبری فوکوس شود و openModal همان عنصرِ زنده را به‌عنوانِ opener ثبت کند. */
 const MODALS = [
-  { name: 'user-new',    login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='users'; render(); },     open: () => { userModal(null); } },
-  { name: 'user-edit',   login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='users'; render(); },     open: () => { userModal(db.users.find(u=>u.role==='student'&&u.school_id===S.user.school_id)); } },
-  { name: 'class',       login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='classes'; render(); },   open: () => { classModal(null); } },
-  { name: 'subject',     login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='subjects'; render(); },  open: () => { subjectModal(null); } },
-  { name: 'calendar',    login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='calendar'; render(); },  open: () => { calModal(null); } },
-  { name: 'ticket',      login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='dashboard'; render(); }, open: () => { ticketModal(); } },
-  { name: 'confirm-del', login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='users'; render(); },     open: () => { confirmModal('حذف شود؟','user-del-ok',1); } },
-  { name: 'ask-confirm', login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='dashboard'; render(); }, open: () => { askConfirm('ادامه؟',function(){},{danger:false}); } },
-  { name: 'sync-panel',  login: (db) => db.users.find(x=>x.username==='manager1'),  nav: () => { S.route='dashboard'; render(); }, open: () => { syncPanelModal(); } },
-  { name: 'grade',       login: (db) => db.users.find(x=>x.username==='teacher1_1'), nav: () => { S.route='grades'; render(); },   open: () => { gradeModal(null); } },
-  { name: 'school',      login: (db) => db.users.find(x=>x.role==='superadmin'),    nav: () => { S.route='schools'; render(); },   open: () => { schoolModal(null); } },
+  { name: 'user-new',    login: { username: 'manager1' },  nav: () => { S.route='users'; render(); },     open: () => { userModal(null); } },
+  { name: 'user-edit',   login: { username: 'manager1' },  nav: () => { S.route='users'; render(); },     open: () => { userModal(db.users.find(u=>u.role==='student'&&u.school_id===S.user.school_id)); } },
+  { name: 'class',       login: { username: 'manager1' },  nav: () => { S.route='classes'; render(); },   open: () => { classModal(null); } },
+  { name: 'subject',     login: { username: 'manager1' },  nav: () => { S.route='subjects'; render(); },  open: () => { subjectModal(null); } },
+  { name: 'calendar',    login: { username: 'manager1' },  nav: () => { S.route='calendar'; render(); },  open: () => { calModal(null); } },
+  { name: 'ticket',      login: { username: 'manager1' },  nav: () => { S.route='dashboard'; render(); }, open: () => { ticketModal(); } },
+  { name: 'confirm-del', login: { username: 'manager1' },  nav: () => { S.route='users'; render(); },     open: () => { confirmModal('حذف شود؟','user-del-ok',1); } },
+  { name: 'ask-confirm', login: { username: 'manager1' },  nav: () => { S.route='dashboard'; render(); }, open: () => { askConfirm('ادامه؟',function(){},{danger:false}); } },
+  { name: 'sync-panel',  login: { username: 'manager1' },  nav: () => { S.route='dashboard'; render(); }, open: () => { syncPanelModal(); } },
+  { name: 'grade',       login: { username: 'teacher1_1' }, nav: () => { S.route='grades'; render(); },   open: () => { gradeModal(null); } },
+  { name: 'school',      login: { role: 'superadmin' },    nav: () => { S.route='schools'; render(); },   open: () => { schoolModal(null); } },
 ];
 
 /* نقش‌ها برایِ آزمونِ پوسته (skip-link + nav) */
 const SHELL_ROLES = [
-  ['manager',   (db) => db.users.find(x=>x.username==='manager1')],
-  ['teacher',   (db) => db.users.find(x=>x.username==='teacher1_1')],
-  ['parent',    (db) => db.users.find(x=>x.username==='parent_multi')],
-  ['student',   (db) => db.users.find(x=>x.role==='student')],
-  ['counselor', (db) => db.users.find(x=>x.username==='counselor1')],
+  ['manager',   { username: 'manager1' }],
+  ['teacher',   { username: 'teacher1_1' }],
+  ['parent',    { username: 'parent_multi' }],
+  ['student',   { role: 'student' }],
+  ['counselor', { username: 'counselor1' }],
 ];
 
 (async () => {
   const srv = await startStaticServer();
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH, args: ['--no-sandbox', '--disable-dev-shm-usage'] } : undefined);
 
   console.log('\n▸ A11y Keyboard — focus trap، ترتیبِ tab، Escape، skip-link (کلیدهایِ واقعی)');
 
@@ -265,7 +266,7 @@ const SHELL_ROLES = [
     const context = await browser.newContext({ viewport: { width: 420, height: 900 } });
     try {
       const page = await bootPage(context);
-      await login(page, (db) => db.users.find(x=>x.username==='manager1'));
+      await login(page, { username: 'manager1' });
       await page.waitForTimeout(150); /* themeSegApply با setTimeout(0) اجرا می‌شود */
 
       /* ۸. منویِ پوسته با کیبورد */

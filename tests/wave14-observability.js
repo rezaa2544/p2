@@ -471,8 +471,8 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
        present even if its recorder has not run in this process */
     const catalogue = new Set(Object.keys(metrics.snapshot()));
     const strip = (n) => n.replace(/_(bucket|sum|count)$/, '');
-    const referenced = (file) => [...new Set([...read(file).matchAll(/\bpayesh_[a-z0-9_]+/g)].map((m) => strip(m[0])))];
-    for (const f of ['infra/observability/alerts.yml', 'infra/observability/payesh-dashboard.json', 'infra/observability/prometheus.yml']) {
+    const referenced = (file) => [...new Set([...read(file).matchAll(/(?<!\/)\bpayesh_[a-z0-9_]+/g)].map((m) => strip(m[0])))];
+    for (const f of ['infra/observability/alerts.yml', 'infra/observability/alert-rules.yml', 'infra/observability/payesh-dashboard.json', 'infra/observability/prometheus.yml']) {
       const refs = referenced(f);
       const unknown = refs.filter((n) => !catalogue.has(n));
       chk('T8 ' + path.basename(f) + ' references only declared metrics (' + refs.length + ')',
@@ -480,10 +480,13 @@ const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
     }
     chk('T8d the catalogue is non-trivial', catalogue.size >= 25, 'size=' + catalogue.size);
     chk('T8e alert rules cover the roadmap signals', (() => {
-      const a = read('infra/observability/alerts.yml');
+      const a = read('infra/observability/alert-rules.yml');
       return ['payesh_http_requests_total', 'payesh_http_request_duration_seconds',
-        'payesh_db_query_errors_total', 'payesh_db_pool_waiting', 'payesh_cache_lookups_total',
-        'payesh_outbox_depth', 'payesh_node_eventloop_lag_seconds', 'payesh_metrics_dropped_series_total']
+        'payesh_redis_up', 'payesh_db_up', 'payesh_db_query_latency_ms',
+        'payesh_sync_queue_depth', 'payesh_node_eventloop_lag_seconds',
+        'payesh_node_heap_used_bytes', 'payesh_disk_used_ratio',
+        'payesh_runtime_anomalies_total', 'payesh_attack_patterns_detected_total',
+        'payesh_suspicious_sessions']
         .every((m) => a.indexOf(m) >= 0);
     })());
   }

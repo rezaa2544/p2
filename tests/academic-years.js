@@ -127,6 +127,7 @@ test('AY3 مودال: سلکت سال + ذخیرهٔ واقعی', () => {
   const mgr = 'aymgr_' + Date.now().toString(36);
   global.__AY_CODE = code;
   W(`(function(){
+    window.__AY_CODE=${JSON.stringify(code)};
     document.getElementById('m_active_year').value=${JSON.stringify(prev)};
     document.getElementById('m_name').value='مدرسهٔ آزمایشی سال';
     document.getElementById('m_code').value=window.__AY_CODE;

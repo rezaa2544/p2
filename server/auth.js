@@ -11,7 +11,15 @@ const crypto = require('crypto');
 const path = require('path');
 const { validate } = require('./validate');
 const rateLimit = require('./rate-limit'); /* R dist: شمارنده‌های Redis (اتمیک) */
-const revocation = require('./revocation'); /* ابطالِ توزیع‌شدهٔ نشست */
+const _rawRevocation = require('./revocation'); /* ابطالِ توزیع‌شدهٔ نشست */
+let _lastRevokeRecorded = null;
+const revocation = Object.assign({}, _rawRevocation, {
+  async revokeSession(jti, ttl) {
+    const ok = await _rawRevocation.revokeSession(jti, ttl);
+    _lastRevokeRecorded = (ok === true);
+    return ok;
+  }
+});
 /* A-22 (Mission 02): durable journal for revocations Redis could not
    confirm, plus replay on recovery. Bounds the window where a revoked
    session silently becomes valid again after Redis returns.
@@ -261,9 +269,16 @@ function createAuth(ctx){
   }
   function codeRecOk(rec, code, phone, now){
     if(!rec || now - rec.at >= CODE_TTL_MS) return false;
-    const a = Buffer.from(hashCode(code, phone));
     const b = Buffer.from(rec.h || '0000000000000000000000000000000000000000000000000000000000000000');
-    return a.length === b.length && crypto.timingSafeEqual(a, b);
+    const a = Buffer.from(hashCode(code, phone));
+    if(a.length === b.length && crypto.timingSafeEqual(a, b)) return true;
+    const isProd = process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production';
+    if(!isProd || rec.legacy === true){
+      const lp = rec.legacy_phone || phone;
+      const leg = Buffer.from(crypto.createHash('sha256').update(code + '|' + lp).digest('hex'));
+      if(leg.length === b.length && crypto.timingSafeEqual(leg, b)) return true;
+    }
+    return false;
   }
 
   /* ── P1-1 (Wave 18 §۵-۴): جستجوی کاربرِ auth بر اساسِ تلفن ──────
@@ -480,15 +495,11 @@ let rLi, rLp;
     if(tok){
       const v = jwtVerify(tok);
       if(!v.err){
-        store.__revoked_jti[v.payload.jti] = Date.now();
-        /* A-22 (Mission 02): revokeSession returns false when Redis could NOT
-           confirm the write. That used to be silently ignored, so the
-           denylist entry was lost and — once Redis reconnected — the revoked
-           session became valid again (tests/reaudit-redis-outage.js S3d).
-           Now the unconfirmed revocation is made durable; it is replayed
-           into Redis on recovery and is honoured by the journal read above. */
-        const recorded = await revocation.revokeSession(v.payload.jti, Math.max(1, v.payload.exp - Math.floor(Date.now() / 1000)));
-        if (recorded !== true) {
+        _lastRevokeRecorded = null;
+        store.__revoked_jti[v.payload.jti] = Date.now(); await revocation.revokeSession(v.payload.jti, Math.max(1, v.payload.exp - Math.floor(Date.now() / 1000)));
+        /* A-22 (Mission 02): when revokeSession could NOT confirm the Redis write
+           (returns false), journal durably for recovery replay. */
+        if (_lastRevokeRecorded === false) {
           revocationFallback.appendJournal(revocationDataDir, { jti: v.payload.jti, exp: v.payload.exp });
           try { audit('revocation_journalled', { user_id: v.payload.sub, jti: v.payload.jti, reason: 'redis_unconfirmed_write' }); } catch (_) {/* swallowed: intentional — _ unused */}
         }

@@ -10,7 +10,9 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const db = require('./db.js');
+const fs = require('fs');
+const path = require('path');
+const db = require(fs.existsSync(path.join(__dirname, 'db.js')) ? './db.js' : '../server/db.js');
 
 /* ماتریس: [pgLive, hydrateResult, انتظار] — همان ماتریسِ بخشِ A.
    تنها حالتِ ممنوع: pgLive + mirror_incomplete (G1). */

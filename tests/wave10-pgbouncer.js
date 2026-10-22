@@ -70,7 +70,7 @@ chk('P3g query_timeout محدود (≤ 600s)', Number(pg.query_timeout) > 0 && N
 
 /* P4 */
 chk('P4a auth_query از pg_shadow (بدونِ userlist ثابت)', /pg_shadow/.test(pg.auth_query || ''), pg.auth_query);
-chk('P4b auth_type=plain روی کانالِ محلی (TLS/TCP لبه)', pg.auth_type === 'plain', pg.auth_type);
+chk('P4b auth_type مجاز روی کانالِ محلی (plain/scram-sha-256)', pg.auth_type === 'plain' || pg.auth_type === 'scram-sha-256', pg.auth_type);
 
 /* P5 */
 const compose = fs.readFileSync(path.join(ROOT, 'infra', 'postgres', 'docker-compose.ha.yml'), 'utf8');

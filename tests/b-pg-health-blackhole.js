@@ -348,6 +348,10 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
       if (exitCode === null) {
         await new Promise((r) => { const t = setTimeout(r, 2000); proc.on('exit', () => { clearTimeout(t); r(); }); });
       }
+      if (exitCode === null) {
+        try { proc.kill('SIGKILL'); } catch (e) {}
+        await new Promise((r) => { const t = setTimeout(r, 1000); proc.on('exit', () => { clearTimeout(t); r(); }); });
+      }
     } catch (e) {}
     /* پاکسازیِ پایگاهِ دادهٔ موقت */
     try {

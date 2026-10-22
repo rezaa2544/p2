@@ -76,12 +76,12 @@
 | `unauthorized` / `forbidden` | نقش یا مجوز کافی نیست | ماتریس مجوز: `authz/model.json` + گیت `check-authz` | `docs/AUTHORIZATION_MODEL.md` |
 | `field_denied` / `unknown_field` | فیلد غیرمجاز یا ناشناخته در نوشتن (فیل-کلوزد) | قرارداد فیلدها در `authz/write-perms.json` — فیلد را حذف/اصلاح نکنید تا مجوزش تعریف شود | `docs/SYNC_PROTOCOL.md` |
 | `role_denied` / `role_escalation` | تلاش برای تغییر نقش بالاتر از اختیار | مسیر درست ادمینی؛ ارتقای نقش فقط از سوپرادمین | `docs/AUTHORIZATION_MODEL.md` |
-| `out_of_scope` | دسترسی بیرون از `school_id` کاربر | ایزولاسیون مستأجر را دور نزنید — این خطا یعنی محافظ کار می‌کند | `server/middleware/scope.js` |
+| `out_of_scope` | دسترسی بیرون از `school_id` کاربر | ایزولاسیون مستأجر را دور نزنید — این خطا یعنی محافظ کار می‌کند | `server/policy.js` |
 | `conflict` (۴۰۹) | نسخهٔ پایهٔ او‌سی‌سی کهنه است | کلاینت باید بازخوانی و `base_version` تازه بفرستد | `docs/SYNC_PROTOCOL.md` · `tests/occ.js` |
 | `rate_limited` (۴۲۹) | عبور از سقف ریت (آی‌پی/تلفن/کاربر) | صبر/کاهش نرخ؛ پیک پایدار بالای این سقف = پیکربندی غلط مولد بار | `docs/RATE_LIMITING_DESIGN.md` |
 | `pg_unavailable` | پستگرس در دسترس نیست | §۱ همین سند + پلی‌بوک پی‌بی-۰۱ | `docs/INCIDENT_RESPONSE.md` |
 | `bad_request` / `bad_payload` / `malformed_op` | بدنهٔ درخواست نامعتبر | قرارداد عملیات‌ها در پروتکل همگام‌سازی؛ ورودی ناشناخته = رد (فیل-کلوزد) | `docs/SYNC_PROTOCOL.md` |
-| `not_found` | منبع وجود ندارد یا بیرون از اسکوپ کاربر است | عمداً تفکیک نمی‌دهیم (جلوگیری از نشت وجود) | `server/middleware/scope.js` |
+| `not_found` | منبع وجود ندارد یا بیرون از اسکوپ کاربر است | عمداً تفکیک نمی‌دهیم (جلوگیری از نشت وجود) | `server/policy.js` |
 
 ---
 

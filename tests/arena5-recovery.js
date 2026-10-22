@@ -416,12 +416,12 @@ function fakeRedis(){
       const s4 = await waitStatus(BASE, 503, 5000);
       chk('R3f قطعِ طولانی ⇒ 503 (retryStrategy تمام شده)', s4 === 503, 'got ' + s4);
 
-      /* بازگشتِ ردیس پس ازِ انصرخاخِ retry ⇒ بدونِ restart نمی‌آید
-         (محدودیتِ مُستند — اثباتِ قرارداد) */
+      /* Phase-2 remediation (server/redis.js:107): retryStrategy never abandons
+         reconnection — even after a multi-second outage, bounded backoff
+         self-heals automatically without requiring a process restart. */
       await fake.start(rport);
-      await sleep(2000);
-      const s5 = await readiness(BASE);
-      chk('R3g محدودیتِ مُستند: بدونِ restart، 503 ماندگار', s5 === 503, 'got ' + s5);
+      const s5 = await waitStatus(BASE, 200, 8000);
+      chk('R3g خودترمیمی پس ازِ قطعِ طولانی: بدونِ restart به 200 برمی‌گردد', s5 === 200, 'got ' + s5);
 
       /* ── recovery = restartِ فرایند (مسیرِ عملیاتی) ── */
       c3.proc.kill('SIGTERM');

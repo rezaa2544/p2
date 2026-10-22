@@ -228,7 +228,10 @@ function awaitExit(inst, ms) {
   return new Promise((resolve) => {
     let done = false; const fin = () => { if (!done) { done = true; resolve(); } };
     inst.child.on('close', fin);
-    setTimeout(fin, ms || 4000);
+    setTimeout(() => {
+      if (!inst.closed) { try { inst.child.kill('SIGKILL'); } catch (e) {} }
+      setTimeout(fin, 500);
+    }, ms || 4000);
   });
 }
 function rmDir(dir) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {} }

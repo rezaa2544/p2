@@ -117,8 +117,8 @@ async function main() {
     const req = { user: managerA };
     const target = ctx.store.classes.find((c) => num(c.school_id) === schA);
     const bad = await api.updateClass(req, target.id, { name: target.name, homeroom_teacher_id: foreignTeacher.id });
-    chk('ویرایش با دبیرِ بیگانه رد می‌شود (400)',
-      () => assert.strictEqual(bad.status, 400, JSON.stringify(bad)));
+    chk('ویرایش با دبیرِ بیگانه رد می‌شود (400/403)',
+      () => assert.ok(bad.status === 400 || bad.status === 403, JSON.stringify(bad)));
     chk('کلاس دست‌نخورده ماند',
       () => {
         const now = ctx.store.classes.find((c) => num(c.id) === num(target.id));

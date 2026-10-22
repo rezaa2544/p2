@@ -4,22 +4,23 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
-/* Test harness execution flag: allows in-memory JSON store REST tests to run
-   without attached PostgreSQL authority in dev/test only. */
-process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY = '1';
-// These are JSON-store REST contract tests, not live-PG tests. The suite list is built
-// dynamically from API_TESTS below, so the count grows as suites are added.
-// CI service credentials must not silently redirect them to PostgreSQL and 503.
-for (const key of ['DATABASE_URL', 'PGURL', 'READ_DATABASE_URL', 'REDIS_URL']) delete process.env[key];
-
 const { execFileSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-const REAL_STORE = path.join(__dirname, '..', '..', 'server', 'data', 'payesh.json');
-if (!fs.existsSync(REAL_STORE)) {
-  console.log('ℹ️ API test fixture missing; generating deterministic server/data/payesh.json via server/seed.js');
-  execFileSync('node', [path.join(__dirname, '..', '..', 'server', 'seed.js')], { stdio: 'inherit' });
+/* Keep module import side-effect-free so CI inventory checks can inspect
+   API_TESTS without changing caller environment or generating fixtures. */
+function configureTestEnvironment() {
+  /* Test harness execution flag: JSON-store REST tests, not live-PG tests. */
+  process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY = '1';
+  // CI service credentials must not silently redirect these suites to PostgreSQL and 503.
+  for (const key of ['DATABASE_URL', 'PGURL', 'READ_DATABASE_URL', 'REDIS_URL']) delete process.env[key];
+
+  const realStore = path.join(__dirname, '..', '..', 'server', 'data', 'payesh.json');
+  if (!fs.existsSync(realStore)) {
+    console.log('ℹ️ API test fixture missing; generating deterministic server/data/payesh.json via server/seed.js');
+    execFileSync('node', [path.join(__dirname, '..', '..', 'server', 'seed.js')], { stdio: 'inherit' });
+  }
 }
 
 const API_TESTS = [
@@ -92,10 +93,11 @@ function runSuites(suites) {
 }
 
 if (require.main === module) {
+  configureTestEnvironment();
   console.log('═══════════════════════════════════════════════════════════════════');
   console.log('🚀 اجرای آزمون‌های کامل RESTful API Backend (فاز ۳ و ۴)');
   console.log('═══════════════════════════════════════════════════════════════════\n');
-  process.exit(runSuites(API_TESTS));
+  if (runSuites(API_TESTS) !== 0) process.exit(1);
 }
 
 module.exports = { runSuites, API_TESTS };

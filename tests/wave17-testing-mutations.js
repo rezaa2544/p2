@@ -103,7 +103,7 @@ mutate(INDEX,
 mutateMulti(SYNC, [
   [`      if(store.__processed_uids && store.__processed_uids[op.uid]){`,
    `      if(false){ /* جهش: لایهٔ sweep ایدمپوتانس برداشته شد */`],
-  [`      const isProcessed = (await cache.isProcessedUid(op.uid)) ||
+  [`      const isProcessed = cacheProcessed ||
         ((db && typeof db.isUidProcessed === 'function') ? await db.isUidProcessed(op.uid) : false) ||
         !!(store.__processed_uids && store.__processed_uids[op.uid]);`,
    `      const isProcessed = false; /* جهش: ایدمپوتانس پیش-اعمال غیرفعال شد */`]

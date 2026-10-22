@@ -25,8 +25,8 @@ const SUITE = ['tests/wave1-writes.js'];
 const MUTS = [
   {
     file: 'server/sms.js',
-    bad: "      await mirrorItem(itemOps, { school: q.school_id, queue_id: qid, kind: 'send' });\n",
-    mut: "      /* MW1: آینه حذف شد */\n",
+    bad: "      const mirrorOk = await mirrorItem(itemOps, { school: q.school_id, queue_id: qid, kind: 'send' });\n",
+    mut: "      const mirrorOk = true; /* MW1: آینه حذف شد */\n",
     name: 'MW1 حذفِ آینهٔ آیتمِ موفقِ sms',
     expectFail: 'W1b'
   },
@@ -39,44 +39,29 @@ const MUTS = [
   },
   {
     file: 'server/delete-service.js',
-    bad: [
-      '      await db.transaction(async (client) => {',
-      '        await db.persistOpWithClient(client, { c: collection, t: \'del\', id: delId });',
-      '        if (outbox) await outbox.append(evt, client);',
-      '      });'
-    ].join('\n'),
-    mut: [
-      '      await db.persistOp({ c: collection, t: \'del\', id: delId });',
-      '      if (outbox) await outbox.append(evt);'
-    ].join('\n'),
+    bad: "        await db.transaction(async (client) => {\n          await db.persistOpWithClient(client, delOp);\n          if (outbox) await outbox.append(evt, client);\n          /* N-36 — حذفِ کاربر هم یک رویدادِ ابطالِ scope:user در همان\n             تراکنش می‌سازد. handlerِ cache.user_changed رویِ هر نمونه\n             invalidateUser را اجرا می‌کند (del + epoch:user + publish). */\n          if (outbox && collection === 'users' && Number.isFinite(delId)) {\n            await cacheEvents.appendDurable(outbox,\n              cacheEvents.userChanged(delId, meta.actor ? meta.actor.id : null, evt.version, 'delete'), client);\n          }\n        });",
+    mut: "        await db.persistOp(delOp); if (outbox) await outbox.append(evt);",
     name: 'MW3 حذف بدون تراکنش (persistOp + append جداگانه)',
     expectFail: 'W5b'
   },
   {
     file: 'server/outbox.js',
-    bad: [
-      '    if (client) {',
-      '      await client.query(outboxInsertSql, outboxParams(evt)); /* Wave1-W: داخل تراکنش */',
-      '      return evt;',
-      '    }'
-    ].join('\n'),
-    mut: [
-      '    if (false) { /* MW4: شاخهٔ client حذف شد */',
-      '      await client.query(outboxInsertSql, outboxParams(evt));',
-      '      return evt;',
-      '    }'
-    ].join('\n'),
+    bad: "    if (client) {\n      try { await insertOnce(client); /* Wave1-W: داخل تراکنش */ }\n      catch (e) { rollbackMirror(e); }\n      return evt;\n    }",
+    mut: "    if (false) { return evt; }",
     name: 'MW4 حذفِ شاخهٔ client در outbox.append',
     expectFail: 'W5b'
   },
   {
     file: 'server/sms.js',
     bad: [
-      '    try { await db.persistOpsBatch(itemOps); }',
-      '    catch(e){ audit(\'sms_mirror_failed\', Object.assign({ ops: itemOps.length }, where,',
-      '      { error: String((e && e.message) || e) })); }'
+      '    try { await db.persistOpsBatch(itemOps); return true; }',
+      '    catch(e){',
+      '      audit(\'sms_mirror_failed\', Object.assign({ ops: itemOps.length }, where,',
+      '        { error: String((e && e.message) || e), code: (e && e.code) || null }));',
+      '      return false;',
+      '    }'
     ].join('\n'),
-    mut: '    await db.persistOpsBatch(itemOps);',
+    mut: '    await db.persistOpsBatch(itemOps); return true;',
     name: 'MW5 حذفِ try/catch آینهٔ sms (نشتِ خطا به کلاینت)',
     expectFail: 'W3a'
   }

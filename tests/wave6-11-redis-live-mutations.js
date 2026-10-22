@@ -56,15 +56,15 @@ const mutations = [
     name: 'invalidateSchool هیچ کاری نکند (ابطالِ گروهی می‌میرد)',
     file: CCH,
     mutate: (s) => s.replace(
-      'async function invalidateSchool(schoolId) {',
-      'async function invalidateSchool(schoolId) { return; /* MUTANT */')
+      'async function invalidateSchool(schoolId, _replay) {',
+      'async function invalidateSchool(schoolId, _replay) { return; /* MUTANT */')
   },
   {
     name: 'اعتبارسنجیِ epoch در خوانشِ L2 حذف شود (W11-2 برمی‌گردد)',
     file: CCH,
     /* خودِ مقایسهٔ epoch را همیشه-معتبر می‌کنیم — خوانشِ کهنه دیگر رد نمی‌شود */
     mutate: (s) => s.replace(
-      "if ((parsed.se || null) !== (curSe || null) || (parsed.ge || null) !== (curGe || null)) {",
+      `if ((parsed.se || null) !== (curSe || null) || (parsed.ge || null) !== (curGe || null)\n            || (parsed.ue || null) !== (curUe || null)) {`,
       'if (false) { /* MUTANT: epoch check disabled */')
   },
   {

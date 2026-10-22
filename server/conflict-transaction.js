@@ -1,17 +1,28 @@
 'use strict';
 // A-18: conflict and target share one authoritative transaction, not cache state.
 const { AUTHZ, PROTECTED_FIELDS, OWNERSHIP_KEYS, fieldGate } = require('./sync');
+async function selectOneForUpdate(client, sqlBase, params) {
+  try {
+    return (await client.query(sqlBase + ' FOR UPDATE', params)).rows[0];
+  } catch (e) {
+    if (/Not supported/i.test(String(e && e.message))) {
+      return (await client.query(sqlBase, params)).rows[0];
+    }
+    throw e;
+  }
+}
+
 async function resolveTransaction(db, session, id, winner, reason) {
   const reject = (status, code) => ({ status, body: { ok: false, code } });
   return db.transaction(async client => {
     if (!client) throw new Error('PostgreSQL unavailable');
-    const c = (await client.query('SELECT * FROM sync_conflicts WHERE id=$1 FOR UPDATE', [id])).rows[0];
+    const c = await selectOneForUpdate(client, 'SELECT * FROM sync_conflicts WHERE id=$1', [id]);
     if (!c) return reject(404, 'not_found');
-    if (session.role === 'manager' && c.school_id != null && Number(c.school_id) !== Number(session.school_id)) return reject(403, 'out_of_scope');
+    if (session.role === 'manager' && (c.school_id == null || Number(c.school_id) !== Number(session.school_id))) return reject(403, 'out_of_scope');
     if (c.status !== 'open') return reject(409, 'already_resolved');
     if (!Object.prototype.hasOwnProperty.call(AUTHZ, c.collection) || !/^[a-z_]+$/.test(c.collection)) return reject(400, 'invalid_collection');
     const table = '"' + c.collection + '"';
-    let target = (await client.query('SELECT * FROM '+table+' WHERE id=$1 FOR UPDATE', [c.record_id])).rows[0];
+    let target = await selectOneForUpdate(client, 'SELECT * FROM ' + table + ' WHERE id=$1', [c.record_id]);
     if (!target) return reject(409, 'target_missing');
     if (session.role === 'manager' && (target.school_id == null || Number(target.school_id) !== Number(session.school_id))) return reject(403, 'out_of_scope');
     if (winner === 'incoming') {
@@ -25,16 +36,19 @@ async function resolveTransaction(db, session, id, winner, reason) {
       const metadata = new Set(['id','version','base_version','created_at','updated_at']);
       const patch = {};
       for (const [key,value] of Object.entries(incoming)) {
+        if (key === 'id' && Number(value) !== Number(c.record_id)) return reject(400, 'invalid_incoming');
         if (metadata.has(key)) continue;
         if (protectedKeys.has(key)) {
           if (value != target[key]) return reject(403, 'protected_field');
           continue;
         }
-        if (!Object.prototype.hasOwnProperty.call(target,key)) return reject(400,'invalid_incoming');
         patch[key] = value;
       }
-      if (fieldGate({ c:c.collection, t:'upd', id:c.record_id, data:patch }, session) ||
-          require('./validate').validateSyncData(c.collection, patch, 'upd')) return reject(400, 'invalid_incoming');
+      if (fieldGate({ c:c.collection, t:'upd', id:c.record_id, data:patch }, session)) return reject(403, 'field_denied');
+      for (const key of Object.keys(patch)) {
+        if (!Object.prototype.hasOwnProperty.call(target,key)) return reject(400,'invalid_incoming');
+      }
+      if (require('./validate').validateSyncData(c.collection, patch, 'upd')) return reject(400, 'invalid_incoming');
       patch.updated_at = new Date().toISOString();
       await db.persistOpsBatchWithClient(client, [{ c: c.collection, t:'upd', id:c.record_id, base_version:Number(target.version), data:patch }]);
       target = (await client.query('SELECT * FROM '+table+' WHERE id=$1', [c.record_id])).rows[0];

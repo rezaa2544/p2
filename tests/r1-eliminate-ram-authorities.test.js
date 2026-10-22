@@ -185,7 +185,7 @@ async function run() {
   console.log('\n--- Step 4b: Multi-Instance Provincial Pilot Convergence ---');
   const pilotApproval = {
     approved: true,
-    operator: { id: 'op-tehran', role: 'admin', name: 'Province Admin' },
+    operator: { id: 'op-tehran', role: 'superadmin', name: 'Province Admin' },
     requires_human_approval: true,
     automated_decision: false
   };

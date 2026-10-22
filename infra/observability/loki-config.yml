@@ -4,6 +4,7 @@ server:
   http_listen_port: 3100
   grpc_listen_port: 9096
 common:
+  instance_addr: 127.0.0.1
   path_prefix: /loki
   storage:
     filesystem:
@@ -16,10 +17,20 @@ memberlist:
   bind_addr: ["127.0.0.1"]
   bind_port: 9095
   join_members: []
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
 limits_config:
   retention_period: 720h
   allow_structured_metadata: true
   volume_enabled: true
 compactor:
+  working_directory: /loki/compactor
   delete_request_store: filesystem
-retention_enabled: true
+  retention_enabled: true

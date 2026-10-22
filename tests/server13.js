@@ -68,8 +68,9 @@ function httpGet(port, p, useTls) {
     const opts = { hostname: '127.0.0.1', port, path: p, method: 'GET' };
     if (useTls) {
       opts.rejectUnauthorized = true;
-      if (process.env.TLS_CA) {
-        try { opts.ca = fs.readFileSync(process.env.TLS_CA); } catch (e) {}
+      opts.checkServerIdentity = () => undefined;
+      if (activeCaFile || process.env.TLS_CA) {
+        try { opts.ca = fs.readFileSync(activeCaFile || process.env.TLS_CA); } catch (e) {}
       }
     }
     const req = mod.request(opts, (res) => {
@@ -84,6 +85,7 @@ function httpGet(port, p, useTls) {
 
 process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} });
 let tmp = null;
+let activeCaFile = null;
 
 /* سرور را spawn می‌کند و یا exit(1) با stderr یا health با pid را برمی‌گرداند
    نتیجه: { booted: bool, code: number|null, stderr: string, port: number|null } */
@@ -94,12 +96,19 @@ async function bootScenario({ tlsCert, tlsKey, production, portPool }) {
     HOST: '127.0.0.1',
     PAYESH_STORE: storeFile,
     PAYESH_AUDIT: path.join(tmp, 'audit.log'),
-    PAYESH_KEY: path.join(tmp, 'jwt.key')
+    PAYESH_KEY: path.join(tmp, 'jwt.key'),
+    PAYESH_ALLOW_DEV_MEMORY_AUTHORITY: production ? '' : '1',
+    PAYESH_JWT_SECRET: crypto.randomBytes(32).toString('hex')
   });
+  if (production) {
+    env.PAYESH_ENV = 'production';
+    env.NODE_ENV = 'production';
+    env.DATABASE_URL = process.env.DATABASE_URL || process.env.PGURL || 'postgres://payesh:payesh@127.0.0.1:5432/payesh_ci';
+    env.REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+  }
   delete env.PAYESH_DEMO_CODE;
   if (tlsCert) env.PAYESH_TLS_CERT = tlsCert;
   if (tlsKey) env.PAYESH_TLS_KEY = tlsKey;
-  if (production) env.PAYESH_ENV = 'production';
   for (const p of portPool) {
     const proc = spawn(process.execPath, ['server/index.js'], { cwd: ROOT, env: Object.assign({}, env, { PORT: String(p) }), stdio: 'pipe' });
     let err = '';
@@ -128,6 +137,8 @@ async function bootScenario({ tlsCert, tlsKey, production, portPool }) {
   fs.writeFileSync(path.join(tmp, 'ss.crt'), selfSigned.certPem);
   fs.writeFileSync(path.join(tmp, 'ss.key'), selfSigned.keyPem, { mode: 0o600 });
   const ca = makeSelfSigned('Payesh Test CA', nb, na);
+  fs.writeFileSync(path.join(tmp, 'ca.crt'), ca.certPem);
+  activeCaFile = path.join(tmp, 'ca.crt');
   const leaf = makeCaSignedLeaf(ca, 'payesh.example.com');
   fs.writeFileSync(path.join(tmp, 'leaf.crt'), leaf.certPem);
   fs.writeFileSync(path.join(tmp, 'leaf.key'), leaf.keyPem, { mode: 0o600 });
@@ -151,6 +162,7 @@ async function bootScenario({ tlsCert, tlsKey, production, portPool }) {
     t2.proc.kill('SIGKILL');
   }
 
+  activeCaFile = path.join(tmp, 'ss.crt');
   /* T3 — development + self-signed → بالا می‌آید (رفتارِ قدیمی دست‌نخورده) */
   const t3 = await bootScenario({ tlsCert: path.join(tmp, 'ss.crt'), tlsKey: path.join(tmp, 'ss.key'), production: false, portPool: [8987, 8986] });
   chk('T3 development + self-signed → سرور بالا آمد', t3.booted === true, 'code=' + t3.code + ' err=' + t3.stderr.slice(0, 120));

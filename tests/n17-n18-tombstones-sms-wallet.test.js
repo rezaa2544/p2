@@ -23,7 +23,7 @@ const assert = require('assert');
 const { Pool } = require('pg');
 
 const ROOT = path.join(__dirname, '..');
-const PG_URL = process.env.N17_PG_URL || 'postgresql://postgres@127.0.0.1:5433/payesh_n16';
+const PG_URL = process.env.N17_PG_URL || process.env.PGURL || process.env.DATABASE_URL || 'postgresql://postgres@127.0.0.1:5433/payesh_n16';
 
 let pass = 0, fail = 0;
 const test = async (name, fn) => {

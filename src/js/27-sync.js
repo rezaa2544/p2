@@ -289,13 +289,14 @@ function secureRandomBase36(len){
 }
 
 function enqueueOp(op){
-  /* R96 P0-5: کلیدهایِ محلی (idِ ریکوردِ کلاینت + by که در سطحِ op هست)
+  /* R96 P0-5: کلیدهایِ محلی (idِ ریکوردِ کلاینت + by که در سطحِ op هست +
+     versionِ رکورد که سرور مدیریت می‌کند و base_version جایِ آن است)
      جزوِ schema نیستند — دروازهٔ فیلدِ سرور آن‌ها را unknown_field می‌داند.
      نسخهٔ پاک می‌رود (رکوردهایِ دمو دست‌نخورده می‌مانند). */
-  if(op && op.data && (op.data.id !== undefined || op.data.by !== undefined)){
+  if(op && op.data && (op.data.id !== undefined || op.data.by !== undefined || op.data.version !== undefined)){
     const clean = {};
     for(const k in op.data){
-      if(k === 'id' || k === 'by') continue;
+      if(k === 'id' || k === 'by' || k === 'version') continue;
       clean[k] = op.data[k];
     }
     op = Object.assign({}, op, { data: clean });

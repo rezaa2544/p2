@@ -139,7 +139,14 @@ const ruleAgg = new Map();
 
 (async () => {
   const srv = await startStaticServer();
-  const browser = await chromium.launch();
+  const chromeBin = process.env.CHROMIUM_PATH || [
+    '/usr/local/bin/chromium-headless',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser'
+  ].find((p) => fs.existsSync(p));
+  const browser = await chromium.launch(chromeBin ? { executablePath: chromeBin, args: ['--no-sandbox', '--disable-dev-shm-usage'] } : { args: ['--no-sandbox', '--disable-dev-shm-usage'] });
 
   async function freshPage(context) {
     const page = await context.newPage();

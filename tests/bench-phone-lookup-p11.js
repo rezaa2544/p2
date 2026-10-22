@@ -25,10 +25,10 @@ const pct = (arr, p) => arr[Math.min(arr.length - 1, Math.floor(arr.length * p))
   const pool = new pg.Pool({ connectionString: PGURL, max: 4 });
   const t0 = Date.now();
   /* migrations */
-  const migDir = path.join(__dirname, '..', 'migrations');
-  for(const m of fs.readdirSync(migDir).filter(f => /^\d+_.+\.sql$/.test(f) && !/\.down\.sql$/.test(f)).sort()){
-    await pool.query(fs.readFileSync(path.join(migDir, m), 'utf8'));
-  }
+  require('child_process').execFileSync(process.execPath, [path.join(__dirname, '..', 'tools', 'migrate-ledger.js'), 'up'], {
+    env: Object.assign({}, process.env, { PGURL, DATABASE_URL: PGURL }),
+    stdio: 'pipe'
+  });
   await pool.query(`INSERT INTO schools (id, version, active, created_at, updated_at)
     VALUES (1, 1, true, now(), now()) ON CONFLICT (id) DO NOTHING`);
   /* ۱M کاربر — تلفن‌های یکتا؛ هدف = id=N (انتهای آرایهٔ آینه = بدترین حالتِ find) */

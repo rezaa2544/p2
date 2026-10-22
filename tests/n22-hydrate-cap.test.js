@@ -25,10 +25,10 @@ const fs = require('fs');
 const os = require('os');
 
 const ROOT = path.join(__dirname, '..');
-const PG_HOST = '127.0.0.1';
-const PG_PORT = '5433';
-const PG_USER = 'postgres';
-const PG_BIN = 'C:\\Program Files\\PostgreSQL\\16\\bin';
+const PG_HOST = process.env.PGHOST || '127.0.0.1';
+const PG_PORT = process.env.PGPORT || '5432';
+const PG_USER = process.env.PGUSER || 'postgres';
+const PG_PASS = process.env.PGPASSWORD || 'postgres';
 const TEST_DB = 'payesh_n22_hydrate';
 
 let results = [];
@@ -43,9 +43,9 @@ function check(name, fn) {
 function psql(db, sql) {
   const { execFile } = require('child_process');
   return new Promise((resolve, reject) => {
-    execFile(path.join(PG_BIN, 'psql.exe'),
+    execFile('psql',
       ['-h', PG_HOST, '-p', PG_PORT, '-U', PG_USER, '-d', db, '-q', '-t', '-A', '-v', 'ON_ERROR_STOP=1', '-c', sql],
-      { env: Object.assign({}, process.env, { PGPASSWORD: 'postgres' }) },
+      { env: Object.assign({}, process.env, { PGPASSWORD: PG_PASS }) },
       (err, stdout, stderr) => err ? reject(new Error(String(stderr || err).split('\n').filter(l => /ERROR/i.test(l)).slice(0, 2).join(' | '))) : resolve(stdout));
   });
 }
@@ -59,7 +59,7 @@ function psql(db, sql) {
   let pgLib = null;
   try { pgLib = require('pg'); } catch (e) { pgLib = null; }
   const mkPool = () => new pgLib.Pool({
-    host: PG_HOST, port: Number(PG_PORT), user: PG_USER, password: 'postgres',
+    host: PG_HOST, port: Number(PG_PORT), user: PG_USER, password: PG_PASS,
     database: TEST_DB, max: 2
   });
   let testPool = null;

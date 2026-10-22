@@ -179,30 +179,39 @@ async function main() {
         procs.push(p); return p;
       };
       try {
-        spawnR(['--port', '6400', '--daemonize', 'no', '--save', '', '--dir', dir]);
-        spawnR(['--port', '6401', '--daemonize', 'no', '--save', '', '--dir', dir, '--replicaof', '127.0.0.1', '6400']);
+        fs.mkdirSync(path.join(dir, 'm'), { recursive: true });
+        fs.mkdirSync(path.join(dir, 'r'), { recursive: true });
+        spawnR(['--bind', '127.0.0.1', '--protected-mode', 'no', '--repl-diskless-sync-delay', '0', '--port', '6400', '--daemonize', 'no', '--save', '', '--dir', path.join(dir, 'm')]);
+        spawnR(['--bind', '127.0.0.1', '--protected-mode', 'no', '--port', '6401', '--daemonize', 'no', '--save', '', '--dir', path.join(dir, 'r'), '--replicaof', '127.0.0.1', '6400']);
         const sleep = (ms) => new Promise(r => setTimeout(r, ms));
         await sleep(800);
-        const sentinelConf = (port) => {
-          const f = path.join(dir, 'sentinel-' + port + '.conf');
+        const sentinelConf = (port, idx) => {
+          const sdir = path.join(dir, 's' + idx);
+          fs.mkdirSync(sdir, { recursive: true });
+          const f = path.join(sdir, 'sentinel.conf');
           fs.writeFileSync(f, [
+            'bind 127.0.0.1',
+            'protected-mode no',
             'port ' + port,
+            'dir ' + sdir,
             'sentinel monitor mymaster 127.0.0.1 6400 2',
-            'sentinel down-after-milliseconds mymaster 2000',
-            'sentinel failover-timeout mymaster 10000',
+            'sentinel down-after-milliseconds mymaster 1500',
+            'sentinel failover-timeout mymaster 8000',
             'sentinel parallel-syncs mymaster 1'
           ].join('\n'));
           const p = cp.spawn(bins.server, [f, '--sentinel'], { stdio: 'ignore' });
           procs.push(p); return p;
         };
-        sentinelConf(26400); sentinelConf(26401); sentinelConf(26402);
-        await sleep(1200);
+        sentinelConf(26400, 0); sentinelConf(26401, 1); sentinelConf(26402, 2);
+        await sleep(3200);
 
         const Redis = require('../node_modules/ioredis');
         const cc = redis.buildRedisConfig({ REDIS_SENTINELS: '127.0.0.1:26400,127.0.0.1:26401,127.0.0.1:26402', REDIS_SENTINEL_NAME: 'mymaster' });
-        const c = Object.assign({ sentinels: cc.sentinels, name: cc.name }, cc.options || {});
-        const app = new Redis(Object.assign({}, c, { connectTimeout: 2000, maxRetriesPerRequest: 3 }));
+        const c = Object.assign({ sentinels: cc.sentinels, name: cc.name, sentinelRetryStrategy: cc.sentinelOptions.retryStrategy }, cc.options || {});
+        const app = new Redis(Object.assign({}, c, { lazyConnect: false, connectTimeout: 2000, maxRetriesPerRequest: 3, enableOfflineQueue: true }));
+        app.on('error', () => {});
         await app.set('ha:probe', 'alive');
+        await app.wait(1, 5000);
         chk('نوشت روی مستر از مسیر نگهبان', (await app.get('ha:probe')) === 'alive');
 
         /* کشتنِ مستر */

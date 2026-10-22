@@ -23,15 +23,16 @@ PGHA_USER="${PGHA_USER:-postgres}"
 /opt/payesh/entrypoints/render-config.sh
 
 if [ ! -s "$PGDATA/PG_VERSION" ]; then
-  rm -rf "$PGDATA"; mkdir -p "$PGDATA"; chmod 0700 "$PGDATA"
+  mkdir -p "$PGDATA"
+  find "$PGDATA" -mindepth 1 -delete
+  chown postgres:postgres "$PGDATA"
+  chmod 0700 "$PGDATA"
   if [ "${STANDBY_BOOTSTRAP:-stream}" = "repo" ]; then
     echo "standby: bootstrap از فضای شیئی (pgbackrest restore --type=prefer)"
-    pgbackrest --stanza=payesh --delta --type=prefer restore
+    env PGPASSWORD="$PGPASSWORD" gosu postgres pgbackrest --stanza=payesh --delta --type=prefer restore
   else
     echo "standby: pg_basebackup از ${PRIMARY_HOST}:${PRIMARY_PORT}"
-    pg_basebackup -h "$PRIMARY_HOST" -p "$PRIMARY_PORT" \
-      -U replicator -D "$PGDATA" -R -X stream -c fast -P -S "" 2>/dev/null \
-    || pg_basebackup -h "$PRIMARY_HOST" -p "$PRIMARY_PORT" \
+    env PGPASSWORD="$PGPASSWORD" gosu postgres pg_basebackup -h "$PRIMARY_HOST" -p "$PRIMARY_PORT" \
       -U replicator -D "$PGDATA" -R -X stream -c fast -P
   fi
   touch "$PGDATA/standby.signal"
@@ -42,6 +43,8 @@ if [ ! -s "$PGDATA/PG_VERSION" ]; then
     echo "hot_standby = on"
     echo "primary_slot_name = ''"
   } >> "$PGDATA/postgresql.auto.conf"
+  chown -R postgres:postgres "$PGDATA"
+  chmod 0700 "$PGDATA"
   echo "standby: bootstrapped (standby.signal + auto.conf نوشته شد)"
 fi
 

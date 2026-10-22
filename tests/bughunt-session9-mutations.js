@@ -64,7 +64,7 @@ mutate('server/cursor.js',
 
 /* ── M2: مقایسهٔ منطقه (برای توکنِ اصیل) حذف شود ── */
 mutate('server/cursor.js',
-  "      if (payload.v === 2 && payload.rg !== regionName()) {",
+  "      if ((payload.v === 2 || payload.v === 3) && payload.rg !== regionName()) {",
   "      if (payload.v === 2 && false) { /*MUT*/",
   /❌ A2/, 'M2 حذفِ مقایسهٔ منطقه ⇒ A2 کشته شد');
 

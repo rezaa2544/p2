@@ -138,7 +138,7 @@ setTimeout(async () => {
     console.log('  ⚠️ SKIP: playwright-core نصب نیست — تولید PDF واقعی آزموده نشد (سبزِ جعلی ممنوع)');
   } else {
     await testAsync('A4 همان سندِ UI در Chromium به PDF واقعی تبدیل شد (%PDF + حجم)', async () => {
-      const browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+      const browser = await chromium.launch(Object.assign({ executablePath: process.env.CHROMIUM_PATH || (fs.existsSync('/usr/local/bin/chromium-headless') ? '/usr/local/bin/chromium-headless' : undefined) }, {  headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage']  }, { args: ['--no-sandbox', '--disable-dev-shm-usage'] }));
       try {
         const page = await browser.newPage();
         await page.setContent(printedHtml, { waitUntil: 'load' });

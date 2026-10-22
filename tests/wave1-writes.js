@@ -152,8 +152,8 @@ const PHONE = '09123456789';
     const cap = res._cap || {};
     const c = pool.txClient();
     const st = txStats(c.queries);
-    chk('W3a sms: شکستِ آینه پاسخ را عوض نکند (200، sent=1)',
-      cap.code === 200 && cap.body && cap.body.sent === 1, 'code=' + cap.code + ' body=' + JSON.stringify(cap.body));
+    chk('W3a sms: شکستِ آینه fail-closed پاسخ می‌دهد (503 sms_mirror_failed، sent=0)',
+      cap.code === 503 && cap.body && cap.body.code === 'sms_mirror_failed' && cap.body.sent === 0, 'code=' + cap.code + ' body=' + JSON.stringify(cap.body));
     chk('W3b sms: ROLLBACK صادر + auditِ sms_mirror_failed',
       st.rollback >= 1 && audits.some(a => a.ev === 'sms_mirror_failed'),
       'rollback=' + st.rollback + ' audits=' + audits.map(a => a.ev).join(','));

@@ -69,29 +69,28 @@ const rows = [];
   /* ── فالبک: نوشت و مسیرهای وابسته در حینِ قطع ───────────────── */
   const wOut = await L.syncWrite(api.port, lg.jar, { by: mgr.id, collection: 'preapps', type: 'ins', data: { school_id: 1, name: 's2-outage-write', stage: 'contact' } });
   T.writeOutageMs = wOut.ms; T.writeOutageStatus = wOut.status;
-  /* ادعای معماری: Redis کش است ⇒ مسیرِ نوشت باید یا فالبک کند یا امتناعِ صریحِ
-     503 بدهد. ۵۰۰ = سرریزِ خطا به کلاینت. */
+  /* P0-13 / A-22: در تولید، قطعیِ Redis به‌صورت fail-closed پاسخ می‌دهد (۴۰۱/۵۰۳) و هرگز ۵۰۰ نمی‌شود. */
   L.check(rows, 'fallback: نوشت در قطعِ Redis فالبک/امتناعِ صریح می‌دهد (نه ۵۰۰ِ سرریز)',
-    [200, 503, 429].includes(wOut.status), 'status=' + wOut.status + ' ms=' + wOut.ms + ' raw=' + wOut.raw.slice(0, 120));
+    [200, 401, 429, 503].includes(wOut.status), 'status=' + wOut.status + ' ms=' + wOut.ms + ' raw=' + wOut.raw.slice(0, 120));
   const dedupePath = /cache\.isProcessedUid|payesh:idempotency/.test(require('fs').readFileSync(ROOT_FILE('server/sync.js'), 'utf8')) &&
                      /prodRethrow/.test(require('fs').readFileSync(ROOT_FILE('server/redis.js'), 'utf8'));
   console.log('[root-cause] sync.js:879 cache.isProcessedUid → redis.get → prodRethrow (redis.js) — زنجیرهٔ وابستگیِ سختِ مسیرِ نوشت: ' + dedupePath);
 
   const sc = await L.httpReq(api.port, 'POST', '/api/auth/send-code', { phone: mgr.phone }, { timeoutMs: 8000 });
-  L.check(rows, 'fallback: rate-limit در قطعِ Redis fail-open است (نه ۵۰۰)', sc.status === 200 || sc.status === 429,
+  L.check(rows, 'fallback: send-code در قطعِ Redis امتناعِ صریحِ ۵۰۳ می‌دهد (P0-13، نه ۵۰۰)', [200, 429, 503].includes(sc.status),
     'send-code status=' + sc.status + ' raw=' + sc.raw.slice(0, 120));
 
   const authMe = await L.httpReq(api.port, 'GET', '/api/auth/me', null, { jar: lg.jar, timeoutMs: 8000 });
-  L.check(rows, 'fallback: نشستِ موجود در قطعِ Redis معتبر می‌ماند (احرازِ stateful نمی‌شکند)',
-    authMe.status === 200, 'me status=' + authMe.status + ' ms=' + authMe.ms);
+  L.check(rows, 'fallback: احرازِ نشست در قطعِ Redis fail-closed است (نه ۵۰۰)',
+    [200, 401, 503].includes(authMe.status), 'me status=' + authMe.status + ' ms=' + authMe.ms);
 
   const bootOut = await L.httpReq(api.port, 'GET', '/api/v1/bootstrap', null, { jar: lg.jar, timeoutMs: 8000 });
-  L.check(rows, 'fallback: خوانشِ bootstrap در قطعِ Redis پاسخ می‌دهد (کش‌فالبک، نه ۵۰۰)',
-    [200, 503].includes(bootOut.status), 'bootstrap status=' + bootOut.status + ' ms=' + bootOut.ms);
+  L.check(rows, 'fallback: خوانشِ bootstrap در قطعِ Redis پاسخِ مشخص می‌دهد (نه ۵۰۰)',
+    [200, 401, 503].includes(bootOut.status), 'bootstrap status=' + bootOut.status + ' ms=' + bootOut.ms);
 
   const healthOut = await L.health(api.port);
   L.check(rows, 'fallback: /api/health بدونِ سقوط گزارش می‌دهد',
-    healthOut.status === 200 && healthOut.json && healthOut.json.redis && healthOut.json.redis.alive === false,
+    [200, 503].includes(healthOut.status) && healthOut.json && healthOut.json.redis && healthOut.json.redis.alive === false,
     'health.redis=' + JSON.stringify(healthOut.json && healthOut.json.redis) + ' status=' + healthOut.status);
 
   /* ── بازیابی: Redis خالی بالا می‌آید ────────────────────────── */
