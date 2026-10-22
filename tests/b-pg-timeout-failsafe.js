@@ -147,6 +147,37 @@ function get(path) {
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
+function waitPortFree(port, timeoutMs) {
+  const deadline = Date.now() + (timeoutMs || 5000);
+  return new Promise((resolve) => {
+    const probe = () => {
+      const s = net.createServer();
+      s.once('error', () => {
+        if (Date.now() >= deadline) return resolve(false);
+        setTimeout(probe, 50);
+      });
+      s.once('listening', () => {
+        s.close(() => resolve(true));
+      });
+      s.listen(port, '127.0.0.1');
+    };
+    probe();
+  });
+}
+
+async function stopServer(proc) {
+  if (!proc) return;
+  const done = proc.exitCode !== null
+    ? Promise.resolve()
+    : new Promise((resolve) => {
+      const t = setTimeout(resolve, 5000);
+      proc.once('exit', () => { clearTimeout(t); resolve(); });
+    });
+  bestEffort(() => proc.kill('SIGKILL'));
+  await done;
+  await waitPortFree(PORT, 5000);
+}
+
 function bootServer(shapeEnv) {
   /* همان الگوی b-pg-health-blackhole: اعتبارِ adminِ واقعی، فقط host:port
    * به relay اشاره می‌کند (همان کاربرِ مالکِ scratch DB). */
@@ -222,22 +253,33 @@ function bootServer(shapeEnv) {
 
   for (const shape of SHAPES) {
     console.log('\n  --- shape: ' + shape.label + ' ---');
-    const { proc, getLog } = bootServer(shape.env);
+    await waitPortFree(PORT, 5000);
+    let { proc, getLog } = bootServer(shape.env);
 
     /* فاز ۱: سرور از مسیرِ forward relay کاملاً سالم بالا می‌آید. */
     let up = null;
-    for (let i = 0; i < 360; i += 1) {
-      const h = await get('/api/health');
-      if (h.status !== 0) { up = h; break; }
-      await sleep(250);
+    for (let attempt = 0; attempt < 2 && !up; attempt += 1) {
+      if (attempt > 0) {
+        await stopServer(proc);
+        relay.restore();
+        const next = bootServer(shape.env);
+        proc = next.proc;
+        getLog = next.getLog;
+      }
+      for (let i = 0; i < 360; i += 1) {
+        const h = await get('/api/health');
+        if (h.status !== 0) { up = h; break; }
+        if (proc.exitCode !== null) break;
+        await sleep(250);
+      }
     }
     check('shape "' + shape.label + '": healthy boot through the forward relay (200 + ok:true + postgres alive)',
       !!(up && up.status === 200 && up.json && up.json.ok === true && up.json.db
         && up.json.db.driver === 'postgres' && up.json.db.alive === true),
       'status=' + (up && up.status) + ' log=' + getLog().slice(-160));
     if (!up) {
-      bestEffort(() => proc.kill('SIGKILL'));
-      relay.sever();
+      await stopServer(proc);
+      relay.restore();
       continue;
     }
 
@@ -296,8 +338,7 @@ function bootServer(shapeEnv) {
     }
 
     relay.restore();
-    bestEffort(() => proc.kill('SIGKILL'));
-    await sleep(400);
+    await stopServer(proc);
     /* relay را نبستیم — shapeهای بعدی هم از همان relay استفاده می‌کنند.
      * frozenInbound ریست می‌شود تا preconditionِ هر شکل مستقل بماند. */
     relay.stats.frozenInbound = 0;

@@ -357,8 +357,8 @@ class Infra {
       let r = '';
       try {
         r = execFileSync(pgBin('psql'), ['-h', '127.0.0.1', '-p', String(it.pgPort), '-U', 'postgres', '-d', 'payesh', '-v', 'ON_ERROR_STOP=0', '-f', file],
-          { encoding: 'utf8', timeout: 60000 });
-      } catch (e) { r = (e && (e.stdout || e.stderr || e.message)) || ''; }
+          { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: Object.assign({}, process.env, { PGOPTIONS: '-c client_min_messages=warning' }), timeout: 60000 });
+      } catch (e) { r = String((e && e.stdout) || '') + '\n' + String((e && e.stderr) || '') + '\n' + String((e && e.message) || ''); }
       const errs = r.split('\n').filter((l) => /ERROR|FATAL/.test(l));
       if (errs.length) log.push(path.basename(file) + ': ' + errs.slice(0, 2).join(' | '));
     };
@@ -370,12 +370,26 @@ class Infra {
     if (psql(it.pgPort, "SELECT to_regclass('server_outbox')") !== 'server_outbox') psql(it.pgPort, 'CREATE TABLE server_outbox (id BIGSERIAL PRIMARY KEY, type TEXT, collection TEXT, record_id BIGINT, actor_id BIGINT, version BIGINT, payload JSONB, status TEXT DEFAULT \'pending\', created_at TIMESTAMPTZ DEFAULT NOW());');
     if (psql(it.pgPort, "SELECT to_regclass('payesh_outbox_id_seq')") !== 'payesh_outbox_id_seq') psql(it.pgPort, 'CREATE SEQUENCE payesh_outbox_id_seq');
 
-    // Redis
+    // Redis (پورت در لحظهٔ اجرا تخصیص می‌یابد و در صورت تصادم ephemeral بازتلاش می‌شود)
     it.redisDir = path.join(it.dir, 'redis');
     fs.mkdirSync(it.redisDir, { recursive: true });
-    it.redisProc = spawn('redis-server', ['--port', String(it.redisPort), '--dir', it.redisDir, '--save', '', '--appendonly', 'no', '--daemonize', 'no'],
-      { stdio: 'ignore', detached: false });
-    await waitPort(it.redisPort, 15000);
+    let redisReady = false;
+    let lastRedisErr = null;
+    for (let rTry = 0; rTry < 5 && !redisReady; rTry++) {
+      it.redisPort = opts.redisPort || await freePort();
+      Infra._lastRedisPort = it.redisPort;
+      it.redisProc = spawn('redis-server', ['--port', String(it.redisPort), '--dir', it.redisDir, '--save', '', '--appendonly', 'no', '--daemonize', 'no'],
+        { stdio: 'ignore', detached: false });
+      try {
+        await waitPort(it.redisPort, opts.redisPort ? 15000 : 4000);
+        if (it.redisProc.exitCode === null) redisReady = true;
+      } catch (e) {
+        lastRedisErr = e;
+        try { it.redisProc.kill('SIGKILL'); } catch (_) { /* ignore */ }
+        if (opts.redisPort) break;
+      }
+    }
+    if (!redisReady) throw lastRedisErr || new Error('redis failed to start');
 
     // کپیِ seed store (server/data دست‌نخورده می‌ماند)
     const seed = path.join(ROOT, 'server/data/payesh.json');
@@ -519,50 +533,57 @@ function apiLogPath(baseDir) {
  */
 async function startApi(opts) {
   const infra = opts.infra;
-  const port = await freePort();
-  const logFile = apiLogPath(infra.dir);
-  const env = apiEnv(infra, Object.assign({ PORT: String(port) }, opts.extraEnv || {}));
-  const out = fs.openSync(logFile, 'a');
-  /* 🔴 سخت‌گیریِ دروازهٔ امنیتی: حلقهٔ بازبه‌راه‌اندازی دیگر در پوسته نیست؛
-     node مستقیماً با آرگومان‌های اسکریپت‌ناپذیر اجرا می‌شود و بازبه‌راه‌اندازی
-     توسطِ خودِ هارنس مدیریت می‌شود. detached:true ⇒ گروهِ پروسهٔ مستقل
-     (kill(-pid) فقط node را می‌کشد). */
-  let proc = null;
-  let stopped = false;
-  const launch = () => {
-    proc = spawn(process.execPath, ['server/index.js'], { cwd: ROOT, env, stdio: ['ignore', out, out], detached: true });
-    if (opts.supervisor) {
-      proc.on('exit', (code, signal) => {
-        const rc = code != null ? code : (signal === 'SIGKILL' ? 137 : 1);
-        try { fs.appendFileSync(logFile, '[supervisor] api exited rc=' + rc + ' at ' + nowIso() + '\n'); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ }
-        if (!stopped) setTimeout(launch, 50);
-      });
-    }
-  };
-  launch();
-  const api = {
-    port, proc, logFile, pid: null, startedAt: nowIso(),
-    logs() { try { return fs.readFileSync(logFile, 'utf8'); } catch (e) { return ''; } },
-    async waitReady(timeoutMs) {
-      const r = await until(async () => {
+  const pinnedPort = opts.extraEnv && opts.extraEnv.PORT ? Number(opts.extraEnv.PORT) : null;
+  let lastErr = null;
+  for (let attempt = 0; attempt < (pinnedPort ? 1 : 3); attempt++) {
+    const port = pinnedPort || await freePort();
+    const logFile = apiLogPath(infra.dir);
+    const env = apiEnv(infra, Object.assign({ PORT: String(port) }, opts.extraEnv || {}));
+    const out = fs.openSync(logFile, 'a');
+    /* 🔴 سخت‌گیریِ دروازهٔ امنیتی: حلقهٔ بازبه‌راه‌اندازی دیگر در پوسته نیست؛
+       node مستقیماً با آرگومان‌های اسکریپت‌ناپذیر اجرا می‌شود و بازبه‌راه‌اندازی
+       توسطِ خودِ هارنس مدیریت می‌شود. detached:true ⇒ گروهِ پروسهٔ مستقل
+       (kill(-pid) فقط node را می‌کشد). */
+    let proc = null;
+    let stopped = false;
+    const launch = () => {
+      proc = spawn(process.execPath, ['server/index.js'], { cwd: ROOT, env, stdio: ['ignore', out, out], detached: true });
+      if (opts.supervisor) {
+        proc.on('exit', (code, signal) => {
+          const rc = code != null ? code : (signal === 'SIGKILL' ? 137 : 1);
+          try { fs.appendFileSync(logFile, '[supervisor] api exited rc=' + rc + ' at ' + nowIso() + '\n'); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ }
+          if (!stopped) setTimeout(launch, 50);
+        });
+      }
+    };
+    launch();
+    const api = {
+      port, proc, logFile, pid: null, startedAt: nowIso(),
+      logs() { try { return fs.readFileSync(logFile, 'utf8'); } catch (e) { return ''; } },
+      async waitReady(timeoutMs) {
+        const r = await until(async () => {
+          const l = await httpReq(port, 'GET', '/api/liveness', null, { timeoutMs: 1500 });
+          if (l.status === 200 && l.json && l.json.pid) { api.pid = l.json.pid; return true; }
+          if (!opts.supervisor && proc && proc.exitCode !== null) throw new Error('early_exit:' + proc.exitCode);
+          return false;
+        }, { timeoutMs: timeoutMs || 25000, stepMs: 50, label: 'liveness' });
+        return r;
+      },
+      /** PID واقعیِ node از /api/liveness (نه pid پوستهٔ supervisor) */
+      async currentNodePid() {
         const l = await httpReq(port, 'GET', '/api/liveness', null, { timeoutMs: 1500 });
-        if (l.status === 200 && l.json && l.json.pid) { api.pid = l.json.pid; return true; }
-        return false;
-      }, { timeoutMs: timeoutMs || 25000, stepMs: 50, label: 'liveness' });
-      return r;
-    },
-    /** PID واقعیِ node از /api/liveness (نه pid پوستهٔ supervisor) */
-    async currentNodePid() {
-      const l = await httpReq(port, 'GET', '/api/liveness', null, { timeoutMs: 1500 });
-      if (l.status === 200 && l.json && l.json.pid) { api.pid = l.json.pid; return l.json.pid; }
-      return null;
-    },
-    kill9(pid) { try { process.kill(pid || api.pid, 'SIGKILL'); return true; } catch (e) { return false; } },
-    stop() { stopped = true; try { process.kill(-proc.pid, 'SIGKILL'); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ } try { proc.kill('SIGKILL'); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ } }
-  };
-  const r = await api.waitReady(opts.timeoutMs || 25000);
-  if (!r.ok) { api.stop(); throw new Error('API بالا نیامد (' + r.ms + 'ms) — لاگ: ' + api.logs().slice(-1200)); }
-  return api;
+        if (l.status === 200 && l.json && l.json.pid) { api.pid = l.json.pid; return l.json.pid; }
+        return null;
+      },
+      kill9(pid) { try { process.kill(pid || api.pid, 'SIGKILL'); return true; } catch (e) { return false; } },
+      stop() { stopped = true; try { process.kill(-proc.pid, 'SIGKILL'); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ } try { proc.kill('SIGKILL'); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ } try { fs.closeSync(out); } catch (e) { /* ignore */ } }
+    };
+    const r = await api.waitReady(opts.timeoutMs || 25000);
+    if (r.ok) return api;
+    api.stop();
+    lastErr = new Error('API بالا نیامد (' + r.ms + 'ms) — لاگ: ' + api.logs().slice(-1200));
+  }
+  throw lastErr;
 }
 
 /* ── لاگین با کوکی (send-code → demo_code → login) ──────────────── */

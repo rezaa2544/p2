@@ -159,6 +159,8 @@ LIVE_BENCH_URL="${LIVE_PG_URL%/*}/payesh_bench"
 LIVE_IDOR_URL="${LIVE_PG_URL%/*}/payesh_db_idor"
 LIVE_REDIS_URL="${REDIS_URL:-redis://127.0.0.1:6379}"
 unset DATABASE_URL PGURL REDIS_URL SYNC_TEST_DATABASE_URL
+psql "$LIVE_PG_URL" -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;" >/dev/null 2>&1 || true
+DATABASE_URL="$LIVE_PG_URL" node tools/migrate-ledger.js up >> $OUT 2>&1 || true
 mkdir -p /tmp/chaos-drill-tmpfs 2>/dev/null || true
 if [ -z "${CHROMIUM_PATH:-}" ]; then
   for cb in /usr/local/bin/chromium-headless /usr/bin/chromium /usr/bin/chromium-browser /usr/bin/google-chrome; do
@@ -282,9 +284,11 @@ tests/a11y-interactive.js
 tests/a11y-keyboard.js
 tests/a11y-runtime.js
 tests/reports-export.js
-tests/reports-pdf-e2e.js
-tests/tracing-performance.js
-tests/wave18-load.js
+  tests/reports-pdf-e2e.js
+  tests/tracing-performance.js
+  tests/wave9-performance.js
+  tests/wave17-testing.js
+  tests/wave18-load.js
 "
 
 # ── suite lists ────────────────────────────────────────────────────────────

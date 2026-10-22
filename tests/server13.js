@@ -139,6 +139,16 @@ async function bootScenario({ tlsCert, tlsKey, production, portPool }) {
   console.log('\n▸ دور 85 — P1-4: fail-fastِ TLS در production');
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-s13-'));
 
+  const targetDbUrl = process.env.DATABASE_URL || process.env.PGURL || 'postgres://payesh:payesh@127.0.0.1:5432/payesh_ci';
+  try {
+    require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'tools/migrate-ledger.js'), 'up'], {
+      cwd: ROOT,
+      env: Object.assign({}, process.env, { DATABASE_URL: targetDbUrl }),
+      stdio: 'ignore',
+      timeout: 60000
+    });
+  } catch (_err) { /* best-effort pre-migrate */ }
+
   const nb = new Date(Date.now() - 86400000), na = new Date(Date.now() + 86400000 * 900);
   const selfSigned = makeSelfSigned('payesh-local', nb, na);
   fs.writeFileSync(path.join(tmp, 'ss.crt'), selfSigned.certPem);
