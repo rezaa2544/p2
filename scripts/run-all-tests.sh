@@ -70,6 +70,10 @@ if [ ! -f server/data/payesh.json ]; then
   echo "!! payesh.json missing — reseeding" | tee -a $OUT
   node server/seed.js >>$OUT 2>&1 || { echo "!! reseed FAILED" | tee -a $OUT; exit 2; }
 fi
+if [ ! -f dist/payesh.html ]; then
+  echo "!! dist/payesh.html missing — verifying check & building dist bundle" | tee -a $OUT
+  (node build.js --check && node build.js) >>$OUT 2>&1 || { echo "!! build dist/payesh.html FAILED" | tee -a $OUT; exit 2; }
+fi
 
 # ── live-PostgreSQL probe ─────────────────────────────────────────────────
 # tests/wave23-reports-pg.js is the parity/authorization gate for the DB-native
@@ -230,6 +234,7 @@ tests/chaos-drill-disk-pressure.js
 tests/chaos-suite.js
 tests/idor-runtime.js
 tests/idor-runtime-r4.js
+tests/a31-intelligence-semantic-integrity.js
 tests/a35-regression.js
 tests/wal-disk-full.js
 "
@@ -430,9 +435,11 @@ run_live_one() {
     env REDIS_URL="$LIVE_REDIS_URL" timeout -k 30 "$SUITE_TIMEOUT" node "$f" > /tmp/at-$name.log 2>&1
     code=$?
   elif [ "$f" = "tests/idor-runtime.js" ] || [ "$f" = "tests/idor-runtime-r4.js" ] || [ "$f" = "tests/a35-regression.js" ]; then
+    redis-cli -u "$LIVE_REDIS_URL" flushall >/dev/null 2>&1 || redis-cli flushall >/dev/null 2>&1 || true
     DATABASE_URL="$LIVE_PG_URL" node tools/seed-idor-fixture.js > /tmp/at-$name-seed.log 2>&1
     env DATABASE_URL="$LIVE_IDOR_URL" PGURL="$LIVE_IDOR_URL" IDOR_DATABASE_URL="$LIVE_IDOR_URL" REDIS_URL="$LIVE_REDIS_URL" \
-      PAYESH_DEMO_CODE=1 PAYESH_SMS_PHONE_LIMIT=1000 PAYESH_SMS_IP_LIMIT=1000 PAYESH_SMS_COOLDOWN_S=0 \
+      PAYESH_DEMO_CODE=1 PAYESH_SMS_PHONE_LIMIT=1000 PAYESH_SMS_IP_LIMIT=1000 \
+      PAYESH_LOGIN_PHONE_LIMIT=1000 PAYESH_LOGIN_IP_LIMIT=1000 PAYESH_SMS_COOLDOWN_S=0 \
       timeout -k 30 "$SUITE_TIMEOUT" node "$f" > /tmp/at-$name.log 2>&1
     code=$?
   elif [ "$f" = "tests/p11-phone-auth-live.js" ]; then
@@ -458,6 +465,7 @@ run_live_one() {
     code=$?
   fi
   pkill -f 'node .*server/index\.js' 2>/dev/null || true
+  redis-cli -u "$LIVE_REDIS_URL" flushall >/dev/null 2>&1 || redis-cli flushall >/dev/null 2>&1 || true
   for _pgw in $(seq 1 20); do
     psql "$LIVE_ADMIN_URL" -c 'SELECT 1;' >/dev/null 2>&1 && break
     sleep 0.5

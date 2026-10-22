@@ -24,7 +24,6 @@ const fs = require('fs');
 const os = require('os');
 
 const ROOT = path.join(__dirname, '..');
-const EVID_PATH = process.env.PIN_EVID || '/home/user/idor-evidence-pins-r4.jsonl';
 
 if (!process.env.DATABASE_URL) { console.error('BLOCKED: DATABASE_URL required (PG-only gate)'); process.exit(2); }
 if (!process.env.REDIS_URL)   { console.error('BLOCKED: REDIS_URL required (OTP state)');   process.exit(2); }
@@ -32,6 +31,7 @@ if (!process.env.REDIS_URL)   { console.error('BLOCKED: REDIS_URL required (OTP 
 delete process.env.NODE_ENV;
 delete process.env.PAYESH_ENV;
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-idor-r4-'));
+const EVID_PATH = process.env.PIN_EVID || path.join(TMP, 'idor-evidence-pins-r4.jsonl');
 process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
 process.env.PAYESH_KEY = path.join(TMP, 'jwt.key');
 process.env.PAYESH_AUDIT = path.join(TMP, 'audit.log');

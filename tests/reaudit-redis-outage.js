@@ -28,7 +28,12 @@ const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 function chk(name, ok, detail) {
   if (ok) { pass++; console.log(`  ✅ ${name}`); }
-  else { fail++; console.log(`  ❌ ${name}${detail ? ' — ' + detail : ''}`); }
+  else {
+    fail++;
+    const msg = `${name}${detail ? ' — ' + detail : ''}`;
+    console.log(`  ❌ ${msg}`);
+    console.log(`::error title=A-22 failure::${msg.replace(/\r?\n/g, ' ').slice(0, 400)}`);
+  }
 }
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -164,7 +169,8 @@ function bootInstance(port, redisUrl, storeFile, auditFile, keyFile, extra) {
     PAYESH_DEMO_CODE: '1'
   });
   if (redisUrl) env.REDIS_URL = redisUrl; else delete env.REDIS_URL;
-  delete env.NODE_ENV; delete env.DATABASE_URL; delete env.PGURL;
+  delete env.NODE_ENV; delete env.PAYESH_ENV; delete env.PAYESH_JWT_SECRET;
+  delete env.DATABASE_URL; delete env.PGURL;
   delete env.PG_LIVE_PG; delete env.SYNC_TEST_DATABASE_URL;
   delete env.PGHOST; delete env.PGPORT; delete env.PGUSER; delete env.PGPASSWORD; delete env.PGDATABASE;
   delete env.REDIS_CLUSTER_NODES; delete env.REDIS_SENTINELS;
@@ -196,13 +202,18 @@ function makeReq(port, timeoutMs) {
 }
 
 async function waitFor(port, req) {
-  /* منتظر می‌ماند تا سرور سوکت باز کند؛ کدِ وضعیتِ health را برمی‌گرداند
-     (ممکن است ۵۰۳ باشد یعنی «آماده نیست ولی سرو می‌دهد»). */
+  /* منتظر می‌ماند تا سرور سوکت باز کند و cache/db آماده شوند (health === 200)؛
+     در پنجرهٔ کوتاهِ بوت پیش از تکمیلِ cache.init، health موقتاً ۵۰۳ است. */
+  let last = 0;
   for (let i = 0; i < 90; i++) {
-    try { const h = await req('GET', '/api/health'); if (h.status !== 0) return h.status; } catch (e) { /* ignore */ }
+    try {
+      const h = await req('GET', '/api/health');
+      if (h.status === 200) return 200;
+      if (h.status !== 0) last = h.status;
+    } catch (e) { /* ignore */ }
     await sleep(200);
   }
-  return 0;
+  return last;
 }
 
 async function login(req, phone, nid) {
@@ -222,7 +233,11 @@ function tmpSetup(tag) {
   const src = path.join(ROOT, 'server', 'data', 'payesh.json');
   if (!fs.existsSync(src)) require('child_process').execSync('node server/seed.js', { cwd: ROOT, stdio: 'ignore' });
   const store = path.join(dir, 's.json'); fs.copyFileSync(src, store);
-  return { dir, store, audit: path.join(dir, 'a.log'), key: path.join(dir, 'k.key') };
+  /* کلیدِ JWT را پیش از spawn هم‌زمانِ A و B اتمیک می‌سازیم تا هرگز رقابتِ
+     TOCTOU روی k.key باعثِ دو کلیدِ متفاوت در حافظهٔ A و B نشود (علتِ S2c A=200 B=401). */
+  const key = path.join(dir, 'k.key');
+  fs.writeFileSync(key, crypto.randomBytes(32).toString('hex'), { mode: 0o600 });
+  return { dir, store, audit: path.join(dir, 'a.log'), key };
 }
 function killInst(inst) { try { inst.child.kill('SIGTERM'); } catch (e) { /* ignore */ } }
 /* اگر فرزند از قبل تمام شده، منتظرِ رویداد نمان (گرنه هنگ می‌کند). */

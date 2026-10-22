@@ -36,6 +36,11 @@ process.env.PAYESH_AUDIT = path.join(TMP, 'audit.log');
 process.env.PAYESH_KEY = path.join(TMP, 'jwt.key');
 process.env.PAYESH_DEMO_CODE = '1';
 process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY = '1';
+delete process.env.DATABASE_URL;
+delete process.env.PGURL;
+delete process.env.REDIS_URL;
+delete process.env.NODE_ENV;
+delete process.env.PAYESH_ENV;
 
 const { server, store } = require('../server/index.js');
 

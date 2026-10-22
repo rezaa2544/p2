@@ -166,7 +166,7 @@ const liveState = { pool: null, ok: false, metrics: { scenarios: {} } };
     const r = await pool.query("SELECT status, count(*)::int AS n FROM server_outbox GROUP BY status");
     const s = { pending: 0, processed: 0, failed: 0, other: 0 };
     for (const row of r.rows) {
-      if (row.status === 'pending') s.pending = row.n;
+      if (row.status === 'pending' || row.status === 'processing') s.pending += row.n;
       else if (row.status === 'processed') s.processed = row.n;
       else if (row.status === 'failed') s.failed = row.n;
       else s.other += row.n;
@@ -226,10 +226,12 @@ const liveState = { pool: null, ok: false, metrics: { scenarios: {} } };
       appended.push(evt.id);
     }
     fx.worker.start();
-    await sleep(150); /* چند تیک در قطعی — بافر باید پر بماند */
+    await waitUntil(async () => fx.store.outbox.some((e) => (e.retry_count || 0) > 0), 2000, 25);
+    await sleep(100); /* چند تیک در قطعی — بافر باید پر بماند */
     const during = await pgState();
     m.bufferDepthPg = during.pending;
-    m.bufferDepthMem = fx.outbox.depth().pending;
+    const dMem = fx.outbox.depth();
+    m.bufferDepthMem = dMem.pending + dMem.legacy;
     m.retriedDuringOutage = fx.store.outbox.filter((e) => (e.retry_count || 0) > 0).length;
     chk('Q1a در قطعی، ۱۰ رویداد در بافر ماندند (PG pending=10)', during.pending === 10,
       'pending=' + during.pending);

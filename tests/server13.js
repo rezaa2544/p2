@@ -103,8 +103,15 @@ async function bootScenario({ tlsCert, tlsKey, production, portPool }) {
   if (production) {
     env.PAYESH_ENV = 'production';
     env.NODE_ENV = 'production';
+    env.PAYESH_WAF_MODE = 'enforce';
     env.DATABASE_URL = process.env.DATABASE_URL || process.env.PGURL || 'postgres://payesh:payesh@127.0.0.1:5432/payesh_ci';
     env.REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+  } else {
+    delete env.PAYESH_ENV;
+    delete env.NODE_ENV;
+    delete env.DATABASE_URL;
+    delete env.PGURL;
+    delete env.REDIS_URL;
   }
   delete env.PAYESH_DEMO_CODE;
   if (tlsCert) env.PAYESH_TLS_CERT = tlsCert;

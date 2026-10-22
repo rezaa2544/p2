@@ -2143,6 +2143,8 @@ if(require.main === module){
 /* rebase: union — main added persistStoreSync/workers/staticCache + Wave 6/15 test hooks, Wave 14 adds metrics. */
 module.exports = {
   server, store, audit, isHttps, persistStore, persistStoreSync, db, redis, cache, workers, staticCache, metrics,
+  dbReady, canaryHydrated, cacheReady,
+  ready: () => Promise.all([Promise.resolve(dbReady), Promise.resolve(canaryHydrated), Promise.resolve(cacheReady)]),
   __gcStoreForTests: gcStore,
   /* Wave 6: برای تستِ مستقیمِ نگهبانِ شمارش (state روی Redis) */
   __enumForTests: { enumTouch, enumRead, enumDelayMs, enumStage, enumKey },
