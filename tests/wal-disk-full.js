@@ -526,10 +526,18 @@ function liveAvailable() {
     if (wl.errors.length) console.log('      اولین خطا: ' + wl.errors[0]);
 
     psql('checkpoint', { timeout: 15000 });
-    // کلیدِ سناریو: تا وقتی PG می‌تواند سگمنتِ قدیمی را «بازیافت» کند یا داخلِ
-    // سگمنتِ از‌پیش‌تخصیص‌یافته بنویسد، هیچ تخصیصِ تازه‌ای لازم ندارد و پر
-    // بودنِ دیسک را حس نمی‌کند. پس او را وادار می‌کنیم به سگمنتِ تازه برود.
-    psql('select pg_switch_wal()', { timeout: 15000 });
+    // نکتهٔ حیاتیِ PG16+: خودِ CHECKPOINTِ بالا سگمنت‌هایِ WALِ پیش از
+    // checkpoint را unlink می‌کند (~۶ تا ۷ مگابایت فضا در tmpfs آزاد می‌شود)!
+    // پس بلافاصله پس از checkpoint دوباره tmpfs را تا avail=0 پر می‌کنیم تا هیچ
+    // سگمنتِ قابلِ حذفی باقی نماند و اولین سگمنتِ جدید دقیقاً به ENOSPC بخورد.
+    fillWalTo(100);
+    for (let sw = 0; sw < 8 && pgIsReady() && !overBudget('W2s'); sw++) {
+      psql('select pg_switch_wal()', { timeout: 15000 });
+      fillWalTo(100);
+      const rAfter = writeLoad(1, 100);
+      wl.committed += rAfter.committed; wl.errors = wl.errors.concat(rAfter.errors);
+      if (!pgIsReady()) break;
+    }
     psql('checkpoint', { timeout: 15000 });
     for (let i = 0; i < 10 && !down && !overBudget('W2b'); i++) { await sleep(500); down = !pgIsReady(); }
 

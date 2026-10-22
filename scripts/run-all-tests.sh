@@ -340,12 +340,17 @@ run_one() {
   if [ $code -eq 124 ]; then
     echo "RED   $name (TIMEOUT after ${SUITE_TIMEOUT}s — unfinishable suite, counted as failure)" >> $OUT
     echo "[suite] RED-TIMEOUT $name (${SUITE_TIMEOUT}s)"
+    echo "::error title=RED-TIMEOUT suite $name::Timed out after ${SUITE_TIMEOUT}s"
+    tail -n 30 /tmp/at-$name.log 2>/dev/null || true
   elif [ $code -eq 0 ]; then
     echo "GREEN $name ($((end-start))s)" >> $OUT
     echo "[suite] GREEN $name ($((end-start))s)"
   else
     echo "RED   $name ($((end-start))s) :: $last" >> $OUT
     echo "[suite] RED $name ($((end-start))s) :: $last"
+    diag=$(tail -n 12 /tmp/at-$name.log 2>/dev/null | tr '\n' ' ' | cut -c1-400)
+    echo "::error title=RED suite $name (exit $code)::$diag"
+    tail -n 30 /tmp/at-$name.log 2>/dev/null || true
   fi
 }
 
@@ -371,12 +376,17 @@ run_copy() {
   if [ $code -eq 124 ]; then
     echo "RED   $name (TIMEOUT after ${SUITE_TIMEOUT}s — unfinishable suite, counted as failure)" >> $OUT
     echo "[suite] RED-TIMEOUT $name (isolated copy, ${SUITE_TIMEOUT}s)"
+    echo "::error title=RED-TIMEOUT suite $name::Timed out after ${SUITE_TIMEOUT}s"
+    tail -n 30 /tmp/at-$name.log 2>/dev/null || true
   elif [ $code -eq 0 ]; then
     echo "GREEN $name ($((end-start))s)" >> $OUT
     echo "[suite] GREEN $name ($((end-start))s)"
   else
     echo "RED   $name ($((end-start))s) :: $last" >> $OUT
     echo "[suite] RED $name ($((end-start))s) :: $last"
+    diag=$(tail -n 12 /tmp/at-$name.log 2>/dev/null | tr '\n' ' ' | cut -c1-400)
+    echo "::error title=RED suite $name (exit $code)::$diag"
+    tail -n 30 /tmp/at-$name.log 2>/dev/null || true
   fi
 }
 
@@ -398,14 +408,23 @@ run_live_one() {
     code=$?
     psql "$LIVE_ADMIN_URL" -c "DROP DATABASE IF EXISTS payesh_bench;" >/dev/null 2>&1 || true
   elif [ "$f" = "tests/wal-disk-full.js" ]; then
-    PG_EXE="$(ps -eo args | awk '/\/postgres( |$)/ {print $1; exit}')"
-    if [ -z "$PG_EXE" ]; then PG_EXE="$(ls /usr/lib/postgresql/*/bin/postgres 2>/dev/null | head -1)"; fi
-    PGBIN_DIR="$(dirname "${PG_EXE:-/usr/bin/postgres}")"
+    PGBIN_DIR=""
+    if [ -f /var/tmp/pgdata-wal-drill/PG_VERSION ]; then
+      WAL_PG_VER="$(cat /var/tmp/pgdata-wal-drill/PG_VERSION 2>/dev/null | tr -d '[:space:]')"
+      if [ -n "$WAL_PG_VER" ] && [ -x "/usr/lib/postgresql/$WAL_PG_VER/bin/pg_basebackup" ]; then
+        PGBIN_DIR="/usr/lib/postgresql/$WAL_PG_VER/bin"
+      fi
+    fi
+    if [ -z "$PGBIN_DIR" ]; then
+      PGBIN_DIR="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -n 1)"
+    fi
+    if [ -z "$PGBIN_DIR" ]; then PGBIN_DIR="/usr/bin"; fi
+    NODE_BIN="$(command -v node)"
     id postgres >/dev/null 2>&1 || sudo useradd -r -m -s /bin/bash postgres 2>/dev/null || true
     if ! pg_isready -h 127.0.0.1 -p 55432 >/dev/null 2>&1; then
       sudo PGBIN="$PGBIN_DIR" bash infra/wal-drill/bootstrap.sh >/dev/null 2>&1 || true
     fi
-    sudo -E env PATH="$PGBIN_DIR:$PATH" PGBIN="$PGBIN_DIR" NODE_PATH="${NODE_PATH:-}" timeout -k 30 "$SUITE_TIMEOUT" node "$f" > /tmp/at-$name.log 2>&1
+    sudo -E env PATH="$PGBIN_DIR:$PATH" PGBIN="$PGBIN_DIR" NODE_PATH="${NODE_PATH:-}" timeout -k 30 "$SUITE_TIMEOUT" "$NODE_BIN" "$f" > /tmp/at-$name.log 2>&1
     code=$?
   elif [ "$f" = "tests/redis-sentinel-failover.js" ]; then
     env REDIS_URL="$LIVE_REDIS_URL" timeout -k 30 "$SUITE_TIMEOUT" node "$f" > /tmp/at-$name.log 2>&1
@@ -439,17 +458,26 @@ run_live_one() {
     code=$?
   fi
   pkill -f 'node .*server/index\.js' 2>/dev/null || true
+  for _pgw in $(seq 1 20); do
+    psql "$LIVE_ADMIN_URL" -c 'SELECT 1;' >/dev/null 2>&1 && break
+    sleep 0.5
+  done
   end=$(date +%s)
   last=$(grep -E "موفق|بررسی — |✅ /|کشته|PASS|SECURE" /tmp/at-$name.log | tail -1 | tr '\n' ' ' | cut -c1-100)
   if [ $code -eq 124 ]; then
     echo "RED   $name (TIMEOUT after ${SUITE_TIMEOUT}s — unfinishable suite, counted as failure)" >> $OUT
     echo "[suite] RED-TIMEOUT $name (live-infra, ${SUITE_TIMEOUT}s)"
+    echo "::error title=RED-TIMEOUT suite $name::Timed out after ${SUITE_TIMEOUT}s"
+    tail -n 30 /tmp/at-$name.log 2>/dev/null || true
   elif [ $code -eq 0 ]; then
     echo "GREEN $name ($((end-start))s)" >> $OUT
     echo "[suite] GREEN $name ($((end-start))s)"
   else
     echo "RED   $name ($((end-start))s) :: $last" >> $OUT
     echo "[suite] RED $name ($((end-start))s) :: $last"
+    diag=$(tail -n 12 /tmp/at-$name.log 2>/dev/null | tr '\n' ' ' | cut -c1-400)
+    echo "::error title=RED suite $name (exit $code)::$diag"
+    tail -n 30 /tmp/at-$name.log 2>/dev/null || true
   fi
 }
 

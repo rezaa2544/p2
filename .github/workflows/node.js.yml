@@ -94,15 +94,17 @@ jobs:
         if ! mountpoint -q /tmp/chaos-drill-tmpfs; then
           sudo mount -t tmpfs -o size=100M,mode=1777 tmpfs /tmp/chaos-drill-tmpfs
         fi
+        sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 >/dev/null 2>&1 || true
         if [ ! -d /var/tmp/pw-tools/node_modules/@axe-core/playwright ]; then
           mkdir -p /var/tmp/pw-tools
           npm install --prefix /var/tmp/pw-tools --no-audit --no-fund playwright @axe-core/playwright
         fi
-        /var/tmp/pw-tools/node_modules/.bin/playwright install chromium
-        PW_CHROME="$(find "$HOME/.cache/ms-playwright" -type f -name 'chrome' -o -name 'chrome-headless-shell' | head -n 1 || true)"
+        /var/tmp/pw-tools/node_modules/.bin/playwright install --with-deps chromium
+        PW_CHROME="$(find "$HOME/.cache/ms-playwright" -type f \( -name 'chrome' -o -name 'chrome-headless-shell' \) | head -n 1 || true)"
         SYS_CHROME="${PW_CHROME:-/usr/bin/google-chrome}"
-        printf '#!/usr/bin/env bash\nexec "%s" --no-sandbox --disable-dev-shm-usage "$@"\n' "$SYS_CHROME" | sudo tee /usr/local/bin/chromium-headless >/dev/null
+        printf '#!/usr/bin/env bash\nexec "%s" --no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage "$@"\n' "$SYS_CHROME" | sudo tee /usr/local/bin/chromium-headless >/dev/null
         sudo chmod +x /usr/local/bin/chromium-headless
+        /usr/local/bin/chromium-headless --version
         echo "CHROMIUM_PATH=/usr/local/bin/chromium-headless" >> "$GITHUB_ENV"
         echo "NODE_PATH=$GITHUB_WORKSPACE/node_modules:/var/tmp/pw-tools/node_modules" >> "$GITHUB_ENV"
         if ! pg_isready -h 127.0.0.1 -p 55432 >/dev/null 2>&1; then

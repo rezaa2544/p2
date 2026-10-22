@@ -91,7 +91,7 @@ function have(bin) {
   if (!PG_TOOLS.has(bin) && bin !== 'redis-server' && bin !== 'redis-cli') return false;
   const dirs = String(process.env.PATH || '/usr/local/bin:/usr/bin:/bin').split(path.delimiter).filter(Boolean);
   for (const d of dirs.concat(['/usr/local/bin', '/usr/bin', '/bin'])) {
-    try { if (fs.existsSync(path.join(d, bin))) return true; } catch (_) {}
+    try { if (fs.existsSync(path.join(d, bin))) return true; } catch (_) { /* ignore */ }
   }
   return false;
 }
@@ -153,7 +153,7 @@ function startProxy(targetPort) {
   const srv = net.createServer((client) => {
     st.connections++;
     const up = net.connect({ port: targetPort, host: '127.0.0.1' });
-    let buffered = [], mode = st.mode, delayMs = st.delayMs, flushed = false;
+    let buffered = [], mode = st.mode, flushed = false;
     const flush = () => { if (flushed) return; flushed = true; buffered.forEach((b) => up.write(b)); buffered = []; };
     client.on('data', (chunk) => {
       mode = st.mode;
@@ -166,7 +166,7 @@ function startProxy(targetPort) {
       st.forwarded++;
       up.write(chunk);
     });
-    up.on('data', (chunk) => { if (st.mode === 'swallow') { st.swallowed++; return; } if (!client.destroyed) client.write(chunk); else {} });
+    up.on('data', (chunk) => { if (st.mode === 'swallow') { st.swallowed++; return; } if (!client.destroyed) client.write(chunk); else { /* ignore */ } });
     up.on('error', () => { try { client.destroy(); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ } });
     client.on('error', () => { try { up.destroy(); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ } });
     client.on('close', () => { try { up.destroy(); } catch (e) { /* best-effort: خاموش‌کردنِ منابع — خطا مهم نیست */ } });
@@ -585,7 +585,7 @@ async function loginAs(port, user) {
           }
           break;
         }
-      } catch (_) {}
+      } catch (_) { /* ignore */ }
       await sleep(50);
     }
   }

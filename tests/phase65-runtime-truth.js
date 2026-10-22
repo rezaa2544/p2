@@ -336,6 +336,7 @@ async function flood(port, n, pth, headers) {
     });
     delete envC.NODE_ENV;
     delete envC.DATABASE_URL;
+    delete envC.PGURL;
     const procC = await boot(PORTC, envC);
     chk('RT-05 سرور با Redis بوت شد', !!procC);
     if (procC) {

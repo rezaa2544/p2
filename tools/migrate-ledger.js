@@ -256,7 +256,7 @@ function resolvePsqlBin() {
       if (hdr[0] === 0x7f && hdr[1] === 0x45 && hdr[2] === 0x4c && hdr[3] === 0x46) {
         return real;
       }
-    } catch (_) {}
+    } catch (_) { /* ignore */ }
   }
   return null;
 }
@@ -449,7 +449,7 @@ COMMIT;
               `, [file.version, file.name, file.checksum]);
               await client.query('COMMIT');
             } catch (recoveryWriteErr) {
-              try { await client.query('ROLLBACK'); } catch (_) {}
+              try { await client.query('ROLLBACK'); } catch (_) { /* ignore */ }
               throw recoveryWriteErr;
             }
           }
@@ -466,7 +466,7 @@ COMMIT;
         }
       }
       if (!usePsql) {
-        try { await client.query('ROLLBACK'); } catch (_) {}
+        try { await client.query('ROLLBACK'); } catch (_) { /* ignore */ }
       }
       const failErr = new Error(`MIGRATION_EXECUTION_FAILED: Error in migration ${file.name}: ${errText}`);
       failErr.code = 'MIGRATION_EXECUTION_FAILED';
@@ -558,7 +558,7 @@ async function migrateDown(client, targetVersion = null, options = {}) {
     return { version: latest.version, name: downFileName, status: 'ROLLED_BACK' };
   } catch (err) {
     if (!usePsql) {
-      try { await client.query('ROLLBACK'); } catch (_) {}
+      try { await client.query('ROLLBACK'); } catch (_) { /* ignore */ }
     }
     const failErr = new Error(`MIGRATION_ROLLBACK_FAILED: Error rolling back ${downFileName}: ${err.message}`);
     failErr.code = 'MIGRATION_ROLLBACK_FAILED';

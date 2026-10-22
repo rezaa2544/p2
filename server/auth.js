@@ -124,6 +124,22 @@ function createAuth(ctx){
     const v = jwtVerify(tok);
     if(v.err) return null;
     const p = v.payload;
+    /* A-22 (Mission 02): always consult the durable fallback journal BEFORE
+       trusting a cold/restarted Redis read. Otherwise, right after Redis
+       recovers (and before the revoking node replays its unconfirmed queue),
+       another instance sees `isRevoked(jti) === false`, drains the journal
+       only AFTER authenticating, and erroneously accepts the revoked token once. */
+    if (revocationFallback.journalContains(revocationDataDir, p.jti)) {
+      try {
+        const redis = require('./redis');
+        if (redis.isRedis && redis.isRedis()) {
+          await revocationFallback.replayJournal(revocationDataDir, async (jti, ttl) => {
+            await redis.set('revoked:' + jti, '1', 'EX', ttl);
+          });
+        }
+      } catch (e) { /* best-effort drain; journal still rejects session below */ }
+      return null;
+    }
     /* ابطالِ توزیع‌شده: denylist (logout در نمونهٔ دیگر) + نسخهٔ نشست (revoke-all).
        بررسیِ محلی (store.__revoked_jti) در jwtVerify دست‌نخورده مانده است. */
     try {
@@ -132,12 +148,6 @@ function createAuth(ctx){
       if(sv > 0 && (p.sv || 0) < sv) return null;
     } catch (e) {
       if (e && e.code === 'REVOCATION_UNAVAILABLE') {
-        /* A-22 (Mission 02): Redis is unreachable, so the fast denylist path
-           cannot be consulted. Another instance may have revoked this
-           session during the outage; that revocation is durable in the
-           shared journal. Consult it before falling back to the documented
-           fail-closed posture. */
-        if (revocationFallback.journalContains(revocationDataDir, p.jti)) return null;
         console.error('[AUTH] session revocation authority unavailable — fail closed');
         return null;
       }
@@ -389,7 +399,6 @@ function createAuth(ctx){
 
     /* R96: IP-level login limit (brute-force across phones) — persisted,
        so it survives restarts and is shared across instances of one store. */
-    const now = Date.now();
     const ip = clientIp(req);
     await otp.reloadIfChanged();
     /* R dist: شمارندهٔ login در Redis (اتمیک)؛ login_fail (تأخیرِ تصاعدی) در حالتِ فروشگاه می‌ماند. */

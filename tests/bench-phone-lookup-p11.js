@@ -12,10 +12,9 @@
        node tests/bench-phone-lookup-p11.js
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
-const fs = require('fs');
 const path = require('path');
 const PGURL = process.env.P11_LIVE_PG || '';
-let pg = null; try { pg = require('pg'); } catch(e) {}
+let pg = null; try { pg = require('pg'); } catch (e) { /* ignore */ }
 if(!PGURL || !pg){ console.log('⏭ self-skip'); process.exit(1); }
 
 const N = Number(process.env.P11_BENCH_N || 1000000);

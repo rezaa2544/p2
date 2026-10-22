@@ -299,7 +299,7 @@ async function apiSyncOf(inst, ops) {
   B.store.schools = [{ id: 1, active: true, name: 'مدرسه ۱' }, { id: 2, active: false, name: 'مدرسه ۲' }];
 
   const otpDir = require('fs').mkdtempSync(require('path').join(require('os').tmpdir(), 'wave1-otp-'));
-  process.on('exit', () => { try { require('fs').rmSync(otpDir, { recursive: true, force: true }); } catch (_) {} });
+  process.on('exit', () => { try { require('fs').rmSync(otpDir, { recursive: true, force: true }); } catch (_) { /* ignore */ } });
   const otpA = createOtpStore({ file: require('path').join(otpDir, 'otp-a.json'), ttlMs: 60000, store: A.store });
   const otpB = createOtpStore({ file: require('path').join(otpDir, 'otp-b.json'), ttlMs: 60000, store: B.store });
   const JWT_SECRET = 'wave1-multi-instance-test-secret-at-least-32-chars';
@@ -429,4 +429,4 @@ async function apiSyncOf(inst, ops) {
   console.log(`\n  جمع: ${okc} موفق، ${failc} ناموفق از ${okc + failc}`);
   if (failc) { console.log('  مواردِ ناموفق:\n   - ' + fails.join('\n   - ')); process.exit(1); }
   process.exit(0);
-})().catch(e => { console.error('FATAL', e); try { db.__setPoolForTests(null); } catch (_) {} process.exit(2); });
+})().catch(e => { console.error('FATAL', e); try { db.__setPoolForTests(null); } catch (_) { /* ignore */ } process.exit(2); });

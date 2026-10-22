@@ -85,10 +85,11 @@ function startStaticServer() {
   }
 
   const srv = await startStaticServer();
-  const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH, args: ['--no-sandbox', '--disable-dev-shm-usage'] } : undefined);
+  const launchArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'];
+  const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH, args: launchArgs } : { args: launchArgs });
   /* bypassCSP فقط برایِ تزریقِ axe-core لازم است (CSP تک‌فایلی nonce دارد)؛
      خودِ سنجشِ a11y ربطی به CSP ندارد. */
-  const context = await browser.newContext({ bypassCSP: true, viewport: { width: 1280, height: 900 } });
+  const context = await browser.newContext({ bypassCSP: true, reducedMotion: 'reduce', viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
   page.setDefaultTimeout(30000);
 
@@ -157,7 +158,8 @@ function startStaticServer() {
         if (typeof closeModal === 'function') closeModal();
         render();
       }, route);
-      await page.waitForTimeout(120); /* بگذار paint تمام شود */
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+      await page.waitForTimeout(150); /* بگذار paint تمام شود */
       await scan(R.role, route);
     }
   }

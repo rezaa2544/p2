@@ -39,13 +39,17 @@ function stop(url) {
     try {
       execFileSync('sudo', ['pg_ctlcluster', v, 'main', 'stop', '--mode', 'fast'], { stdio: 'pipe', timeout: 25000 });
       return { ok: true, method: 'pg_ctlcluster-' + v, port };
-    } catch (e) {}
+    } catch (e) { /* ignore */ }
   }
   const pgData = process.env.PGDATA || '/var/tmp/local-services/pgdata';
   try {
     execFileSync('pg_ctl', ['-D', pgData, 'stop', '-m', 'fast'], { stdio: 'pipe', timeout: 25000 });
     return { ok: true, method: 'pg_ctl', pgData, port };
-  } catch (e) {}
+  } catch (e) { /* ignore */ }
+  try {
+    execFileSync('sudo', ['-n', '-u', 'postgres', '/usr/local/bin/pg_ctl', '-D', pgData, 'stop', '-m', 'fast'], { stdio: 'pipe', timeout: 25000 });
+    return { ok: true, method: 'sudo_pg_ctl', pgData, port };
+  } catch (e) { /* ignore */ }
   return { ok: false, method: 'none', port };
 }
 
@@ -63,6 +67,10 @@ function start(handle) {
     }
     if (handle.method === 'pg_ctl' && handle.pgData) {
       execFileSync('pg_ctl', ['-D', handle.pgData, '-l', handle.pgData + '/server.log', '-w', 'start'], { stdio: 'pipe', timeout: 25000 });
+      return true;
+    }
+    if (handle.method === 'sudo_pg_ctl' && handle.pgData) {
+      execFileSync('sudo', ['-n', '-u', 'postgres', '/usr/local/bin/pg_ctl', '-D', handle.pgData, '-l', handle.pgData + '/server.log', '-w', 'start'], { stdio: 'pipe', timeout: 25000 });
       return true;
     }
   } catch (e) {

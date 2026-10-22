@@ -144,7 +144,8 @@ const SHELL_ROLES = [
 
 (async () => {
   const srv = await startStaticServer();
-  const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH, args: ['--no-sandbox', '--disable-dev-shm-usage'] } : undefined);
+  const launchArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'];
+  const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH, args: launchArgs } : { args: launchArgs });
 
   console.log('\n▸ A11y Keyboard — focus trap، ترتیبِ tab، Escape، skip-link (کلیدهایِ واقعی)');
 

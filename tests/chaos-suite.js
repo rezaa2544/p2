@@ -156,9 +156,27 @@ async function login(port, store) {
       chk('S2 نوشتِ پیش از قطعی: 201', mk1.status === 201, mk1.status);
       /* stop the whole PostgreSQL cluster (real outage, not a mock) */
       let stopped = false;
+      let stoppedViaSudo = false;
       const localPgData = process.env.PGDATA || '/var/tmp/local-services/pgdata';
+      const resolvePgCtl = (dataDir) => {
+        try {
+          const ver = fs.readFileSync(path.join(dataDir, 'PG_VERSION'), 'utf8').trim();
+          const cand = '/usr/lib/postgresql/' + ver + '/bin/pg_ctl';
+          if (fs.existsSync(cand)) return cand;
+        } catch (e) { /* ignore */ }
+        for (const ver of ['18', '17', '16', '15']) {
+          const cand = '/usr/lib/postgresql/' + ver + '/bin/pg_ctl';
+          if (fs.existsSync(cand)) return cand;
+        }
+        return 'pg_ctl';
+      };
       if (fs.existsSync(localPgData)) {
-        stopped = spawnSync('pg_ctl', ['-D', localPgData, 'stop', '-m', 'fast'], { stdio: 'pipe' }).status === 0;
+        const pgCtlBin = resolvePgCtl(localPgData);
+        stopped = spawnSync(pgCtlBin, ['-D', localPgData, 'stop', '-m', 'fast'], { stdio: 'pipe' }).status === 0;
+        if (!stopped) {
+          stopped = spawnSync('sudo', ['-n', '-u', 'postgres', pgCtlBin, '-D', localPgData, 'stop', '-m', 'fast'], { stdio: 'pipe' }).status === 0;
+          if (stopped) stoppedViaSudo = true;
+        }
       } else {
         const cid = String(spawnSync('docker', ['ps', '-q', '--filter', 'publish=5432'], { encoding: 'utf8', stdio: 'pipe' }).stdout || '').trim();
         if (cid) {
@@ -166,7 +184,7 @@ async function login(port, store) {
           process.env.__CHAOS_PG_CID = cid;
         }
         if (!stopped) {
-          for (const ver of ['17', '16']) {
+          for (const ver of ['18', '17', '16']) {
             if (spawnSync('sudo', ['pg_ctlcluster', ver, 'main', 'stop', '--mode', 'fast'], { stdio: 'pipe' }).status === 0) { stopped = true; break; }
           }
         }
@@ -182,19 +200,23 @@ async function login(port, store) {
         chk('S2 نوشتن در قطعی ⇒ fail-closed (401/503، هرگز 2xx/RAM-ack)',
           (w.status === 401 || w.status === 503), w.status + ' ' + w.body.slice(0, 60));
         if (fs.existsSync(localPgData)) {
-          spawnSync('pg_ctl', ['-D', localPgData, '-l', '/var/tmp/local-services/pg.log', '-w', 'start'], { stdio: 'pipe' });
+          const pgCtlBin = resolvePgCtl(localPgData);
+          if (stoppedViaSudo) {
+            spawnSync('sudo', ['-n', '-u', 'postgres', pgCtlBin, '-D', localPgData, '-l', '/var/tmp/local-services/pg.log', '-w', 'start'], { stdio: 'pipe' });
+          } else {
+            spawnSync(pgCtlBin, ['-D', localPgData, '-l', '/var/tmp/local-services/pg.log', '-w', 'start'], { stdio: 'pipe' });
+          }
         } else if (process.env.__CHAOS_PG_CID) {
           spawnSync('docker', ['start', process.env.__CHAOS_PG_CID], { stdio: 'pipe' });
-          for (let i = 0; i < 40; i++) {
-            if (spawnSync('pg_isready', ['-h', '127.0.0.1', '-p', '5432'], { stdio: 'pipe' }).status === 0) break;
-            await sleep(250);
-          }
         } else {
-          for (const ver of ['17', '16']) {
+          for (const ver of ['18', '17', '16']) {
             if (spawnSync('sudo', ['pg_ctlcluster', ver, 'main', 'start'], { stdio: 'pipe' }).status === 0) break;
           }
         }
-        await sleep(1500);
+        for (let i = 0; i < 60; i++) {
+          try { await pgOne(url, 'SELECT 1'); break; } catch (e) { await sleep(250); }
+        }
+        await sleep(500);
         const rec = await req(3202, 'POST', '/api/v1/classes', { name: 'AFTER_RECOVERY', grade: 10, school_id: 1 }, cookie);
         chk('S2 بازگشت PG ⇒ نوشتن دوباره کار می‌کند (recovery)', rec.status === 201, rec.status);
         const rows = await pgOne(url, "SELECT COUNT(*)::int n FROM classes WHERE name IN ('PRE','AFTER_RECOVERY','DURING_OUTAGE')");

@@ -102,8 +102,8 @@ function startRelay() {
       up.on('data', (d) => { if (pair.open) sock.write(d); });
       const fin = () => {
         pair.open = false;
-        try { sock.destroy(); } catch (e) {}
-        try { up.destroy(); } catch (e) {}
+        try { sock.destroy(); } catch (e) { /* ignore */ }
+        try { up.destroy(); } catch (e) { /* ignore */ }
       };
       sock.on('error', fin); sock.on('close', fin);
       up.on('error', fin); up.on('close', fin);
@@ -122,18 +122,18 @@ function startRelay() {
            کلاینت‌های تازه بسازد. */
         restore: () => {
           frozen = false;
-          for (const s of blackholed) { try { s.destroy(); } catch (e) {} }
+          for (const s of blackholed) { try { s.destroy(); } catch (e) { /* ignore */ } }
           blackholed.length = 0;
         },
         sever: () => {
-          try { srv.close(); } catch (e) {}
+          try { srv.close(); } catch (e) { /* ignore */ }
           for (const p of pairs) {
             p.open = false;
-            try { p.sock.destroy(); } catch (e) {}
-            try { p.up.destroy(); } catch (e) {}
+            try { p.sock.destroy(); } catch (e) { /* ignore */ }
+            try { p.up.destroy(); } catch (e) { /* ignore */ }
           }
           pairs.length = 0;
-          for (const s of blackholed) { try { s.destroy(); } catch (e) {} }
+          for (const s of blackholed) { try { s.destroy(); } catch (e) { /* ignore */ } }
           blackholed.length = 0;
         }
       });
@@ -148,7 +148,7 @@ function get(path) {
       res.on('data', (c) => { body += c; });
       res.on('end', () => {
         let json = null;
-        try { json = JSON.parse(body); } catch (e) {}
+        try { json = JSON.parse(body); } catch (e) { /* ignore */ }
         resolve({ status: res.statusCode, json, raw: body.slice(0, 300) });
       });
     });
@@ -184,7 +184,7 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
     await admin.query('CREATE DATABASE ' + PROBE_DB);
   } catch (e) {
     notRun('cannot create scratch database ' + PROBE_DB + ' (' + e.message + ')');
-    try { await admin.end(); } catch (_) {}
+    try { await admin.end(); } catch (_) { /* ignore */ }
     process.exit(1);
   }
   await admin.end();
@@ -198,7 +198,7 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
     });
   } catch (e) {
     notRun('migration chain did not apply to ' + PROBE_DB + ' — ' + String(e.stderr || e.stdout || e.message).slice(0, 300));
-    try { await admin.connect(); await admin.query('DROP DATABASE IF EXISTS ' + PROBE_DB); await admin.end(); } catch (_) {}
+    try { await admin.connect(); await admin.query('DROP DATABASE IF EXISTS ' + PROBE_DB); await admin.end(); } catch (_) { /* ignore */ }
     process.exit(1);
   }
   console.log('  scratch DB ready: ' + migrateOut.trim().split('\n').pop().slice(0, 90));
@@ -342,17 +342,17 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
         !!(recovered && recovered.status === 200), 'recovered=' + (recovered && recovered.status) + ' log=' + log.slice(-140));
     }
   } finally {
-    try { relay.sever(); } catch (e) {}
-    try { proc.kill('SIGTERM'); } catch (e) {}
+    try { relay.sever(); } catch (e) { /* ignore */ }
+    try { proc.kill('SIGTERM'); } catch (e) { /* ignore */ }
     try {
       if (exitCode === null) {
         await new Promise((r) => { const t = setTimeout(r, 2000); proc.on('exit', () => { clearTimeout(t); r(); }); });
       }
       if (exitCode === null) {
-        try { proc.kill('SIGKILL'); } catch (e) {}
+        try { proc.kill('SIGKILL'); } catch (e) { /* ignore */ }
         await new Promise((r) => { const t = setTimeout(r, 1000); proc.on('exit', () => { clearTimeout(t); r(); }); });
       }
-    } catch (e) {}
+    } catch (e) { /* ignore */ }
     /* پاکسازیِ پایگاهِ دادهٔ موقت */
     try {
       const c = new Client(adminOpts);
