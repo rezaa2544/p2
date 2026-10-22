@@ -580,6 +580,8 @@ run_logged pgbackrest-check compose_pg exec -T -u postgres pg-primary pgbackrest
 run_logged pgbackrest-full-backup compose_pg exec -T -u postgres pg-primary pgbackrest --stanza=payesh backup --type=full
 run_logged pgbackrest-backup-info compose_pg exec -T -u postgres pg-primary pgbackrest --stanza=payesh info
 PG_BACKUP_STATUS="full_backup_completed_and_info_verified"
+# Ensure wall-clock PITR target timestamp is strictly past integer backup stop second.
+sleep 2
 
 PITR_BEFORE_MARKER="m15-dr-before-${RUN_KEY}"
 PITR_AFTER_MARKER="m15-dr-after-${RUN_KEY}"

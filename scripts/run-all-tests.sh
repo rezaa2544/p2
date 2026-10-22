@@ -43,7 +43,7 @@ export NODE_PATH="$PWD/node_modules"
 OUT=/tmp/all-tests.log
 : > $OUT
 START=$(date +%s)
-WORKERS=2
+WORKERS="${WORKERS:-$(command -v nproc >/dev/null 2>&1 && nproc || echo 2)}"
 
 # ── self-heal ──────────────────────────────────────────────────────────────
 if ! node -e "require('$PWD/node_modules/jsdom')" >/dev/null 2>&1; then

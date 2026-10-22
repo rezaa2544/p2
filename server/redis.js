@@ -301,16 +301,21 @@ function getStatus() {
  */
 let _realClient = null;
 let _realActive = false;
+let _realMode = 'memory';
 function __setClientForTests(c) {
   if (c) {
     _realClient = client;
     _realActive = isRedisActive;
+    _realMode = activeMode;
     client = c;
     isRedisActive = true;
+    activeMode = 'standalone';
   } else {
     client = _realClient;
     isRedisActive = _realActive;
-  }}
+    activeMode = _realMode;
+  }
+}
 
 /**
  * P0-13: Readiness gate — در تولید فقط با ردیسِ زنده «آماده» است؛

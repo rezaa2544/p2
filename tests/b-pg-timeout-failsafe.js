@@ -62,7 +62,13 @@ const SHAPES = [
 
 function parseUrl(u) {
   const x = new URL(u);
-  return { host: x.hostname, port: x.port || '5432', user: x.username, password: decodeURIComponent(x.password || '') };
+  return {
+    host: x.hostname,
+    port: x.port || '5432',
+    user: x.username,
+    password: decodeURIComponent(x.password || ''),
+    database: 'postgres'
+  };
 }
 
 /* teardownِ best-effort: شکستِ socket/process/close در مسیرِ پاک‌سازی هرگز
@@ -130,9 +136,11 @@ function get(path) {
       });
     });
     req.on('error', (e) => resolve({ status: 0, json: null, raw: 'ERR ' + e.code }));
-    /* watchdogِ سمتِ کلاینت: ۱۲ ثانیه. هر شکلِ fail-safe باید خیلی
-     * زودتر از این تمام شود (defaultها ۳s/۱۰s). */
-    req.setTimeout(12000, () => { req.destroy(); resolve({ status: 0, json: null, raw: 'CLIENT_WATCHDOG_TIMEOUT' }); });
+    /* watchdogِ سمتِ کلاینت: ۱۶ ثانیه — در اولین درخواستِ پس از freeze،
+     * routeRequestSoT (queryTimeoutMs=۱۰s روی کلاینتِ idle) + db.ping
+     * (connectionTimeoutMillis=۳s) حداکثر ۱۳s طول می‌کشند؛ درختِ بدونِ کران
+     * بی‌نهایت منتظر می‌ماند و به watchdog می‌خورد. */
+    req.setTimeout(16000, () => { req.destroy(); resolve({ status: 0, json: null, raw: 'CLIENT_WATCHDOG_TIMEOUT' }); });
     req.end();
   });
 }
@@ -283,8 +291,8 @@ function bootServer(shapeEnv) {
       check('shape "' + shape.label + '": health reports unhealthy (ok=false in every answered sample)',
         okFalse >= 3, 'ok=false=' + okFalse);
       check('shape "' + shape.label + '": HTTP status is 503', http503 >= 3, 'HTTP503=' + http503);
-      check('shape "' + shape.label + '": every answer arrives bounded (slowest under 11s)',
-        maxMs < 11000, 'slowest=' + maxMs + 'ms samples=' + JSON.stringify(sampleMs));
+      check('shape "' + shape.label + '": every answer arrives bounded (slowest under 15s)',
+        maxMs < 15000, 'slowest=' + maxMs + 'ms samples=' + JSON.stringify(sampleMs));
     }
 
     relay.restore();

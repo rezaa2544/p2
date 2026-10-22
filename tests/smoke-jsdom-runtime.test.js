@@ -10,10 +10,11 @@ function makeWindow() {
   const dom = new JSDOM('<!doctype html><body></body>', {
     runScripts: 'dangerously',
     pretendToBeVisual: true,
-    url: 'http://localhost/'
+    url: 'http://localhost/',
+    virtualConsole: vc
   });
   const win = dom.window;
-  if (typeof win.scrollTo !== 'function') win.scrollTo = () => {};
+  win.scrollTo = () => {};
   return { win, errors, dom };
 }
 
@@ -74,8 +75,8 @@ function makeWindow() {
     dom.window.close();
   }
 
-  assert.strictEqual(passes, 5);
-  console.log('jsdom scrollTo harness: 5/5 passes');
+  assert.strictEqual(passes, 6);
+  console.log('jsdom scrollTo harness: 6/6 passes');
 })().catch((err) => {
   console.error(err);
   process.exit(1);

@@ -96,8 +96,8 @@ jobs:
           {
             echo "## Fortify AST Scan — BLOCKED"
             echo ""
-            echo "**Scan status:** `NOT SCANNED`"
-            echo "**Gate result:** `BLOCKED / FAILURE`"
+            echo '**Scan status:** `NOT SCANNED`'
+            echo '**Gate result:** `BLOCKED / FAILURE`'
             echo "No SAST/SCA evidence exists for this run."
             echo "Configure FOD_USER + FOD_PAT (or FOD_CLIENT_ID/SECRET) and rerun on a non-fork context."
           } >> "$GITHUB_STEP_SUMMARY"
