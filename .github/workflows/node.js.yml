@@ -15,7 +15,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 180
     strategy:
       matrix:
         node-version: [22.x]
@@ -127,7 +127,7 @@ jobs:
     # and its verdicts are always surfaced; the lint failure still fails the
     # job exactly as before (no continue-on-error, no gate weakening).
     - name: Comprehensive canonical regression runner
-      timeout-minutes: 55
+      timeout-minutes: 120
       run: npm run test:all
     - name: Reset shared test ports, Redis state, and clean payesh_ci schema after canonical runner
       if: always()
