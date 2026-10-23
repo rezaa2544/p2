@@ -61,7 +61,7 @@ function bootServer(env, timeoutMs) {
          not the TLS one. Same convention as tests/arena5-recovery.js:359. */
       PAYESH_BEHIND_PROXY: '1',
       HOST: '127.0.0.1',
-      PORT: String(39200 + Math.floor(Math.random() * 400))
+      PORT: String(29200 + Math.floor(Math.random() * 100))
     }, env)
   });
   try { fs.rmSync(t.dir, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}

@@ -32,8 +32,8 @@ const net = require('net');
 const http = require('http');
 const { Client } = require('pg');
 
-const PORT = 38542;
-const RELAY_PORT = 38543;
+const PORT = 28542;
+const RELAY_PORT = 28543;
 const PG_HOST = '127.0.0.1';
 const PG_PORT = 5432;
 const PROBE_DB = 'payesh_bpg_failsafe';

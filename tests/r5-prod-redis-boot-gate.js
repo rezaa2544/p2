@@ -122,7 +122,7 @@ async function bootAndWaitListen(desc, env, ms) {
 
   /* ── shape 4: PAYESH_ENV=production + ALLOW_MEMORY_FALLBACK=1, no DB/Redis ⇒ boots ── */
   {
-    const r = await bootAndWaitListen('s4', { PAYESH_ENV: 'production', PAYESH_BEHIND_PROXY: '1', ALLOW_MEMORY_FALLBACK: '1', PORT: '39341' }, 20000);
+    const r = await bootAndWaitListen('s4', { PAYESH_ENV: 'production', PAYESH_BEHIND_PROXY: '1', ALLOW_MEMORY_FALLBACK: '1', PORT: '29341' }, 20000);
     chk('4a PAYESH_ENV=production + explicit dev opt-in flag ⇒ boots (server17 T2 harness contract)', r.listened === true, (r.log || '').slice(0, 300));
   }
 
@@ -142,7 +142,7 @@ async function bootAndWaitListen(desc, env, ms) {
 
   /* ── shape 7: development, no URLs ⇒ boots (zero-disruption) ── */
   {
-    const r = await bootAndWaitListen('s7', { PORT: '39342' }, 20000);
+    const r = await bootAndWaitListen('s7', { PORT: '29342' }, 20000);
     chk('7a development boot without any URLs still boots (zero-disruption preserved)', r.listened === true, (r.log || '').slice(0, 300));
   }
 

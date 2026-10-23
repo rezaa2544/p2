@@ -73,7 +73,7 @@ if (!BIN || !hasPgModule()) {
   process.exit(2);
 }
 
-const PORT = 55460;
+const PORT = 25460;
 const DATA = '/tmp/w10tenant-' + process.pid;
 const ROOT = path.join(__dirname, '..');
 

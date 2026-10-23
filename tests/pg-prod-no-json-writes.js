@@ -143,7 +143,7 @@ chk('b6 production PostgreSQL loss logs FATAL instead of persisting JSON',
       PAYESH_AUDIT: path.join(dir, 'audit.log'),
       PAYESH_KEY: path.join(dir, 'jwt.key'),
       PAYESH_JWT_SECRET: 'chat1-pkg1-shared-jwt-secret-0123456789abcdef',
-      HOST: '127.0.0.1', PORT: '39455'
+      HOST: '127.0.0.1', PORT: '29455'
     })
   });
   const out = String(r.stdout || '') + String(r.stderr || '');

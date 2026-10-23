@@ -396,7 +396,7 @@ function allocFreePort() {
   const net = require('net');
   return new Promise((resolve, reject) => {
     const tryNext = (attempt) => {
-      const candidate = 21700 + Math.floor(Math.random() * 8000);
+      const candidate = 21000 + Math.floor(Math.random() * 3500);
       const srv = net.createServer();
       srv.unref();
       srv.once('error', (err) => {
@@ -559,11 +559,10 @@ await test('MX4 بوتِ واقعی: /api/health بلوکِ sync با کلِ ش�
   if (!fs.existsSync(REAL_STORE)) { console.log('     ⏭️  store موجود نیست — رد می‌شود'); return; }
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'p4-mx4-'));
   fs.copyFileSync(REAL_STORE, path.join(tmp, 'store.json'));
-  const port = 41700 + Math.floor(Math.random() * 200);
   let b1;
   try {
-    b1 = await bootServer(tmp, port);
-    const r = await fetch('http://127.0.0.1:' + port + '/api/health');
+    b1 = await bootServer(tmp);
+    const r = await fetch('http://127.0.0.1:' + b1.port + '/api/health');
     const body = await r.json();
     assert(body.sync && typeof body.sync === 'object', 'health.sync present, got ' + JSON.stringify(body.sync));
     for (const k of ['pulls_total', 'pulls_delta', 'pulls_full', 'pushes_total', 'conflicts_total',

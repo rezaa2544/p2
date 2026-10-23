@@ -50,8 +50,8 @@ const http = require('http');
 const net = require('net');
 const { Client } = require('pg');
 
-const PORT = 38532;        /* پورتِ APIِ سرور (نه ۸۹xx/۹۰xx → لاینِ موازی) */
-const RELAY_PORT = 38533;  /* پورتی که DATABASE_URLِ سرور به آن اشاره می‌کند */
+const PORT = 28532;        /* پورتِ APIِ سرور (خارج از ۸۹xx/۹۰xx و بازهٔ ephemeral لینوکس ۳۲۷۶۸..۶۰۹۹۹) */
+const RELAY_PORT = 28533;  /* پورتی که DATABASE_URLِ سرور به آن اشاره می‌کند */
 const PG_HOST = '127.0.0.1';
 const PG_PORT = 5432;
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';

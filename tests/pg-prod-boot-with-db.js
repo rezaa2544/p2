@@ -107,7 +107,7 @@ if (!pg) {
            so this suite measures the DATABASE gate — same convention as
            tests/arena5-recovery.js:359. */
         PAYESH_BEHIND_PROXY: '1',
-        HOST: '127.0.0.1', PORT: '39321',
+        HOST: '127.0.0.1', PORT: '29321',
         REDIS_URL: '' /* no Redis in this sandbox — see the header note */
       })
     });

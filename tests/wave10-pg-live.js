@@ -87,7 +87,7 @@ if (!BIN || !hasPgModule()) {
   process.exit(2);
 }
 
-const P_PORT = 55450, R_PORT = 55451;
+const P_PORT = 25450, R_PORT = 25451;
 const P_DATA = '/tmp/w10gate-primary-' + process.pid;
 const R_DATA = '/tmp/w10gate-replica-' + process.pid;
 const ROOT = path.join(__dirname, '..');

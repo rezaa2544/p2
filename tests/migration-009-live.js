@@ -89,7 +89,7 @@ if (!BIN || !hasPgModule()) {
   process.exit(2);
 }
 
-const PORT = 55452;
+const PORT = 25452;
 const DATA = '/tmp/mig009-' + process.pid;
 const ROOT = path.join(__dirname, '..');
 
