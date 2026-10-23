@@ -354,8 +354,14 @@ exit 0
 
   const pgInitSource = fs.readFileSync(path.join(ROOT, 'infra/postgres/init/01-replication.sh'), 'utf8');
   const pgComposeSource = fs.readFileSync(path.join(ROOT, 'infra/postgres/docker-compose.ha.yml'), 'utf8');
-  check('PostgreSQL init grants pgbouncer least-privilege SCRAM shadow lookup without superuser',
+  const failoverSource = fs.readFileSync(path.join(ROOT, 'tools/failover-postgres.sh'), 'utf8');
+  const sentinelComposeSource = fs.readFileSync(path.join(ROOT, 'infra/redis/docker-compose.sentinel.yml'), 'utf8');
+  const redisReviveCard = fs.readFileSync(path.join(ROOT, 'docs/RUNBOOK_CARDS/REDIS_REVIVE.md'), 'utf8');
+  check('PostgreSQL init grants pgbouncer least-privilege SCRAM shadow lookup with separable rotatable credentials',
     pgInitSource.includes('CREATE SCHEMA IF NOT EXISTS pgbouncer;')
+      && pgInitSource.includes('PGBOUNCER_PASSWORD="${PGBOUNCER_PASSWORD:-$REPLICATION_PASSWORD}"')
+      && pgInitSource.includes('ALTER ROLE replicator WITH LOGIN REPLICATION PASSWORD %L')
+      && pgInitSource.includes('ALTER ROLE pgbouncer WITH LOGIN PASSWORD %L')
       && pgInitSource.includes('CREATE OR REPLACE FUNCTION pgbouncer.pg_shadow_lookup(p_usename TEXT)')
       && pgInitSource.includes('SECURITY DEFINER')
       && pgInitSource.includes('u.usename = p_usename::name')
@@ -365,17 +371,213 @@ exit 0
       && !pgInitSource.includes('CREATE OR REPLACE VIEW pgbouncer.pg_shadow')
       && pgInitSource.includes('GRANT EXECUTE ON FUNCTION pgbouncer.pg_shadow_lookup(TEXT) TO pgbouncer;')
       && pgInitSource.includes('ALTER ROLE pgbouncer SET search_path = pgbouncer, pg_catalog;')
-      && pgComposeSource.includes('AUTH_QUERY: SELECT usename, passwd FROM pgbouncer.pg_shadow_lookup($1)'));
-  check('PgBouncer keeps read-only bind mount while staging 0600 runtime config for live RELOAD/RECONNECT',
+      && pgComposeSource.includes('AUTH_QUERY: SELECT usename, passwd FROM pgbouncer.pg_shadow_lookup($1)')
+      && pgComposeSource.includes('PGBOUNCER_PASSWORD: ${PGHA_PGBOUNCER_PASSWORD:-${PGHA_REPLICATION_PASSWORD}}')
+      && pgComposeSource.includes('DB_PASSWORD: ${PGHA_PGBOUNCER_PASSWORD:-${PGHA_REPLICATION_PASSWORD}}'));
+  check('PgBouncer keeps read-only bind mount while delegating live 0600 RELOAD/RECONNECT reroute to failover-postgres.sh',
     pgComposeSource.includes('./pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro')
       && pgComposeSource.includes('cp /etc/pgbouncer/pgbouncer.ini /var/run/pgbouncer/pgbouncer.ini')
       && pgComposeSource.includes('chmod 0600 /var/run/pgbouncer/pgbouncer.ini')
       && drRuntimeSource.includes('PG_PGBOUNCER_REROUTE_TESTED="false"')
       && drRuntimeSource.includes('verify_pgbouncer_pre_failover')
       && drRuntimeSource.includes('reroute_and_verify_pgbouncer')
-      && drRuntimeSource.includes('RELOAD;')
-      && drRuntimeSource.includes('RECONNECT payesh;')
-      && drRuntimeSource.includes('SHOW DATABASES;'));
+      && drRuntimeSource.includes('failover-postgres.sh" --reroute-pgbouncer-only')
+      && !failoverSource.includes('up -d --force-recreate pgbouncer')
+      && failoverSource.includes('RELOAD;')
+      && failoverSource.includes('RECONNECT ${target_db};')
+      && failoverSource.includes('SHOW DATABASES;'));
+  check('Redis Sentinel preserves persisted post-failover config across restarts and avoids -a password leaks',
+    sentinelComposeSource.includes('if [ ! -s /data/sentinel.conf ]; then')
+      && !sentinelComposeSource.includes('redis-cli -a')
+      && !sentinelComposeSource.includes('redis-cli -p 26379 -a')
+      && redisReviveCard.includes('sentinel master mymaster')
+      && redisReviveCard.includes('sentinel get-master-addr-by-name mymaster')
+      && !redisReviveCard.includes('sentinel master payesh'));
+
+  check('PostgreSQL failover supports --live with real PgBouncer reroute and fails closed on mismatch or conflicting flags', (() => {
+    const binReroute = path.join(TEMP, 'bin-reroute');
+    fs.mkdirSync(binReroute, { recursive: true });
+    const stateFile = path.join(TEMP, 'pg-live-reroute-state');
+    const iniFile = path.join(TEMP, 'pgbouncer.ini');
+    const adminLog = path.join(TEMP, 'pgbouncer-admin.log');
+    fs.writeFileSync(iniFile, '[databases]\npayesh        = host=pg-primary port=5432 dbname=payesh\npayesh-readonly = host=pg-standby port=5432 dbname=payesh\n');
+    put(path.join(binReroute, 'psql'), `#!/bin/sh
+query=''
+for arg in "$@"; do query="$arg"; done
+case "$query" in
+  *"SELECT pg_is_in_recovery()"*)
+    if [ -f "${stateFile}" ]; then echo f; else echo t; fi ;;
+  *"pg_wal_lsn_diff"*) echo 0 ;;
+  *"pg_promote"*) touch "${stateFile}"; echo t ;;
+  *"RELOAD;"*) echo RELOAD >> "${adminLog}"; echo RELOAD ;;
+  *"RECONNECT payesh;"*) echo RECONNECT >> "${adminLog}"; echo RECONNECT ;;
+  *"SHOW DATABASES;"*)
+    if [ -n "${'${MOCK_SHOW_DB:-}'}" ]; then echo "${'${MOCK_SHOW_DB}'}"; else echo "payesh|pg-standby|5432|pg-standby|5432|payesh"; fi ;;
+esac
+exit 0
+`);
+    const baseEnv = Object.assign({}, process.env, {
+      PATH: binReroute + path.delimiter + bin + path.delimiter + process.env.PATH,
+      PGHOST: 'pg-standby', PGPORT: '5432', PGUSER: 'postgres', PGDATABASE: 'payesh',
+      OLD_PGHOST: 'pg-primary', OLD_PGPORT: '5432', PG_ISREADY_RESULT: '1',
+      PG_ISREADY_COUNT_FILE: path.join(TEMP, 'pg-live-isready'),
+      PGBOUNCER_INI: iniFile, PGBOUNCER_HOST: '127.0.0.1', PGBOUNCER_PORT: '6432'
+    });
+    const conflict = spawnSync('bash', [failoverScript, '--dry-run', '--live'], { cwd: ROOT, encoding: 'utf8', env: baseEnv });
+    const okRes = spawnSync('bash', [failoverScript, '--live'], { cwd: ROOT, encoding: 'utf8', env: baseEnv });
+    const adminAfterOk = fs.readFileSync(adminLog, 'utf8');
+    const updatedIni = fs.readFileSync(iniFile, 'utf8');
+    const modeBits = fs.statSync(iniFile).mode & 0o777;
+    const mismatchRes = spawnSync('bash', [failoverScript, '--reroute-pgbouncer-only'], {
+      cwd: ROOT, encoding: 'utf8',
+      env: Object.assign({}, baseEnv, { MOCK_SHOW_DB: 'payesh|pg-primary|5432|pg-primary|5432|payesh' })
+    });
+    const badDbNameRes = spawnSync('bash', [failoverScript, '--reroute-pgbouncer-only'], {
+      cwd: ROOT, encoding: 'utf8',
+      env: Object.assign({}, baseEnv, { PGBOUNCER_DB: 'payesh;DROP TABLE users' })
+    });
+    return conflict.status === 2
+      && okRes.status === 0
+      && /PGBOUNCER_REROUTE_OK: payesh -> pg-standby:5432 \(mode=ini\)/.test(okRes.stdout)
+      && /PROMOTE_OK: pg-standby:5432/.test(okRes.stdout)
+      && updatedIni.includes('payesh        = host=pg-standby port=5432 dbname=payesh')
+      && modeBits === 0o600
+      && adminAfterOk === 'RELOAD\nRECONNECT\n'
+      && fs.readFileSync(adminLog, 'utf8') === 'RELOAD\nRECONNECT\nRELOAD\nRECONNECT\n'
+      && mismatchRes.status === 1
+      && badDbNameRes.status === 2;
+  })());
+
+  check('PITR supports --native, rejects unsafe stanza/port, stops orphan daemon on failed verify, and enforces SQL timestamptz boundaries', (() => {
+    const binPitrGuard = path.join(TEMP, 'bin-pitr-guard');
+    fs.mkdirSync(binPitrGuard, { recursive: true });
+    const pgCtlLog = path.join(TEMP, 'pg-ctl-actions.log');
+    put(path.join(binPitrGuard, 'pgbackrest'), '#!/bin/sh\nexit 0\n');
+    put(path.join(binPitrGuard, 'pg_ctl'), `#!/bin/sh
+printf '%s\\n' "$*" >> "${pgCtlLog}"
+exit 0
+`);
+    put(path.join(binPitrGuard, 'pg_isready'), '#!/bin/sh\nexit 0\n');
+    put(path.join(binPitrGuard, 'psql'), `#!/bin/sh
+query=''
+for arg in "$@"; do query="$arg"; done
+case "$query" in
+  *"SELECT 1"*) echo 1 ;;
+  *"SELECT pg_is_in_recovery()"*) echo "${'${MOCK_IN_RECOVERY:-f}'}" ;;
+  *"to_regclass('public.audit')"*) echo f ;;
+  *"to_regclass('public.system_audit')"*|*"to_regclass('public.phase6_audit_events')"*) echo f ;;
+  *"to_regclass('public.notifications')"*|*"to_regclass('public.server_outbox')"*) echo t ;;
+  *"FROM public."*notifications*) echo "ok|2026-10-19 14:20:00+00" ;;
+  *"FROM public."*server_outbox*)
+    if [ -n "${'${MOCK_OUTBOX_VERDICT:-}'}" ]; then echo "${'${MOCK_OUTBOX_VERDICT}'}"; else echo "ok|2026-10-19 14:25:00+00"; fi ;;
+  *"SELECT count(*) FROM"*) echo "${'${MOCK_ROW_COUNT:-1}'}" ;;
+  *"SELECT coalesce(md5(string_agg"*) echo checksum ;;
+esac
+exit 0
+`);
+    const guardEnv = Object.assign({}, process.env, {
+      PATH: binPitrGuard + path.delimiter + process.env.PATH,
+      PBR_EXEC: 'nonexistent-wrapper-should-be-cleared-by-native',
+      PBR_DEST_ROOT: path.join(TEMP, 'pitr-guard-runs'),
+      PBR_DATABASE: 'payesh'
+    });
+    const nativeOk = spawnSync('bash', [path.join(ROOT, 'tools/pitr-restore.sh'), '--native', '--time', target], {
+      cwd: ROOT, encoding: 'utf8', env: guardEnv
+    });
+    const badStanza = spawnSync('bash', [path.join(ROOT, 'tools/pitr-restore.sh'), '--native', '--stanza', "bad'stanza", '--time', target], {
+      cwd: ROOT, encoding: 'utf8', env: guardEnv
+    });
+    const badPort = spawnSync('bash', [path.join(ROOT, 'tools/pitr-restore.sh'), '--native', '--port', '70000', '--time', target], {
+      cwd: ROOT, encoding: 'utf8', env: guardEnv
+    });
+    fs.writeFileSync(pgCtlLog, '');
+    const failedVerify = spawnSync('bash', [path.join(ROOT, 'tools/pitr-restore.sh'), '--native', '--time', target], {
+      cwd: ROOT, encoding: 'utf8', env: Object.assign({}, guardEnv, { MOCK_ROW_COUNT: '0' })
+    });
+    const ctlActionsOnFailure = fs.readFileSync(pgCtlLog, 'utf8');
+    const verifyOk = spawnSync('bash', [path.join(ROOT, 'tools/pitr-verify.sh'), '--expect-before', '2026-10-19 17:55:36.123456+03:30'], {
+      cwd: ROOT, encoding: 'utf8', env: guardEnv
+    });
+    const verifyLeakedOutbox = spawnSync('bash', [path.join(ROOT, 'tools/pitr-verify.sh'), '--expect-before', '2026-10-19 17:55:36.123456+03:30'], {
+      cwd: ROOT, encoding: 'utf8', env: Object.assign({}, guardEnv, { MOCK_OUTBOX_VERDICT: 'after|2026-10-19 14:30:00+00' })
+    });
+    const verifyBadTs = spawnSync('bash', [path.join(ROOT, 'tools/pitr-verify.sh'), '--expect-before', "2026-10-19'; DROP TABLE users;--"], {
+      cwd: ROOT, encoding: 'utf8', env: guardEnv
+    });
+    return nativeOk.status === 0
+      && badStanza.status === 1
+      && badPort.status === 1
+      && failedVerify.status === 1
+      && /start/.test(ctlActionsOnFailure)
+      && /-m fast -w stop/.test(ctlActionsOnFailure)
+      && verifyOk.status === 0
+      && verifyLeakedOutbox.status === 1
+      && verifyBadTs.status === 1;
+  })());
+
+  check('PostgreSQL standby entrypoint stores escaped credentials only in 0600 .pgpass across bootstrap and restart', (() => {
+    const binStandby = path.join(TEMP, 'bin-standby');
+    const standbyPgData = path.join(TEMP, 'standby-pgdata');
+    const pgpassPath = path.join(TEMP, 'standby-home', '.pgpass');
+    const envCapture = path.join(TEMP, 'standby-env.log');
+    fs.mkdirSync(binStandby, { recursive: true });
+    put(path.join(binStandby, 'render-config-noop'), '#!/bin/sh\nexit 0\n');
+    put(path.join(binStandby, 'gosu'), `#!/bin/sh
+shift
+cmd="$1"
+shift
+printf '%s|PGPASSFILE=%s|PGPASSWORD=%s\\n' "$cmd" "\${PGPASSFILE:-}" "\${PGPASSWORD-<UNSET>}" >> "${envCapture}"
+if [ "$cmd" = "pg_basebackup" ]; then
+  echo 16 > "${standbyPgData}/PG_VERSION"
+fi
+exit 0
+`);
+    put(path.join(binStandby, 'docker-entrypoint-noop'), `#!/bin/sh
+printf 'entrypoint|PGPASSFILE=%s|PGPASSWORD=%s\\n' "\${PGPASSFILE:-}" "\${PGPASSWORD-<UNSET>}" >> "${envCapture}"
+exit 0
+`);
+    const boot1 = spawnSync('bash', [path.join(ROOT, 'infra/postgres/entrypoints/standby-entrypoint.sh'), 'postgres'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: Object.assign({}, process.env, {
+        PATH: binStandby + path.delimiter + process.env.PATH,
+        PGDATA: standbyPgData,
+        STANDBY_PGPASSFILE: pgpassPath,
+        RENDER_CONFIG_BIN: path.join(binStandby, 'render-config-noop'),
+        DOCKER_ENTRYPOINT_BIN: path.join(binStandby, 'docker-entrypoint-noop'),
+        PGPASSWORD: 'leaked-env-password',
+        REPLICATION_PASSWORD: 'first:secret\\password'
+      })
+    });
+    const pgpass1 = fs.readFileSync(pgpassPath, 'utf8');
+    const autoConf1 = fs.readFileSync(path.join(standbyPgData, 'postgresql.auto.conf'), 'utf8');
+    const boot2 = spawnSync('bash', [path.join(ROOT, 'infra/postgres/entrypoints/standby-entrypoint.sh'), 'postgres'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: Object.assign({}, process.env, {
+        PATH: binStandby + path.delimiter + process.env.PATH,
+        PGDATA: standbyPgData,
+        STANDBY_PGPASSFILE: pgpassPath,
+        RENDER_CONFIG_BIN: path.join(binStandby, 'render-config-noop'),
+        DOCKER_ENTRYPOINT_BIN: path.join(binStandby, 'docker-entrypoint-noop'),
+        REPLICATION_PASSWORD: 'rotated:secret\\password2'
+      })
+    });
+    const pgpass2 = fs.readFileSync(pgpassPath, 'utf8');
+    const autoConf2 = fs.readFileSync(path.join(standbyPgData, 'postgresql.auto.conf'), 'utf8');
+    const envLines = fs.readFileSync(envCapture, 'utf8');
+    return boot1.status === 0
+      && boot2.status === 0
+      && (fs.statSync(pgpassPath).mode & 0o777) === 0o600
+      && pgpass1 === '*:*:*:replicator:first\\:secret\\\\password\n'
+      && pgpass2 === '*:*:*:replicator:rotated\\:secret\\\\password2\n'
+      && autoConf1.includes('passfile=' + pgpassPath)
+      && !autoConf1.includes('password=')
+      && !autoConf2.includes('password=')
+      && (autoConf2.match(/^primary_conninfo =/gm) || []).length === 1
+      && envLines.includes('pg_basebackup|PGPASSFILE=' + pgpassPath + '|PGPASSWORD=<UNSET>')
+      && envLines.includes('entrypoint|PGPASSFILE=' + pgpassPath + '|PGPASSWORD=<UNSET>');
+  })());
   check('CI summary and ZIP artifact audit record and gate PgBouncer reroute telemetry', (() => {
     const { createDigest, createSummary } = require(path.join(ROOT, 'tools/m15-01-ci-summary.js'));
     const { auditZipBuffer } = require(path.join(ROOT, 'tools/m15-01-artifact-audit.js'));

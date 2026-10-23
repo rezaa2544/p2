@@ -12,10 +12,10 @@
 ## Steps (گام‌ها)
 
 1. **تشخیص:** وضعیت را از دید سنتینل بپرسید.
-   `redis-cli -h <sentinel> -p 26379 sentinel master payesh` — فیلد `flags` را ببینید.
+   `redis-cli -h <sentinel> -p 26379 sentinel master mymaster` — فیلد `flags` را ببینید.
    **تأیید:** اگر `s_down` نبود، مشکل اتصال اپ است نه ردیس ⇒ به کارت دیگری بروید.
 2. **صبر کوتاه:** سنتینل با `down-after=5s` و `quorum=2` خودش فیلاور می‌کند (مشاهده‌شده: ≈۶.۵ ثانیه خودکار). تا ۳۰ ثانیه صبر کنید.
-   **تأیید:** `sentinel get-master-addr-by-name payesh` آدرس تازه بدهد.
+   **تأیید:** `sentinel get-master-addr-by-name mymaster` آدرس تازه بدهد.
 3. **فیلاور دستی (اگر خودکار نشد):** اسکریپت رسمی را اجرا کنید.
    `bash tools/failover-redis.sh` — گارد دارد: مستر فعلی باید واقعاً دان باشد (مگر `--force`).
    **تأیید:** خروجی اسکریپت «آدرس مستر تازه» را چاپ می‌کند.

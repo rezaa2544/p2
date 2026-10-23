@@ -69,11 +69,9 @@ READ_DATABASE_URL=postgres://ro:<pw>@127.0.0.1:6432/payesh-readonly   # کارت
   notify می‌خواهد: آن را به `payesh-events` queue/Outbox ببرید (Wave-8).
 - `auth_query` با کاربرِ `pgbouncer` (ساخته‌شده در `init/01-replication.sh`):
   رمزِ برنامه‌ها مستقیم به postgres رفرنس می‌شود و در userlist ذخیره نمی‌شود.
-  تنگ‌سازیِ آگاهانه: هر دو حسابِ `pgbouncer` و `replicator` فعلاً با
-  `PGHA_REPLICATION_PASSWORD` ساخته می‌شوند؛ برایِ پروداکشنِ صلب،
-  پچِ بعدیِ §۸ این را تفکیک می‌کند.
-- failoverِ دستیِ endpoint فقط یک `sed` رویِ ini + `kill -HUP` است —
-  استخرهایِ سمتِ برنامه قطع نمی‌شوند.
+  رمزِ `pgbouncer` از `PGHA_PGBOUNCER_PASSWORD` (با پیش‌فرضِ سازگارِ `PGHA_REPLICATION_PASSWORD`) تأمین می‌شود و `standby-entrypoint.sh` رمزِ تکرار را در `/var/lib/postgresql/.pgpass` (`0600`) نگه می‌دارد تا هیچ رمزی در `postgresql.auto.conf` نوشته نشود.
+- failoverِ دستیِ endpoint فقط یک بازنویسیِ اتمیکِ `pgbouncer.ini` + `RELOAD;` و `RECONNECT payesh;` (از طریقِ `tools/failover-postgres.sh`) است —
+  استخرهایِ سمتِ برنامه به primaryِ تازه هدایت می‌شوند.
 
 ## ۵) بکاپ‌گیری زمان‌بندی‌شده (cronِ میزبان)
 
@@ -128,6 +126,6 @@ tools/failover-postgres.sh            # گاردها؛ سپس SELECT pg_promote(
   الگویِ `PGBACKREST_REPO1_S3_URI_STYLE=path` و پیشوندِ صریحِ `http://` در `infra/postgres/entrypoints/render-config.sh`
   هنگامِ غیرفعال بودنِ TLS داخلی، بازیابیِ ایزولهٔ `tools/pitr-restore.sh` روی پورتِ مجزا (`54329`)،
   تابعِ پارامتریِ کمینه-دسترسیِ `SECURITY DEFINER` `pgbouncer.pg_shadow_lookup(text)`
-  (`u.usename = p_usename::name AND NOT u.userepl AND u.usename <> 'pgbouncer'`، بدونِ ویویِ همهٔ کاربران) برایِ احرازِ هویتِ SCRAM روی PG16 بدونِ `SUPERUSER`،
+  (`u.usename = p_usename::name AND (u.usesuper OR NOT u.userepl) AND u.usename <> 'replicator' AND u.usename <> 'pgbouncer'`، بدونِ ویویِ همهٔ کاربران) برایِ احرازِ هویتِ SCRAM روی PG16 بدونِ `SUPERUSER`،
   و بازهدایتِ زمانِ اجرایِ `pgbouncer` (`/var/run/pgbouncer/pgbouncer.ini` با حفظِ مونتِ `:ro` روی `/etc/pgbouncer/pgbouncer.ini` + `RELOAD;` و `RECONNECT payesh;` و تأییدِ خواندن/نوشتنِ `pg.Pool` روی `6432`) در مانورِ تک‌میزبانیِ E3؛
   ارزیابیِ عملیاتیِ چندمیزبانیِ E4 تا تأمینِ زیرساختِ تفکیک‌شده همچنان **BLOCKED** است (`E3 != E4`).

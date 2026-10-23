@@ -298,6 +298,11 @@ async function main() {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  const allowedCurrentShas = Array.from(new Set([checkoutHead, githubSha].filter(Boolean)));
+  // Emit current-head ZIP summaries FIRST and keep total ::notice count per step <= 10
+  // so GitHub Actions runner command quotas never drop current-SHA evidence annotations.
+  const currentResults = await auditRunArtifacts(apiBase, repo, runId, allowedCurrentShas, token, 'current', false);
+
   const attempt1Probes = [];
   for (const id of histAttempt1Ids) {
     const res = await fetchGithubJson(apiBase, '/repos/' + repo + '/actions/artifacts/' + id, token);
@@ -312,11 +317,8 @@ async function main() {
 
   let histResults = [];
   if (histRunId && histExpectedSha) {
-    histResults = await auditRunArtifacts(apiBase, repo, histRunId, [histExpectedSha], token, 'run-' + histRunId, true);
+    histResults = await auditRunArtifacts(apiBase, repo, histRunId, [histExpectedSha], token, 'run-' + histRunId, false);
   }
-
-  const allowedCurrentShas = Array.from(new Set([checkoutHead, githubSha].filter(Boolean)));
-  const currentResults = await auditRunArtifacts(apiBase, repo, runId, allowedCurrentShas, token, 'current', false);
   const hasRuntimeA = currentResults.some((r) => r.audit_pass && String(r.name || '').startsWith('m15-01-runtime-a-'));
   const hasRuntimeB = currentResults.some((r) => r.audit_pass && String(r.name || '').startsWith('m15-01-runtime-b-'));
   const hasDr = currentResults.some((r) => (
@@ -374,5 +376,6 @@ module.exports = {
   countSecretHits,
   downloadArtifactZip,
   auditZipBuffer,
-  auditRunArtifacts
+  auditRunArtifacts,
+  main
 };

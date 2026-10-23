@@ -5,12 +5,11 @@
 # اجرا روی instanceِ بازیابی‌شده (معمولاً PITR در محیطِ جدا):
 #   • سرور بالا و PROMOTE شده (pg_is_in_recovery=f)
 #   • جدول‌هایِ حیاتیِ پایش موجود و غیرخالی (users/schools/classes/grades/attendance)
-#   • schema version با مخزنِ مرجع هم‌خوان (countِ tables)
-#   • بی‌اعتباریِ داده‌هایِ پس از زمانِ هدف (recovery_target رعایت شده)
+#   • بی‌اعتباریِ داده‌هایِ پس از زمانِ هدف با مقایسهٔ واقعیِ TIMESTAMPTZ در SQL
 #   • sample-checksum سه جدول + latest version ردیابی‌شده
 # مصرف:
 #   tools/pitr-verify.sh --host-dir /var/backups/payesh-pitr/<RUN>/run --port 54329 [--expect-before 'TS']
-#   PGHOST/PGPORT/PGDATABASE/PGUSER برایِ اتصالِ مستقیم هم کافی است (حالتِ --url)
+#   PGHOST/PGPORT/PGDATABASE/PGUSER برایِ اتصالِ مستقیم هم کافی است
 # خروجی: ۰ = همۀ بندها سبز؛ ۱ = هر FAIL
 # ═══════════════════════════════════════════════════════════════════
 set -euo pipefail
@@ -27,7 +26,7 @@ while [ $# -gt 0 ]; do
 done
 FAILED=0
 note(){ if [ "$2" = "ok" ]; then echo "PASS: $1"; else echo "FAIL: $1"; FAILED=1; fi; }
-q(){ if [ -n "$HDIR" ]; then psql -h "$HDIR" -p "$PORT" -U "${PGUSER:-postgres}" -d "${PGDATABASE:-payesh}" -tAc "$1"
+q(){ if [ -n "$HDIR" ]; then psql -h "$HDIR" -p "$PORT" -U "${PGUSER:-postgres}" -d "${PGDATABASE:-payesh}" -tAc "$1" 2>/dev/null
      else psql -tAc "$1" 2>/dev/null; fi; }
 
 # ۱) connectivity
@@ -48,16 +47,31 @@ for t in users schools classes grades attendance; do
   case "$c" in ''|ERR|0) note "جدولِ حیاتی $t (count=$c)" bad;; *) note "جدولِ حیاتی $t (count=$c)" ok;; esac
 done
 
-# ۴) اگر هدفِ زمانی داده شده: هیچ رویدادِ تازه‌تر از هدف نباید باشد (نمونهٔ audit)
+# ۴) اگر هدفِ زمانی داده شده: هیچ رویدادِ تازه‌تر از هدف نباید در هیچ جدولِ رویداد باشد
 if [ -n "$EXPECT_BEFORE" ]; then
-  mx="$(q "SELECT coalesce(max(created_at)::text,'') FROM audit" || true)"
-  [ -z "$mx" ] && mx="$(q "SELECT coalesce(max(created_at)::text,'') FROM notifications" || true)"
-  if [ -n "$mx" ] && [ ! "$mx" \> "$EXPECT_BEFORE" ]; then
-    note "آخرین رویداد ($mx) پیش از هدفِ بازیابی ($EXPECT_BEFORE) است — target رعایت شد" ok
-  elif [ -n "$mx" ]; then
-    note "داده‌ای پس از هدفِ بازیابی وجود دارد ($mx > $EXPECT_BEFORE)" bad
+  if [[ ! "$EXPECT_BEFORE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}[T\ ][0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}(:?[0-9]{2})?)?$ ]]; then
+    note "قالبِ زمان هدف نامعتبر است ($EXPECT_BEFORE)" bad
   else
-    note "ستونِ created_at برایِ سنجشِ target پیدا نشد (چک دستی لازم است)" bad
+    latest_ok=""
+    latest_bad=""
+    for spec in "audit:created_at" "system_audit:timestamp" "phase6_audit_events:created_at" "notifications:created_at" "server_outbox:created_at"; do
+      tbl="${spec%%:*}"
+      col="${spec#*:}"
+      if [ "$(q "SELECT to_regclass('public.${tbl}') IS NOT NULL" || true)" = "t" ]; then
+        verdict="$(q "SELECT CASE WHEN max(\"${col}\") IS NULL THEN '' WHEN max(\"${col}\")::timestamptz <= '${EXPECT_BEFORE}'::timestamptz THEN 'ok|' || max(\"${col}\")::timestamptz::text ELSE 'after|' || max(\"${col}\")::timestamptz::text END FROM public.\"${tbl}\"" || true)"
+        case "$verdict" in
+          after\|*) latest_bad="${verdict#after|}" ;;
+          ok\|*) latest_ok="${verdict#ok|}" ;;
+        esac
+      fi
+    done
+    if [ -n "$latest_bad" ]; then
+      note "داده‌ای پس از هدفِ بازیابی وجود دارد ($latest_bad > $EXPECT_BEFORE)" bad
+    elif [ -n "$latest_ok" ]; then
+      note "آخرین رویداد ($latest_ok) پیش از هدفِ بازیابی ($EXPECT_BEFORE) است — target رعایت شد" ok
+    else
+      note "ستونِ created_at برایِ سنجشِ target پیدا نشد (چک دستی لازم است)" bad
+    fi
   fi
 fi
 

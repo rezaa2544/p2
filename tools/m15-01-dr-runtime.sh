@@ -45,6 +45,7 @@ SOURCE_SHA="$(git rev-parse HEAD 2>/dev/null || true)"
 SOURCE_TREE_CLEAN="NOT_RUN"
 PG_PASSWORD=""
 PG_REPLICATION_PASSWORD=""
+PG_PGBOUNCER_PASSWORD=""
 MINIO_USER=""
 MINIO_PASSWORD=""
 REDIS_PASSWORD=""
@@ -108,6 +109,7 @@ assert_compose_project_unused() {
 redact_file() {
   local file="$1"
   PG_PASSWORD="$PG_PASSWORD" PG_REPLICATION_PASSWORD="$PG_REPLICATION_PASSWORD" \
+    PG_PGBOUNCER_PASSWORD="$PG_PGBOUNCER_PASSWORD" \
     MINIO_PASSWORD="$MINIO_PASSWORD" REDIS_PASSWORD="$REDIS_PASSWORD" \
     MINIO_USER="$MINIO_USER" node tools/m15-01-log-redactor.js redact-file "$file"
 }
@@ -257,14 +259,13 @@ NODE
 
 reroute_and_verify_pgbouncer() {
   local marker="$1"
-  compose_pg exec -T pgbouncer sh -ec '
-    sed "s|^payesh[[:space:]]*=.*|payesh        = host=pg-standby port=5432 dbname=payesh|" /var/run/pgbouncer/pgbouncer.ini > /var/run/pgbouncer/pgbouncer.ini.next
-    chmod 0600 /var/run/pgbouncer/pgbouncer.ini.next
-    mv -f /var/run/pgbouncer/pgbouncer.ini.next /var/run/pgbouncer/pgbouncer.ini
-    psql -h 127.0.0.1 -p 6432 -U pgbouncer -d pgbouncer -v ON_ERROR_STOP=1 -XAt -c "RELOAD;"
-    psql -h 127.0.0.1 -p 6432 -U pgbouncer -d pgbouncer -v ON_ERROR_STOP=1 -XAt -c "RECONNECT payesh;"
-    psql -h 127.0.0.1 -p 6432 -U pgbouncer -d pgbouncer -v ON_ERROR_STOP=1 -XAt -c "SHOW DATABASES;" | grep -E "^payesh\|pg-standby\|5432\|"
-  '
+  COMPOSE_F="$PG_COMPOSE" \
+    COMPOSE_PROJECT="$PG_PROJECT" \
+    COMPOSE_ENV_FILE="$COMPOSE_ENV" \
+    PGBOUNCER_TARGET_HOST=pg-standby \
+    PGBOUNCER_TARGET_PORT=5432 \
+    PGBOUNCER_DB=payesh \
+    bash "$ROOT/tools/failover-postgres.sh" --reroute-pgbouncer-only
   node - "$marker" <<'NODE'
 'use strict';
 const assert = require('assert');
@@ -590,6 +591,7 @@ SOURCE_TREE_CLEAN="true"
 
 PG_PASSWORD="$(node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))")"
 PG_REPLICATION_PASSWORD="$(node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))")"
+PG_PGBOUNCER_PASSWORD="$(node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))")"
 MINIO_USER="m15$(node -e "process.stdout.write(require('crypto').randomBytes(8).toString('hex'))")"
 MINIO_PASSWORD="$(node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))")"
 REDIS_PASSWORD="$(node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))")"
@@ -597,6 +599,7 @@ cat > "$COMPOSE_ENV" <<EOF
 PGHA_SUPERUSER=postgres
 PGHA_PASSWORD=$PG_PASSWORD
 PGHA_REPLICATION_PASSWORD=$PG_REPLICATION_PASSWORD
+PGHA_PGBOUNCER_PASSWORD=$PG_PGBOUNCER_PASSWORD
 MINIO_ROOT_USER=$MINIO_USER
 MINIO_ROOT_PASSWORD=$MINIO_PASSWORD
 PGHA_S3_KEY=$MINIO_USER
@@ -621,6 +624,8 @@ PG_PROJECT_OWNED=1
 run_logged pg-ha-start compose_pg up -d --build
 run_logged pg-ha-readiness wait_pg_ha_ready
 PG_STANDBY_STREAMING="true"
+run_logged pg-standby-secret-hygiene compose_pg exec -T -u postgres pg-standby sh -ec \
+  'stat -c "owner=%U:%G mode=%a" /var/lib/postgresql/.pgpass | grep -Fx "owner=postgres:postgres mode=600" && grep -q "passfile=/var/lib/postgresql/.pgpass" /var/lib/postgresql/data/postgresql.auto.conf && ! grep -q "password=" /var/lib/postgresql/data/postgresql.auto.conf'
 run_logged pgbackrest-config-permissions compose_pg exec -T -u postgres pg-primary sh -ec \
   'test -r /etc/pgbackrest/pgbackrest.conf && stat -c "owner=%U:%G mode=%a" /etc/pgbackrest/pgbackrest.conf | grep -Fx "owner=postgres:postgres mode=600"'
 PG_CONFIG_ACCESS="verified_readable_by_postgres_owner_mode_0600"
@@ -709,7 +714,9 @@ if [[ ! "$PITR_DIR" =~ ^/tmp/m15-pitr/pitr-[A-Za-z0-9-]+$ ]]; then
   exit 1
 fi
 run_logged pitr-restore-verify compose_pg exec -T -u postgres pg-backup bash /tmp/pitr-verify.sh \
-  --host-dir "$PITR_DIR/run" --port 54329 --stanza payesh --target-spec "--type=time --target=$PITR_TARGET --target-action=promote"
+  --host-dir "$PITR_DIR/run" --port 54329 --stanza payesh \
+  --expect-before "$PITR_TARGET" \
+  --target-spec "--type=time --target=$PITR_TARGET --target-action=promote"
 PITR_VERIFY_EXIT="0"
 run_logged pitr-restored-marker-check compose_pg exec -T -u postgres pg-backup psql -XAt -h "$PITR_DIR/run" -p 54329 -d payesh -c \
   "SELECT (SELECT count(*) FROM server_outbox WHERE type = 'm15.dr.before' AND payload->>'origin' = '${PITR_BEFORE_MARKER}') || '|' || (SELECT count(*) FROM server_outbox WHERE type = 'm15.dr.after' AND payload->>'origin' = '${PITR_AFTER_MARKER}');"
@@ -733,6 +740,7 @@ fi
 PITR_SCHEMA_CATALOG_MATCH="true"
 run_logged pitr-stop-restored-instance compose_pg exec -T -u postgres pg-backup pg_ctl \
   -D "$PITR_DIR/data" -m fast -w stop
+run_logged pitr-cleanup-restored-dir compose_pg exec -T -u postgres pg-backup rm -rf -- "$PITR_DIR"
 
 FAILOVER_MARKER="m15-dr-failover-${RUN_KEY}"
 PG_BACKUP_CONTAINER="$(compose_pg ps -q pg-backup)"
@@ -749,7 +757,7 @@ FAILOVER_START_MS="$(date +%s%3N)"
 run_logged stop-primary compose_pg stop pg-primary
 if run_logged promote-standby compose_pg exec -T -u postgres \
   -e PGHOST=pg-standby -e PGPORT=5432 -e PGDATABASE=payesh -e PGUSER=postgres \
-  -e OLD_PGHOST=pg-primary -e OLD_PGPORT=5432 pg-backup bash /tmp/failover-postgres.sh; then
+  -e OLD_PGHOST=pg-primary -e OLD_PGPORT=5432 pg-backup bash /tmp/failover-postgres.sh --live; then
   PG_PROMOTION_STATE="primary_stopped_standby_promoted_by_failover_tool"
 else
   echo "PostgreSQL failover tool rejected or failed the isolated promotion" >&2
@@ -842,6 +850,24 @@ if [[ "$(tr -d '\r\n' < "$EVIDENCE_DIR/redis-promoted-write-readback.log")" != "
   exit 1
 fi
 REDIS_POST_PROMOTION_WRITE="true"
+wait_sentinel_post_restart_master() {
+  local i addr
+  for i in $(seq 1 30); do
+    addr="$(redis_master_addr 2>/dev/null || true)"
+    if [[ -n "$addr" ]]; then
+      printf '%s\n' "$addr"
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+run_logged redis-sentinel-restart-persistence compose_redis restart sentinel-1
+run_logged redis-sentinel-post-restart-master wait_sentinel_post_restart_master
+if [[ "$(paste -sd, "$EVIDENCE_DIR/redis-sentinel-post-restart-master.log")" != "$REDIS_PROMOTED_MASTER" ]]; then
+  echo "restarted sentinel-1 reverted or lost promoted master state" >&2
+  exit 1
+fi
 
 # A synthetic-only human-readable end summary is duplicated in command log.
 printf '\nM15 DR PRE-CLEANUP COMPONENTS: postgres_pitr=PASS postgres_promote=PASS redis_sentinel=PASS sha=%s\n' "$SOURCE_SHA" | tee -a "$COMMAND_LOG"

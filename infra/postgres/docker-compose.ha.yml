@@ -96,6 +96,7 @@ services:
       POSTGRES_USER: ${PGHA_SUPERUSER:-postgres}
       POSTGRES_PASSWORD: ${PGHA_PASSWORD:?PGHA_PASSWORD را در env-file بگذارید}
       REPLICATION_PASSWORD: ${PGHA_REPLICATION_PASSWORD:?PGHA_REPLICATION_PASSWORD را در env-file بگذارید}
+      PGBOUNCER_PASSWORD: ${PGHA_PGBOUNCER_PASSWORD:-${PGHA_REPLICATION_PASSWORD}}
     command:
       - postgres
       - -c
@@ -182,9 +183,9 @@ services:
       PGPORT: "5432"
       PGDATABASE: payesh
       PGUSER: pgbouncer
-      PGPASSWORD: ${PGHA_REPLICATION_PASSWORD}
+      PGPASSWORD: ${PGHA_PGBOUNCER_PASSWORD:-${PGHA_REPLICATION_PASSWORD}}
       DB_USER: pgbouncer
-      DB_PASSWORD: ${PGHA_REPLICATION_PASSWORD}
+      DB_PASSWORD: ${PGHA_PGBOUNCER_PASSWORD:-${PGHA_REPLICATION_PASSWORD}}
       AUTH_TYPE: scram-sha-256
       AUTH_QUERY: SELECT usename, passwd FROM pgbouncer.pg_shadow_lookup($1)
       POOL_MODE: transaction
