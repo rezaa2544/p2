@@ -74,8 +74,8 @@ exit 0
   const drRuntimeSource = fs.readFileSync(path.join(ROOT, 'tools/m15-01-dr-runtime.sh'), 'utf8');
   const pgDockerfileSource = fs.readFileSync(path.join(ROOT, 'infra/postgres/Dockerfile'), 'utf8');
   const workflowSource = fs.readFileSync(path.join(ROOT, '.github/workflows/m15-01-runtime-evidence.yml'), 'utf8');
-  check('workflow fails when either required runtime or DR evidence artifact is missing',
-    (workflowSource.match(/if-no-files-found: error/g) || []).length === 2);
+  check('workflow fails when any required runtime, DR, or E4 probe artifact is missing',
+    (workflowSource.match(/if-no-files-found: error/g) || []).length === 3);
   check('DR PASS artifact explicitly cannot disposition M15-01 closure',
     drRuntimeSource.includes("mission_disposition: 'SUBSET_ONLY_NOT_M15_01_CLOSURE'"));
   check('DR command and output logging uses the shared secret redactor',

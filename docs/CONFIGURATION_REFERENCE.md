@@ -262,6 +262,32 @@
 | `B01_MUTATE` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
 | `CACHE_DURABLE_VULN` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
 | `COUCOU_API_KEY` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `E4_ALERTMANAGER_URL` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | نشانی سرویس Alertmanager در دامنهٔ شکست مستقل E4 |
+| `E4_BACKUP_REPO_REGION` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | ناحیهٔ جغرافیایی مخزن پشتیبان خارج‌ازسایت pgBackRest در ممیزی E4 |
+| `E4_CONFIRM_ISOLATED_STAGING` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | قفل ایمنی اجباری (`1`) برای تأیید اجرای آزمون عملیاتی E4 صرفاً روی محیط ایزولهٔ غیرتولیدی |
+| `E4_EXPECTED_CATALOG_SHA256` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | هش SHA-256 مورد انتظار دفترچهٔ ۲۶ مهاجرت پس از بازیابی PITR در E4 |
+| `E4_MAX_REPL_LAG_BYTES` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | سقف مجاز تأخیر replication بایت در ممیزی PostgreSQL چندمیزبانهٔ E4 |
+| `E4_MTTA_MAX_MS` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | سقف مجاز MTTA تأیید انسانی کشیک در ممیزی زنجیرهٔ هشدار E4 (میلی‌ثانیه) |
+| `E4_MTTR_MAX_MS` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | سقف مجاز MTTR بازیابی سرویس در ممیزی زنجیرهٔ هشدار E4 (میلی‌ثانیه) |
+| `E4_OBSERVABILITY_BEARER_TOKEN` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | توکن احراز هویت خواندنی Prometheus/Alertmanager در ممیزی E4 |
+| `E4_ONCALL_INCIDENT_JSON` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | مسیر رکورد JSON زمان‌بندی‌شدهٔ تمرین هشدار، تأیید انسانی کشیک، ران‌بوک و بازیابی در E4 |
+| `E4_PGBACKREST_MAX_BACKUP_AGE_SEC` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | حداکثر سن مجاز آخرین پشتیبان کامل pgBackRest در ممیزی E4 (ثانیه) |
+| `E4_PGBACKREST_STANZA` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | نام stanza در ممیزی پشتیبان خارج‌ازسایت pgBackRest برای E4 |
+| `E4_PGBOUNCER_ADMIN_DSN` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | رشتهٔ اتصال مدیریتی PgBouncer برای بررسی وضعیت استخرها در E4 |
+| `E4_PGBOUNCER_DSN` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | رشتهٔ اتصال کلاینت PgBouncer برای راستی‌آزمایی مسیر نوشتن در E4 |
+| `E4_PGBOUNCER_EVIDENCE_JSON` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | مسیر خروجی JSON زمان‌سنجی بازمسیردهی PgBouncer در تمرین فیلاور چندمیزبانهٔ E4 |
+| `E4_PGBOUNCER_RTO_MAX_MS` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | سقف مجاز RTO بازمسیردهی PgBouncer پس از فیلاور در E4 (میلی‌ثانیه) |
+| `E4_PG_PRIMARY_DSN` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | رشتهٔ اتصال خواندنی نود Primary پستگرس چندمیزبانه در ممیزی E4 |
+| `E4_PG_STANDBY_DSN` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | رشتهٔ اتصال خواندنی نود Standby پستگرس چندمیزبانه در ممیزی E4 |
+| `E4_PITR_RESTORED_DSN` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | رشتهٔ اتصال نمونهٔ ایزولهٔ بازیابی‌شدهٔ PITR در میزبان مجزا برای E4 |
+| `E4_PITR_TARGET_UTC` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | برچسب زمانی هدف PITR (UTC ISO-8601) در ممیزی E4 |
+| `E4_PRIMARY_REGION` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | ناحیهٔ جغرافیایی میزبان Primary پستگرس برای کنترل جداسازی ناحیه با پشتیبان E4 |
+| `E4_PROMETHEUS_URL` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | نشانی سرویس Prometheus در دامنهٔ شکست مستقل E4 |
+| `E4_REDIS_MASTER_NAME` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | نام کلاستر Master در Redis Sentinel چندمیزبانه برای ممیزی E4 |
+| `E4_REDIS_PASSWORD` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | گذرواژهٔ احراز هویت Redis Master در ممیزی E4 (حذف‌شده در خروجی) |
+| `E4_REDIS_SENTINEL_ENDPOINTS` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | فهرست جداشده با ویرگول از حداقل ۳ نقطهٔ اتصال Redis Sentinel روی میزبان‌های مجزا در E4 |
+| `E4_REQUIRE_PASS` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | در صورت مقدار `1` وضعیت BLOCKED نیز با کد خروج غیرصفر (۱) مردود می‌شود |
+| `E4_SENTINEL_PASSWORD` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | گذرواژهٔ احراز هویت نودهای Redis Sentinel در ممیزی E4 (حذف‌شده در خروجی) |
 | `FT_METRIC_V2_PATH` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
 | `GATE_REQUIRE_CLEAN` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
 | `GATE_REQUIRE_REMOTE_MATCH` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
