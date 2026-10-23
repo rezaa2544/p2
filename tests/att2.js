@@ -82,6 +82,9 @@ async function main() {
 
   let stId = null;   /* دانش‌آموزِ کلیک‌شده در T2 — در T3/T6 استفاده می‌شود */
 
+  /* اگر تاریخ اجرای تست تعطیلِ آخرِ هفته (پنج‌شنبه/جمعه) باشد، امروز به‌عنوان روزِ جبرانیِ مدرسه ثبت می‌شود تا برنامهٔ زنگ برقرار باشد */
+  W(`(db.makeup_classes = db.makeup_classes || []).push({ id: 999991, school_id: ${ctx.sid}, date: todayISO() });`);
+
   /* یک روز کاریِ آینده (شنبه) برای محاسبه‌های زمان */
   const span = W(`(function(){
     var t = new Date();
