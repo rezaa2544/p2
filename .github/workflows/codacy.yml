@@ -38,6 +38,35 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # codacy/codacy-analysis-cli:4.0.0 runs an Alpine JVM without a UTF-8 locale,
+      # so Charset.defaultCharset() defaults to US-ASCII and Sarif.createResults
+      # throws MalformedInputException on valid UTF-8 Persian source files. Pass
+      # explicit UTF-8 JVM/POSIX locale environment variables into the CLI container
+      # while preserving the exact unmasked container exit status.
+      - name: Configure UTF-8 locale for Codacy CLI container
+        shell: bash
+        run: |
+          set -euo pipefail
+          WRAP_DIR="/tmp/codacy-utf8-docker"
+          mkdir -p "$WRAP_DIR"
+          cat > "$WRAP_DIR/docker" <<'EOF'
+          #!/usr/bin/env bash
+          if [ "${1:-}" = "run" ]; then
+            shift
+            set +e
+            /usr/bin/docker run \
+              -e JAVA_TOOL_OPTIONS="-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8" \
+              -e LANG=C.UTF-8 \
+              -e LC_ALL=C.UTF-8 \
+              "$@" 2>&1 | tee /tmp/codacy-cli.log
+            rc="${PIPESTATUS[0]}"
+            exit "$rc"
+          fi
+          exec /usr/bin/docker "$@"
+          EOF
+          chmod 0755 "$WRAP_DIR/docker"
+          echo "$WRAP_DIR" >> "$GITHUB_PATH"
+
       # Execute only the JavaScript analyzer. The repository contains no Java
       # source, so PMD/PMD-legacy add no security coverage and their Codacy
       # containers fail with "No rules found". Limiting the scan also prevents
@@ -55,6 +84,15 @@ jobs:
           # Align the legacy ESLint analyzer with the measured Codacy ESLint baseline (1 + 1,303 + 1,351 findings across its three analyzer passes).
           # This is not a clean-scan claim; SARIF remains uploaded and findings stay visible.
           max-allowed-issues: 2655
+
+      - name: Surface Codacy CLI failure tail annotation
+        if: failure()
+        shell: bash
+        run: |
+          if [ -f /tmp/codacy-cli.log ]; then
+            tail_msg="$(tail -n 35 /tmp/codacy-cli.log | tr '\r\n' '  ' | cut -c1-1800)"
+            printf '::error title=Codacy CLI failure tail::%s\n' "$tail_msg"
+          fi
 
       # Upload the SARIF file generated in the previous step
       - name: Upload SARIF results file

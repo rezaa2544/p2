@@ -79,3 +79,5 @@ exclude_paths:
   - "**/*.bundle"
   - "**/*.tar.gz"
   - "**/*.patch"
+  - "**/*.safetensors"
+  - "**/*.xlsx"

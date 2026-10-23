@@ -88,7 +88,7 @@ async function main() {
   await sec('server', 'بیرونی', 'auto-login: بازنشانی نشست از localStorage بدون رمز (دستگاه اشتراکی)', async () => {
     /* exploit واقعی: کاربر قبلی (teacher1_1) روی رایانهٔ اشتراکی وارد شده و
        رفته است؛ مهاجم صفحه را باز می‌کند. نشست باید نیازمند رمز باشد. */
-    const d2 = mkDom((w) => { try { w.localStorage.setItem('sms_session_v1', 'teacher1_1'); } catch (e) {/* intentional no-op */ } });
+    const d2 = mkDom((w) => { try { w.localStorage.setItem('sms_session_v1', 'teacher1_1'); } catch (e) { } });
     await sleep(500);
     const leaked = d2.window.eval('S.user && S.user.username ? S.user.username : null');
     d2.window.close();
@@ -101,7 +101,7 @@ async function main() {
     const inactMgr = W("((function(){var s=db.schools.find(x=>!x.active);"
       + "var m=s&&db.users.find(u=>u.school_id===s.id&&u.role==='manager');return m&&m.username;})())");
     assert(inactMgr, 'دادهٔ نمونه باید یک مدیرِ مدرسهٔ غیرفعال داشته باشد');
-    const d3 = mkDom((w) => { try { w.localStorage.setItem('sms_session_v1', inactMgr); } catch (e) {/* intentional no-op */ } });
+    const d3 = mkDom((w) => { try { w.localStorage.setItem('sms_session_v1', inactMgr); } catch (e) { } });
     await sleep(700);
     const leaked = d3.window.eval('S.user && S.user.username ? S.user.username : null');
     const key = d3.window.eval("(function(){try{return localStorage.getItem('sms_session_v1')}catch(e){return null}})()");
@@ -160,7 +160,7 @@ async function main() {
     W(`document.getElementById('a_title').value=${JSON.stringify(PAYLOAD + ' اطلاعیه')}`);
     W(`document.getElementById('a_body').value='متن آزمایشی'`);
     clk('ann-save');
-    const h1 = W('render()'); void h1;
+    const h1 = W('render()');
     /* نگهبان صوری‌نبودی: payload (فرار‌شده) واقعاً باید در DOM باشد —
        وگرنه این آزمون چیزی نمی‌سنجد (دام آزمون، بند ۵.۳۱) */
     const mainHtml = W(`document.querySelector('.content').innerHTML`);
@@ -267,7 +267,7 @@ async function main() {
     W(`S.user=db.users.find(u=>u.username==='manager1');S.persona=null;S.boss=null;`);
     W(`(function(){var a=add('announcements',{school_id:db.schools[0].id,title:${JSON.stringify(PAYLOAD)},body:'x',audience:'all',created_by:S.user.id});window._ann=a.id;})()`);
     clk('ann-del', { id: W('window._ann') });
-    const h = W(`document.getElementById('modal').innerHTML`); void h;
+    const h = W(`document.getElementById('modal').innerHTML`);
     assert(sentinelAlive() === false, '🔴 payload در جعبهٔ تأیید parse شد');
     W('closeModal()');
     W(`remove('announcements',window._ann);`);

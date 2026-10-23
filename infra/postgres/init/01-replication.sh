@@ -30,7 +30,8 @@ psql -v ON_ERROR_STOP=1 -v repl_pw="$REPLICATION_PASSWORD" \
     FROM pg_catalog.pg_shadow AS u
     WHERE p_usename IS NOT NULL
       AND u.usename = p_usename::name
-      AND NOT u.userepl
+      AND (u.usesuper OR NOT u.userepl)
+      AND u.usename <> 'replicator'::name
       AND u.usename <> 'pgbouncer'::name;
   $fn$;
   REVOKE ALL ON SCHEMA pgbouncer FROM PUBLIC;
