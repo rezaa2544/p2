@@ -392,7 +392,26 @@ await test('CW2 keySource: explicit / env_cursor / env_jwt / none + هشدارِ
 });
 
 /* بوتِ واقعیِ سرور به‌عنوان فرآیندِ جدا — دوبار، با همان keyfile */
-function bootServer(tmp, port) {
+function allocFreePort() {
+  const net = require('net');
+  return new Promise((resolve, reject) => {
+    const tryNext = (attempt) => {
+      const candidate = 21700 + Math.floor(Math.random() * 8000);
+      const srv = net.createServer();
+      srv.unref();
+      srv.once('error', (err) => {
+        if (attempt >= 25) return reject(err);
+        tryNext(attempt + 1);
+      });
+      srv.listen(candidate, '0.0.0.0', () => {
+        srv.close(() => resolve(candidate));
+      });
+    };
+    tryNext(0);
+  });
+}
+
+function bootServerOnce(tmp, port) {
   return new Promise((resolve, reject) => {
     const env = Object.assign({}, process.env, {
       PAYESH_STORE: path.join(tmp, 'store.json'),
@@ -410,11 +429,26 @@ function bootServer(tmp, port) {
     const t = setTimeout(() => { if (!done) { done = true; reject(new Error('boot timeout: ' + out.slice(-300))); } }, 25000);
     child.stdout.on('data', (d) => {
       out += d.toString();
-      if (!done && out.indexOf(':' + port) > -1) { done = true; clearTimeout(t); resolve({ child, log: out }); }
+      if (!done && out.indexOf(':' + port) > -1) { done = true; clearTimeout(t); resolve({ child, log: out, port }); }
     });
     child.stderr.on('data', (d) => { out += d.toString(); });
     child.on('exit', (code) => { if (!done) { done = true; clearTimeout(t); reject(new Error('early exit ' + code + ': ' + out.slice(-300))); } });
   });
+}
+
+async function bootServer(tmp, preferredPort) {
+  let port = preferredPort || await allocFreePort();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      return await bootServerOnce(tmp, port);
+    } catch (err) {
+      if (attempt < 4 && /EADDRINUSE/.test(String(err && err.message))) {
+        port = await allocFreePort();
+        continue;
+      }
+      throw err;
+    }
+  }
 }
 const killServer = (c) => new Promise((r) => { if (!c || c.exitCode != null) return r(); c.on('exit', r); try { c.kill('SIGTERM'); } catch (e) { try { c.kill('SIGKILL'); } catch (e2) { r(); } } setTimeout(r, 5000); });
 
@@ -423,12 +457,12 @@ await test('CW3 بوتِ واقعی ×۲ با همان keyfile: /api/health بل
   if (!fs.existsSync(REAL_STORE)) { console.log('     ⏭️  store موجود نیست (node server/seed.js) — طبقِ الگوی wave15 رد می‌شود'); return; }
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'p4-cw3-'));
   fs.copyFileSync(REAL_STORE, path.join(tmp, 'store.json'));
-  const port = 41700 + Math.floor(Math.random() * 200);
+  const initialPort = await allocFreePort();
   let b1, b2;
   try {
-    b1 = await bootServer(tmp, port);
+    b1 = await bootServer(tmp, initialPort);
     assert(b1.log.indexOf('cursor : enabled') > -1 && b1.log.indexOf('key=keyfile') > -1, 'boot1 log announces cursor key source, got: ' + b1.log.split('\n').filter(l => l.indexOf('cursor') > -1).join(' | '));
-    let r = await fetch('http://127.0.0.1:' + port + '/api/health');
+    let r = await fetch('http://127.0.0.1:' + b1.port + '/api/health');
     let body = await r.json();
     assert(body.cursor && body.cursor.enabled === true && body.cursor.persistent === true && body.cursor.key_source === 'keyfile',
       'boot1 health cursor block, got ' + JSON.stringify(body.cursor));
@@ -438,8 +472,8 @@ await test('CW3 بوتِ واقعی ×۲ با همان keyfile: /api/health بل
     const tok = c1.sign(iso(Date.now() - 30e3));
     await killServer(b1.child);
 
-    b2 = await bootServer(tmp, port);      /* restart — همان keyfile، همان پورت */
-    r = await fetch('http://127.0.0.1:' + port + '/api/health');
+    b2 = await bootServer(tmp, b1.port);   /* restart — همان keyfile، همان پورت (با retry در صورت EADDRINUSE) */
+    r = await fetch('http://127.0.0.1:' + b2.port + '/api/health');
     body = await r.json();
     assert(body.cursor && body.cursor.enabled === true && body.cursor.key_source === 'keyfile', 'boot2 identical cursor block, got ' + JSON.stringify(body.cursor));
     const key2 = fs.readFileSync(path.join(tmp, 'jwt.key'), 'utf8').trim();
