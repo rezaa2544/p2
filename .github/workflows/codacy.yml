@@ -104,10 +104,12 @@ jobs:
             printf '::error title=Codacy CLI failure tail::%s %s\n' "$sarif_summary" "$err_msg"
           fi
 
-      # codacy/codacy-analysis-cli:4.0.0 emits three ESLint runs with identical
+      # codacy/codacy-analysis-cli:4.0.0 runs as root inside Docker (writing
+      # root-owned results.sarif) and emits three ESLint runs with identical
       # tool.driver metadata and no run.automationDetails.id, which GitHub Code
-      # Scanning rejects since 2025-07-21. Assign a deterministic per-pass
-      # automationDetails.id while keeping every finding, rule, and artifact intact.
+      # Scanning rejects since 2025-07-21. Write a runner-owned copy with a
+      # deterministic per-pass automationDetails.id while keeping every finding,
+      # rule, and artifact intact.
       - name: Assign distinct SARIF automationDetails.id per analyzer pass
         shell: python3 {0}
         run: |
@@ -119,11 +121,11 @@ jobs:
               if not details.get("id"):
                   details["id"] = f"codacy-eslint/pass-{idx}/"
               run["automationDetails"] = details
-          with open("results.sarif", "w", encoding="utf-8") as fh:
+          with open("/tmp/results-normalized.sarif", "w", encoding="utf-8") as fh:
               json.dump(sarif, fh, ensure_ascii=False)
 
       # Upload the SARIF file generated in the previous step
       - name: Upload SARIF results file
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: results.sarif
+          sarif_file: /tmp/results-normalized.sarif
