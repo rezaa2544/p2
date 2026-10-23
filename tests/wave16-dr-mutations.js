@@ -49,7 +49,7 @@ function mutate(find, replace, killRe, tag) {
   try {
     if (!orig.includes(find)) { chk(tag + ' (جهش پیدا نشد)', false, 'anchor missing'); return; }
     const mcopy = kit.mutant(F, orig.replace(find, replace)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-    try { fs.chmodSync(mcopy, fs.statSync(F).mode); } catch (_) {}
+    try { fs.chmodSync(mcopy, fs.statSync(F).mode); } catch (_) {/* intentional no-op */}
     const r = runSuite(kit.env());
     const out = (r.stdout || '') + (r.stderr || '');
     chk(tag + ' کشته شد', r.status !== 0 && killRe.test(out), out.slice(-260).replace(/\n/g, ' '));

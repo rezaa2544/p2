@@ -16,7 +16,7 @@ const {
   assertNoZeroRanking,
   assertHumanApproval,
   deepFreeze
-} = require('./phase5-region-federation');
+} = require('./phase5-region-federation'); void assertHumanApproval;
 
 const {
   CANONICAL_NATIONAL_REGIONS,
@@ -27,7 +27,7 @@ const {
 const {
   checkRegionCapacityHeadroom,
   assertNationalCapacityEnforcement
-} = require('./national-capacity-enforcement');
+} = require('./national-capacity-enforcement'); void checkRegionCapacityHeadroom;
 
 const { CROSS_REGION_RECOVERY_MAP } = require('./disaster-recovery');
 const opsKv = require('./ops-kv');

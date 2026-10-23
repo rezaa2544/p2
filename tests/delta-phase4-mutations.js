@@ -47,7 +47,7 @@ function mutate(file, old, newTxt) {
   const src = fs.readFileSync(p, 'utf8');
   if (src.indexOf(old) === -1) throw new Error('anchor not found in ' + file + ': ' + old.slice(0, 50));
   const mcopy = kit.mutant(p, src.replace(old, newTxt)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-  try { fs.chmodSync(mcopy, fs.statSync(p).mode); } catch (_) {}
+  try { fs.chmodSync(mcopy, fs.statSync(p).mode); } catch (_) {/* intentional no-op */}
   return src;
 }
 function runSuite(e) {

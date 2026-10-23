@@ -27,7 +27,7 @@ function report(id, status, detail) {
 async function api(p, { method = 'GET', cookie, body } = {}) {
   const h = { origin: BASE }; if (body) h['content-type'] = 'application/json'; if (cookie) h.cookie = cookie;
   const r = await fetch(BASE + p, { method, headers: h, body: body ? JSON.stringify(body) : undefined });
-  const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {}
+  const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {/* intentional no-op */}
   return { status: r.status, json: j, text: t, setCookie: r.headers.get('set-cookie') };
 }
 async function login(phone, nid) {

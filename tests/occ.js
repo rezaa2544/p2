@@ -77,7 +77,7 @@ async function main() {
       const r = http.request({ host: '127.0.0.1', port: PORT, path: p, method,
         headers: Object.assign({ 'content-type': 'application/json' }, data ? { 'content-length': Buffer.byteLength(data) } : {}, cookie ? { cookie } : {}) },
         (res) => { let b = ''; res.on('data', d => (b += d)); res.on('end', () => {
-          let j = null; try { j = JSON.parse(b); } catch (e) {}
+          let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */}
           resolve({ status: res.statusCode, json: j, body: b, headers: res.headers });
         }); });
       r.on('error', () => resolve({ status: 0, json: null, body: '', headers: {} }));
@@ -85,7 +85,7 @@ async function main() {
     });
 
     let up = false;
-    for (let i = 0; i < 60; i++) { try { const h = await req('GET', '/api/health'); if (h.status === 200) { up = true; break; } } catch (e) {} await sleep(200); }
+    for (let i = 0; i < 60; i++) { try { const h = await req('GET', '/api/health'); if (h.status === 200) { up = true; break; } } catch (e) {/* intentional no-op */} await sleep(200); }
     if (!up) { chk('سرور تست بالا آمد', false, log.slice(0, 300)); }
     else {
       chk('سرور تست بالا آمد', true);
@@ -156,7 +156,7 @@ async function main() {
       child.kill('SIGTERM');
       await new Promise(r => child.once('exit', r));
     }
-    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {}
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   }
 
   console.log(`\nocc (P0-18): ${pass}/${pass + fail} ${fail === 0 ? 'موفق' : 'شکست'}  ${fail === 0 ? '—  بدون خطا ✅' : ''}`);

@@ -100,7 +100,7 @@ const cErr = (code) => ({ code, message: 'conn down ' + code });
     const prim = fakePool('primary');
     db.__setPoolForTests(prim);
     db.__setReadPoolForTests(fakePool('replica', { failWith: qErr('42703') }));
-    try { await db.queryRead('SELECT bad_col FROM t'); } catch (e) {}
+    try { await db.queryRead('SELECT bad_col FROM t'); } catch (e) {/* intentional no-op */}
     chk('R5 ستونِ ناشناخته هم مسیریابی را نمی‌کشد', db.isReplicaActive() === true);
   }
   {

@@ -111,7 +111,7 @@ function createClassRoutes(ctx) {
         try {
           const tRes = await db.query('SELECT id, full_name FROM users WHERE id = $1', [cls.homeroom_teacher_id]);
           if (tRes && tRes.rows && tRes.rows.length) teacher = tRes.rows[0];
-        } catch (_) {}
+        } catch (_) {/* intentional no-op */}
       }
       try {
         const sRes = await db.query(
@@ -128,7 +128,7 @@ function createClassRoutes(ctx) {
             national_id_masked: u.national_id ? u.national_id.slice(0, 3) + '***' : null
           }));
         }
-      } catch (_) {}
+      } catch (_) {/* intentional no-op */}
     } else {
       const enrollments = (store.enrollments || []).filter(e => e.class_id === cls.id);
       const studentIds = new Set(enrollments.map(e => e.student_id));

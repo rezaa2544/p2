@@ -164,6 +164,14 @@ function auditZipBuffer(zipBuffer, meta, expectedShas) {
           ? evidenceObj.cleanup.containers_remaining
           : 0));
     const sourceShaMatches = Boolean(sourceSha && allowedShas.includes(sourceSha));
+    const drFailover = evidenceObj && evidenceObj.postgres && evidenceObj.postgres.failover;
+    const pgbouncerRerouteTested = drFailover && typeof drFailover.pgbouncer_endpoint_reroute_tested === 'boolean'
+      ? drFailover.pgbouncer_endpoint_reroute_tested
+      : null;
+    const pgbouncerRerouteRawMs = drFailover && drFailover.promotion_to_verified_pgbouncer_write_ms != null
+      ? Number(drFailover.promotion_to_verified_pgbouncer_write_ms)
+      : NaN;
+    const pgbouncerRerouteRtoMs = Number.isFinite(pgbouncerRerouteRawMs) ? pgbouncerRerouteRawMs : null;
     const auditPass = Boolean(
       evidenceObj &&
       sourceShaMatches &&
@@ -196,6 +204,8 @@ function auditZipBuffer(zipBuffer, meta, expectedShas) {
       commands_log_sha256_match: cmdShaMatch,
       containers_remaining: containersRemaining,
       secret_hits: secretHits,
+      pgbouncer_endpoint_reroute_tested: pgbouncerRerouteTested,
+      promotion_to_verified_pgbouncer_write_ms: pgbouncerRerouteRtoMs,
       audit_pass: auditPass
     };
   } finally {
@@ -309,7 +319,12 @@ async function main() {
   const currentResults = await auditRunArtifacts(apiBase, repo, runId, allowedCurrentShas, token, 'current', false);
   const hasRuntimeA = currentResults.some((r) => r.audit_pass && String(r.name || '').startsWith('m15-01-runtime-a-'));
   const hasRuntimeB = currentResults.some((r) => r.audit_pass && String(r.name || '').startsWith('m15-01-runtime-b-'));
-  const hasDr = currentResults.some((r) => r.audit_pass && String(r.name || '').startsWith('m15-01-dr-'));
+  const hasDr = currentResults.some((r) => (
+    r.audit_pass
+    && String(r.name || '').startsWith('m15-01-dr-')
+    && r.pgbouncer_endpoint_reroute_tested === true
+    && typeof r.promotion_to_verified_pgbouncer_write_ms === 'number'
+  ));
 
   const lines = [
     '## M15-01 Independent ZIP Checksum & Content Audit',

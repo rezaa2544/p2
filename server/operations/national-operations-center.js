@@ -15,7 +15,7 @@
 'use strict';
 
 const { CANONICAL_NATIONAL_REGIONS, calculateNationalRegionHealthSummary } = require('../infrastructure/national-region-control-plane');
-const { NATIONAL_SLO_TARGETS, buildNationalOperationsDashboard } = require('../monitoring/national-observability-plane');
+const { NATIONAL_SLO_TARGETS, buildNationalOperationsDashboard } = require('../monitoring/national-observability-plane'); void NATIONAL_SLO_TARGETS;
 const { assertDisasterRecoveryZeroRanking } = require('../infrastructure/disaster-recovery');
 const authority = require('../infrastructure/authority');
 

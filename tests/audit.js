@@ -121,7 +121,7 @@ async function runTests() {
      اثبات شود پلتفرم درخواست را می‌پذیرد. */
   if (process.platform === 'win32') {
     let accepts0600 = false;
-    try { fs.chmodSync(logFile1, 0o600); accepts0600 = true; } catch (e) {}
+    try { fs.chmodSync(logFile1, 0o600); accepts0600 = true; } catch (e) {/* intentional no-op */}
     chk('سطح دسترسی مالک 0600 (win32: chmod پذیرفته شد)', accepts0600);
   } else {
     chk('سطح دسترسی مالک 0600', (stat1.mode & 0o777) === 0o600, '0' + (stat1.mode & 0o777).toString(8));
@@ -250,7 +250,7 @@ async function runTests() {
   /* همان استثنایِ win32 بالاست — mode bits روی NTFS معنی‌دار نیستند. */
   if (process.platform === 'win32') {
     let accepts0600 = false;
-    try { fs.chmodSync(firstArchive, 0o600); accepts0600 = true; } catch (e) {}
+    try { fs.chmodSync(firstArchive, 0o600); accepts0600 = true; } catch (e) {/* intentional no-op */}
     chk('سطح دسترسی فایل آرشیو 0600 است (win32: chmod پذیرفته شد)', accepts0600);
   } else {
     chk('سطح دسترسی فایل آرشیو 0600 است', (fs.statSync(firstArchive).mode & 0o777) === 0o600);

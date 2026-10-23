@@ -200,7 +200,7 @@ function collectApplicationMetrics(rawMetrics = {}) {
           is_live: true
         };
       }
-    } catch (_) {}
+    } catch (_) {/* intentional no-op */}
   }
   const hasLive = src.is_live === true || Number.isFinite(src.latency_p95_ms) || Number.isFinite(src.total_requests);
   if (!hasLive) {

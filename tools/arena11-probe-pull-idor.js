@@ -14,7 +14,7 @@ async function recoverCode(infra, phone) {
     const raw = infra.redis(['get', 'payesh:otp:state']);
     if (raw && !raw.startsWith('ERR') && raw !== '(nil)' && raw !== '') {
       try { const d = JSON.parse(raw); const r = d.codes && d.codes[phone];
-        if (r && r.h) for (let n = 100000; n < 1000000; n++) if (sha256(String(n) + '|' + phone) === r.h) return String(n); } catch (e) {}
+        if (r && r.h) for (let n = 100000; n < 1000000; n++) if (sha256(String(n) + '|' + phone) === r.h) return String(n); } catch (e) {/* intentional no-op */}
     }
     await sleep(90);
   }
@@ -53,7 +53,7 @@ async function login(port, infra, phone, nid) {
   for (const [nm, jar] of [['student', student.jar], ['teacher', teacher.jar], ['parent', parent.jar]]) {
     const pull = await L.httpReq(api.port, 'GET', '/api/v1/pull?collections=parent_links', null, { jar });
     let n = -1, first = null;
-    try { const pl = pull.json && pull.json.collections && pull.json.collections.parent_links; n = Array.isArray(pl) ? pl.length : -1; first = Array.isArray(pl) && pl[0]; } catch (e) {}
+    try { const pl = pull.json && pull.json.collections && pull.json.collections.parent_links; n = Array.isArray(pl) ? pl.length : -1; first = Array.isArray(pl) && pl[0]; } catch (e) {/* intentional no-op */}
     console.log('F-PULL ' + nm + ' pull parent_links:', pull.status, 'rows_exposed=' + n, 'first=' + JSON.stringify(first));
   }
   api.stop(); infra.stop();

@@ -113,7 +113,7 @@ function createHeavyWorker(ctx){
         const w = worker;
         worker = null;
         failAll(new Error('heavy worker terminated'));
-        try{ w.terminate().catch(() => {}); }catch(e){}
+        try{ w.terminate().catch(() => {}); }catch(e){/* intentional no-op */}
       }
     }
   };

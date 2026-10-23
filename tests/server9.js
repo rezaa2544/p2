@@ -35,7 +35,7 @@ function httpReq(port, method, p, body, jar) {
       res.on('data', (d) => (b += d));
       res.on('end', () => {
         if (jar) jar.absorb(res.headers);
-        let j = null; try { j = JSON.parse(b); } catch (e) {}
+        let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, headers: res.headers, json: j, raw: b });
       });
     });
@@ -80,7 +80,7 @@ async function bootServer(p, env) {
 async function main() {
   console.log('\n▸ بکاپِ دوره‌ایِ خودکار (2.4 — بند 15.2)');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-s9-'));
-process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} }); /* پاک‌سازیِ tmp تا /tmp پر نشود */
+process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} }); /* پاک‌سازیِ tmp تا /tmp پر نشود */
   const mk = (n) => {
     const dir = path.join(tmp, n);
     fs.mkdirSync(dir);
@@ -142,7 +142,7 @@ process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }
 
   /* A3: بکاپِ خودکار هم فقط‌داده است */
   let parsedB = null;
-  try { parsedB = JSON.parse(fs.readFileSync(path.join(B.backupsDir, filesB[filesB.length - 1]), 'utf8')); } catch (e) {}
+  try { parsedB = JSON.parse(fs.readFileSync(path.join(B.backupsDir, filesB[filesB.length - 1]), 'utf8')); } catch (e) {/* intentional no-op */}
   chk('A3 بکاپِ خودکار فقط‌داده (بدون __*) و users کامل',
     !!parsedB && !Object.keys(parsedB).some(k => k.indexOf('__') === 0) &&
     Array.isArray(parsedB.users) && parsedB.users.length > 0,

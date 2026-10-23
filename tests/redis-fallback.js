@@ -46,7 +46,7 @@ function runInit(extraEnv) {
     let out = '';
     p.stdout.on('data', (d) => (out += d));
     p.stderr.on('data', (d) => (out += d));
-    const t = setTimeout(() => { try { p.kill('SIGKILL'); } catch (e) {} }, 25000);
+    const t = setTimeout(() => { try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }, 25000);
     p.on('exit', (code) => { clearTimeout(t); resolve({ code, out }); });
   });
 }
@@ -63,7 +63,7 @@ function runReady(extraEnv) {
     let out = '';
     p.stdout.on('data', (d) => (out += d));
     p.stderr.on('data', (d) => (out += d));
-    const t = setTimeout(() => { try { p.kill('SIGKILL'); } catch (e) {} }, 10000);
+    const t = setTimeout(() => { try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }, 10000);
     p.on('exit', () => { clearTimeout(t); resolve(out); });
   });
 }
@@ -102,7 +102,7 @@ function healthCheck(port) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 process.on('exit', () => {
-  for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} }
+  for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
 });
 
 async function main() {
@@ -203,12 +203,12 @@ async function main() {
         const j = JSON.parse(hc.body);
         okHc = j.ok === true;
         devMode = j.cache === 'memory-dev';
-      } catch (e) {}
+      } catch (e) {/* intentional no-op */}
     }
     chk('بوتِ توسعه بدون ردیس → سرور سرویس می‌دهد (200)', okHc,
       hc ? `status=${hc.status}` : 'health بی‌پاسخ');
     chk('هلث حالت کش را گزارش می‌کند (memory-dev)', devMode, hc ? hc.body.slice(0, 120) : '-');
-    try { p.kill('SIGKILL'); } catch (e) {}
+    try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
   }
 
   console.log(`\nredis-fallback (P0-13): ${pass}/${pass + fail} موفق  —  ${fail ? '❌ ' + fail + ' خطا' : 'بدون خطا ✅'}`);

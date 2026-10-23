@@ -212,7 +212,7 @@ async function partB() {
   {
     const f = Q.buildStudentsList({ user: MGR, limit: 1000000, cursor: null });
     let n = 0;
-    try { n = (await client.query(f.page.sql.replace(/LIMIT \$\d+/, ''), f.page.params.slice(0, -1))).rows.length; } catch (e) {}
+    try { n = (await client.query(f.page.sql.replace(/LIMIT \$\d+/, ''), f.page.params.slice(0, -1))).rows.length; } catch (e) {/* intentional no-op */}
     if (n > 0) {
       const seen = new Set(); let cursor = null, pages = 0;
       while (pages < 2000) {

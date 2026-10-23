@@ -59,7 +59,7 @@ async function waitForFileCondition(filePath, conditionFn, timeoutMs = 8000, int
     await sleep(intervalMs);
   }
   let currentContent = '';
-  try { if (fs.existsSync(filePath)) currentContent = fs.readFileSync(filePath, 'utf8'); } catch (e) {}
+  try { if (fs.existsSync(filePath)) currentContent = fs.readFileSync(filePath, 'utf8'); } catch (e) {/* intentional no-op */}
   throw new Error(`waitForFileCondition timeout after ${timeoutMs}ms for ${filePath}. Content: ${currentContent.slice(0, 300)} (lastErr: ${lastErr})`);
 }
 
@@ -72,8 +72,8 @@ function spawnServer(env, out) {
   return p;
 }
 function cleanup() {
-  for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} }
-  try { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+  for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
+  try { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
 }
 process.on('exit', cleanup);
 process.on('SIGINT', () => { cleanup(); process.exit(130); });
@@ -102,7 +102,7 @@ function req(method, port, p, body, cookie, mod) {
       let b = '';
       res.on('data', (d) => (b += d));
       res.on('end', () => {
-        let j = null; try { j = JSON.parse(b); } catch (e) {}
+        let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, json: j, headers: res.headers, text: b });
       });
     });
@@ -117,7 +117,7 @@ async function waitForServer(p, port, useTls) {
     const h = await req('GET', port, '/api/health', null, null, useTls ? https : http);
     if (h.status === 200 && h.json && h.json.ok) {
       if (Number(h.json.pid) === p.pid) return true;
-      try { process.kill(Number(h.json.pid)); } catch (e) {} /* سرورِ ماندهٔ اجرایِ پیشین */
+      try { process.kill(Number(h.json.pid)); } catch (e) {/* intentional no-op */} /* سرورِ ماندهٔ اجرایِ پیشین */
     }
     if (p.exitCode !== null) return false;
     await sleep(300);

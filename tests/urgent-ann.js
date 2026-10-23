@@ -184,7 +184,7 @@ function httpReq(method, p, body, cookie) {
       let b = '';
       res.on('data', (d) => (b += d));
       res.on('end', () => {
-        let j = null; try { j = JSON.parse(b); } catch (e) {}
+        let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, headers: res.headers, body: b, json: j });
       });
     });
@@ -245,7 +245,7 @@ async function serverPart() {
       const r = await syncOps(c1, [{ t: 'ins', c: 'announcements', by: eo1.id,
         data: { title: 'فوری تست', body: 'متن', audience: 'all', severity: 'urgent', school_id: null, office_id: eo1.office_id, created_at: new Date().toISOString().slice(0, 10) } }]);
       let extra = '';
-      if (res0(r).ok !== true) { try { extra = '\n--- سرور:\n' + fs.readFileSync(srvLog, 'utf8').slice(-1200); } catch (e) {} }
+      if (res0(r).ok !== true) { try { extra = '\n--- سرور:\n' + fs.readFileSync(srvLog, 'utf8').slice(-1200); } catch (e) {/* intentional no-op */} }
       assert(res0(r).ok === true, 'HTTP ' + r.status + ' :: ' + r.body.slice(0, 200) + extra);
     });
 
@@ -294,8 +294,8 @@ async function serverPart() {
     /* همهٔ آزمون‌های صف اجرا شوند، سپس پاک‌سازی */
     await __seq;
   } finally {
-    try { server.kill('SIGKILL'); } catch (e) {}
-    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+    try { server.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   }
 }
 

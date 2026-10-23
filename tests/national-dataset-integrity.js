@@ -44,7 +44,7 @@ function chk(name, cond, extra) {
   if (cond) { okc++; console.log('  ✅ ' + name); }
   else { failc++; fails.push(name); console.log('  ❌ ' + name + (extra ? '  —  ' + String(extra).slice(0, 220) : '')); }
 }
-function cleanup() { for (const d of [OUT_A, OUT_B, OUT_C]) try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {} }
+function cleanup() { for (const d of [OUT_A, OUT_B, OUT_C]) try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} }
 process.on('exit', cleanup);
 
 function gen(out, seed) {

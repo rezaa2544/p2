@@ -24,8 +24,8 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('fs'); void fs;
+const path = require('path'); void path;
 /* ویو ۱۴ (Observability) — سیگنالِ metrics برای لایهٔ دیتابیس. بدون
    وابستگیِ بیرونی؛ metrics.js فقط crypto را require می‌کند (بدون چرخه). */
 const metrics = require('./metrics');
@@ -198,7 +198,7 @@ async function init(fallbackStore) {
   if (!config.connectionString || !pg) {
     isPgActive = false;
     readPoolActive = false;
-    if (readPool) { try { readPool.end().catch(() => {}); } catch (e) {} readPool = null; }
+    if (readPool) { try { readPool.end().catch(() => {}); } catch (e) {/* intentional no-op */} readPool = null; }
     /* P0-1: production refuses the JSON/in-memory backing store (mirrors
        server/redis.js:150-158). ok:false is what the boot gate keys on. */
     if (!memoryFallbackAllowed()) {
@@ -279,7 +279,7 @@ async function init(fallbackStore) {
        queryRead() transparently uses the primary pool (identical behaviour). */
     try {
       if (config.readConnectionString && pg) {
-        if (readPool) { try { await readPool.end(); } catch (e) {} }
+        if (readPool) { try { await readPool.end(); } catch (e) {/* intentional no-op */} }
         readPool = new pg.Pool({
           connectionString: config.readConnectionString,
           min: config.readMin,
@@ -314,7 +314,7 @@ async function init(fallbackStore) {
       } else {
         /* READ_DATABASE_URL no longer set → drop any lingering replica pool */
         readPoolActive = false;
-        if (readPool) { try { await readPool.end(); } catch (e) {} readPool = null; }
+        if (readPool) { try { await readPool.end(); } catch (e) {/* intentional no-op */} readPool = null; }
       }
     } catch (e) {
       readPoolActive = false;
@@ -326,7 +326,7 @@ async function init(fallbackStore) {
   } catch (err) {
     isPgActive = false;
     readPoolActive = false;
-    if (readPool) { try { readPool.end().catch(() => {}); } catch (e) {} readPool = null; }
+    if (readPool) { try { readPool.end().catch(() => {}); } catch (e) {/* intentional no-op */} readPool = null; }
     scheduleReconnect();
     /* P0-1: an unreachable PostgreSQL in production is a startup failure, not a
        silent downgrade to the JSON store (mirrors server/redis.js:224-236). */

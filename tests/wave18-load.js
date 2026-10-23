@@ -95,7 +95,7 @@ function req(port, method, p, body, cookie) {
       rs.on('data', (c) => { b += c; });
       rs.on('end', () => {
         const ms = Number(process.hrtime.bigint() - started) / 1e6;
-        let json = null; try { json = JSON.parse(b); } catch (e) {}
+        let json = null; try { json = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: rs.statusCode, json, raw: b, headers: rs.headers, ms });
       });
     });
@@ -154,7 +154,7 @@ async function boot(port, storeFile, tmp) {
   srv.stderr.on('data', (d) => { stderr += d; });
   for (let i = 0; i < 80; i++) {
     await sleep(250);
-    try { const h = await req(port, 'GET', '/api/health'); if (h.status === 200) return { srv, stderr: () => stderr }; } catch (e) {}
+    try { const h = await req(port, 'GET', '/api/health'); if (h.status === 200) return { srv, stderr: () => stderr }; } catch (e) {/* intentional no-op */}
   }
   return null;
 }
@@ -555,9 +555,9 @@ async function boot(port, storeFile, tmp) {
   }
 
   /* ── teardown ───────────────────────────────────────────────────── */
-  try { S.srv.kill('SIGKILL'); } catch (e) {}
+  try { S.srv.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
   await sleep(200);
-  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
 
   console.log('\n  جمع: ' + okc + ' موفق، ' + failc + ' ناموفق از ' + (okc + failc));
   if (fails.length) { console.log('  شکست‌ها:'); fails.forEach((f) => console.log('   - ' + f)); }

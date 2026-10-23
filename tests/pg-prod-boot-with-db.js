@@ -62,7 +62,7 @@ if (!pg) {
     console.log(NAME + ': NOT-RUN — PostgreSQL at the target URL is not reachable: ' + e.message);
     process.exit(2);
   } finally {
-    try { await probe.end(); } catch (e) {}
+    try { await probe.end(); } catch (e) {/* intentional no-op */}
   }
   preflightOk = true;
   chk('0a live PostgreSQL answers SELECT 1', !!version, version);
@@ -112,7 +112,7 @@ if (!pg) {
       })
     });
     const out = String(r.stdout || '') + String(r.stderr || '');
-    try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {}
+    try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
 
     chk('2a the DATABASE gate does not fire when PostgreSQL is live',
       !/\[FATAL\][^\n]*DATABASE_URL required/.test(out)
@@ -139,7 +139,7 @@ if (!pg) {
       !/Falling back to JSON in-memory store/.test(out), out.slice(0, 500));
   }
 
-  try { await db.close(); } catch (e) {}
+  try { await db.close(); } catch (e) {/* intentional no-op */}
 
   console.log('\n' + NAME + ': ' + pass + '/' + (pass + fail)
     + (fails.length ? '  FAILED: ' + fails.join(' | ') : ''));

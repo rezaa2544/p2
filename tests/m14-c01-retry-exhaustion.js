@@ -140,7 +140,7 @@ async function main() {
   try { await clusterClient.connect(); } catch (e) { /* انتظار: در پارتیشن fail می‌شود */ }
   await sleep(9000); /* > پنجرهٔ تسلیمِ قدیم (~۱.۸s) + حاشیه */
   const clusterStatus = clusterClient.status;
-  try { clusterClient.disconnect(); } catch (e) {}
+  try { clusterClient.disconnect(); } catch (e) {/* intentional no-op */}
   if (VULN) {
     chk('ب/ج-۱ (VULN) cluster به \'end\' دائمی می‌رسد', clusterStatus === 'end', 'status=' + clusterStatus);
   } else {
@@ -171,7 +171,7 @@ async function main() {
   chk('ب/ج-۲a sentinel connect درِ پارتیشن fail می‌شود (نه hang)', sentinelConnectRejected);
   await sleep(6000); /* > پنجرهٔ تسلیمِ قدیم (~۵.۲۵s) + حاشیه */
   const sentinelStatus = sentinelClient.status;
-  try { sentinelClient.disconnect(); } catch (e) {}
+  try { sentinelClient.disconnect(); } catch (e) {/* intentional no-op */}
   if (VULN) {
     chk('ب/ج-۲ (VULN) sentinel به \'end\' دائمی می‌رسد', sentinelStatus === 'end', 'status=' + sentinelStatus);
   } else {

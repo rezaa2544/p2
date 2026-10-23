@@ -352,6 +352,82 @@ exit 0
   check('wait_redis_promoted strips CRLF from Redis INFO replication output',
     drRuntimeSource.includes("2>/dev/null | tr -d '\\r' || true"));
 
+  const pgInitSource = fs.readFileSync(path.join(ROOT, 'infra/postgres/init/01-replication.sh'), 'utf8');
+  const pgComposeSource = fs.readFileSync(path.join(ROOT, 'infra/postgres/docker-compose.ha.yml'), 'utf8');
+  check('PostgreSQL init grants pgbouncer least-privilege SCRAM shadow lookup without superuser',
+    pgInitSource.includes('CREATE SCHEMA IF NOT EXISTS pgbouncer;')
+      && pgInitSource.includes('CREATE OR REPLACE FUNCTION pgbouncer.lookup_shadow()')
+      && pgInitSource.includes('SECURITY DEFINER')
+      && pgInitSource.includes('CREATE OR REPLACE VIEW pgbouncer.pg_shadow AS')
+      && pgInitSource.includes('REVOKE ALL ON TABLE pgbouncer.pg_shadow FROM PUBLIC;')
+      && pgInitSource.includes('ALTER ROLE pgbouncer SET search_path = pgbouncer, pg_catalog;'));
+  check('PgBouncer keeps read-only bind mount while staging 0600 runtime config for live RELOAD/RECONNECT',
+    pgComposeSource.includes('./pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro')
+      && pgComposeSource.includes('cp /etc/pgbouncer/pgbouncer.ini /var/run/pgbouncer/pgbouncer.ini')
+      && pgComposeSource.includes('chmod 0600 /var/run/pgbouncer/pgbouncer.ini')
+      && drRuntimeSource.includes('PG_PGBOUNCER_REROUTE_TESTED="false"')
+      && drRuntimeSource.includes('verify_pgbouncer_pre_failover')
+      && drRuntimeSource.includes('reroute_and_verify_pgbouncer')
+      && drRuntimeSource.includes('RELOAD;')
+      && drRuntimeSource.includes('RECONNECT payesh;')
+      && drRuntimeSource.includes('SHOW DATABASES;'));
+  check('CI summary and ZIP artifact audit record and gate PgBouncer reroute telemetry', (() => {
+    const { createDigest, createSummary } = require(path.join(ROOT, 'tools/m15-01-ci-summary.js'));
+    const { auditZipBuffer } = require(path.join(ROOT, 'tools/m15-01-artifact-audit.js'));
+    const drDir = path.join(TEMP, 'dr-summary-case');
+    fs.mkdirSync(drDir, { recursive: true });
+    const sha = '0123456789abcdef0123456789abcdef01234567';
+    const cmdText = 'COMMAND: ok\nEXIT_CODE[pg-pgbouncer-reroute-verify]: 0\n';
+    const cmdSha = require('crypto').createHash('sha256').update(cmdText).digest('hex');
+    fs.writeFileSync(path.join(drDir, 'commands.log'), cmdText);
+    const writeDr = (rerouted, writeMs) => {
+      fs.writeFileSync(path.join(drDir, 'dr-runtime-evidence.json'), JSON.stringify({
+        status: 'PASS',
+        evidence_level: 'E3',
+        mission_disposition: 'SUBSET_ONLY_NOT_M15_01_CLOSURE',
+        source_sha: sha,
+        exit_code: 0,
+        failed_stages: [],
+        containers_remaining: 0,
+        command_log: { sha256: cmdSha, cleanup_exit_code: 0, compose_env_removed: true, raw_output_directory_removed: true },
+        postgres: {
+          failover: {
+            primary_stopped_before_promotion: 'true',
+            promoted_standby_writable_after_promotion: 'true',
+            promotion_to_verified_direct_write_ms: '850',
+            promotion_to_verified_pgbouncer_write_ms: writeMs,
+            pgbouncer_endpoint_reroute_tested: rerouted
+          }
+        },
+        redis_sentinel: { post_promotion_write_verified: 'true' }
+      }));
+    };
+    writeDr(true, '920');
+    const digestTrue = createDigest('dr', drDir);
+    const mdTrue = createSummary('dr', drDir);
+    const zipTrue = path.join(TEMP, 'dr-true.zip');
+    spawnSync('zip', ['-j', '-q', zipTrue, path.join(drDir, 'dr-runtime-evidence.json'), path.join(drDir, 'commands.log')]);
+    const auditedTrue = auditZipBuffer(fs.readFileSync(zipTrue), { run_id: 1, id: 10, name: 'm15-01-dr-PASS' }, [sha]);
+
+    writeDr(false, null);
+    const digestFalse = createDigest('dr', drDir);
+    const zipFalse = path.join(TEMP, 'dr-false.zip');
+    spawnSync('zip', ['-j', '-q', zipFalse, path.join(drDir, 'dr-runtime-evidence.json'), path.join(drDir, 'commands.log')]);
+    const auditedFalse = auditZipBuffer(fs.readFileSync(zipFalse), { run_id: 2, id: 11, name: 'm15-01-dr-PASS' }, [sha]);
+
+    return digestTrue.postgres.failover.pgbouncer_reroute_tested === true
+      && digestTrue.postgres.failover.pgbouncer_reroute_rto_ms === '920'
+      && mdTrue.includes('PgBouncer endpoint reroute verified: true')
+      && auditedTrue.audit_pass === true
+      && auditedTrue.secret_hits === 0
+      && auditedTrue.pgbouncer_endpoint_reroute_tested === true
+      && auditedTrue.promotion_to_verified_pgbouncer_write_ms === 920
+      && digestFalse.postgres.failover.pgbouncer_reroute_tested === false
+      && digestFalse.postgres.failover.pgbouncer_reroute_rto_ms === null
+      && auditedFalse.pgbouncer_endpoint_reroute_tested === false
+      && auditedFalse.promotion_to_verified_pgbouncer_write_ms === null;
+  })());
+
   console.log(`M15-01 DR runtime unit tests: ${passed} passed, 0 failed`);
 } catch (error) {
   console.error('M15-01 DR runtime unit tests: FAIL');

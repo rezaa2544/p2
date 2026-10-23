@@ -56,7 +56,7 @@ async function main() {
     A.data.codes['09120000001'] = { h: 'h1', at: now, user_id: 7, tries: 0 };
     await A.save();
     const raw = await red.get('payesh:otp:state');
-    let doc = null; try { doc = JSON.parse(raw); } catch (e) {}
+    let doc = null; try { doc = JSON.parse(raw); } catch (e) {/* intentional no-op */}
     chk('فلاش روی کلید ردیس می‌نشیند', !!(doc && doc.codes && doc.codes['09120000001']));
     chk('سند شمارهٔ دنباله دارد', !!(doc && typeof doc.seq === 'number' && doc.seq >= 1));
   }
@@ -169,7 +169,7 @@ async function main() {
     chk('خواندنِ مجددِ فایل دست‌نخورده است', !!reader.data.codes['09121111111']);
   }
 
-  try { fs.rmSync(scratch, { recursive: true, force: true }); } catch (e) {}
+  try { fs.rmSync(scratch, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   console.log(`\notp-redis (P0-15): ${pass}/${pass + fail} ${fail === 0 ? 'موفق' : 'شکست'}  ${fail === 0 ? '—  بدون خطا ✅' : ''}`);
   process.exit(fail === 0 ? 0 : 1);
 }

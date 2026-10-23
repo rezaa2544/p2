@@ -56,7 +56,7 @@ let BASE = '';
 async function j(method, p, opts){
   const r = await fetch(BASE + p, Object.assign({ method }, opts || {}));
   let body = null;
-  try { body = await r.json(); } catch (e) {}
+  try { body = await r.json(); } catch (e) {/* intentional no-op */}
   return { status: r.status, body };
 }
 
@@ -214,7 +214,7 @@ async function main(){
     proc.stderr.on('data', d => { errOut.push(String(d)); });
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
-        try { proc.kill('SIGKILL'); } catch (e) {}
+        try { proc.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
         reject(new Error('child ' + mode + ' timeout (ready) — out: ' + out.slice(-5).join(' | ')));
       }, readyTimeoutMs);
       const iv = setInterval(() => {
@@ -235,7 +235,7 @@ async function main(){
   }
   function waitExit(proc, ms){
     return new Promise((resolve) => {
-      const t = setTimeout(() => { try { proc.kill('SIGKILL'); } catch (e) {} resolve({ code: 'sigkill-timeout', ms }); }, ms);
+      const t = setTimeout(() => { try { proc.kill('SIGKILL'); } catch (e) {/* intentional no-op */} resolve({ code: 'sigkill-timeout', ms }); }, ms);
       proc.on('exit', (code, signal) => { clearTimeout(t); resolve({ code, signal }); });
     });
   }
@@ -257,7 +257,7 @@ async function main(){
       assert(/exit 0/.test(all), 'exit-0 marker missing');
       pass++; console.log('  ✅ S1 child SIGTERM: exit 0 + [shutdown] SIGTERM + clean + exit 0 markers');
     } finally {
-      try { c.proc.kill('SIGKILL'); } catch (e) {}
+      try { c.proc.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
     }
   }
 
@@ -295,7 +295,7 @@ async function main(){
       assert(/\[shutdown\] clean — dependencies closed/.test(all), 'clean marker');
       pass++; console.log('  ✅ S2 child SIGTERM در حینِ ترافیک: در‌حالت‌پرواز کامل شد + اتصالِ تازه reject + exit 0');
     } finally {
-      try { c.proc.kill('SIGKILL'); } catch (e) {}
+      try { c.proc.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
     }
   }
 
@@ -307,7 +307,7 @@ async function main(){
     proc.stdout.on('data', d => out.push(String(d)));
     proc.stderr.on('data', d => errOut.push(String(d)));
     const ex = await new Promise((resolve) => {
-      const t = setTimeout(() => { try { proc.kill('SIGKILL'); } catch (e) {} resolve({ code: 'sigkill-timeout' }); }, 20000);
+      const t = setTimeout(() => { try { proc.kill('SIGKILL'); } catch (e) {/* intentional no-op */} resolve({ code: 'sigkill-timeout' }); }, 20000);
       proc.on('exit', (code, signal) => { clearTimeout(t); resolve({ code, signal }); });
     });
     assert(ex.code === 1, 'prod-no-redis fail-fast exit 1, got ' + ex.code + ' ' + ex.signal + ' out: ' + out.join('').slice(-200) + ' err: ' + errOut.join('').slice(-300));
@@ -328,8 +328,8 @@ async function main(){
 
   /* ── cleanup + summary ──────────────────────────────────────────── */
   await new Promise(resolve => { try { server.close(resolve); } catch (e) { resolve(); } });
-  try { redis.__setClientForTests(null); } catch (e) {}
-  try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {}
+  try { redis.__setClientForTests(null); } catch (e) {/* intentional no-op */}
+  try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   console.log('────────────────────────────────────────────');
   console.log('Wave 15 — Health/Deployment: ' + pass + '/' + (pass + fail) + ' موفق' + (fail ? ' — ' + fail + ' خطا ❌' : '  —  بدون خطا ✅'));
   if(fail){ errors.forEach(e => console.log('   · ' + e)); process.exit(1); }
@@ -338,6 +338,6 @@ async function main(){
 
 main().catch(e => {
   console.error('CRASH: ' + (e && e.stack || e));
-  try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e2) {}
+  try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e2) {/* intentional no-op */}
   process.exit(1);
 });

@@ -18,7 +18,7 @@ function findPgBin() {
   try {
     const w = cp.execFileSync('which', ['initdb'], { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w) cand.push(path.dirname(w));
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   for (const d of cand) {
     if (['initdb', 'postgres', 'pg_ctl'].every((b) => fs.existsSync(path.join(d, b)))) return d;
   }

@@ -35,7 +35,7 @@ function httpReq(port, method, p, body, cookie) {
     const req = http.request({ hostname: '127.0.0.1', port, path: p, method, headers }, (res) => {
       let b = '';
       res.on('data', (d) => (b += d));
-      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {} resolve({ status: res.statusCode, json: j, setCookie: res.headers['set-cookie'] }); });
+      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */} resolve({ status: res.statusCode, json: j, setCookie: res.headers['set-cookie'] }); });
     });
     req.on('error', () => resolve({ status: 0, json: null }));
     if (data) req.write(data);

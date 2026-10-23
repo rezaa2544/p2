@@ -56,7 +56,7 @@ if (MUT) {
   };
   if (!muts[MUT]) { console.error('جهش ناشناخته: ' + MUT); process.exit(2); }
   fs.writeFileSync(mangled, src.replace(muts[MUT][0], muts[MUT][1]));
-  process.on('exit', () => { try { fs.unlinkSync(mangled); } catch (_) {} });
+  process.on('exit', () => { try { fs.unlinkSync(mangled); } catch (_) {/* intentional no-op */} });
 }
 
 const { newDb } = require('pg-mem');
@@ -126,7 +126,7 @@ async function apiSyncOf(inst, ops) {
       name: 'pg_get_serial_sequence', args: ['text', 'text'], returns: 'text',
       implementation: () => null
     });
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   const { Pool } = pg.adapters.createPg();
   const pool = new Pool();
   await pool.query(`CREATE TABLE announcements

@@ -66,7 +66,7 @@ function rawRequest(port, target, method) {
     socket.on('data', (c) => { data += c; });
     socket.on('close', () => done({ kind: 'closed', data }));
     socket.on('error', (e) => done({ kind: 'error', code: e.code, data }));
-    setTimeout(() => { try { socket.destroy(); } catch (e) {} done({ kind: 'timeout', data }); }, 4000);
+    setTimeout(() => { try { socket.destroy(); } catch (e) {/* intentional no-op */} done({ kind: 'timeout', data }); }, 4000);
   });
 }
 function statusOf(raw) {
@@ -101,7 +101,7 @@ async function main() {
   child.stdout.on('data', (c) => { serverLog += c; });
   child.stderr.on('data', (c) => { serverLog += c; });
   const cleanup = () => {
-    if (child.exitCode === null) { try { child.kill('SIGKILL'); } catch (e) {} }
+    if (child.exitCode === null) { try { child.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
     fs.rmSync(tmp, { recursive: true, force: true });
   };
   process.on('exit', cleanup);

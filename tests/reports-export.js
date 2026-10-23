@@ -148,7 +148,7 @@ setTimeout(async () => {
 
   /* ── بخش ۲: PDF واقعی با playwright (در صورت نصب) ─────────────── */
   let chromium = null;
-  try { ({ chromium } = require('playwright')); } catch (e) {}
+  try { ({ chromium } = require('playwright')); } catch (e) {/* intentional no-op */}
 
   if (!chromium) {
     skipped++;

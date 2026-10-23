@@ -30,7 +30,7 @@ function chk(name, cond, extra) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let tmp = null, server = null;
-process.on('exit', () => { try { if (server) server.kill('SIGKILL'); } catch (e) {} try { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { if (server) server.kill('SIGKILL'); } catch (e) {/* intentional no-op */} try { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 
 function httpReq(method, p, body, cookie) {
   return new Promise((resolve) => {
@@ -45,7 +45,7 @@ function httpReq(method, p, body, cookie) {
       let b = '';
       res.on('data', (d) => (b += d));
       res.on('end', () => {
-        let j = null; try { j = JSON.parse(b); } catch (e) {}
+        let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, headers: res.headers, body: b, json: j });
       });
     });
@@ -76,7 +76,7 @@ async function main() {
     const h = await httpReq('GET', '/api/health');
     if (h.status === 200 && h.json && h.json.ok) {
       if (h.json.pid === server.pid) { booted = true; break; }
-      try { process.kill(h.json.pid); } catch (e) {}
+      try { process.kill(h.json.pid); } catch (e) {/* intentional no-op */}
     }
     if (server.exitCode !== null) break;
     await sleep(300);
@@ -163,7 +163,7 @@ async function main() {
   server.kill('SIGTERM');
   await sleep(700);
   let auditTxt = '';
-  try { auditTxt = fs.readFileSync(auditFile, 'utf8'); } catch (e) {}
+  try { auditTxt = fs.readFileSync(auditFile, 'utf8'); } catch (e) {/* intentional no-op */}
   const successLines = auditTxt.split('\n').filter(l => l.indexOf('teacher_evaluations') > -1
     && l.indexOf('denied') < 0 && l.indexOf('failed') < 0 && l.indexOf('gate') < 0);
   chk('S6 در ممیزی رویداد موفقِ دارای هویت نیست', successLines.length === 0, successLines.slice(0, 2).join(' | '));

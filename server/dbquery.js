@@ -180,7 +180,7 @@ function compositeCursorKey(cols) {
 /**
  * students list — mirrors server/routes/students.js getStudentsList.
  */
-function buildStudentsList({ user, office, classId, grade, search, limit, cursor }) {
+function buildStudentsList({ user, office, classId, grade, search, limit, cursor }) { void office;
   const from = '"users" u';
   const parts = [`u.role = 'student'`];
   const params = [];

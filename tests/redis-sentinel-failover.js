@@ -78,18 +78,18 @@ function runChild(script, extraEnv) {
     let out = '';
     p.stdout.on('data', (d) => (out += d));
     p.stderr.on('data', (d) => (out += d));
-    const timer = setTimeout(() => { try { p.kill('SIGKILL'); } catch (e) {} resolve('TIMEOUT'); }, 25000);
+    const timer = setTimeout(() => { try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */} resolve('TIMEOUT'); }, 25000);
     p.on('exit', (code) => { clearTimeout(timer); resolve(out.trim() + '\nEXIT:' + code); });
   });
 }
 
 function findRedisBinaries() {
   const cands = ['/usr/bin/redis-server', '/usr/local/bin/redis-server', '/opt/redis/bin/redis-server'];
-  for (const c of cands) { try { if (fs.existsSync(c)) return { server: c, sentinel: c.replace('redis-server', 'redis-sentinel') }; } catch (e) {} }
+  for (const c of cands) { try { if (fs.existsSync(c)) return { server: c, sentinel: c.replace('redis-server', 'redis-sentinel') }; } catch (e) {/* intentional no-op */} }
   try {
     const w = cp.execSync('which redis-server', { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w && fs.existsSync(w)) return { server: w, sentinel: w.replace('redis-server', 'redis-sentinel') };
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   return null;
 }
 
@@ -149,7 +149,7 @@ async function main() {
     let ok = false, detail = '';
     try {
       let Redis = null;
-      try { Redis = require('ioredis'); } catch (e) {}
+      try { Redis = require('ioredis'); } catch (e) {/* intentional no-op */}
       if (!Redis) {
         skip('آیورِدیس کانفیگ سنتینل ما را می‌پذیرد', 'ماژول ioredis نصب نشده است');
       } else {
@@ -157,7 +157,7 @@ async function main() {
         const c = Object.assign({ sentinels: cc.sentinels, name: cc.name }, cc.options || {});
         const probe = new Redis(Object.assign({}, c, { lazyConnect: true, connectTimeout: 500 }));
         ok = !!(probe.options && Array.isArray(probe.options.sentinels) && probe.options.sentinels.length === 1 && probe.options.name === 'mymaster');
-        try { probe.disconnect(); } catch (e) {}
+        try { probe.disconnect(); } catch (e) {/* intentional no-op */}
         chk('آیورِدیس کانفیگ سنتینل ما را می‌پذیرد', ok, detail);
       }
     } catch (e) { detail = e.message; chk('آیورِدیس کانفیگ سنتینل ما را می‌پذیرد', false, detail); }
@@ -225,12 +225,12 @@ async function main() {
           } catch (e) { /* هنوز فیل‌اُوور تمام نشده */ }
         }
         chk('پس از مرگ مستر، کلاینت مستر تازه را پیدا می‌کند', ok);
-        try { app.disconnect(); } catch (e) {}
+        try { app.disconnect(); } catch (e) {/* intentional no-op */}
       } catch (e) {
         chk('شبیه‌سازی واقعی فیل‌اُوور', false, e.message);
       } finally {
-        for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} }
-        try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {}
+        for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
+        try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
       }
     }
   }

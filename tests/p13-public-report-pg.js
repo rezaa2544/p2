@@ -49,8 +49,8 @@ if (MUT) {
   fs.writeFileSync(mutatedSql, sqlOut);
   fs.writeFileSync(mutatedReport, repOut);
   process.on('exit', () => {
-    try { fs.unlinkSync(mutatedReport); } catch (_) {}
-    try { fs.unlinkSync(mutatedSql); } catch (_) {}
+    try { fs.unlinkSync(mutatedReport); } catch (_) {/* intentional no-op */}
+    try { fs.unlinkSync(mutatedSql); } catch (_) {/* intentional no-op */}
   });
 }
 

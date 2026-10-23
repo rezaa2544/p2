@@ -54,7 +54,7 @@ if(MUT){
   if(src.split(a).length - 1 !== (MUT === 'M4' ? 1 : 1)){ console.error('الگوی جهش مچ نشد:', MUT); process.exit(2); }
   fs.writeFileSync(p, src.replace(a, b));
   console.log('[mutated]', MUT, '→', 'auth.p11-mutated.js');
-  process.on('exit', () => { try { fs.unlinkSync(p); } catch (_) {} });
+  process.on('exit', () => { try { fs.unlinkSync(p); } catch (_) {/* intentional no-op */} });
 }
 
 /* سقف‌های rate-limit بالاتر از تعداد فراخوانی‌های تست — رفتارِ خودِ سقف‌ها

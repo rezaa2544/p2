@@ -71,7 +71,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function j(BASE, method, p, opts){
   const r = await fetch(BASE + p, Object.assign({ method }, opts || {}));
   let body = null;
-  try { body = await r.json(); } catch (e) {}
+  try { body = await r.json(); } catch (e) {/* intentional no-op */}
   return { status: r.status, body, headers: r.headers };
 }
 
@@ -104,7 +104,7 @@ function spawnServer(storePath, tmp, extraEnv){
       const m = out.join('').match(/READY:(\d+)/);
       if(m){ clearInterval(timer); resolve('http://127.0.0.1:' + m[1]); }
       else if(Date.now() - t0 > timeoutMs){
-        try { proc.kill('SIGKILL'); } catch (e) {}
+        try { proc.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
         clearInterval(timer);
         reject(new Error('child not ready — ' + out.join('').slice(-300)));
       }
@@ -144,7 +144,7 @@ async function waitStatus(BASE, want, timeoutMs){
 async function waitForFile(fn, timeoutMs, what){
   const t0 = Date.now();
   for(;;){
-    try { if(fn()) return true; } catch (e) {}
+    try { if(fn()) return true; } catch (e) {/* intentional no-op */}
     if(Date.now() - t0 > timeoutMs) break;
     await sleep(200);
   }
@@ -217,7 +217,7 @@ function fakeRedis(){
   let port = null;
   return {
     start(p){ return new Promise((res, rej) => { srv.once('error', rej); srv.listen(p || 0, '127.0.0.1', () => { srv.removeListener('error', rej); port = srv.address().port; res(port); }); }); },
-    stop(){ for(const c of conns){ try { c.destroy(); } catch (e) {} } conns.clear(); try { srv.close(); } catch (e) {} },
+    stop(){ for(const c of conns){ try { c.destroy(); } catch (e) {/* intentional no-op */} } conns.clear(); try { srv.close(); } catch (e) {/* intentional no-op */} },
     get port(){ return port; }
   };
 }
@@ -262,7 +262,7 @@ function fakeRedis(){
 
         /* ── یکپارچگیِ فایل پس ازِ crash ── */
         let parsed = null;
-        try { parsed = JSON.parse(fs.readFileSync(T, 'utf8')); } catch (e) {}
+        try { parsed = JSON.parse(fs.readFileSync(T, 'utf8')); } catch (e) {/* intentional no-op */}
         chk('R1f store پس ازِ crash سالم (JSON قابلِ parse)', !!parsed);
         if(parsed){
           const s = JSON.stringify(parsed.visitors || []);
@@ -293,14 +293,14 @@ function fakeRedis(){
             } else {
               chk('R1i دادهٔ زنده (victim یافت شد)', false, 'no marker visitor');
             }
-            try { c2.proc.kill('SIGTERM'); } catch (e) {}
+            try { c2.proc.kill('SIGTERM'); } catch (e) {/* intentional no-op */}
           }
         } else {
           chk('R1g دادهٔ flushشده مانده', false, 'store unparseable');
         }
       }
     }
-    try { c1.proc.kill('SIGKILL'); } catch (e) {}
+    try { c1.proc.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
   }
 
   /* ── R2: Restore Drill (درون‌فرایند) ── */
@@ -358,7 +358,7 @@ function fakeRedis(){
         chk('R2i db.ping (درایورِ حافظه) ok', !!(dp && dp.ok && dp.driver === 'memory'), JSON.stringify(dp).slice(0, 100));
       }
     }
-    try { mod.server.close(); } catch (e) {}
+    try { mod.server.close(); } catch (e) {/* intentional no-op */}
     /* فرایند: R3/R4 ادامه دارند — store را برگردان تا فرایند تمیز برود */
     process.exitCode = process.exitCode || 0;
   }
@@ -426,7 +426,7 @@ function fakeRedis(){
       /* ── recovery = restartِ فرایند (مسیرِ عملیاتی) ── */
       c3.proc.kill('SIGTERM');
       await new Promise((resolve) => {
-        const t = setTimeout(() => { try { c3.proc.kill('SIGKILL'); } catch (e) {} resolve(); }, 8000);
+        const t = setTimeout(() => { try { c3.proc.kill('SIGKILL'); } catch (e) {/* intentional no-op */} resolve(); }, 8000);
         c3.proc.on('exit', () => { clearTimeout(t); resolve(); });
       });
       const c4 = spawnServer(T, tmp, { PAYESH_ENV: 'production', NODE_ENV: 'production', PAYESH_BEHIND_PROXY: '1', REDIS_URL: 'redis://127.0.0.1:' + rport, PAYESH_JWT_SECRET: 'arena5-recovery-shared-jwt-secret-0123456789', DATABASE_URL: A5_PG_URL });
@@ -442,7 +442,7 @@ function fakeRedis(){
         });
         const s6 = await waitStatus(BASE4, 200, 8000);
         chk('R3h restart ⇒ readiness 200 (recovery کامل)', s6 === 200, 'got ' + s6);
-        try { c4.proc.kill('SIGTERM'); } catch (e) {}
+        try { c4.proc.kill('SIGTERM'); } catch (e) {/* intentional no-op */}
       }
     }
     fake.stop();

@@ -70,20 +70,20 @@ function httpGet(port, p, useTls) {
       opts.rejectUnauthorized = true;
       opts.checkServerIdentity = () => undefined;
       if (activeCaFile || process.env.TLS_CA) {
-        try { opts.ca = fs.readFileSync(activeCaFile || process.env.TLS_CA); } catch (e) {}
+        try { opts.ca = fs.readFileSync(activeCaFile || process.env.TLS_CA); } catch (e) {/* intentional no-op */}
       }
     }
     const req = mod.request(opts, (res) => {
       let b = '';
       res.on('data', (d) => (b += d));
-      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {} resolve({ status: res.statusCode, json: j }); });
+      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */} resolve({ status: res.statusCode, json: j }); });
     });
     req.on('error', () => resolve({ status: 0, json: null }));
     req.end();
   });
 }
 
-process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 let tmp = null;
 let activeCaFile = null;
 

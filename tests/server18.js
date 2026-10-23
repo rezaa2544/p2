@@ -38,7 +38,7 @@ function httpReq(port, method, p, body, cookie, raw) {
     const req = http.request({ hostname: '127.0.0.1', port, path: p, method, headers }, (res) => {
       let b = '';
       res.on('data', (d) => (b += d));
-      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {} resolve({ status: res.statusCode, json: j, text: b, setCookie: res.headers['set-cookie'] }); });
+      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */} resolve({ status: res.statusCode, json: j, text: b, setCookie: res.headers['set-cookie'] }); });
     });
     req.on('error', () => resolve({ status: 0, json: null, text: '' }));
     if (data) req.write(data);
@@ -57,8 +57,8 @@ function cookieFrom(r) {
 
 let tmp = null, srv = null;
 process.on('exit', () => {
-  try { if (srv) srv.kill('SIGKILL'); } catch (e) {}
-  try { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+  try { if (srv) srv.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
+  try { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
 });
 
 async function main() {
@@ -259,10 +259,10 @@ async function main() {
   r = await httpReq(port, 'POST', '/api/sms/send', { queue_ids: [] }, cSA);
   chk('F3 آرایهٔ خالی → empty_batch (حفظ‌شده)', r.status === 400 && r.json && r.json.code === 'empty_batch', r.status + ' ' + r.text.slice(0, 120));
 
-  try { srv.kill('SIGKILL'); } catch (e) {}
+  try { srv.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
   srv = null;
   console.log('\nserver18: ' + pass + ' سبز، ' + fail + ' قرمز');
   if (fail) { console.log('❌ خطاها:\n - ' + errors.join('\n - ')); process.exit(1); }
 }
 
-main().catch((e) => { console.error('server18 crashed:', e); try { if (srv) srv.kill('SIGKILL'); } catch (x) {} process.exit(1); });
+main().catch((e) => { console.error('server18 crashed:', e); try { if (srv) srv.kill('SIGKILL'); } catch (x) {/* intentional no-op */} process.exit(1); });

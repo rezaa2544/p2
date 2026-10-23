@@ -51,7 +51,7 @@ if (!fs.existsSync(STORE)) {
   const { execSync } = require('child_process');
   try {
     execSync('node server/seed.js', { cwd: ROOT, stdio: 'ignore' });
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
 }
 if (!fs.existsSync(STORE)) {
   ['D-capacity', 'D-enrollment', 'D-schedule', 'D-status', 'D-grades-orphans'].forEach(n => chk(n, null));

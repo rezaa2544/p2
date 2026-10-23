@@ -34,7 +34,7 @@ function req(method, p, body, cookie) {
     const r = http.request({ host: '127.0.0.1', port: PORT, path: p, method,
       headers: Object.assign({ 'content-type': 'application/json' },
         data ? { 'content-length': Buffer.byteLength(data) } : {}, cookie ? { cookie } : {}) },
-      (res) => { let b = ''; res.on('data', (d) => (b += d)); res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {} resolve({ status: res.statusCode, json: j, body: b, headers: res.headers }); }); });
+      (res) => { let b = ''; res.on('data', (d) => (b += d)); res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */} resolve({ status: res.statusCode, json: j, body: b, headers: res.headers }); }); });
     r.on('error', () => resolve({ status: 0, json: null, body: '', headers: {} }));
     if (data) r.write(data); r.end();
   });
@@ -51,7 +51,7 @@ function boot(env) {
     })();
   });
 }
-function kill9(proc) { try { proc.kill('SIGKILL'); } catch (e) {} }
+function kill9(proc) { try { proc.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
 async function pgOne(sql, params) { const c = new Client({ connectionString: URL }); await c.connect(); const r = await c.query(sql, params || []); await c.end(); return r.rows; }
 
 let URL;

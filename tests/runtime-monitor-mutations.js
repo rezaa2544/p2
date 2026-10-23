@@ -28,7 +28,7 @@ try {
   for (const mutant of mutants) {
     if (!original.includes(mutant.from)) throw new Error('Mutation anchor missing: ' + mutant.name);
     const mcopy = kit.mutant(FILE, original.replace(mutant.from, mutant.to)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-    try { fs.chmodSync(mcopy, fs.statSync(FILE).mode); } catch (_) {}
+    try { fs.chmodSync(mcopy, fs.statSync(FILE).mode); } catch (_) {/* intentional no-op */}
     const result = execute(kit.env());
     const detected = result.code !== 0 && /RM-\d+.*❌|FAILED/.test(result.output);
     if (detected) { killed += 1; console.log('  ✅ ' + mutant.name + ' — killed'); }

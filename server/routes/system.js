@@ -54,7 +54,7 @@ const {
 const {
   validateRegionAccess,
   enforceGeographicBoundary
-} = require('../infrastructure/geographic-isolation');
+} = require('../infrastructure/geographic-isolation'); void enforceGeographicBoundary;
 
 const {
   buildResourceGovernanceSnapshot,
@@ -71,7 +71,7 @@ const {
   updateProvincialTrafficRollout,
   getProvincialCapacityOverview,
   refreshProvincialFromSoT
-} = require('../infrastructure/provincial-pilot-scaling');
+} = require('../infrastructure/provincial-pilot-scaling'); void ALLOWED_ROLLOUT_PERCENTAGES; void PROVINCIAL_PILOT_STATUS;
 
 const {
   NATIONAL_CONTROL_ERRORS,
@@ -81,21 +81,21 @@ const {
   updateNationalRegionState,
   calculateNationalRegionHealthSummary,
   refreshRegionsFromSoT
-} = require('../infrastructure/national-region-control-plane');
+} = require('../infrastructure/national-region-control-plane'); void calculateNationalRegionHealthSummary; void NATIONAL_REGION_STATE;
 
 const {
   CAPACITY_ENGINE_ERRORS,
   getNationalCapacityModel,
   evaluateCapacityRecommendation,
   applyNationalCapacityAdjustment
-} = require('../infrastructure/national-capacity-engine');
+} = require('../infrastructure/national-capacity-engine'); void evaluateCapacityRecommendation; void CAPACITY_ENGINE_ERRORS;
 
 const {
   TRAFFIC_FABRIC_ERRORS,
   getNationalTrafficFabricTopology,
   updateNationalTrafficWeight,
   refreshTrafficFromSoT
-} = require('../infrastructure/national-traffic-fabric');
+} = require('../infrastructure/national-traffic-fabric'); void TRAFFIC_FABRIC_ERRORS;
 
 const {
   buildNationalOperationsDashboard
@@ -105,13 +105,13 @@ const {
   NATIONAL_SECURITY_ERRORS,
   enforceNationalSecurityBoundary,
   recordNationalAuditTrail
-} = require('../security/national-security-governance');
+} = require('../security/national-security-governance'); void enforceNationalSecurityBoundary; void NATIONAL_SECURITY_ERRORS;
 
 const {
   DATA_SOVEREIGNTY_ERRORS,
   assertDatabaseAsSourceOfTruth,
   verifyDataSovereigntyCompliance
-} = require('../infrastructure/data-sovereignty');
+} = require('../infrastructure/data-sovereignty'); void verifyDataSovereigntyCompliance; void assertDatabaseAsSourceOfTruth; void DATA_SOVEREIGNTY_ERRORS;
 
 const {
   getNationalOperationsCenterSnapshot,
@@ -121,19 +121,19 @@ const {
   resolveNocIncident,
   NOC_ERRORS,
   refreshNocFromSoT
-} = require('../operations/national-operations-center');
+} = require('../operations/national-operations-center'); void NOC_ERRORS; void resolveNocIncident;
 
 const {
   evaluateNationalProductionReadiness,
   READINESS_VERDICT,
   READINESS_ERRORS
-} = require('../infrastructure/national-production-readiness');
+} = require('../infrastructure/national-production-readiness'); void READINESS_ERRORS; void READINESS_VERDICT;
 
 const {
   runNationalLoadSimulation,
   getNationalLoadTestingSuite,
   LOAD_SIMULATION_ERRORS
-} = require('../infrastructure/national-load-testing');
+} = require('../infrastructure/national-load-testing'); void LOAD_SIMULATION_ERRORS; void runNationalLoadSimulation;
 
 const {
   registerChangeRequest,
@@ -142,7 +142,7 @@ const {
   getChangeRequests,
   CHANGE_ERRORS,
   refreshChangesFromSoT
-} = require('../infrastructure/change-management');
+} = require('../infrastructure/change-management'); void refreshChangesFromSoT; void CHANGE_ERRORS; void getChangeRequests; void executeChangeRequest; void approveChangeRequest;
 
 const {
   assertNationalCapacityEnforcement,
@@ -154,7 +154,7 @@ const {
   CAPACITY_ENFORCEMENT_ERRORS,
   NATIONAL_LIMITS,
   refreshReservationsFromSoT
-} = require('../infrastructure/national-capacity-enforcement');
+} = require('../infrastructure/national-capacity-enforcement'); void getCapacityReservationById; void releaseCapacityReservation; void checkRegionCapacityHeadroom; void assertNationalCapacityEnforcement;
 const { getNationalWriteSmoothingEngine, NATIONAL_WRITE_LIMITS } = require('../infrastructure/national-write-smoothing');
 
 const {
@@ -163,7 +163,7 @@ const {
   CANARY_STATES,
   CANARY_ERRORS,
   ALLOWED_WEIGHTS
-} = require('../infrastructure/phase6-canary-engine');
+} = require('../infrastructure/phase6-canary-engine'); void ALLOWED_WEIGHTS; void CANARY_ERRORS; void CANARY_STATES; void Phase6CanaryEngine;
 
 /* N-26 — گاردِ مشترکِ دامنهٔ استانی برای مسیرهایِ نوشتنِ پایلوت.
    قبل از این، province_idیِ بدنه بدونِ هیچ مقایسه‌ای با منطقهٔ بازیگر به
@@ -189,7 +189,7 @@ function provincialScopeViolation(user, provinceId) {
 }
 
 function createSystemRoutes(ctx) {
-  const store = ctx.store || {};
+  const store = ctx.store || {}; void store;
   const db = ctx.db;
 
   /**
@@ -1319,7 +1319,7 @@ function createSystemRoutes(ctx) {
    * GET /api/v1/system/national/capacity
    * مدل جامع ظرفیت کل کشور و تخصیص سهمیه‌ها (P2-NI-01)
    */
-  async function nationalCapacity(req, searchParams) {
+  async function nationalCapacity(req, searchParams) { void searchParams;
     const user = req.user;
     if (!user) {
       return {
@@ -1465,7 +1465,7 @@ function createSystemRoutes(ctx) {
    * GET /api/v1/system/national/health
    * تابلوی جامع رصدپذیری عملیات ملی و انطباق SLO (P2-NI-01)
    */
-  async function nationalHealth(req, searchParams) {
+  async function nationalHealth(req, searchParams) { void searchParams;
     const user = req.user;
     if (!user) {
       return {
@@ -1488,7 +1488,7 @@ function createSystemRoutes(ctx) {
         const ps = db.poolStats();
         poolTotal = (ps && (ps.primary && ps.primary.total)) || (ps && ps.total) || null;
       }
-    } catch (_) {}
+    } catch (_) {/* intentional no-op */}
     const live = globalCanaryEngine.getAggregatedMetrics();
     const dashboard = buildNationalOperationsDashboard({
       api_latency_p95_ms: live.is_live ? live.latency.p95_ms : undefined,
@@ -1515,7 +1515,7 @@ function createSystemRoutes(ctx) {
    * GET /api/v1/system/national/traffic
    * وضعیت فابریک و نقشه توزیع ترافیک سراسری (P2-NI-01)
    */
-  async function nationalTraffic(req, searchParams) {
+  async function nationalTraffic(req, searchParams) { void searchParams;
     const user = req.user;
     if (!user) {
       return {

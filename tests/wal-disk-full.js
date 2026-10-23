@@ -175,7 +175,7 @@ function logMarker() {
   const m = {};
   try { for (const f of fs.readdirSync(CFG.logDir)) {
     try { m[f] = fs.statSync(path.join(CFG.logDir, f)).size; } catch (e) { m[f] = 0; }
-  } } catch (e) {}
+  } } catch (e) {/* intentional no-op */}
   return m;
 }
 function newLogsSince(marker) {
@@ -194,7 +194,7 @@ function newLogsSince(marker) {
       fs.readSync(fd, buf, 0, buf.length, from);
       fs.closeSync(fd);
       out.push(buf.toString('utf8'));
-    } catch (e) {}
+    } catch (e) {/* intentional no-op */}
   }
   return out.join('\n');
 }
@@ -209,7 +209,7 @@ function fillWalTo(targetPct) {
   const total = CFG.walMb * 1024 * 1024;
   const target = Math.floor(total * targetPct / 100);
   const fillerDir = path.join(CFG.walMnt, 'drill-filler');
-  try { fs.mkdirSync(fillerDir, { recursive: true }); } catch (e) {}
+  try { fs.mkdirSync(fillerDir, { recursive: true }); } catch (e) {/* intentional no-op */}
   let idx = 0, guard = 0;
   const big = Buffer.alloc(4 * 1024 * 1024, 7);   // 4MB — زیرِ یک segmentِ WAL
   const small = Buffer.alloc(64 * 1024, 7);       // 64KB — برایِ ریزکردنِ لبه
@@ -240,7 +240,7 @@ function fillWalTo(targetPct) {
 function freeWalSpace() {
   // «پاک کردنِ WALِ قدیمی» — در عمل، آزادسازیِ فضا از رویِ دیسکِ WAL.
   const dir = path.join(CFG.walMnt, 'drill-filler');
-  try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {}
+  try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   return walBytes();
 }
 
@@ -658,7 +658,7 @@ function finish(liveWhy) {
       summary: { pass, fail, notRun },
       results, timeline,
     }, null, 2));
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   console.log('────────────────────────────────────────────');
   let line = 'WAL disk-full drill: ' + pass + '/' + (pass + fail + notRun) + ' موفق';
   if (notRun) line += ' — ' + notRun + ' سناریو NOT-RUN ⏭️';

@@ -22,14 +22,14 @@ function findPgBin() {
   try {
     const w = cp.execFileSync('which', ['initdb'], { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w) cand.push(path.dirname(w));
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   /* F-A3 (Arena 1): same discovery gap as migration-009-live.js —
      pg_config --bindir + FHS glob so a fully installed PG is never
      reported as "missing binaries" just because it is off-PATH. */
   try {
     const b = cp.execFileSync('pg_config', ['--bindir'], { stdio: 'pipe' }).toString().trim();
     if (b) cand.push(b);
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   try {
     const base = '/usr/lib/postgresql';
     if (fs.existsSync(base)) {
@@ -38,7 +38,7 @@ function findPgBin() {
         .sort((a, b) => b.n - a.n);
       for (const m of majors) cand.push(path.join(base, m.v, 'bin'));
     }
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   for (const d of cand) {
     if (['initdb', 'postgres', 'pg_ctl'].every((b) => fs.existsSync(path.join(d, b)))) return d;
   }
@@ -105,7 +105,7 @@ for (const m of mutations) {
     continue;
   }
   const mcopy = kit.mutant(m.file, mutated); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-  try { fs.chmodSync(mcopy, fs.statSync(m.file).mode); } catch (_) {}
+  try { fs.chmodSync(mcopy, fs.statSync(m.file).mode); } catch (_) {/* intentional no-op */}
   const r = cp.spawnSync(process.execPath, [path.join(__dirname, 'migration-009-live.js')],
     { stdio: 'pipe', timeout: 300000, env: kit.env() });
   kit.clear(m.file);

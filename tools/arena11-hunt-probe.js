@@ -27,7 +27,7 @@ async function recoverCode(infra, phone) {
         const d = JSON.parse(raw);
         const r = d.codes && d.codes[phone];
         if (r && r.h) for (let n = 100000; n < 1000000; n++) if (sha256(String(n) + '|' + phone) === r.h) return String(n);
-      } catch (e) {}
+      } catch (e) {/* intentional no-op */}
     }
     await sleep(90);
   }
@@ -101,14 +101,14 @@ async function login(port, infra, phone, nid) {
   rec(pOther.status === 404 ? 'PASS' : 'FAIL', 'HF5 parent GET /api/v1/students/18 (not child) → 404 anti-enum', 'status=' + pOther.status + ' ' + JSON.stringify(pOther.json).slice(0, 90));
   const pList = await L.httpReq(rd, 'GET', '/api/v1/students', null, { jar: parent.jar });
   let pIds = [];
-  try { pIds = ((pList.json && pList.json.data) || []).map((x) => x.id); } catch (e) {}
+  try { pIds = ((pList.json && pList.json.data) || []).map((x) => x.id); } catch (e) {/* intentional no-op */}
   rec(pList.status === 200 && pIds.length === 1 && pIds[0] === 16 ? 'PASS' : 'FAIL', 'HF5 parent GET /api/v1/students (list) → only child 16', 'status=' + pList.status + ' ids=' + JSON.stringify(pIds));
 
   /* ── HF6: teacher scope live (taught class only) ── */
   const teacher = await login(rd, infra, teacher6 ? P(teacher6.phone) : '09996055377', byId(6).national_id);
   const tList = await L.httpReq(rd, 'GET', '/api/v1/students', null, { jar: teacher.jar });
   let tIds = [];
-  try { tIds = ((tList.json && tList.json.data) || []).map((x) => x.id); } catch (e) {}
+  try { tIds = ((tList.json && tList.json.data) || []).map((x) => x.id); } catch (e) {/* intentional no-op */}
   rec(tList.status === 200 ? 'EVIDENCE' : 'FAIL', 'HF6 teacher GET /api/v1/students', 'status=' + tList.status + ' count=' + tIds.length + ' sample=' + JSON.stringify(tIds.slice(0, 8)));
 
   /* ── HF7: public-report unauthed (invalid sid behavior + PII) ── */
@@ -151,7 +151,7 @@ async function login(port, infra, phone, nid) {
     rec('EVIDENCE', 'HF11 stale PATCH seed (2nd PATCH base_version=1)', 'status=' + p1.status + ' ' + JSON.stringify(p1.json).slice(0, 90));
     const cf = await L.httpReq(rd, 'GET', '/api/sync/conflicts', null, { jar: mgr.jar });
     let cfs = [];
-    try { cfs = (cf.json && cf.json.conflicts) || []; } catch (e) {}
+    try { cfs = (cf.json && cf.json.conflicts) || []; } catch (e) {/* intentional no-op */}
     const foreign = cfs.filter((c) => c.school_id != null && Number(c.school_id) !== 1).length;
     rec(cf.status === 200 && foreign === 0 ? 'PASS' : 'FAIL', 'HF11 manager GET /api/sync/conflicts → own school only', 'status=' + cf.status + ' n=' + cfs.length + ' foreign=' + foreign);
     /* legacy /api/public-report already covered; sync conflict resolve role gate */

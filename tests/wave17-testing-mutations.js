@@ -49,7 +49,7 @@ function mutate(file, find, replace, killRe, tag) {
   try {
     if (!orig.includes(find)) { chk(tag + ' (جهش پیدا نشد)', false, 'anchor missing in ' + path.basename(file)); return; }
     const mcopy = kit.mutant(file, orig.replace(find, replace)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-    try { fs.chmodSync(mcopy, fs.statSync(file).mode); } catch (_) {}
+    try { fs.chmodSync(mcopy, fs.statSync(file).mode); } catch (_) {/* intentional no-op */}
     const r = runSuite(kit.env());
     const out = (r.stdout || '') + (r.stderr || '');
     chk(tag + ' کشته شد', r.status !== 0 && killRe.test(out), out.slice(-300).replace(/\n/g, ' '));
@@ -70,7 +70,7 @@ function mutateMulti(file, pairs, killRe, tag) {
       mutated = mutated.replace(find, replace);
     }
     const mcopy = kit.mutant(file, mutated); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-    try { fs.chmodSync(mcopy, fs.statSync(file).mode); } catch (_) {}
+    try { fs.chmodSync(mcopy, fs.statSync(file).mode); } catch (_) {/* intentional no-op */}
     const r = runSuite(kit.env());
     const out = (r.stdout || '') + (r.stderr || '');
     chk(tag + ' کشته شد', r.status !== 0 && killRe.test(out), out.slice(-300).replace(/\n/g, ' '));

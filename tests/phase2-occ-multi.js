@@ -58,7 +58,7 @@ function req(port, method, p, body, cookie) {
     const r = http.request({ host: '127.0.0.1', port, path: p, method,
       headers: Object.assign({ 'content-type': 'application/json' },
         data ? { 'content-length': Buffer.byteLength(data) } : {}, cookie ? { cookie } : {}) },
-      (res) => { let b = ''; res.on('data', (d) => (b += d)); res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {} resolve({ status: res.statusCode, json: j, body: b, headers: res.headers }); }); });
+      (res) => { let b = ''; res.on('data', (d) => (b += d)); res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */} resolve({ status: res.statusCode, json: j, body: b, headers: res.headers }); }); });
     r.on('error', () => resolve({ status: 0, json: null, body: '', headers: {} }));
     if (data) r.write(data); r.end();
   });
@@ -232,7 +232,7 @@ async function pgOne(url, sql, params) { const c = new Client({ connectionString
   chk('۹ تعارضِ ردشده در sync_conflicts ثبت شد', cfRows[0].n >= 9, 'rows=' + cfRows[0].n);
 
   await stop(A); await stop(B); A = null; B = null;
-  try { fs.unlinkSync(KEY); } catch (e) {}
+  try { fs.unlinkSync(KEY); } catch (e) {/* intentional no-op */}
   const pass = results.filter(Boolean).length;
   console.log('\n════ PHASE2 OCC MULTI-INSTANCE: ' + pass + '/' + results.length + ' ════');
   process.exit(pass === results.length ? 0 : 1);

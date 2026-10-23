@@ -57,7 +57,7 @@ function findPgBin() {
   try {
     const w = cp.execFileSync('which', ['initdb'], { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w) cand.push(path.dirname(w));
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   for (const d of cand) {
     if (['initdb', 'postgres', 'pg_ctl'].every((b) => fs.existsSync(path.join(d, b)))) return d;
   }
@@ -83,8 +83,8 @@ function pgctl(args) {
   return cp.execFileSync('pg_ctl', ['-D', DATA].concat(args), { stdio: 'pipe', timeout: 60000, env: pgEnv() }).toString();
 }
 function cleanup() {
-  try { pgctl(['stop', '-m', 'immediate', '-w']); } catch (e) {}
-  try { fs.rmSync(DATA, { recursive: true, force: true }); } catch (e) {}
+  try { pgctl(['stop', '-m', 'immediate', '-w']); } catch (e) {/* intentional no-op */}
+  try { fs.rmSync(DATA, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
 }
 process.on('exit', cleanup);
 process.on('SIGINT', () => { cleanup(); process.exit(130); });

@@ -88,7 +88,7 @@ async function main() {
   await sec('server', 'بیرونی', 'auto-login: بازنشانی نشست از localStorage بدون رمز (دستگاه اشتراکی)', async () => {
     /* exploit واقعی: کاربر قبلی (teacher1_1) روی رایانهٔ اشتراکی وارد شده و
        رفته است؛ مهاجم صفحه را باز می‌کند. نشست باید نیازمند رمز باشد. */
-    const d2 = mkDom((w) => { try { w.localStorage.setItem('sms_session_v1', 'teacher1_1'); } catch (e) { } });
+    const d2 = mkDom((w) => { try { w.localStorage.setItem('sms_session_v1', 'teacher1_1'); } catch (e) {/* intentional no-op */ } });
     await sleep(500);
     const leaked = d2.window.eval('S.user && S.user.username ? S.user.username : null');
     d2.window.close();
@@ -101,7 +101,7 @@ async function main() {
     const inactMgr = W("((function(){var s=db.schools.find(x=>!x.active);"
       + "var m=s&&db.users.find(u=>u.school_id===s.id&&u.role==='manager');return m&&m.username;})())");
     assert(inactMgr, 'دادهٔ نمونه باید یک مدیرِ مدرسهٔ غیرفعال داشته باشد');
-    const d3 = mkDom((w) => { try { w.localStorage.setItem('sms_session_v1', inactMgr); } catch (e) { } });
+    const d3 = mkDom((w) => { try { w.localStorage.setItem('sms_session_v1', inactMgr); } catch (e) {/* intentional no-op */ } });
     await sleep(700);
     const leaked = d3.window.eval('S.user && S.user.username ? S.user.username : null');
     const key = d3.window.eval("(function(){try{return localStorage.getItem('sms_session_v1')}catch(e){return null}})()");

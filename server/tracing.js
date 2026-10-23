@@ -203,8 +203,8 @@ function scrubUrlAttributes(span) {
   if(!span || typeof span.setAttribute !== 'function') return;
   let sanitize = null;
   try{ sanitize = require('./audit.js').sanitizeString; }catch(e){ sanitize = null; }
-  const cleanQuery = function(v){ let s = redactQuery(v); if(sanitize){ try{ s = sanitize(s); }catch(e){} } return s; };
-  const cleanUrl = function(v){ let s = redactUrl(String(v)); if(sanitize){ try{ s = sanitize(s); }catch(e){} } return s; };
+  const cleanQuery = function(v){ let s = redactQuery(v); if(sanitize){ try{ s = sanitize(s); }catch(e){/* intentional no-op */} } return s; };
+  const cleanUrl = function(v){ let s = redactUrl(String(v)); if(sanitize){ try{ s = sanitize(s); }catch(e){/* intentional no-op */} } return s; };
   try{
     const attrs = span.attributes || {};
     ['url.query', 'http.target'].forEach(function(k){
@@ -216,7 +216,7 @@ function scrubUrlAttributes(span) {
     ['url.full', 'http.url'].forEach(function(k){
       if(attrs[k] != null && String(attrs[k]).indexOf('?') >= 0) span.setAttribute(k, cleanUrl(attrs[k]));
     });
-  }catch(e){}
+  }catch(e){/* intentional no-op */}
 }
 
 /* Idempotent init. opts (all optional, mainly for tests):
@@ -233,8 +233,8 @@ function initTracing(opts) {
   if(!sdk){ state = disabled; return state; }
   try{
     const api = sdk.api;
-    try{ api.context.setGlobalContextManager(new sdk.AsyncLocalStorageContextManager()); }catch(e){}
-    try{ api.context.getGlobalContextManager().enable(); }catch(e){}
+    try{ api.context.setGlobalContextManager(new sdk.AsyncLocalStorageContextManager()); }catch(e){/* intentional no-op */}
+    try{ api.context.getGlobalContextManager().enable(); }catch(e){/* intentional no-op */}
     const attrs = {};
     attrs[sdk.semconv.ATTR_SERVICE_NAME] = cfg.serviceName;
     attrs[sdk.semconv.ATTR_SERVICE_VERSION] = cfg.serviceVersion;
@@ -261,10 +261,10 @@ function initTracing(opts) {
               span.setAttribute('http.url', red);
             }
             scrubUrlAttributes(span);
-          }catch(e){}
+          }catch(e){/* intentional no-op */}
         },
         responseHook: function(span){
-          try{ scrubUrlAttributes(span); }catch(e){}
+          try{ scrubUrlAttributes(span); }catch(e){/* intentional no-op */}
         }
       });
       instrumentation.enable();
@@ -272,10 +272,10 @@ function initTracing(opts) {
     const tracer = api.trace.getTracer('payesh-server', cfg.serviceVersion);
     state = { enabled: true, provider: provider, tracer: tracer, sampler: sampler,
       endpoint: cfg.endpoint, serviceName: cfg.serviceName, instrumentation: instrumentation,
-      sdk: sdk, shutdown: async function(){ try{ await provider.shutdown(); }catch(e){} } };
+      sdk: sdk, shutdown: async function(){ try{ await provider.shutdown(); }catch(e){/* intentional no-op */} } };
     return state;
   }catch(err){
-    try{ console.warn('[tracing] init failed, continuing without tracing:', err.message); }catch(e){}
+    try{ console.warn('[tracing] init failed, continuing without tracing:', err.message); }catch(e){/* intentional no-op */}
     state = disabled;
     return state;
   }
@@ -302,7 +302,7 @@ function getTraceId() {
 
 function setSafeAttributes(span, obj) {
   if(!span || typeof span.setAttributes !== 'function') return;
-  try{ span.setAttributes(toSpanAttributes(obj)); }catch(e){}
+  try{ span.setAttributes(toSpanAttributes(obj)); }catch(e){/* intentional no-op */}
 }
 
 /* Run fn inside an active span (passthrough when tracing is off). */
@@ -319,27 +319,27 @@ async function withSpan(name, attrs, fn) {
       try{
         span.recordException(err);
         span.setStatus({ code: api.SpanStatusCode.ERROR, message: String((err && err.message) || err) });
-      }catch(e){}
+      }catch(e){/* intentional no-op */}
       throw err;
     }finally{
-      try{ span.end(); }catch(e){}
+      try{ span.end(); }catch(e){/* intentional no-op */}
     }
   });
 }
 
 async function shutdownTracing() {
   if(state && typeof state.shutdown === 'function'){
-    try{ await state.shutdown(); }catch(e){}
+    try{ await state.shutdown(); }catch(e){/* intentional no-op */}
   }
 }
 
 /* Test seam: fully reset module state (also unregisters the global provider). */
 async function __resetForTests() {
-  try{ await shutdownTracing(); }catch(e){}
+  try{ await shutdownTracing(); }catch(e){/* intentional no-op */}
   try{
     const api = require('@opentelemetry/api');
     if(api && api.trace && typeof api.trace.disable === 'function') api.trace.disable();
-  }catch(e){}
+  }catch(e){/* intentional no-op */}
   state = null;
 }
 

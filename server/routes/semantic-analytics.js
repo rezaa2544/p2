@@ -46,13 +46,13 @@ const {
   calculateSchoolHealthIndex: legacySchoolHealth,
   detectSchoolCriticalIssues,
   aggregateSchoolEducationalMetrics
-} = require('../analytics/school-health-dashboard');
+} = require('../analytics/school-health-dashboard'); void legacySchoolHealth;
 
 const {
   buildParent360Profile,
   enforceParentChildAccessGuard,
   calculateParentEngagementIndex
-} = require('../analytics/parent-360');
+} = require('../analytics/parent-360'); void calculateParentEngagementIndex;
 
 const {
   buildTeacherWorkloadProfile,

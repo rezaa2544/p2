@@ -25,7 +25,7 @@ const ROOT = path.join(__dirname, '..');
 const REAL_STORE = path.join(ROOT, 'server', 'data', 'payesh.json');
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-n32-'));
-process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 
 const T_STORE = path.join(TMP, 'store.json');
 fs.copyFileSync(REAL_STORE, T_STORE);
@@ -53,7 +53,7 @@ async function req(method, p, opts) {
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
   let json = null;
-  try { json = await res.json(); } catch (e) {}
+  try { json = await res.json(); } catch (e) {/* intentional no-op */}
   return { status: res.status, json, headers: res.headers };
 }
 

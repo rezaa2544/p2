@@ -123,7 +123,7 @@ function chk(name, cond, detail){
   kill('حذفِ pgLive از شرط', GUARD, 'return !(hydrateResult && hydrateResult.mirror_incomplete);');
   kill('معکوسِ شرط', GUARD, 'return !!(pgLive && hydrateResult && hydrateResult.mirror_incomplete);');
   kill('نادیده‌گرفتنِ hydrateResult', GUARD, 'return !pgLive;');
-  try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {}
+  try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
 }
 
 /* ── D) NOT-RUN صادقانه ──────────────────────────────────────────── */

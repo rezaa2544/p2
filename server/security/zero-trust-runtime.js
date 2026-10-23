@@ -129,7 +129,7 @@ function assertNoZeroRanking(payload, path = '') {
  * ۱. اعتبارسنجی جامع هویت در مدل Zero Trust (Identity Verification)
  * بررسی هویت کاربر، هویت مستأجر (مدرسه)، نقش سازمانی، وضعیت نشست و تازگی توکن
  */
-function verifyIdentity({ user, session, token, context = {} }) {
+function verifyIdentity({ user, session, token, context = {} }) { void context;
   if (!user || typeof user !== 'object') {
     return {
       valid: false,
@@ -222,7 +222,7 @@ function verifyIdentity({ user, session, token, context = {} }) {
  * ۲. موتور ارزیابی سیاست‌های دسترسی امنیتی (Policy Decision Engine)
  * تصمیم‌گیری بر اساس اصل حداقل دسترسی و تفکیک وظایف
  */
-function evaluateSecurityPolicy({ user, tenant, resource, action, context = {} }) {
+function evaluateSecurityPolicy({ user, tenant, resource, action, context = {} }) { void context;
   if (!user || !resource || !action) {
     throw createZeroTrustError(
       ZERO_TRUST_ERRORS.POLICY_REQUIRED,
@@ -371,7 +371,7 @@ function checkSessionProtection({ session, clientInfo = {}, sessionHistory = [] 
 /**
  * ۴. اعمال مرزهای دسترسی و ایزولاسیون چندمستأجری (Access Boundary Enforcement - Fail Closed)
  */
-function enforceAccessBoundary({ user, targetSchoolId, requiredRole, context = {} }) {
+function enforceAccessBoundary({ user, targetSchoolId, requiredRole, context = {} }) { void context;
   if (!user || typeof user !== 'object') {
     throw createZeroTrustError(
       ZERO_TRUST_ERRORS.CONTEXT_INVALID,

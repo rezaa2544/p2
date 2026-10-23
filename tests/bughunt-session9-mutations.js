@@ -42,7 +42,7 @@ function mutate(file, from, to, killRe, tag) {
   const bad = orig.replace(from, to);
   if (bad === orig) { chk(false, tag + ': جهش اعمال نشد (لنگر پیدا نشد — به‌روز کن)'); return; }
   const mcopy = kit.mutant(f, bad); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-  try { fs.chmodSync(mcopy, fs.statSync(f).mode); } catch (_) {}
+  try { fs.chmodSync(mcopy, fs.statSync(f).mode); } catch (_) {/* intentional no-op */}
   try {
     const r = runSuite(kit.env());
     const out = (r.stdout || '') + (r.stderr || '');
@@ -131,7 +131,7 @@ console.log('\n▸ حذفِ تصادفیِ خط (بذرِ ثابت ۰xS9 = 20260
     for (const k of tried) {
       const mutated = lines.slice(0, k).concat(lines.slice(k + 1)).join('\n');
       const mcopy = kit.mutant(f, mutated); /* کپیِ جدا؛ همان مسیرِ کپی بازنویسی می‌شود */
-      try { fs.chmodSync(mcopy, fs.statSync(f).mode); } catch (_) {}
+      try { fs.chmodSync(mcopy, fs.statSync(f).mode); } catch (_) {/* intentional no-op */}
       /* جهشِ غیرقابل‌تجزیه (SyntaxError) جهشِ معنادار نیست: برنامه‌ای وجود
          ندارد که رفتاری داشته باشد. کنارش می‌گذاریم و در مخرج نمی‌شماریم. */
       /* چکِ نحو مستقیماً روی خودِ کپی (مسیرِ واقعی، بدون نیاز به بازمپ) */

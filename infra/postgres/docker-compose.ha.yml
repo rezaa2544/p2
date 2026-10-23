@@ -192,6 +192,13 @@ services:
       DEFAULT_POOL_SIZE: "80"
       MIN_POOL_SIZE: "5"
       LISTENPORT: "6432"
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        cp /etc/pgbouncer/pgbouncer.ini /var/run/pgbouncer/pgbouncer.ini
+        chmod 0600 /var/run/pgbouncer/pgbouncer.ini
+        exec /entrypoint.sh /usr/bin/pgbouncer /var/run/pgbouncer/pgbouncer.ini
     volumes:
       - ./pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
     ports:

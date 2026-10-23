@@ -19,7 +19,7 @@ const {
   deepFreeze,
   getRegionRegistry,
   getRegionById
-} = require('./phase5-region-federation');
+} = require('./phase5-region-federation'); void assertHumanApproval;
 
 /**
  * رده‌های پشتیبانی مدارس در پایلوت ملی

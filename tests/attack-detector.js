@@ -29,7 +29,7 @@ function request(port, method, target, payload) {
     const body = payload == null ? null : JSON.stringify(payload);
     const req = http.request({ host: '127.0.0.1', port, method, path: target, headers: body ? { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) } : {} }, (res) => {
       let data = ''; res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => { let json; try { json = JSON.parse(data); } catch (_) {} resolve({ status: res.statusCode, json }); });
+      res.on('end', () => { let json; try { json = JSON.parse(data); } catch (_) {/* intentional no-op */} resolve({ status: res.statusCode, json }); });
     });
     req.on('error', () => resolve({ status: 0, json: null }));
     if (body) req.write(body);

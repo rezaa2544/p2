@@ -71,7 +71,7 @@ function findPgBin() {
   try {
     const w = cp.execFileSync('which', ['initdb'], { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w) cand.push(path.dirname(w));
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   for (const d of cand) {
     if (['initdb', 'postgres', 'pg_ctl'].every((b) => fs.existsSync(path.join(d, b)))) return d;
   }
@@ -100,8 +100,8 @@ function pgctl(args, dir) {
 }
 function cleanup() {
   for (const d of [R_DATA, P_DATA]) {
-    try { pgctl(['stop', '-m', 'immediate', '-w'], d); } catch (e) {}
-    try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {}
+    try { pgctl(['stop', '-m', 'immediate', '-w'], d); } catch (e) {/* intentional no-op */}
+    try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   }
 }
 process.on('exit', cleanup);
@@ -158,7 +158,7 @@ async function bootPair(Client) {
   /* replica: shutdown تمیز → cold copy → standby.signal (روشِ مستندِ PG) */
   pgctl(['stop', '-m', 'fast', '-w'], P_DATA);
   cp.execFileSync('cp', ['-a', P_DATA, R_DATA], { stdio: 'pipe' });
-  try { fs.rmSync(R_DATA + '/postmaster.pid'); } catch (e) {}
+  try { fs.rmSync(R_DATA + '/postmaster.pid'); } catch (e) {/* intentional no-op */}
   fs.writeFileSync(R_DATA + '/standby.signal', '');
   fs.appendFileSync(R_DATA + '/postgresql.conf',
     "\nport = " + R_PORT + "\nunix_socket_directories = '" + R_DATA + "'\n" +
@@ -336,7 +336,7 @@ async function main() {
       const p = Number((await rc.query(
         "SELECT count(*) AS c FROM pg_partitioned_table WHERE partrelid = 'attendance'::regclass")).rows[0].c);
       repOk = c === heapCount && p === 1;
-    } catch (e) {}
+    } catch (e) {/* intentional no-op */}
     if (!repOk) await sleep(200);
   }
   chk('T8 جدولِ پارتیشن‌شده + سطرها رویِ replica (DDL هم stream می‌شود)', repOk);

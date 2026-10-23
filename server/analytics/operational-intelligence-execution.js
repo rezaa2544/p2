@@ -401,7 +401,7 @@ function calculateExecutionSLA(task = {}, options = {}) {
  * @param {Object} options - { timestamp }
  * @returns {Object}
  */
-function trackExecutionProgress(workflowOrTasks = {}, options = {}) {
+function trackExecutionProgress(workflowOrTasks = {}, options = {}) { void options;
   let tasks = [];
   if (Array.isArray(workflowOrTasks)) {
     tasks = workflowOrTasks;

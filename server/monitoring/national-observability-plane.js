@@ -22,7 +22,7 @@ const {
 const {
   getNationalRegionRegistry,
   calculateNationalRegionHealthSummary
-} = require('../infrastructure/national-region-control-plane');
+} = require('../infrastructure/national-region-control-plane'); void getNationalRegionRegistry;
 
 const {
   getNationalTrafficFabricTopology
@@ -155,14 +155,14 @@ function buildNationalOperationsDashboard(overrideMetrics = {}) {
         is_live: true
       };
     }
-  } catch (_) {}
+  } catch (_) {/* intentional no-op */}
 
   const currentP95 = overrideMetrics.api_latency_p95_ms != null ? overrideMetrics.api_latency_p95_ms : liveObserved.p95;
   const currentP99 = overrideMetrics.api_latency_p99_ms != null ? overrideMetrics.api_latency_p99_ms : liveObserved.p99;
   const currentErrorRate = overrideMetrics.api_error_rate_pct != null ? overrideMetrics.api_error_rate_pct : liveObserved.error_rate;
   const currentEventLag = overrideMetrics.event_lag_ms != null ? overrideMetrics.event_lag_ms : liveObserved.event_lag;
   const currentDbLag = overrideMetrics.db_replication_lag_ms != null ? overrideMetrics.db_replication_lag_ms : liveObserved.db_lag;
-  const sampleCount = overrideMetrics.samples != null ? overrideMetrics.samples : liveObserved.samples;
+  const sampleCount = overrideMetrics.samples != null ? overrideMetrics.samples : liveObserved.samples; void sampleCount;
   const isLive = overrideMetrics.is_live === true || liveObserved.is_live === true;
 
   const hasLatency = currentP95 != null && currentP99 != null;

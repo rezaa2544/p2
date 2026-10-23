@@ -30,7 +30,7 @@ function mutate(file, from, to, killRe, tag) {
   const badSrc = orig.replace(from, to);
   if (badSrc === orig) { chk(false, tag + ': جهش اعمال نشد (نماد پیدا نشد)'); return; }
   const mcopy = kit.mutant(f, badSrc); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-  try { fs.chmodSync(mcopy, fs.statSync(f).mode); } catch (_) {}
+  try { fs.chmodSync(mcopy, fs.statSync(f).mode); } catch (_) {/* intentional no-op */}
   const runOnce = () => spawnSync('node', [path.join(ROOT, 'tests/reporttpl2.js')], { cwd: ROOT, encoding: 'utf8', env: kit.env() });
   /* R92: مرگِ زودهنگامِ کشف‌کننده (پورت اشغال/حافظه — قبل از چاپِ چکِ موردِ انتظار و خطِ خلاصه) → retry یک‌بار، بعد env-failِ صریح. هرگز «زنده ماند»ِ کاذب. */
   const completed = (o) => /بررسی — /.test(o || '');

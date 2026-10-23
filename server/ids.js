@@ -98,7 +98,7 @@ function createIds({ db, cache }){
       lastIssued.set(col, id);
       return id;
     }finally{
-      if(cache && token){ try{ await cache.releaseLock('ids:' + col, token); }catch(e){} }
+      if(cache && token){ try{ await cache.releaseLock('ids:' + col, token); }catch(e){/* intentional no-op */} }
     }
   };
 

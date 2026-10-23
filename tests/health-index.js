@@ -138,7 +138,7 @@ async function tH4() {
 
 /* ── H5: سرتاسریِ HTTP ───────────────────────────────────────────── */
 let tmp = null, server = null;
-process.on('exit', () => { try { if (server) server.kill('SIGKILL'); } catch (e) {} try { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { if (server) server.kill('SIGKILL'); } catch (e) {/* intentional no-op */} try { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 
 function httpReq(method, p, body, cookie) {
   return new Promise((resolve) => {
@@ -153,7 +153,7 @@ function httpReq(method, p, body, cookie) {
       let b = '';
       res.on('data', (d) => (b += d));
       res.on('end', () => {
-        let j = null; try { j = JSON.parse(b); } catch (e) {}
+        let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, json: j, headers: res.headers });
       });
     });
@@ -179,7 +179,7 @@ async function tH5() {
     const h = await httpReq('GET', '/api/health');
     if (h.status === 200 && h.json && h.json.ok) {
       if (h.json.pid === server.pid) { booted = true; break; }
-      try { process.kill(h.json.pid); } catch (e) {}
+      try { process.kill(h.json.pid); } catch (e) {/* intentional no-op */}
     }
     if (server.exitCode !== null) break;
     await sleep(300);
@@ -221,7 +221,7 @@ async function tH5() {
 async function main() {
   const t0 = Date.now();
   tH1(); tH2(); tH3(); await tH4(); await tH5();
-  try { if (server) server.kill('SIGKILL'); } catch (e) {}
+  try { if (server) server.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
   server = null;
   console.log('──────────────────────────────────────────');
   console.log(`سوئیت سلامت: ${pass}/${pass + fail} موفق (${Date.now() - t0} ms) — ${fail === 0 ? 'بدون خطا ✅' : 'اشکال دارد ❌'}`);

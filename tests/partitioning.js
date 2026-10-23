@@ -543,12 +543,12 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
                CALL تا آخر می‌رود. pg_terminate_backend همان «کرشِ جلسه» است:
                چانکِ در حالِ اجرا بک‌رول می‌شود، چانک‌های کامیت‌شده می‌مانند. */
             q("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE query LIKE '%payesh_copy_grades_009%' AND pid <> pg_backend_pid()")
-              .then(() => { try { ps.kill('SIGKILL'); } catch (e) {} }).catch(() => { try { ps.kill('SIGKILL'); } catch (e) {} });
+              .then(() => { try { ps.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }).catch(() => { try { ps.kill('SIGKILL'); } catch (e) {/* intentional no-op */} });
           }
         }).catch(() => {});
       }, 150);
       ps.on('close', () => finish('closed'));
-      setTimeout(() => { try { ps.kill('SIGKILL'); } catch (e) {} finish('timeout'); }, 180000);
+      setTimeout(() => { try { ps.kill('SIGKILL'); } catch (e) {/* intentional no-op */} finish('timeout'); }, 180000);
     });
     /* بعد از kill: بک‌اندِ سرور ممکن است همچنان چانک را تمام کند/بک‌رول کند؛
        تا رفتنِ بک‌اند و پایداریِ شمار صبر کن (کامیتِ ۱۵۰k سطری زیرِ I/O ثانیه‌ها
@@ -574,7 +574,7 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
     await q('DROP TABLE IF EXISTS grades, attendance, grades_old, attendance_old, schools, users, classes, subjects CASCADE');
   } catch (e) { chk('L11 ازسرگیری', false, String(e.message || e).slice(0, 160)); }
 
-  try { await live.end(); } catch (e) {}
+  try { await live.end(); } catch (e) {/* intentional no-op */}
 
   console.log('\n────────────────────────────────────────────');
   if (failc === 0) console.log(`partitioning: ${okc}/${okc} — بدون خطا ✅`);

@@ -41,7 +41,7 @@ function req(method, p, body, cookie) {
     const r = http.request({ host: '127.0.0.1', port: PORT, path: p, method, headers }, (res) => {
       let b = '';
       res.on('data', d => (b += d));
-      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {} resolve({ status: res.statusCode, json: j, body: b, headers: res.headers }); });
+      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */} resolve({ status: res.statusCode, json: j, body: b, headers: res.headers }); });
     });
     r.on('error', () => resolve({ status: 0, json: null, body: '' }));
     if (data) r.write(data);
@@ -103,7 +103,7 @@ async function main() {
   }
   if (!up) {
     console.log('  ⛔ سرور بالا نیامد:\n' + log.slice(-600));
-    try { child.kill('SIGKILL'); } catch (e) {}
+    try { child.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
     process.exit(2);
   }
   console.log('  سرور روی پورت ' + PORT + ' بالا آمد');
@@ -123,7 +123,7 @@ async function main() {
   chk('ورودِ مدیرِ مدرسهٔ ۱', !!lm1);
   chk('ورودِ مدیرِ مدرسهٔ ۳', !!lm3);
   if (!lm1 || !lm3) {
-    try { child.kill('SIGKILL'); } catch (e) {}
+    try { child.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
     process.exit(2);
   }
 
@@ -247,7 +247,7 @@ async function main() {
   chk('M9 مدیرِ ۱ در لیستِ دانش‌آموزان مدرسهٔ ۳ را نمی‌بیند',
     sCross.length === 0, sCross.length + ' foreign students visible');
 
-  try { child.kill('SIGKILL'); } catch (e) {}
+  try { child.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
   console.log('\nA-19 (student_id ownership): ' + pass + '/' + (pass + fail) + ' موفق');
   if (fail) console.log('  ⚠ ' + fail + ' مورد شکست خورد');
   process.exit(fail ? 1 : 0);

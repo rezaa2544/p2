@@ -67,7 +67,7 @@ function req(port, p, method, body, headers) {
   });
   fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), env.PAYESH_STORE);
   const proc = spawn(process.execPath, ['server/index.js'], { cwd: ROOT, env, stdio: 'pipe' });
-  const kill = () => { try { proc.kill('SIGKILL'); } catch (e) {} try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} };
+  const kill = () => { try { proc.kill('SIGKILL'); } catch (e) {/* intentional no-op */} try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} };
   process.on('exit', kill);
   /* زیرِ بارِ موازیِ رگرسیون، ۲٫۵ ثانیه خوابِ ثابت برای بوت کافی نبود
      (خطای اتصالِ نخستین درخواست). تا ۳۰ ثانیه برای سلامت صبر می‌کنیم. */
@@ -75,7 +75,7 @@ function req(port, p, method, body, headers) {
     const t0 = Date.now();
     let up = false;
     while (Date.now() - t0 < 30000) {
-      try { await req(PORT, '/api/health'); up = true; break; } catch (e) {}
+      try { await req(PORT, '/api/health'); up = true; break; } catch (e) {/* intentional no-op */}
       await new Promise(r => setTimeout(r, 250));
     }
     if (!up) throw new Error('سرورِ ردیابی در ۳۰ ثانیه بالا نیامد (پورت ' + PORT + ')');

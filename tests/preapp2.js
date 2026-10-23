@@ -17,7 +17,7 @@ catch { console.log('⏭️  jsdom نصب نیست — تست رد شد.  (npm i
 
 const ROOT = path.join(__dirname, '..');
 // hardening: rebuild base index.html (a previously crashed mutation suite may have left a mutated build)
-try { require('child_process').execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
+try { require('child_process').execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {/* intentional no-op */}
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
 let pass = 0, fail = 0;
@@ -180,7 +180,7 @@ await sleep(100);
 console.log('\n────────────────────────────────────────────────────');
 console.log(`preapp2 (قیف پیش‌ثبت‌نام): ${pass + fail} بررسی — ✅ ${pass} · ❌ ${fail}`);
 // hardening: rebuild base index.html (a previously crashed mutation suite may have left a mutated build)
-try { require('child_process').execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
+try { require('child_process').execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {/* intentional no-op */}
 if (fail) process.exit(1);
 process.exit(0);
 }

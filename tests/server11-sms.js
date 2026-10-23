@@ -41,7 +41,7 @@ async function req(p, m = 'GET', body = null, cookie = null){
   if(cookie) h['Cookie'] = cookie;
   const r = await fetch(BASE + p, { method: m, headers: h, body: body === null ? null : JSON.stringify(body) });
   const t = await r.text();
-  let j = null; try { j = JSON.parse(t); } catch (e) {}
+  let j = null; try { j = JSON.parse(t); } catch (e) {/* intentional no-op */}
   return { status: r.status, j, headers: r.headers };
 }
 function cookieOf(r){
@@ -202,6 +202,6 @@ const assert = require('assert');
   });
 
   console.log(`\n${passed + failed} بررسی — ${failed === 0 ? '✅ همه سبز' : '❌ شکست: ' + failed}`);
-  try { server.close(); } catch (e) {}
+  try { server.close(); } catch (e) {/* intentional no-op */}
   process.exit(failed ? 1 : 0);
 })().catch(e => { console.error('FATAL', e); process.exit(2); });

@@ -32,7 +32,7 @@ const REAL_STORE = path.join(ROOT, 'server', 'data', 'payesh.json');
 delete process.env.DATABASE_URL; /* pin حالت حافظه — قرارداد reports-basic */
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-resume-'));
-process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 
 const ROW_CAP = 300;
 process.env.PAYESH_PULL_MAX_ROWS = String(ROW_CAP);

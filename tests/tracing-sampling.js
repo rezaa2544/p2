@@ -117,7 +117,7 @@ function parentCtx(sampled) {
   chk('RED-f سالم‌ها دست نخوردند', r.title === 'اعلامیه' && r.nested.keep === 'yes');
   const circ = { a: 1 }; circ.self = circ;
   let circOk = false;
-  try { const rc = tracing.redactForSpan(circ); circOk = rc.self === '[CIRCULAR]'; } catch (e) {}
+  try { const rc = tracing.redactForSpan(circ); circOk = rc.self === '[CIRCULAR]'; } catch (e) {/* intentional no-op */}
   chk('RED-g چرخه کرش نمی‌کند', circOk);
 
   /* ── RED: URL ── */

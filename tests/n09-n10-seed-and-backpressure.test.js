@@ -136,7 +136,7 @@ async function main() {
     const payload = { ops: [{ uid: 'n10-test-1', op: { c: 'notifications', t: 'ins', data: { user_id: manager.id, type: 'info', body: 'n10 probe', created_at: new Date().toISOString() } } }] };
     const res = await fetch(BASE + '/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: JSON.stringify(payload) });
     let json = null;
-    try { json = await res.json(); } catch (e) {}
+    try { json = await res.json(); } catch (e) {/* intentional no-op */}
 
     assert.strictEqual(res.status, 503, 'a degraded limiter must answer 503, got ' + res.status + ' ' + JSON.stringify(json));
     assert.ok(json && json.code === 'sync_backpressure_unavailable', 'unexpected body: ' + JSON.stringify(json));
@@ -144,7 +144,7 @@ async function main() {
 
     server.close();
     rateLimitMod.checkRateLimit = origCheck;
-    try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {}
+    try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   });
 
   /* ── N10-3: the client keeps the gentle retry contract ─────────── */

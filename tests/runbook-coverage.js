@@ -173,7 +173,7 @@ chk('ابزارِ پیش‌پرواز موجود است', fs.existsSync(TOOL_BP)
 }
 {
   const fl = runBP(['--fleet', '--json']);
-  let fj = null; try { fj = JSON.parse(fl.stdout); } catch (e) {}
+  let fj = null; try { fj = JSON.parse(fl.stdout); } catch (e) {/* intentional no-op */}
   chk('سرشماریِ ناوگان خروجی ۰ و جی‌سانِ معتبر دارد',
     fl.status === 0 && !!fj && fj.mode === 'fleet' && !!fj.counts
     && ['total', 'mergedStale', 'live', 'aged', 'sharedTipClusters'].every((k) => typeof fj.counts[k] === 'number'),
@@ -183,7 +183,7 @@ chk('ابزارِ پیش‌پرواز موجود است', fs.existsSync(TOOL_BP)
   /* گازِ سطحِ ریپو: «main» هیچ‌گاه نمی‌تواند نسبت به خودش چیزی تحویل بدهد
      ⇒ پیش‌پرواز باید سخت رد کند (خروجی ۱ + حکمِ مردود). */
   const bite = runBP(['--branch', 'main', '--json']);
-  let bj = null; try { bj = JSON.parse(bite.stdout); } catch (e) {}
+  let bj = null; try { bj = JSON.parse(bite.stdout); } catch (e) {/* intentional no-op */}
   chk('گاز: پیش‌پروازِ شاخهٔ بدون‌محتوا (main) سخت مردود است',
     bite.status === 1 && !!bj && bj.verdict === 'FAIL',
     'exit=' + bite.status + ' ' + String(bite.stdout + bite.stderr).slice(-160));

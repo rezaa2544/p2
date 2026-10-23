@@ -196,7 +196,7 @@ async function main() {
   /* ── N05-4: end-to-end through the live HTTP API ──────────────── */
   await test('N05-4: live API — unassigned edu_office gets 403 on a foreign region; assigned gets 200', async () => {
     const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-n04-'));
-    process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
+    process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
     fs.copyFileSync(path.join(__dirname, '..', 'server', 'data', 'payesh.json'), path.join(TMP, 'store.json'));
     process.env.PAYESH_STORE = path.join(TMP, 'store.json');
     process.env.PAYESH_AUDIT = path.join(TMP, 'audit.log');
@@ -220,7 +220,7 @@ async function main() {
     const req = async (p, { cookie } = {}) => {
       const res = await fetch(BASE + p, { headers: cookie ? { Cookie: cookie } : {} });
       let json = null;
-      try { json = await res.json(); } catch (e) {}
+      try { json = await res.json(); } catch (e) {/* intentional no-op */}
       return { status: res.status, json, headers: res.headers };
     };
     const login = async (phone, nationalId) => {
@@ -230,7 +230,7 @@ async function main() {
         body: JSON.stringify({ phone })
       });
       let scJson = null;
-      try { scJson = await sc.json(); } catch (e) {}
+      try { scJson = await sc.json(); } catch (e) {/* intentional no-op */}
       const code = (scJson && scJson.demo_code) || '123456';
       const r = await fetch(BASE + '/api/auth/login', {
         method: 'POST',

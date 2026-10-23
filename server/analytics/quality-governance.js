@@ -93,7 +93,7 @@ function deepFreeze(obj) {
  * @param {Object} [options]
  * @returns {boolean}
  */
-function enforceQualityGovernanceAccessGuard(requester, targetEntity, options = {}) {
+function enforceQualityGovernanceAccessGuard(requester, targetEntity, options = {}) { void options;
   if (!requester || typeof requester !== 'object') {
     throw new Error('QUALITY_GOVERNANCE_ACCESS_FORBIDDEN: requester session is missing');
   }

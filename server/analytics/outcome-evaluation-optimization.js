@@ -392,10 +392,10 @@ function updateOrganizationalLearningMemory(schoolMemory = {}, outcomeRecord = {
  */
 function generateOptimizationInsights(params = {}) {
   const schoolId = params.schoolId != null ? Number(params.schoolId) : 1;
-  const evaluations = params.evaluations || [];
-  const patterns = params.patterns || [];
+  const evaluations = params.evaluations || []; void evaluations;
+  const patterns = params.patterns || []; void patterns;
   const options = params.options || {};
-  const nowIso = options.timestamp || '2026-09-18T12:00:00.000Z';
+  const nowIso = options.timestamp || '2026-09-18T12:00:00.000Z'; void nowIso;
 
   const insights = [];
 

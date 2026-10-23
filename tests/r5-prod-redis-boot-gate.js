@@ -66,7 +66,7 @@ function bootShape(desc, env, ms) {
     env: full, stdio: ['ignore', 'pipe', 'pipe']
   });
   const out = String(r.stdout || '') + String(r.stderr || '');
-  try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {}
+  try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   return { status: r.status, signal: r.signal, out };
 }
 
@@ -90,9 +90,9 @@ async function bootAndWaitListen(desc, env, ms) {
     let log = '';
     p.stdout.on('data', (d) => (log += d));
     p.stderr.on('data', (d) => (log += d));
-    const t = setTimeout(() => { try { p.kill('SIGKILL'); } catch (e) {} resolve({ listened: /payesh-server \(phase 1/.test(log), log }); }, ms);
+    const t = setTimeout(() => { try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */} resolve({ listened: /payesh-server \(phase 1/.test(log), log }); }, ms);
     p.on('exit', (code) => { clearTimeout(t); resolve({ listened: /payesh-server \(phase 1/.test(log), exited: code, log }); });
-  }).finally(() => { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {} });
+  }).finally(() => { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 }
 
 (async function main() {

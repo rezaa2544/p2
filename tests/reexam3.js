@@ -46,7 +46,7 @@ const up = new Promise((res, rej) => {
   let done = false;
   const iv = setInterval(async () => {
     if (done) return;
-    try { const r = await http('GET', '/api/health'); if (r.status === 200) { done = true; clearInterval(iv); res(); } } catch {}
+    try { const r = await http('GET', '/api/health'); if (r.status === 200) { done = true; clearInterval(iv); res(); } } catch {/* intentional no-op */}
   }, 300);
   setTimeout(() => { if (!done) rej(new Error('سرور بالا نیامد: ' + out.slice(-300))); }, 12000);
 });

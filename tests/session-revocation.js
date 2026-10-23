@@ -127,7 +127,7 @@ function apiRequest(port, method, urlPath, body, cookie) {
       res.on('data', (c) => { b += c; });
       res.on('end', () => {
         let json = null;
-        try { json = JSON.parse(b); } catch (e) {}
+        try { json = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, json, setCookie: res.headers['set-cookie'] });
       });
     });
@@ -167,10 +167,10 @@ async function bootApp(port, tmp, extraEnv) {
     try {
       const r = await apiRequest(port, 'GET', '/api/health');
       if (r.status === 200) return child;
-    } catch (e) {}
+    } catch (e) {/* intentional no-op */}
     await sleep(250);
   }
-  try { child.kill('SIGKILL'); } catch (e) {}
+  try { child.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
   return null;
 }
 async function loginAs(port, u) {
@@ -210,19 +210,19 @@ async function httpGroup() {
     chk('H-d حذفِ حساب ← نشست می‌میرد', !!c2 && del.status === 200 && meDel.status === 401,
       'del=' + (del && del.status) + ' me=' + (meDel && meDel.status));
   } finally {
-    try { child.kill('SIGKILL'); } catch (e) {}
-    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+    try { child.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   }
 }
 
 /* ── DIST: دو نمونه + Redis واقعی ─────────────────────── */
 function findRedisServer() {
   const cands = ['/usr/bin/redis-server', '/usr/local/bin/redis-server'];
-  for (const c of cands) { try { if (fs.existsSync(c)) return c; } catch (e) {} }
+  for (const c of cands) { try { if (fs.existsSync(c)) return c; } catch (e) {/* intentional no-op */} }
   try {
     const w = cp.execSync('which redis-server', { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w && fs.existsSync(w)) return w;
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   return null;
 }
 async function startRedis() {
@@ -238,11 +238,11 @@ async function startRedis() {
   let ok = false;
   const t0 = Date.now();
   while (Date.now() - t0 < 10000) {
-    try { if ((await probe.ping()) === 'PONG') { ok = true; break; } } catch (e) {}
+    try { if ((await probe.ping()) === 'PONG') { ok = true; break; } } catch (e) {/* intentional no-op */}
     await sleep(250);
   }
-  try { probe.disconnect(); } catch (e) {}
-  if (!ok) { try { proc.kill('SIGKILL'); } catch (e) {} return null; }
+  try { probe.disconnect(); } catch (e) {/* intentional no-op */}
+  if (!ok) { try { proc.kill('SIGKILL'); } catch (e) {/* intentional no-op */} return null; }
   return { proc, url };
 }
 async function distGroup() {
@@ -274,10 +274,10 @@ async function distGroup() {
     chk('D-b خروج در A ← نشست در B می‌میرد (ابطالِ فوری)', meBdead.status === 401,
       'meB=' + meBdead.status);
   } finally {
-    try { A && A.kill('SIGKILL'); } catch (e) {}
-    try { B && B.kill('SIGKILL'); } catch (e) {}
-    try { ctx.proc.kill('SIGKILL'); } catch (e) {}
-    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+    try { A && A.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
+    try { B && B.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
+    try { ctx.proc.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   }
 }
 
@@ -297,7 +297,7 @@ async function distGroup() {
     failures.push('crash: ' + String((e && e.message) || e));
     console.log('  ❌ کرش: ' + String((e && e.stack) || e).slice(0, 400));
   }
-  try { await redis.close(); } catch (e) {}
+  try { await redis.close(); } catch (e) {/* intentional no-op */}
   console.log('\n' + '─'.repeat(52));
   console.log('جمع: ' + pass + ' موفق، ' + fail + ' ناموفق از ' + (pass + fail));
   if (failures.length) console.log('ناموفق‌ها: ' + failures.join(' | ').slice(0, 400));

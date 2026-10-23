@@ -300,11 +300,11 @@ function validateEngineCompatibility(engines, options = {}) {
  */
 function checkIntelligenceChainHealth(params = {}) {
   const outputs = params.engineOutputs || {};
-  const options = params.options || {};
+  const options = params.options || {}; void options;
   const issues = [];
 
   /* A-31 / I-04: حضورِ گره باید از خروجیِ واقعیِ موتورها بیاید — فال‌بکِ
-     `|| true` هر چهار گره را حتی بدونِ هیچ خروجی‌ای «حاضر» جا می‌زد و زنجیرهٔ
+     همیشه-درستِ پیشین هر چهار گره را حتی بدونِ هیچ خروجی‌ای «حاضر» جا می‌زد و زنجیرهٔ
      بی‌داده را سالم نشان می‌داد. */
   const nodes = {
     insight_engines_present: Boolean(outputs.schoolIntelligence || outputs.insights),

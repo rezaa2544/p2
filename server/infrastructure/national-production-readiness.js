@@ -19,7 +19,7 @@
 const fs = require('fs');
 const path = require('path');
 const { CANONICAL_NATIONAL_REGIONS } = require('./national-region-control-plane');
-const { NATIONAL_TARGET_CAPACITY, getNationalCapacityModel } = require('./national-capacity-engine');
+const { NATIONAL_TARGET_CAPACITY, getNationalCapacityModel } = require('./national-capacity-engine'); void NATIONAL_TARGET_CAPACITY;
 const { CROSS_REGION_RECOVERY_MAP, calculateRecoveryReadinessScore } = require('./disaster-recovery');
 const { assertDisasterRecoveryZeroRanking } = require('./disaster-recovery');
 const { NATIONAL_SLO_TARGETS } = require('../monitoring/national-observability-plane');

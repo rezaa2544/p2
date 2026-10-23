@@ -156,11 +156,11 @@ async function intGroup() {
     try {
       const r = await apiRequest(port, 'GET', '/api/health', {});
       if (r.status === 200) { bootOk = true; break; }
-    } catch (e) {}
+    } catch (e) {/* intentional no-op */}
     await new Promise((r) => setTimeout(r, 250));
   }
   chk('INT-0 بوت', bootOk);
-  if (!bootOk) { try { child.kill('SIGKILL'); } catch (e) {} return; }
+  if (!bootOk) { try { child.kill('SIGKILL'); } catch (e) {/* intentional no-op */} return; }
   try {
     const h = await apiRequest(port, 'GET', '/api/health', {});
     chk('INT-a سالم = clean + سقفِ ۱۰۰', h.headers['x-waf-verdict'] === 'clean' &&
@@ -190,7 +190,7 @@ async function intGroup() {
     }
     await new Promise((r) => setTimeout(r, 600));
     let auditTxt = '';
-    try { auditTxt = fs.readFileSync(auditP, 'utf8'); } catch (e) {}
+    try { auditTxt = fs.readFileSync(auditP, 'utf8'); } catch (e) {/* intentional no-op */}
     const wafLines = auditTxt.split('\n').filter((l) => l.indexOf('waf_detect') >= 0);
     const sqliLines = wafLines.filter((l) => l.indexOf('"rule":"sqli"') >= 0);
     const botLines = wafLines.filter((l) => l.indexOf('"rule":"badbot"') >= 0);
@@ -198,19 +198,19 @@ async function intGroup() {
     chk('INT-g2 ربات یک ممیزی دارد', botLines.length === 1, 'n=' + botLines.length);
     chk('INT-h ممیزی بدونِ PII', auditTxt.indexOf('NoLeak9') < 0 && auditTxt.indexOf("OR '1'='1") < 0);
   } finally {
-    try { child.kill('SIGKILL'); } catch (e) {}
-    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+    try { child.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   }
 }
 
 /* ── NGX (nginx واقعی یا پرشِ بلند) ─────────────────────────── */
 function findNginx() {
   const cands = ['/usr/sbin/nginx', '/usr/local/sbin/nginx', '/usr/bin/nginx', '/opt/nginx/sbin/nginx'];
-  for (const c of cands) { try { if (fs.existsSync(c)) return c; } catch (e) {} }
+  for (const c of cands) { try { if (fs.existsSync(c)) return c; } catch (e) {/* intentional no-op */} }
   try {
     const w = cp.execSync('which nginx', { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w && fs.existsSync(w)) return w;
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   return null;
 }
 function skips(names, why) { names.forEach((n) => console.log('  ⏭️  ' + n + ' — ' + why)); }
@@ -248,12 +248,12 @@ async function ngxGroup() {
     try {
       const r = await apiRequest(appPort, 'GET', '/api/health', {});
       if (r.status === 200) { appOk = true; break; }
-    } catch (e) {}
+    } catch (e) {/* intentional no-op */}
     await new Promise((r) => setTimeout(r, 250));
   }
   const stopAll = () => {
-    try { cp.spawnSync(ngx, ['-c', confP, '-p', tmp, '-s', 'stop'], { stdio: 'ignore' }); } catch (e) {}
-    try { child.kill('SIGKILL'); } catch (e) {}
+    try { cp.spawnSync(ngx, ['-c', confP, '-p', tmp, '-s', 'stop'], { stdio: 'ignore' }); } catch (e) {/* intentional no-op */}
+    try { child.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
   };
   if (!appOk) { skips(names, 'بوتِ اپ ناموفق'); stopAll(); return; }
   const st = cp.spawnSync(ngx, ['-c', confP, '-p', tmp], { stdio: 'pipe' });
@@ -275,12 +275,12 @@ async function ngxGroup() {
       try {
         const r = await apiRequest(ngxPort, 'GET', '/api/health?b=' + i, {});
         if (r.status === 200) n200++; else if (r.status === 429) n429++;
-      } catch (e) {}
+      } catch (e) {/* intentional no-op */}
     }
     chk('NGX-d سیلِ ۱۲۰: ۴۲۹ها + گذرهای محدود', n429 >= 80 && n200 >= 1 && n200 <= 40, '200=' + n200 + ' 429=' + n429);
   } finally {
     stopAll();
-    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   }
 }
 
@@ -300,7 +300,7 @@ async function ngxGroup() {
   try {
     const r = require('../server/redis.js');
     if (r && typeof r.close === 'function') await r.close();
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   console.log('\n' + '─'.repeat(52));
   console.log('جمع: ' + pass + ' موفق، ' + fail + ' ناموفق از ' + (pass + fail));
   if (failures.length) console.log('ناموفق‌ها: ' + failures.join(' | ').slice(0, 400));

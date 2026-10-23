@@ -250,6 +250,37 @@ function tmpDir(name) {
       'no non-empty-items requirement');
   }
 
+  /* ── C9: strict-verification-gate G7 path-scoped allowlist & live detection ── */
+  {
+    const allow = JSON.parse(fs.readFileSync(path.join(ROOT, 'docs', 'verification', 'FALSE_GREEN_ALLOWLIST.json'), 'utf8'));
+    const items = Array.isArray(allow.items) ? allow.items : [];
+    const blanket = items.filter((a) => typeof a.path !== 'string' || !a.path.trim());
+    chk('C9 no blanket repo-wide allowlist entry exists (every entry has explicit path)',
+      blanket.length === 0, JSON.stringify(blanket));
+    const missingTargets = items.filter((a) => !fs.existsSync(path.join(ROOT, a.path)) || !fs.existsSync(path.join(ROOT, a.replacement_test)));
+    chk('C9 every allowlist path and replacement_test exists on disk (' + items.length + ' entries)',
+      missingTargets.length === 0, JSON.stringify(missingTargets.slice(0, 5)));
+    const gateClean = run(`"${NODE}" "tools/strict-verification-gate.js"`, {
+      env: Object.assign({}, process.env, { GITHUB_EVENT_NAME: 'pull_request' })
+    });
+    const okG7 = (gateClean.out.match(/^\s*OK G7 .+ has no unapproved hits/gm) || []).length;
+    const failG6G7 = (gateClean.out.match(/^\s*FAIL G(?:6|7)\b/gm) || []).length;
+    chk('C9 all 7/7 G7 false-green pattern classes pass with zero G6/G7 failures',
+      okG7 === 7 && failG6G7 === 0, 'okG7=' + okG7 + ' failG6G7=' + failG6G7);
+    const probePath = path.join(ROOT, 'tests', '__fg_unapproved_probe__.tmp.js');
+    try {
+      fs.writeFileSync(probePath, "const assert = require('assert');\nassert(" + 'true);\n');
+      const gateDirty = run(`"${NODE}" "tools/strict-verification-gate.js"`, {
+        env: Object.assign({}, process.env, { GITHUB_EVENT_NAME: 'pull_request' })
+      });
+      chk('C9 unapproved new file with false-green pattern fails G7 closed immediately',
+        gateDirty.code !== 0 && /FAIL G7 assert\(true has no unapproved hits/.test(gateDirty.out),
+        gateDirty.out.slice(0, 200));
+    } finally {
+      try { fs.unlinkSync(probePath); } catch (_cleanupErr) { void _cleanupErr; }
+    }
+  }
+
   /* ── CONTROL: a genuine suite must be accepted ──────────────────── */
   {
     const r = run(`"${NODE}" "tests/g6-migration-022-down.test.js"`);

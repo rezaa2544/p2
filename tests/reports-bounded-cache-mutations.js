@@ -148,7 +148,7 @@ for (const m of mutations) {
   }
   for (const k of Object.keys(FILES)) {
     const mcopy = kit.mutant(FILES[k], texts[k]); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-    try { fs.chmodSync(mcopy, fs.statSync(FILES[k]).mode); } catch (_) {}
+    try { fs.chmodSync(mcopy, fs.statSync(FILES[k]).mode); } catch (_) {/* intentional no-op */}
   }
   /* کلاینت داخل index.html زندگی می‌کند — rebuild لازم */
   cp.execFileSync(process.execPath, [path.join(ROOT, 'build.js')], { stdio: 'ignore', env: kit.env() });

@@ -37,7 +37,7 @@
 # and the SARIF upload step is always `skipped`, so Codacy currently yields no security
 # signal in either direction.
 #
-# Deliberately NOT done: no `continue-on-error`, no `|| true`, no step removal. Making
+# Deliberately NOT done: no `continue-on-error`, no shell exit-code masking, no step removal. Making
 # this red job artificially green would manufacture exactly the fake-green this audit
 # exists to prevent. It stays red and honest until an owner decides.
 # See docs/audit/F-QA-04_SCANNER_GOVERNANCE_DOSSIER.md for the full evidence and options.

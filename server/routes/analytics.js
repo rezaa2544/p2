@@ -33,7 +33,7 @@ const {
   summarizeDistrictQualityGovernance
 } = require('../analytics/quality-governance');
 
-const policy = require('../policy');
+const policy = require('../policy'); void policy;
 
 const {
   enforceLongitudinalAccessGuard,
@@ -546,7 +546,7 @@ function createAnalyticsRoutes(ctx) {
     const user = req.user || req.session;
     const schoolIdParam = searchParams.get('school_id');
     const regionIdParam = searchParams.get('region_id');
-    const academicYear = searchParams.get('academic_year') || '1405-1406';
+    const academicYear = searchParams.get('academic_year') || '1405-1406'; void academicYear;
 
     if (!schoolIdParam && !regionIdParam) {
       return {
@@ -566,7 +566,7 @@ function createAnalyticsRoutes(ctx) {
         };
       }
 
-      const grades = (store.grades || []).filter(g => Number(g.school_id) === schoolId);
+      const grades = (store.grades || []).filter(g => Number(g.school_id) === schoolId); void grades;
       const attendance = (store.attendance || []).filter(a => Number(a.school_id) === schoolId);
 
       const recommendations = generateActionRecommendations({

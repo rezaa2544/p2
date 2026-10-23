@@ -71,5 +71,5 @@ server.listen(0, async () => {
     console.log('RESP:{"err":' + JSON.stringify(String(e && e.message || e)) + '}');
     finish();
   }
-  function finish(){ try{ server.close(); }catch(e){} process.exit(0); }
+  function finish(){ try{ server.close(); }catch(e){/* intentional no-op */} process.exit(0); }
 });

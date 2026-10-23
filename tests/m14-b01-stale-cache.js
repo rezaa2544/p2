@@ -168,7 +168,7 @@ const l2key = (uid) => `payesh:cache:bootstrap:${uid}`;
     await cache.setBootstrapCache(7005, payload(7005, 4, 'teacher', 'OK5'), 300);
     L1().clear();
     fake.broken = true;
-    try { await cache.invalidateUser(7004); } catch (e) {}
+    try { await cache.invalidateUser(7004); } catch (e) {/* intentional no-op */}
     chk('B4a فقط کاربرِ معوق ثبت شد (نه all)', B().users === 1 && !B().all, 'users=' + B().users + ' all=' + B().all);
     fake.broken = false;
     const other = await cache.getBootstrapCache(7005);
@@ -180,11 +180,11 @@ const l2key = (uid) => `payesh:cache:bootstrap:${uid}`;
     await cache.setBootstrapCache(7007, payload(7007, 6, 'teacher', 'Y'), 300);
     await cache.setBootstrapCache(7008, payload(7008, 7, 'teacher', 'Z'), 300);
     fake.broken = true;
-    try { await cache.invalidateSchool(5); } catch (e) {}
+    try { await cache.invalidateSchool(5); } catch (e) {/* intentional no-op */}
     chk('B5a L1ِ مدرسه در قطعی پاک شد', L1().has(7006) === false);
-    try { await cache.invalidateUser(7007); } catch (e) {}
+    try { await cache.invalidateUser(7007); } catch (e) {/* intentional no-op */}
     chk('B5b L1ِ کاربر در قطعی پاک شد', L1().has(7007) === false);
-    try { await cache.invalidateCollection('subjects'); } catch (e) {}
+    try { await cache.invalidateCollection('subjects'); } catch (e) {/* intentional no-op */}
     chk('B5c L1ِ سراسری در قطعی پاک شد', L1().has(7008) === false);
     fake.broken = false;
 
@@ -192,7 +192,7 @@ const l2key = (uid) => `payesh:cache:bootstrap:${uid}`;
     B().clear();
     fake.broken = true;
     for (let i = 8000; i < 8000 + 2002; i++) {
-      try { await cache.invalidateUser(i); } catch (e) {}
+      try { await cache.invalidateUser(i); } catch (e) {/* intentional no-op */}
     }
     chk('B6a قطعیِ طولانی به all تشدید کرد (کران‌دار شدنِ حافظه)', B().all === true, 'all=' + B().all);
     const esc = await cache.getBootstrapCache(99999);   /* کاربرِ ناشناخته */

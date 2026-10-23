@@ -14,7 +14,7 @@ async function recoverCode(infra, phone) {
     const raw = infra.redis(['get', 'payesh:otp:state']);
     if (raw && !raw.startsWith('ERR') && raw !== '(nil)' && raw !== '') {
       try { const d = JSON.parse(raw); const r = d.codes && d.codes[phone];
-        if (r && r.h) for (let n = 100000; n < 1000000; n++) if (sha256(String(n) + '|' + phone) === r.h) return String(n); } catch (e) {}
+        if (r && r.h) for (let n = 100000; n < 1000000; n++) if (sha256(String(n) + '|' + phone) === r.h) return String(n); } catch (e) {/* intentional no-op */}
     }
     await sleep(90);
   }

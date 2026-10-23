@@ -96,9 +96,9 @@ for (const m of MUTS) {
   for (const f of active) {
     const abs = path.join(ROOT, f);
     const mcopy = kit.mutant(abs, byFile.get(f)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-    try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {}
+    try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {/* intentional no-op */}
   }
-  try { execFileSync('node', ['build.js'], { stdio: 'pipe', cwd: ROOT, env: kit.env() }); } catch (e) {}
+  try { execFileSync('node', ['build.js'], { stdio: 'pipe', cwd: ROOT, env: kit.env() }); } catch (e) {/* intentional no-op */}
   let out = '', crashed = false;
   try { execFileSync('node', [SUITE], { stdio: 'pipe', timeout: 180000, cwd: ROOT, env: kit.env() }); out = 'PASSED'; }
   catch (e) {
@@ -119,7 +119,7 @@ for (const m of MUTS) {
   else console.log('  SURVIVED! ' + m.name);
 }
 let backGreen = false;
-  try { execFileSync('node', [SUITE], { stdio: 'pipe', timeout: 180000 }); backGreen = true; } catch (e) {}
+  try { execFileSync('node', [SUITE], { stdio: 'pipe', timeout: 180000 }); backGreen = true; } catch (e) {/* intentional no-op */}
 console.log('offline-e2e-mutations: ' + killed + '/' + MUTS.length + ' killed'
   + (envFails ? ' (+' + envFails + ' crashed)' : '') + ', baseline-green=' + backGreen);
 process.exit((killed + envFails) === MUTS.length && backGreen ? 0 : 1);

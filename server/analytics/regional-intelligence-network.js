@@ -146,7 +146,7 @@ function summarizeRegionalHealth(context = {}) {
  * @param {Object} [options]
  * @returns {Array<Object>} ResourceNeeds
  */
-function calculateRegionalNeeds(snapshot = {}, options = {}) {
+function calculateRegionalNeeds(snapshot = {}, options = {}) { void options;
   const schools = Array.isArray(snapshot.schools) ? snapshot.schools : [];
   const needs = [];
 
@@ -244,7 +244,7 @@ function calculateRegionalNeeds(snapshot = {}, options = {}) {
  * @param {Object} [options]
  * @returns {Array<Object>} RegionalPatterns
  */
-function detectRegionalPatterns(snapshot = {}, options = {}) {
+function detectRegionalPatterns(snapshot = {}, options = {}) { void options;
   const schools = Array.isArray(snapshot.schools) ? snapshot.schools : [];
   const patterns = [];
 

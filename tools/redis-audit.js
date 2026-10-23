@@ -43,7 +43,7 @@ async function audit(redis) {
 
   for (const key of keys.sort()) {
     let ttlSec = -2;
-    try { ttlSec = await redis.ttl(key); } catch (e) {}
+    try { ttlSec = await redis.ttl(key); } catch (e) {/* intentional no-op */}
     const spec = classifyKey(key);
     const row = {
       key,
@@ -100,7 +100,7 @@ if (require.main === module) {
       process.exit(2);
     }
     console.log('وضعیت سالم است ✅');
-    try { await redis.close(); } catch (e) {}
+    try { await redis.close(); } catch (e) {/* intentional no-op */}
     process.exit(0);
   }).catch((e) => { console.error('خطا:', e.message); process.exit(1); });
 }

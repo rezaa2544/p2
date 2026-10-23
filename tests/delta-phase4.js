@@ -183,7 +183,7 @@ await test('BP6 کلاینت (jsdom): 429 ← opها pending می‌مانند �
           w.__attempts += 1;
           if (w.__mode === 'bp429')
             return Promise.resolve(jres({ ok: false, code: 'sync_backpressure', retry_after_s: 3 }, 429));
-          let body = null; try { body = o && o.body ? JSON.parse(o.body) : null; } catch (e) {}
+          let body = null; try { body = o && o.body ? JSON.parse(o.body) : null; } catch (e) {/* intentional no-op */}
           const ops = (body && body.ops) || [];
           return Promise.resolve(jres({ results: ops.map(op => ({ uid: op.uid, ok: true })) }, 200));
         }

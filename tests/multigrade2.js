@@ -20,7 +20,7 @@ const assert = require('assert');
 
 const ROOT = path.join(__dirname, '..');
 // hardening: rebuild base index.html (a previously crashed mutation suite may have left a mutated build)
-try { require('child_process').execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
+try { require('child_process').execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {/* intentional no-op */}
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
 let seq = Promise.resolve();
@@ -188,6 +188,6 @@ setTimeout(async () => {
   const bad = results.filter(r => !r[1]).length;
   console.log(`\nmultigrade2 (کلاسِ چندپایه): ${results.length} بررسی — ✅ ${results.length - bad} · ❌ ${bad}`);
 // hardening: rebuild base index.html (a previously crashed mutation suite may have left a mutated build)
-try { require('child_process').execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
+try { require('child_process').execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {/* intentional no-op */}
   process.exit(bad ? 1 : 0);
 }, 300);

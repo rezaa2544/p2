@@ -21,7 +21,7 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-n34-'));
-process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 
 const T_STORE = path.join(TMP, 'store.json');
 fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), T_STORE);

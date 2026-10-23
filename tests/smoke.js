@@ -46,7 +46,7 @@ function test(name, fn) {
       () => { pass++; console.log(`  ✅ ${name}`); },
       (e) => { fail++; errors.push(`${name}: ${e.message}`); console.log(`  ❌ ${name}\n     ${e.message}`); }
     ).then(() => {
-      if (typeof gc === 'function') gc();
+      if (typeof global.gc === 'function') global.gc();
       /* jsdom رویدادهای storage را با setTimeout مؤخّر می‌کند و تا شلوغیِ
          تایمر، رشته‌هایِ قدیمی/تازهٔ setItem در صف زنده می‌مانند. مرورگرِ
          واقعی میانِ هر کنش، چرخهٔ رویداد را می‌چرخاند؛ اینجا هم بعد از
@@ -1607,7 +1607,7 @@ test('batch تودرتو و استثنا پرچم را گیر نمی‌اندا�
   W("batchWrites(function(){insert('student_archive',{school_id:1,student_id:1,full_name:'n1',year_code:'x'});"
     + "batchWrites(function(){insert('student_archive',{school_id:1,student_id:2,full_name:'n2',year_code:'x'});});})");
   assert(W('log.length') - l0 === 2, 'batch تودرتو نادرست');
-  try{ W("batchWrites(function(){throw new Error('boom');})"); }catch(e){}
+  try{ W("batchWrites(function(){throw new Error('boom');})"); }catch(e){/* intentional no-op */}
   assert(W('_BATCH_DEPTH') === 0, 'عمق batch پس از استثنا صفر نشد');
   assert(W("JSON.parse(localStorage.getItem(LOG_KEY)).length===log.length"), 'پس از استثنا ناهمگام شد');
 });
@@ -7958,7 +7958,7 @@ test('R95 بند ۲.۵: نسخه‌گذاریِ لایهٔ محلی (insert→۱
     try {
       if (gid) W(`remove('grades',${gid})`);
       if (aid) W(`remove('announcements',${aid})`);
-    } catch (cle) {}
+    } catch (cle) {/* intentional no-op */}
     W(`S.user=${prev === 'null' ? 'null' : `byId('users',${prev})`};S.persona=null;`);
   }
 });

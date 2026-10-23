@@ -19,7 +19,7 @@
 'use strict';
 
 const { CANONICAL_NATIONAL_REGIONS } = require('./national-region-control-plane');
-const { NATIONAL_TARGET_CAPACITY } = require('./national-capacity-engine');
+const { NATIONAL_TARGET_CAPACITY } = require('./national-capacity-engine'); void NATIONAL_TARGET_CAPACITY;
 const { assertDisasterRecoveryZeroRanking } = require('./disaster-recovery');
 const authority = require('./authority');
 

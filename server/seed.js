@@ -86,7 +86,7 @@ function saveDb(db) {
   /* Wave 24 (KPI-3): قالبِ ASCII-escaped — پارسِ بوتِ سرور سریع‌تر */
   fs.writeFileSync(tmp, require('./json-fast').stringifyAscii(db), { encoding: 'utf8', mode: 0o600 }); /* PII — owner-only (S-73-3) */
   fs.renameSync(tmp, OUT);
-  try { fs.chmodSync(OUT, 0o600); } catch (e) {}
+  try { fs.chmodSync(OUT, 0o600); } catch (e) {/* intentional no-op */}
   const kb = (Buffer.byteLength(JSON.stringify(db), 'utf8') / 1024).toFixed(0);
   console.log('✅ store written: ' + OUT + '  (' + kb + ' KB)');
   console.log('   users: ' + db.users.length +

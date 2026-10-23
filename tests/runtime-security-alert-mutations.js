@@ -33,7 +33,7 @@ try {
     if (!original[mutant.file].includes(mutant.from)) throw new Error('Mutation anchor missing: ' + mutant.name);
     const source = original[mutant.file];
     const mcopy = kit.mutant(file, mutant.all ? source.split(mutant.from).join(mutant.to) : source.replace(mutant.from, mutant.to)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-    try { fs.chmodSync(mcopy, fs.statSync(file).mode); } catch (_) {}
+    try { fs.chmodSync(mcopy, fs.statSync(file).mode); } catch (_) {/* intentional no-op */}
     if (prevAbs && prevAbs !== file) kit.clear(prevAbs); /* فایل‌های متناوب: فقط جهشِ جاری فعال */
     prevAbs = file;
     const result = execute(mutant.suite, kit.env());

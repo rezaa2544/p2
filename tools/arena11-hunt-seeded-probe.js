@@ -13,7 +13,7 @@ async function recoverCode(infra, phone) {
     const raw = infra.redis(['get', 'payesh:otp:state']);
     if (raw && !raw.startsWith('ERR') && raw !== '(nil)' && raw !== '') {
       try { const d = JSON.parse(raw); const r = d.codes && d.codes[phone];
-        if (r && r.h) for (let n = 100000; n < 1000000; n++) if (sha256(String(n) + '|' + phone) === r.h) return String(n); } catch (e) {}
+        if (r && r.h) for (let n = 100000; n < 1000000; n++) if (sha256(String(n) + '|' + phone) === r.h) return String(n); } catch (e) {/* intentional no-op */}
     }
     await sleep(90);
   }
@@ -41,7 +41,7 @@ async function login(port, infra, phone, nid) {
 
   /* HF6 teacher students (with seeds) */
   const tList = await L.httpReq(api.port, 'GET', '/api/v1/students', null, { jar: teacher.jar });
-  let tIds = []; try { tIds = ((tList.json && tList.json.data) || []).map((x) => x.id); } catch (e) {}
+  let tIds = []; try { tIds = ((tList.json && tList.json.data) || []).map((x) => x.id); } catch (e) {/* intentional no-op */}
   const taught = (st.schedule || []).filter((s) => s.teacher_id === 6).map((s) => s.class_id);
   const enr = (st.enrollments || []).filter((e) => taught.includes(e.class_id)).map((e) => e.student_id);
   const expect = new Set(enr);
@@ -57,7 +57,7 @@ async function login(port, infra, phone, nid) {
     const st1 = await L.httpReq(api.port, 'PATCH', '/api/v1/classes/' + cid, { base_version: 1, name: 'hunt-stale' }, { jar: mgr.jar });
     console.log('HF11 stale PATCH:', st1.status, JSON.stringify(st1.json).slice(0, 100));
     const cf = await L.httpReq(api.port, 'GET', '/api/sync/conflicts', null, { jar: mgr.jar });
-    let cfs = []; try { cfs = (cf.json && cf.json.conflicts) || []; } catch (e) {}
+    let cfs = []; try { cfs = (cf.json && cf.json.conflicts) || []; } catch (e) {/* intentional no-op */}
     const foreign = cfs.filter((c) => c.school_id != null && Number(c.school_id) !== 1).length;
     console.log('HF11 conflicts: status=' + cf.status, 'n=' + cfs.length, 'foreign=' + foreign);
   }
@@ -71,10 +71,10 @@ async function login(port, infra, phone, nid) {
       plCount = (b.collections.parent_links || []).length;
       schoolIds = (b.collections.schools || []).map((s) => s.id);
     }
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   console.log('HF13 parent pull: status=' + pull.status, 'parent_links_exposed=' + plCount, 'schools=' + JSON.stringify(schoolIds));
   const pullMgr = await L.httpReq(api.port, 'GET', '/api/v1/pull?collections=schools', null, { jar: mgr.jar });
-  let mgrSchools = []; try { mgrSchools = (pullMgr.json && pullMgr.json.collections && pullMgr.json.collections.schools || []).map((s) => s.id); } catch (e) {}
+  let mgrSchools = []; try { mgrSchools = (pullMgr.json && pullMgr.json.collections && pullMgr.json.collections.schools || []).map((s) => s.id); } catch (e) {/* intentional no-op */}
   console.log('HF13 manager pull schools:', JSON.stringify(mgrSchools));
 
   /* HF14 cross-school student by id (manager) */

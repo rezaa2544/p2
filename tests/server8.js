@@ -38,7 +38,7 @@ function httpReq(port, method, p, body, jar) {
       res.on('data', (d) => (b += d));
       res.on('end', () => {
         if (jar) jar.absorb(res.headers);
-        let j = null; try { j = JSON.parse(b); } catch (e) {}
+        let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, headers: res.headers, json: j, raw: b });
       });
     });
@@ -66,7 +66,7 @@ function makeJar() {
 async function main() {
   console.log('\n▸ پشتیبان‌گیری و بازیابی (OPEN_ITEMS 2.4)');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-s8-'));
-process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} }); /* پاک‌سازیِ tmp تا /tmp پر نشود */
+process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} }); /* پاک‌سازیِ tmp تا /tmp پر نشود */
   const storeFile = path.join(tmp, 'payesh.json');
   fs.copyFileSync(path.join(ROOT, 'server/data/payesh.json'), storeFile);
   const keyFile = path.join(tmp, 'jwt.key');
@@ -133,7 +133,7 @@ process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }
   const b1 = await httpReq(port, 'POST', '/api/admin/backup', {}, saJar);
   const dirFiles0 = fs.existsSync(backupsDir) ? fs.readdirSync(backupsDir) : [];
   let parsed = null;
-  try { parsed = JSON.parse(fs.readFileSync(path.join(backupsDir, b1.json && b1.json.file), 'utf8')); } catch (e) {}
+  try { parsed = JSON.parse(fs.readFileSync(path.join(backupsDir, b1.json && b1.json.file), 'utf8')); } catch (e) {/* intentional no-op */}
   chk('B2a backup: 200 + فایل روی disk با اندازه', b1.status === 200 && b1.json && b1.json.ok === true &&
     typeof b1.json.file === 'string' && b1.json.size > 1000, b1.raw);
   chk('B2b اسنپ‌شات فقط‌داده است (بدون __*) و users کامل',

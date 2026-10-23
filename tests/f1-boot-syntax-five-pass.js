@@ -31,7 +31,7 @@ async function request(pathStr, port = PORT) {
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         let json = null;
-        try { json = JSON.parse(data); } catch (e) {}
+        try { json = JSON.parse(data); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, headers: res.headers, body: data, json });
       });
     });
@@ -71,7 +71,7 @@ async function runPass1_Functional() {
           booted = true;
           break;
         }
-      } catch (e) {}
+      } catch (e) {/* intentional no-op */}
     }
     assert(booted, 'Server failed to start and respond to /api/health');
     log(1, 'Assertion 1.2 PASSED: Server booted and responded 200 OK to /api/health');
@@ -161,7 +161,7 @@ async function runPass4_ConcurrencyChaosRecovery() {
       try {
         const h = await request('/api/health');
         if (h.status === 200) { booted = true; break; }
-      } catch (e) {}
+      } catch (e) {/* intentional no-op */}
     }
     assert(booted, 'Server failed to start');
 
@@ -186,7 +186,7 @@ async function runPass4_ConcurrencyChaosRecovery() {
     log(4, `Assertion 4.2 PASSED: Graceful SIGTERM shutdown finished in ${elapsed}ms (budget 10000ms).`);
 
   } finally {
-    try { serverProc.kill('SIGKILL'); } catch (e) {}
+    try { serverProc.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
   }
 
   log(4, 'PASS 4 (Concurrency/Chaos/Recovery): VERIFIED');

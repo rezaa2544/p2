@@ -367,7 +367,7 @@ async function run(opts) {
       }
     }
   } finally {
-    try { await client.end(); } catch (e) {}
+    try { await client.end(); } catch (e) {/* intentional no-op */}
   }
   if (!opts.quiet) console.log('[psql-min] ' + n + ' statements executed');
 }

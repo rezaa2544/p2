@@ -86,7 +86,7 @@ function gate1(){
       const wpj = JSON.parse(fs.readFileSync(path.join(ROOT, 'authz/write-perms.json'), 'utf8'));
       ops = Object.keys(wpj.ops || {}).length;
       actions = Object.keys(wpj.actions || {}).length;
-    }catch(e){}
+    }catch(e){/* intentional no-op */}
     row(1, '1.2', 'مجوزدهی متمرکز سطح فیلد', r.code === 0 && wp ? 'VERIFIED' : 'FAILED',
       '`node tools/check-authz.js` = ' + (r.code === 0 ? '۰ ناهمخوانی' : 'خروجی ' + r.code) + ' · write-perms: ' + ops + ' مجموعه · ' + actions + ' اکشنِ نویسنده');
   }

@@ -137,7 +137,7 @@ async function main() {
 
   console.log('ics: ' + okc + ' pass / ' + failc + ' fail');
   if (failc) { console.log('FAILURES:'); fails.forEach(f => console.log(' - ' + f)); }
-  try { dom.window.close(); } catch (e) {}
+  try { dom.window.close(); } catch (e) {/* intentional no-op */}
   process.exit(failc ? 1 : 0);
 }
 main().catch(e => { console.error('FATAL', e); process.exit(1); });

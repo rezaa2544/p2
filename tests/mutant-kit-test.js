@@ -148,7 +148,7 @@ const kit = session('kit-selftest-');
 }
 
 kit.cleanup();
-try { fs.rmSync(box, { recursive: true, force: true }); } catch (_) {}
+try { fs.rmSync(box, { recursive: true, force: true }); } catch (_) {/* intentional no-op */}
 
 console.log('\\nmutant-kit-test: ' + pass + '/' + total + ' موفق' + (fail ? ' — ' + fail + ' شکست ❌' : ' — بدون خطا ✅'));
 process.exit(fail ? 1 : 0);

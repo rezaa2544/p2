@@ -64,7 +64,7 @@ function bootServer(env, timeoutMs) {
       PORT: String(39200 + Math.floor(Math.random() * 400))
     }, env)
   });
-  try { fs.rmSync(t.dir, { recursive: true, force: true }); } catch (e) {}
+  try { fs.rmSync(t.dir, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   return { status: r.status, signal: r.signal, out: String(r.stdout || '') + String(r.stderr || '') };
 }
 

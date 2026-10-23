@@ -262,7 +262,7 @@ async function pgQ(connStr, sql, params) {
 
 async function freshDb() {
   try { await pgQ(ADMIN_URL, `DROP DATABASE IF EXISTS ${DB_NAME} WITH (FORCE)`); }
-  catch (e) { try { await pgQ(ADMIN_URL, `DROP DATABASE IF EXISTS ${DB_NAME}`); } catch (_) {} }
+  catch (e) { try { await pgQ(ADMIN_URL, `DROP DATABASE IF EXISTS ${DB_NAME}`); } catch (_) {/* intentional no-op */} }
   await pgQ(ADMIN_URL, `CREATE DATABASE ${DB_NAME}`);
   const { Client } = require('pg');
   const c = new Client({ connectionString: DB_URL });
@@ -337,7 +337,7 @@ async function partB() {
       headers: Object.assign(body ? { 'Content-Type': 'application/json' } : {}, cookie ? { Cookie: cookie } : {}),
       body: body ? JSON.stringify(body) : undefined
     });
-    let json = null; try { json = await res.json(); } catch (e) {}
+    let json = null; try { json = await res.json(); } catch (e) {/* intentional no-op */}
     return { status: res.status, json, headers: res.headers };
   };
   /* آمادگیِ زیرساخت: اتصالِ پستگرس (hydrate) و ردیس هر دو ناهمگام‌اند */
@@ -446,7 +446,7 @@ async function partB() {
       });
     }
   } finally {
-    try { server.close(); } catch (e) {}
+    try { server.close(); } catch (e) {/* intentional no-op */}
   }
 }
 

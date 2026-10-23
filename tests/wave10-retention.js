@@ -110,7 +110,7 @@ const run = (cmd, args) => new Promise((res) => {
   } catch (e) { chk('R5 سیاست', false, String(e.message).slice(0, 140)); }
 
   /* پاک‌سازی برای اجرای دوباره */
-  try { await live.query('DROP TABLE IF EXISTS grades, attendance, grades_old, attendance_old, schools, users, classes, subjects CASCADE'); } catch (e) {}
+  try { await live.query('DROP TABLE IF EXISTS grades, attendance, grades_old, attendance_old, schools, users, classes, subjects CASCADE'); } catch (e) {/* intentional no-op */}
   await live.end();
 
   console.log('\n────────────────────────────────────────────');

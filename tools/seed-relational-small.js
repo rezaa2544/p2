@@ -170,7 +170,7 @@ async function applyMigrations(client) {
       /* a migration wraps itself in BEGIN;…COMMIT;, so an error inside it
          leaves the connection in "current transaction is aborted" and every
          later file would fail with commands-ignored. Clear it. */
-      try { await client.query('ROLLBACK'); } catch (e2) {}
+      try { await client.query('ROLLBACK'); } catch (e2) {/* intentional no-op */}
       if (/already exists/i.test(msg) || /ALREADY_APPLIED/.test(msg))
         results.push({ file: f, status: 'already_exists', detail: msg });  /* ALREADY_APPLIED = sentinel of an idempotent-skip migration (see 012) */
       else results.push({ file: f, status: 'failed', detail: msg });
@@ -504,7 +504,7 @@ async function main() {
     }
     console.log('OK');
   } finally {
-    try { await client.end(); } catch (e) {}
+    try { await client.end(); } catch (e) {/* intentional no-op */}
   }
 }
 

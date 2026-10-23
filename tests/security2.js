@@ -35,7 +35,7 @@ function httpReq(port, method, p, body, cookie, extraHeaders) {
       let b = '';
       res.on('data', (d) => (b += d));
       res.on('end', () => {
-        let j = null; try { j = JSON.parse(b); } catch (e) {}
+        let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, headers: res.headers, json: j, raw: b, setCookie: res.headers['set-cookie'] });
       });
     });
@@ -57,7 +57,7 @@ async function login(port, phone, nid, wrongNid) {
 async function main() {
   console.log('\n▸ دور ۷۳ — پایش امنیتیِ سرور (زنده)');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-sec2-'));
-  process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} });
+  process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
   const storeFile = path.join(tmp, 'payesh.json');
   fs.copyFileSync(path.join(ROOT, 'server/data/payesh.json'), storeFile);
   const keyFile = path.join(tmp, 'jwt.key');

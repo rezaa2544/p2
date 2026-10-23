@@ -58,7 +58,7 @@ function checkMutation(m) {
     return false;
   }
   const mcopy = kit.mutant(file, original.replace(m.from, m.to)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-  try { fs.chmodSync(mcopy, fs.statSync(file).mode); } catch (_) {}
+  try { fs.chmodSync(mcopy, fs.statSync(file).mode); } catch (_) {/* intentional no-op */}
   try {
     const result = runAudit(kit.env());
     void mcopy;
@@ -70,7 +70,7 @@ function checkMutation(m) {
     kit.clear(file);
     /* سوئیتِ a11y دایرکتوریِ src/js را با readdirSync اسکن می‌کند — کپیِ هم‌جوارِ
        جهشِ قبلی نباید در اجرایِ جهش‌های بعدی/پایه دیده شود؛ همان‌جا حذف می‌شود. */
-    try { fs.unlinkSync(mcopy); } catch (_) {}
+    try { fs.unlinkSync(mcopy); } catch (_) {/* intentional no-op */}
   }
 }
 

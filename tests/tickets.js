@@ -77,7 +77,7 @@ async function main() {
   chk('T7 empty title rejected', W('db.support_tickets.length') === n0);
   A('ticket-new', 'null', 'null');
   W('document.getElementById("tk_title").value="بد";document.getElementById("tk_pri").value="urgent";');
-  try { A('ticket-save', 'null', 'null'); } catch (e) {}
+  try { A('ticket-save', 'null', 'null'); } catch (e) {/* intentional no-op */}
   chk('T8 bad priority rejected', W('db.support_tickets.length') === n0);
 
   // ── تغییر وضعیت (سوپرادمین) ──
@@ -86,7 +86,7 @@ async function main() {
   W('adminActions(null,{dataset:{s:"closed"}},' + S.tA + ',"ticket-status",' + S.tA + ')["ticket-status"]();');
   chk('T9a status changed', W('byId("support_tickets",' + S.tA + ').status') === 'closed');
   chk('T9b updated bumped', W('byId("support_tickets",' + S.tA + ').updated_at') === W('todayISO()'));
-  try { W('adminActions(null,{dataset:{s:"bogus"}},' + S.tA + ',"ticket-status",' + S.tA + ')["ticket-status"]();'); } catch (e) {}
+  try { W('adminActions(null,{dataset:{s:"bogus"}},' + S.tA + ',"ticket-status",' + S.tA + ')["ticket-status"]();'); } catch (e) {/* intentional no-op */}
   chk('T10 bad status rejected', W('byId("support_tickets",' + S.tA + ').status') === 'closed');
 
   // ── گیت نقش ──
@@ -97,7 +97,7 @@ async function main() {
 
   console.log('tickets: ' + okc + ' pass / ' + failc + ' fail');
   if (failc) { console.log('FAILURES:'); fails.forEach(f => console.log(' - ' + f)); }
-  try { dom.window.close(); } catch (e) {}
+  try { dom.window.close(); } catch (e) {/* intentional no-op */}
   process.exit(failc ? 1 : 0);
 }
 main().catch(e => { console.error('FATAL', e); process.exit(1); });

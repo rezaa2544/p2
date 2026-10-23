@@ -71,7 +71,7 @@ function main() {
     fs.copyFileSync(TMP_STORE, STORE);
     fs.chmodSync(STORE, 0o600);
   } finally {
-    try { fs.unlinkSync(TMP_STORE); } catch (e) {}
+    try { fs.unlinkSync(TMP_STORE); } catch (e) {/* intentional no-op */}
   }
 
   console.log('\nsecurity_seed: ' + pass + ' ✅ / ' + fail + ' ❌');

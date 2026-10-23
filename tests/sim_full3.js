@@ -67,7 +67,7 @@ function opReal(user, spec) {
 async function main() {
   console.log('\n▸ T0/T1 — بوتِ سرور روی store موقت');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-sim3-'));
-  process.on('exit', () => { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {} });
+  process.on('exit', () => { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
   const store = path.join(dir, 'store.json');
   const seed = path.join(ROOT, 'server/data/payesh.json');
   if (!fs.existsSync(seed)) { console.error('⚠️ server/data/payesh.json نیست — اول: node server/seed.js'); process.exit(1); }
@@ -84,7 +84,7 @@ async function main() {
   child.stderr.on('data', (d) => (out += String(d)));
   const up = new Promise((res, rej) => {
     const iv = setInterval(async () => {
-      try { const r = await http('GET', '/api/health'); if (r.status === 200) { clearInterval(iv); res(); } } catch (e) {}
+      try { const r = await http('GET', '/api/health'); if (r.status === 200) { clearInterval(iv); res(); } } catch (e) {/* intentional no-op */}
     }, 300);
     setTimeout(() => rej(new Error('سرور بالا نیامد: ' + out.slice(-300))), 12000);
   });

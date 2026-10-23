@@ -57,7 +57,7 @@ function httpReq(method, p, body, headers = {}) {
       res.on('data', chunk => { raw += chunk; });
       res.on('end', () => {
         let json = null;
-        try { json = JSON.parse(raw); } catch (_) {}
+        try { json = JSON.parse(raw); } catch (_) {/* intentional no-op */}
         resolve({
           status: res.statusCode,
           headers: res.headers,
@@ -104,7 +104,7 @@ async function startServer(port = TEST_PORT, customEnv = {}) {
         booted = true;
         break;
       }
-    } catch (_) {}
+    } catch (_) {/* intentional no-op */}
     await sleep(200);
   }
 
@@ -119,7 +119,7 @@ async function stopServer() {
     serverProcess = null;
   }
   if (tmpDir) {
-    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {/* intentional no-op */}
     tmpDir = null;
   }
   await sleep(300);

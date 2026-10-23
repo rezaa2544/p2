@@ -31,7 +31,7 @@ function chk(name, cond, extra) {
 function docGroup() {
   grp('DOC — سندِ آرنا ۵');
   let d = '';
-  try { d = fs.readFileSync(DOC, 'utf8'); } catch (e) {}
+  try { d = fs.readFileSync(DOC, 'utf8'); } catch (e) {/* intentional no-op */}
   chk('DOC-0 سند هست', d.length > 2000, 'n=' + d.length);
   if (!d) return;
   chk('DOC-1 مسئولیت‌ها: جدولِ حوزه‌ها', /مسئولیت/.test(d) && /دروازهٔ انتشار/.test(d));
@@ -52,11 +52,11 @@ function docGroup() {
 function scrGroup() {
   grp('SCR — اسکریپتِ رگرسیون');
   let s = '';
-  try { s = fs.readFileSync(SCRIPT, 'utf8'); } catch (e) {}
+  try { s = fs.readFileSync(SCRIPT, 'utf8'); } catch (e) {/* intentional no-op */}
   chk('SCR-0 اسکریپت هست', s.length > 1000);
   if (!s) return;
   let syntaxOk = false;
-  try { syntaxOk = cp.spawnSync('bash', ['-n', SCRIPT], { stdio: 'pipe' }).status === 0; } catch (e) {}
+  try { syntaxOk = cp.spawnSync('bash', ['-n', SCRIPT], { stdio: 'pipe' }).status === 0; } catch (e) {/* intentional no-op */}
   chk('SCR-1 نحوِ بش معتبر است', syntaxOk);
   chk('SCR-2 پوششِ سابت‌های REST (tests/api)', s.indexOf('tests/api/runner.js') >= 0);
   /* S7-7 (باگ‌هانت نشست ۷): این بررسی به رشتهٔ «grep -v 'server11-child.js'»
@@ -85,8 +85,8 @@ function cinGroup() {
   grp('CIN — گیت‌های سریعِ ورودی');
   let pkg = '', ci = '', sec = '';
   try { pkg = JSON.parse(fs.readFileSync(PKG, 'utf8')); } catch (e) { pkg = { scripts: {} }; }
-  try { ci = fs.readFileSync(CI_NODE, 'utf8'); } catch (e) {}
-  try { sec = fs.readFileSync(CI_SEC, 'utf8'); } catch (e) {}
+  try { ci = fs.readFileSync(CI_NODE, 'utf8'); } catch (e) {/* intentional no-op */}
+  try { sec = fs.readFileSync(CI_SEC, 'utf8'); } catch (e) {/* intentional no-op */}
   chk('CIN-0 npm test = run.js + دودی',
     /tests\/run\.js/.test(pkg.scripts.test || '') && /smoke/.test(pkg.scripts.test || ''));
   /* ماتریسِ صادق (19ea463، PR #45 / BUG-6، باگ‌هانت چت ۵): engines >=22 و

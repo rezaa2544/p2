@@ -29,7 +29,7 @@ function request(port, target) {
   return new Promise((resolve) => {
     const req = http.get({ host: '127.0.0.1', port, path: target }, (res) => {
       let data = ''; res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => { let json; try { json = JSON.parse(data); } catch (_) {} resolve({ status: res.statusCode, json }); });
+      res.on('end', () => { let json; try { json = JSON.parse(data); } catch (_) {/* intentional no-op */} resolve({ status: res.statusCode, json }); });
     });
     req.on('error', () => resolve({ status: 0, json: null }));
   });

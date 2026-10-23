@@ -114,7 +114,7 @@ async function run() {
     if (tenantPol) tenantPolicyReturned = true;
     const boundaryResult = await assertTenantBoundary(mockUser, 101, '07');
     if (boundaryResult === true) httpMiddlewareCalled = true;
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
 
   const hasTenantQuery = traceLog.some(t => t.sql.includes('tenant_policy'));
   chk('HTTP-to-Authority Trace: route -> middleware -> authority -> PostgreSQL verified',
@@ -242,7 +242,7 @@ async function run() {
   try {
     const pol = await postgresAuthority.assertTenantPolicy('07', '*', 'actor_province');
     if (pol === true || (pol && pol.province === '07')) validScopePass = true;
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   postgresAuthority.attach(null); // detach mock
   chk('Tenant policy allows valid matching scope', validScopePass);
 

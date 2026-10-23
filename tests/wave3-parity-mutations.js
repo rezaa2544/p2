@@ -77,7 +77,7 @@ for (const m of mutations) {
   if (mutated === src) { console.error('  ⚠️ جهش «' + m.name + '» اعمال نشد (الگو پیدا نشد)'); continue; }
   applied++;
   const mcopy = kit.mutant(m.file, mutated); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-  try { fs.chmodSync(mcopy, fs.statSync(m.file).mode); } catch (_) {}
+  try { fs.chmodSync(mcopy, fs.statSync(m.file).mode); } catch (_) {/* intentional no-op */}
   let red = false;
   try {
     execFileSync('node', [path.join(ROOT, 'tests', 'wave3-parity.js')],

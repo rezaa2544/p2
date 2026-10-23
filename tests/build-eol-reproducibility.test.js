@@ -71,7 +71,7 @@ const read = (p) => fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-eol-'));
 process.on('exit', () => {
-  try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {}
+  try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
 });
 
 let pass = 0, fail = 0;

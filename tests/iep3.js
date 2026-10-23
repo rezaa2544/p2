@@ -30,7 +30,7 @@ function httpReq(port, method, p, body, cookie) {
     const req = http.request({ hostname: '127.0.0.1', port, path: p, method, headers }, (res) => {
       let b = '';
       res.on('data', (d) => (b += d));
-      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {} resolve({ status: res.statusCode, json: j, raw: b, headers: res.headers }); });
+      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */} resolve({ status: res.statusCode, json: j, raw: b, headers: res.headers }); });
     });
     req.on('error', () => resolve({ status: 0, json: null, raw: '', headers: {} }));
     if (data) req.write(data);
@@ -59,7 +59,7 @@ async function bootServer(p, env) {
 async function main() {
   console.log('\n▸ IEP سمتِ سرور (بند ۲.۲)');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-iep3-'));
-  process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} });
+  process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
   const storeFile = path.join(tmp, 'payesh.json');
   const seed = path.join(ROOT, 'server/data/payesh.json');
   if (!fs.existsSync(seed)) { console.log('  ❌ seed نیست: node server/seed.js'); process.exit(1); }

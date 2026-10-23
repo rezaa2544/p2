@@ -89,7 +89,7 @@ function deepFreeze(obj) {
  * @param {Object} [options]
  * @returns {boolean}
  */
-function enforceDecisionCommandAccessGuard(requester, context, options = {}) {
+function enforceDecisionCommandAccessGuard(requester, context, options = {}) { void options;
   if (!requester || typeof requester !== 'object') {
     throw new Error('DECISION_COMMAND_ACCESS_FORBIDDEN: requester session is missing');
   }
@@ -152,7 +152,7 @@ function enforceDecisionCommandAccessGuard(requester, context, options = {}) {
  * @param {Object} [options]
  * @returns {Array<Object>}
  */
-function computeDecisionPriorityMatrix(items = [], options = {}) {
+function computeDecisionPriorityMatrix(items = [], options = {}) { void options;
   const records = Array.isArray(items) ? items : [];
   if (records.length === 0) return deepFreeze([]);
 
@@ -343,7 +343,7 @@ function generateDecisionCommandBoard(params = {}) {
  * @param {Object} [options]
  * @returns {Object}
  */
-function validateIntelligenceChainIntegrity(engineData = {}, options = {}) {
+function validateIntelligenceChainIntegrity(engineData = {}, options = {}) { void options;
   const issues = [];
   let checksPassed = 0;
   let totalChecks = 4;

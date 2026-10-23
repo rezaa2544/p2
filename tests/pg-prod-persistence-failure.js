@@ -53,7 +53,7 @@ function freshDb() {
   catch (e) {
     console.log(NAME + ': NOT-RUN — PostgreSQL not reachable: ' + e.message);
     process.exit(2);
-  } finally { try { await probe.end(); } catch (e) {} }
+  } finally { try { await probe.end(); } catch (e) {/* intentional no-op */} }
   preflightOk = true;
 
   process.env.NODE_ENV = 'production';
@@ -101,7 +101,7 @@ function freshDb() {
     const r = await probe2.query('SELECT count(*)::int AS n FROM chat1_pkg1_fail');
     rows = r.rows[0].n;
   } catch (e) { rows = -1; }
-  finally { try { await probe2.end(); } catch (e) {} }
+  finally { try { await probe2.end(); } catch (e) {/* intentional no-op */} }
   chk('2c the killed write did not persist (0 rows)', rows === 0, 'rows=' + rows);
 
   /* And it must not have been quietly mirrored into the JSON store. */
@@ -110,7 +110,7 @@ function freshDb() {
     Object.keys(memStore.__processed_uids).length === 0 && (memStore.chat1_pkg1_fail === undefined));
 
   await db.query('DROP TABLE IF EXISTS chat1_pkg1_fail').catch(() => {});
-  try { await db.close(); } catch (e) {}
+  try { await db.close(); } catch (e) {/* intentional no-op */}
 
   /* ── (b) PostgreSQL unreachable at boot, in production ── */
   {
@@ -127,7 +127,7 @@ function freshDb() {
       D.isPostgres() === false);
     chk('3e the JSON persist path stays disabled in production',
       D.memoryFallbackAllowed() === false);
-    try { await D.close(); } catch (e) {}
+    try { await D.close(); } catch (e) {/* intentional no-op */}
   }
 
   /* ── control: the same unreachable DB in development still falls back ── */
@@ -139,7 +139,7 @@ function freshDb() {
     const r = await Dv.init({ users: [] });
     chk('4a development keeps the pre-existing fallback (no regression)',
       r && r.ok === true && r.driver === 'memory', JSON.stringify(r));
-    try { await Dv.close(); } catch (e) {}
+    try { await Dv.close(); } catch (e) {/* intentional no-op */}
   }
 
   console.log('\n' + NAME + ': ' + pass + '/' + (pass + fail)

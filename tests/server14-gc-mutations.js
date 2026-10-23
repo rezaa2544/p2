@@ -62,7 +62,7 @@ for (const m of MUTS) {
     const abs = path.join(ROOT, m.file);
   if (prevAbs && prevAbs !== abs) kit.clear(prevAbs);
   const mcopy = kit.mutant(abs, src.replace(m.bad, m.mut)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-  try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {} /* حفظِ مود (بیتِ اجرایی) */
+  try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {/* intentional no-op */} /* حفظِ مود (بیتِ اجرایی) */
   prevAbs = abs;
   let out = '', crashed = false;
   const __r89args = ['tests/server14-gc.js'];

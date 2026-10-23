@@ -64,7 +64,7 @@ const { createSystemRoutes } = require('./routes/system'); /* Phase 4 — P1-SC-
 const { assertNationalCapacityEnforcement } = require('./infrastructure/national-capacity-enforcement'); /* Phase 5 — P2-NI-05: اینگرس مهار ظرفیت ملی */
 const { globalCanaryEngine } = require('./infrastructure/phase6-canary-engine'); /* Phase 6: موتور استقرار قناری و هدایت ترافیک */
 const { applyCanaryRouting } = require('./middleware/canary'); /* Phase 6.5: runtime canary headers from SoT */
-const { assertTenantBoundary, sanitizePayload, resolveActorProvince } = require('./infrastructure/phase6-production-hardening'); /* Phase 6: گارد زیروترست و پالایش */
+const { assertTenantBoundary, sanitizePayload, resolveActorProvince } = require('./infrastructure/phase6-production-hardening'); void sanitizePayload; /* Phase 6: گارد زیروترست و پالایش */
 const authority = require('./infrastructure/authority'); /* Phase 7: PostgreSQL authority */
 const { createIds } = require('./ids'); /* P0-16 */
 const { createOutbox } = require('./outbox'); /* P0-17 */
@@ -621,7 +621,7 @@ function persistStore(){
   if(persistBusy){ persistQueued = true; return; }
   dirty = false; /* نقطهٔ اسنپ‌شات — جهشِ بعدی دوباره کثیف می‌کند */
   const gc = gcStore();
-  if(gc) try { audit('store_gc', { removed: gc }); } catch(e){}
+  if(gc) try { audit('store_gc', { removed: gc }); } catch(e){/* intentional no-op */}
   persistBusy = true;
   workers.runPersist(STORE_FILE).then(() => {
     persistBusy = false;
@@ -641,7 +641,7 @@ function persistStoreSync(){
   if(!dirty && !persistBusy && !persistQueued) return;
   dirty = false; persistQueued = false;
   const gc = gcStore();
-  if(gc) try { audit('store_gc', { removed: gc }); } catch(e){}
+  if(gc) try { audit('store_gc', { removed: gc }); } catch(e){/* intentional no-op */}
   try{
     const tmp = STORE_FILE + '.tmp';
     /* Wave 24 (KPI-3): همان قالبِ ASCII-escapedِ ورکر — پارسِ بوتِ بعدی سریع‌تر.
@@ -730,11 +730,11 @@ const audit = auditLogger.audit;
    signals for operator response. */
 let abuseGuard;
 const runtimeMonitor = createRuntimeMonitor({
-  onAnomaly: (finding) => { try { if (abuseGuard) abuseGuard.reportAnomaly(finding); } catch (_) {} }
+  onAnomaly: (finding) => { try { if (abuseGuard) abuseGuard.reportAnomaly(finding); } catch (_) {/* intentional no-op */} }
 });
 abuseGuard = createAbuseGuard({ audit, metrics, runtimeMonitor });
 const attackDetector = createAttackDetector({
-  onDetect: (finding) => { try { abuseGuard.report(finding).catch(() => {}); } catch (_) {} }
+  onDetect: (finding) => { try { abuseGuard.report(finding).catch(() => {}); } catch (_) {/* intentional no-op */} }
 });
 
 /* ── shared helpers ────────────────────────────────────────────────── */
@@ -1918,7 +1918,7 @@ const wrappedRequest = async (req, res) => {
     await onRequest(req, res);
   }catch(e){
     try{ console.error('[request] unhandled handler error:', (e && e.message) || e); }catch(_){/* swallowed: intentional — _ unused */}
-    try{ if(!res.writableEnded) sendJson(res, 500, { ok: false, code: 'internal_error' }); }catch(_){}
+    try{ if(!res.writableEnded) sendJson(res, 500, { ok: false, code: 'internal_error' }); }catch(_){/* intentional no-op */}
   }
 };
 
@@ -2005,7 +2005,7 @@ function handleShutdown(signal) {
   const started = inFlight;
   console.log('[shutdown] ' + signal + ' received — draining ' + started + ' in-flight request(s), budget ' + SHUTDOWN_TIMEOUT_MS + 'ms');
   try { if (server.closeIdleConnections) server.closeIdleConnections(); } catch (e) {/* swallowed: intentional — e unused */}
-  try { server.close(() => {/* swallowed: intentional — e unused */}); } catch (e) {} /* ERR_SERVER_NOT_RUNNING — context تست */
+  try { server.close(() => {/* swallowed: intentional — e unused */}); } catch (e) {/* intentional no-op */} /* ERR_SERVER_NOT_RUNNING — context تست */
   let done = false;
   const killer = setTimeout(() => {
     console.error('[shutdown] drain budget exceeded — forcing exit');

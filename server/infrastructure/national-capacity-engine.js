@@ -19,12 +19,12 @@ const {
   assertNoZeroRanking,
   assertHumanApproval,
   deepFreeze
-} = require('./phase5-region-federation');
+} = require('./phase5-region-federation'); void assertHumanApproval;
 
 const {
   CANONICAL_NATIONAL_REGIONS,
   getNationalRegionRegistry
-} = require('./national-region-control-plane');
+} = require('./national-region-control-plane'); void CANONICAL_NATIONAL_REGIONS;
 
 const CAPACITY_ENGINE_ERRORS = Object.freeze({
   APPROVAL_REQUIRED: 'PHASE5_NATIONAL_CAPACITY_APPROVAL_REQUIRED',

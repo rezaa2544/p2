@@ -111,7 +111,7 @@ function enforceInterventionAccessGuard(requester, caseRecord, options = {}) {
  * @param {Object} [options]
  * @returns {Object} EarlyWarningDetection
  */
-function evaluateEarlyWarningRules(studentContext = {}, options = {}) {
+function evaluateEarlyWarningRules(studentContext = {}, options = {}) { void options;
   const studentId = Number(studentContext.studentId || studentContext.student_id);
   const schoolId = Number(studentContext.schoolId || studentContext.school_id);
 

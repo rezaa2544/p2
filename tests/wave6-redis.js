@@ -220,7 +220,7 @@ const setCmdsFor = (fake, key) => fake.commands.filter(c => c[0] === 'SET' && c[
       env: Object.assign({}, process.env, { NODE_ENV: 'production', REDIS_URL: 'redis://127.0.0.1:9' })
     });
     let prodOut = {};
-    try { prodOut = JSON.parse(String(prod.stdout).trim().split('\n').pop()); } catch (e) {}
+    try { prodOut = JSON.parse(String(prod.stdout).trim().split('\n').pop()); } catch (e) {/* intentional no-op */}
     chk('R7a readiness: production + REDIS_URLِ نالایق ⇒ init شکست + ready=false (پس‌زمینهٔ حافظه ممنوع)',
       prodOut.ok === false && prodOut.ready === false && prodOut.driver !== 'memory',
       JSON.stringify(prodOut));
@@ -229,7 +229,7 @@ const setCmdsFor = (fake, key) => fake.commands.filter(c => c[0] === 'SET' && c[
       env: Object.assign({}, process.env, { NODE_ENV: 'development' })
     });
     let devOut = {};
-    try { devOut = JSON.parse(String(dev.stdout).trim().split('\n').pop()); } catch (e) {}
+    try { devOut = JSON.parse(String(dev.stdout).trim().split('\n').pop()); } catch (e) {/* intentional no-op */}
     chk('R7b readiness: توسعه (بدون REDIS_URL) ⇒ درایورِ حافظه، ready=true (Zero-Disruption)',
       devOut.ok === true && devOut.driver === 'memory' && devOut.ready === true,
       JSON.stringify(devOut));

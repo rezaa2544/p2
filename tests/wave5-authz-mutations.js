@@ -38,7 +38,7 @@ function mutate(find, replace, killRe, tag) {
   try {
     if (!orig.includes(find)) { chk(tag + ' (جهش پیدا نشد)', false); return; }
     const mcopy = kit.mutant(F, orig.replace(find, replace)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-    try { fs.chmodSync(mcopy, fs.statSync(F).mode); } catch (_) {}
+    try { fs.chmodSync(mcopy, fs.statSync(F).mode); } catch (_) {/* intentional no-op */}
     const r = spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8', timeout: 240000, env: kit.env() });
     const out = (r.stdout || '') + (r.stderr || '');
     chk(tag + ' کشته شد', r.status !== 0 && killRe.test(out), out.slice(-240).replace(/\n/g, ' '));

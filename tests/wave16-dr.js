@@ -188,7 +188,7 @@ function withEnv(patch, fn) {
     chk('D4g a phone number is not readable in the archive',
       fs.readFileSync(encPath, 'latin1').indexOf('09120000001') < 0);
     let mode = null;
-    try { mode = fs.statSync(encPath).mode & 0o777; } catch (e) {}
+    try { mode = fs.statSync(encPath).mode & 0o777; } catch (e) {/* intentional no-op */}
     chk('D4h the archive is owner-only (0600)', mode === 0o600, 'mode=' + (mode && mode.toString(8)));
 
     const rt = withEnv({ PAYESH_BACKUP_KEY: 'wave16-test-key-0123456789' }, () => dr.decryptBackup(enc.file, path.join(TMP, 'rt.json')));
@@ -401,6 +401,6 @@ function withEnv(patch, fn) {
   console.log('\n  جمع: ' + okc + ' موفق، ' + failc + ' ناموفق از ' + (okc + failc));
   if (fails.length) { console.log('  شکست‌ها:'); fails.forEach((f) => console.log('   - ' + f)); }
   console.log('');
-  try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {}
+  try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   process.exit(failc ? 1 : 0);
 })().catch((e) => { console.error('wave16-dr crashed:', e); process.exit(1); });

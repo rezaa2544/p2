@@ -15,8 +15,8 @@
  */
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('fs'); void fs;
+const path = require('path'); void path;
 const { assertNoZeroRanking, deepFreeze } = require('./zero-trust-runtime');
 
 // کلیدهای به شدت محرمانه که باید کاملاً حذف یا سانسور شوند

@@ -109,7 +109,7 @@ function createRuntimeMonitor(options = {}) {
         item.alertedSlot = item.slot;
         anomalyEvents.push({ at, metric: item.metric, sessionKey });
         if (sessionKey) markSuspicious(sessionKey, at, true);
-        try { onAnomaly(finding); } catch (_) {}
+        try { onAnomaly(finding); } catch (_) {/* intentional no-op */}
         findings.push(finding);
       }
     }

@@ -50,7 +50,7 @@ function isAllowlisted(pathname) {
     for (var j = 0; j < extra.length; j++) {
       if (pathname === extra[j] || pathname.indexOf(extra[j] + '/') === 0) return true;
     }
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   return false;
 }
 
@@ -103,7 +103,7 @@ function evaluateBody(text) {
         if (rule.res[j].test(hay)) return { rule: rule.id, field: 'body' };
       }
     }
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   return null;
 }
 
@@ -123,9 +123,9 @@ function peekBody(req) {
       var finish = function (txt) {
         if (done) return;
         done = true;
-        try { req.removeListener('data', onData); } catch (e) {}
-        try { req.removeListener('end', onEnd); } catch (e) {}
-        try { req.removeListener('error', onError); } catch (e) {}
+        try { req.removeListener('data', onData); } catch (e) {/* intentional no-op */}
+        try { req.removeListener('end', onEnd); } catch (e) {/* intentional no-op */}
+        try { req.removeListener('error', onError); } catch (e) {/* intentional no-op */}
         resolve(txt);
       };
       var onData = function (c) {
@@ -196,7 +196,7 @@ async function throttledAudit(verdict, ip, event) {
     if (r && r.allowed && typeof am.audit === 'function') {
       am.audit(event || 'waf_detect', { rule: verdict.rule, field: verdict.field, ip: ip });
     }
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
 }
 
 /* میدلویر (async، هرگز throw، هرگز block). */
@@ -236,25 +236,25 @@ async function wafMiddleware(req, res) {
             res.setHeader('X-RateLimit-Limit', String(RATE_LIMIT));
             res.setHeader('X-RateLimit-Remaining', String(rl.remaining));
             res.setHeader('X-RateLimit-Reset', String(Math.floor(Date.now() / 1000) + RATE_WINDOW));
-          } catch (e) {}
+          } catch (e) {/* intentional no-op */}
         }
       }
-    } catch (e) {}
+    } catch (e) {/* intentional no-op */}
     req.context.waf = w;
-    try { res.setHeader('X-WAF-Verdict', w.verdict); } catch (e) {}
+    try { res.setHeader('X-WAF-Verdict', w.verdict); } catch (e) {/* intentional no-op */}
     /* P0 #6 — ENFORCE (PAYESH_WAF_MODE=enforce): verdict = 403 waf_blocked،
        مگر مسیرِ fail-safeِ allowlist. هر خطا در این بلوک = fail-open. */
     if (WAF_MODE === 'enforce' && verdict) {
       try {
         var pathOnly = url;
-        try { pathOnly = String(new URL(url, 'http://waf.local').pathname || url); } catch (e) {}
+        try { pathOnly = String(new URL(url, 'http://waf.local').pathname || url); } catch (e) {/* intentional no-op */}
         if (isAllowlisted(pathOnly)) {
           w.allowlisted = true; /* verdict دیده شد اما fail-safe مسدود نکرد */
         } else {
           w.blocked = verdict.rule;
           w.action = 'block';
-          try { res.setHeader('X-WAF-Action', 'block'); } catch (e) {}
-          try { await throttledAudit(verdict, ip, 'waf_block'); } catch (e) {}
+          try { res.setHeader('X-WAF-Action', 'block'); } catch (e) {/* intentional no-op */}
+          try { await throttledAudit(verdict, ip, 'waf_block'); } catch (e) {/* intentional no-op */}
           var body = JSON.stringify({ ok: false, code: 'waf_blocked', rule: verdict.rule });
           res.statusCode = 403;
           res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -264,9 +264,9 @@ async function wafMiddleware(req, res) {
         }
       } catch (e) { /* report-mode fallback: خودِ evaluateInput هرگز throw نمی‌دهد (قرارداد میدلویر)؛ این catch فقط نگهبان نهایی است و در enforce خرابی باید در audit دیده شود */ }
     }
-    if (verdict && !w.blocked) { try { await throttledAudit(verdict, ip); } catch (e) {} }
+    if (verdict && !w.blocked) { try { await throttledAudit(verdict, ip); } catch (e) {/* intentional no-op */} }
   } catch (e) {
-    try { if (req) req.context = req.context || {}; } catch (_) {}
+    try { if (req) req.context = req.context || {}; } catch (_) {/* intentional no-op */}
   }
 }
 

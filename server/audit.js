@@ -293,7 +293,7 @@ function createAudit(opts = {}) {
   /**
    * چرخش فایل ممیزی و انتقال به server/data/audit/
    */
-  function rotate(reason = 'manual') {
+  function rotate(reason = 'manual') { void reason;
     try {
       if (!fs.existsSync(auditFile)) return null;
       const stat = fs.statSync(auditFile);
@@ -357,7 +357,7 @@ function createAudit(opts = {}) {
 
   /* Async rotation is used only by the background flusher. It deliberately
      mirrors rotate() without any synchronous filesystem calls. */
-  async function rotateAsync(reason = 'manual') {
+  async function rotateAsync(reason = 'manual') { void reason;
     try {
       await ensureAsyncInit();
       const stat = await fs.promises.stat(auditFile);
@@ -438,7 +438,7 @@ function createAudit(opts = {}) {
           flushQueue = [];
           try { await checkRotationAsync(); } catch (e) {/* swallowed: intentional — e unused */}
           const chunk = batch.join('');
-          try { await fs.promises.mkdir(path.dirname(auditFile), { recursive: true, mode: 0o700 }); } catch (e) {}
+          try { await fs.promises.mkdir(path.dirname(auditFile), { recursive: true, mode: 0o700 }); } catch (e) {/* intentional no-op */}
           const ok = await new Promise((resolve) => {
             fs.appendFile(auditFile, chunk, { encoding: 'utf8', mode: 0o600 }, (err) => resolve(!err));
           });

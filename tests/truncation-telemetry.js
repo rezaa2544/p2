@@ -15,7 +15,7 @@ const ROOT = path.join(__dirname, '..');
 delete process.env.DATABASE_URL;
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-teltest-'));
-process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 
 const ROW_CAP = 300;
 process.env.PAYESH_PULL_MAX_ROWS = String(ROW_CAP);
