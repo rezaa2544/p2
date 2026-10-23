@@ -198,25 +198,40 @@ async function closedPort() {
     const tmpHarness = path.join(require('os').tmpdir(), 'ci-flake-01-lane-harness.sh');
     fs.writeFileSync(tmpHarness, '#!/bin/bash\nset -u\nOUT="' + tmpHarness + '.out"\n: > "$OUT"\n' + fnBlock[0] + '\n"$@"\n', { mode: 0o755 });
     const deadUrl = 'postgres://payesh:deadpass@127.0.0.1:' + (await closedPort()) + '/payesh_none';
+    /* هر سناریو کرانهٔ خود را *صریح* تنظیم می‌کند. این دقیقاً همان نقصی است که
+       در CI ما را قرمز کرد: run-all-tests.sh با `export WAVE23_REQUIRE_PG=1`
+       بالا می‌آید و آن را به همهٔ سوئیت‌ها می‌دهد؛ «سناریوی خنثی» که ارثی بسازد،
+       روی ماشینِ دارای psql (CI postgresql-client دارد) به انتظارِ ۲۰ ثانیه‌ای
+       می‌نشست و ادعای «فوراً رد می‌شود» را می‌شکست. پس صریحاً خنثی، و صریحاً
+       مسلح — هیچ ارثی از محیطِ والد نه. */
+    const laneBase = Object.assign({}, process.env, { WAVE23_REQUIRE_PG: '0', LIVE_PG_URL: deadUrl });
     const t1 = Date.now();
-    const disarmed = runSh([BASH, tmpHarness, 'pg_wait_if_expected', 'disarmed'], {
-      env: Object.assign({}, process.env, { LIVE_PG_URL: deadUrl })
-    });
+    const disarmed = runSh([BASH, tmpHarness, 'pg_wait_if_expected', 'disarmed'], { env: laneBase });
     const disarmedMs = Date.now() - t1;
     chk('U6.7 بدونِ PGِ انتظاری ⇒ فوراً رد می‌شود (ماشینِ PG-less هزینه نمی‌دهد)', disarmed.code === 0 && disarmedMs < 4000, 'ms=' + disarmedMs + ' out=' + disarmed.out.slice(0, 120));
     const noPsql = runSh([BASH, tmpHarness, 'pg_wait_if_expected', 'nopsql'], {
-      env: Object.assign({}, process.env, { WAVE23_REQUIRE_PG: '1', LIVE_PG_URL: deadUrl, PATH: '/nonexistent-bin' })
+      env: Object.assign({}, laneBase, { WAVE23_REQUIRE_PG: '1', PATH: '/nonexistent-bin' })
     });
     chk('U6.8 psqlِ در دسترس نبود ⇒ مسیرِ degradation بدونِ تعلیق (exit 0)', noPsql.code === 0 && noPsql.out.indexOf('FAIL CLOSED') === -1, 'code=' + noPsql.code);
     /* ابزارِ psql: اولِ binaryِ واقعیِ سیستم؛ اگر نبود، shimِ خودِ مخزن
        (tools/bin/psql → tools/psql-min.js) که یک کلاینتِ واقعیِ PG است. هیچ
        پاسخِ ساختگی‌ای در کار نیست: هر دو مسیر به یک PostgreSQLِ واقعی کوئری
        می‌زنند یا صادقاً NOT-RUN می‌دهند. */
-    const shimEnv = Object.assign({}, process.env, {
+    const shimEnv = Object.assign({}, laneBase, {
       PATH: path.join(ROOT, 'tools', 'bin') + path.delimiter + String(process.env.PATH || ''),
       NODE_PATH: [path.join(ROOT, 'node_modules'), String(process.env.NODE_PATH || '')].filter(Boolean).join(path.delimiter)
     });
     const hasPsql = runSh([BASH, '-c', 'command -v psql >/dev/null 2>&1'], { env: shimEnv }).code === 0;
+    {
+      /* شکلِ CI: psql حل می‌شود (binaryِ سیستم یا shimِ مخزن) ولی دروازه خنثی است
+         ⇒ باید همان‌جا برگردد؛ این سنجشِ مستقیمِ همان حالتی است که CI را قرمز کرد. */
+      const t1b = Date.now();
+      const disarmedPsql = runSh([BASH, tmpHarness, 'pg_wait_if_expected', 'disarmed-psql'], { env: shimEnv });
+      const disarmedPsqlMs = Date.now() - t1b;
+      chk('U6.7b خنثی + psqlِ قابل‌حل ⇒ همچنان بدونِ هزینه (صریحِ WAVE23_REQUIRE_PG=0)',
+        disarmedPsql.code === 0 && disarmedPsqlMs < 4000,
+        'psql=' + (hasPsql ? 'present' : 'absent') + ' ms=' + disarmedPsqlMs + ' code=' + disarmedPsql.code);
+    }
     if (hasPsql) {
       const t2 = Date.now();
       const armed = runSh([BASH, tmpHarness, 'pg_wait_if_expected', 'armed'], {
