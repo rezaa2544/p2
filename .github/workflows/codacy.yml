@@ -90,14 +90,18 @@ jobs:
         if: failure()
         shell: bash
         run: |
+          sarif_summary=""
+          if [ -f results.sarif ]; then
+            sarif_summary="$(python3 -c 'import json; d=json.load(open("results.sarif")); print("sarif_runs=" + str([len(r.get("results",[])) for r in d.get("runs",[])]))')"
+          fi
           if [ -f /tmp/codacy-cli.log ]; then
             set +e
-            err_msg="$(grep -B2 -A20 -E 'Exception|Caused by:|ERROR|issues|Failed' /tmp/codacy-cli.log | tail -n 35 | tr '\r\n' '  ' | cut -c1-1800)"
+            err_msg="$(grep -B1 -A15 -E 'Exception|Caused by:|ERROR|Failed' /tmp/codacy-cli.log | tail -n 30 | tr '\r\n' '  ' | cut -c1-1600)"
             set -e
             if [ -z "$err_msg" ]; then
-              err_msg="$(tail -n 35 /tmp/codacy-cli.log | tr '\r\n' '  ' | cut -c1-1800)"
+              err_msg="$(tail -n 30 /tmp/codacy-cli.log | tr '\r\n' '  ' | cut -c1-1600)"
             fi
-            printf '::error title=Codacy CLI failure tail::%s\n' "$err_msg"
+            printf '::error title=Codacy CLI failure tail::%s %s\n' "$sarif_summary" "$err_msg"
           fi
 
       # Upload the SARIF file generated in the previous step
