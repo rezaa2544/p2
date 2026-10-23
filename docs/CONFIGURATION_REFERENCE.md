@@ -174,6 +174,8 @@
 | `PGBOUNCER_SERVICE` · `PGBOUNCER_INI` · `PGBOUNCER_HOST` · `PGBOUNCER_PORT` · `PGBOUNCER_ADMIN_USER` · `PGBOUNCER_ADMIN_PASSWORD` | `pgbouncer`/`/etc/pgbouncer/pgbouncer.ini`/`127.0.0.1`/`6432` | `tools/failover-postgres.sh` | بازمسیردهی و بارگذاری مجدد پی‌جی‌بونسر پس از فیلاور |
 | `PGHOST` · `PGPORT` · `PGUSER` · `PGDATABASE` | کتابخانهٔ پی‌جی | اسکریپت‌های دیتابیس | اتصال استاندارد پستگرس |
 | `PBR_BIN` · `PBR_EXEC` · `PBR_STANZA` · `PBR_PORT` · `PBR_DEST_ROOT` · `PBR_READY_ATTEMPTS` | پیش‌فرض اسکریپت | `tools/pitr-restore.sh` | پارامترهای بازیابی نقطه‌ای پی‌جی‌بک‌رست |
+| `S13_PG_WAIT_MS` · `S13_PG_INTERVAL_MS` | `90000`/`1000` | `tests/server13.js` · `tests/helpers/live-db-readiness.js` | بودجه و گامِ دروازهٔ آمادگیِ PostgreSQL پیش ازِ اسناریوهای production سوئیتِ TLS (کرانه‌دار و fail-closed — `CI-FLAKE-01`؛ صفر = یک تلاش) |
+| `S13_BASE_TIMEOUT_MS` · `S13_CHILD_TIMEOUT_MS` | `300000` | `tests/server13-mutations.js` | مهلتِ اجرایِ خطِ پایه و فرزندِ جهش‌دیده در هارنسِ جهش (قرمزی ⇒ سوئیت قرمز، بدونِ کرشِ بی‌حکم) |
 | `DAST_ENV` · `DAST_PORT` · `DAST_REDIS_URL` | `development`/پیش‌فرض | `tools/dast-live.sh` | هدف تست نفوذ زنده (پی۰ #۶) |
 | `OUT_DIR` | `out/dast-live` | `tools/dast-live.sh` | خروجی اسکن دی‌ای‌اس‌تی (گیت‌ایگنورد) |
 | `ZAP_BIN` · `ZAP_IMAGE` | (خالی = جست‌وجوی خودکار) | `tools/dast-live.sh` | مکان یاب زپ |

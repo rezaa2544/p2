@@ -18,6 +18,7 @@ const https = require('https');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { makeSelfSigned, tlv, seq, derInt, derUtc, derUtf8, derBitString } = require('../server/tls-cert.js');
+const { resolveTargetDbUrl, redactTarget, waitForPostgres, ensureMigrated } = require('./helpers/live-db-readiness.js');
 
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
@@ -135,19 +136,41 @@ async function bootScenario({ tlsCert, tlsKey, production, portPool }) {
   return { booted: false, code: null, stderr: 'no port / no exit', port: null };
 }
 
+/* ── دروازهٔ آمادگیِ وابستگی (CI-FLAKE-01) ──────────────────────────────
+   اسناریوهای production این سوئیت سرورِ واقعی را spawn می‌کنند و آن سرور در
+   production JSON-fallback را رد می‌کند؛ پس «نبودِ PostgreSQL» عیناً به‌شکلِ
+   ❌ T2 (سرور بالا نیامد) دیده می‌شد — قرمزیِ گمراه‌کننده روی یک سوئیتِ TLS.
+   اول اتصال با یک کوئریِ واقعی سنجیده می‌شود (کرانه‌دار)، بعد مهاجرت‌ها
+   (بدونِ بلعیدنِ خطا). اگر آماده نشد: صریحاً ENVIRONMENT و exit 1.
+   هیچ assertionِ این سوئیت حذف/تضعیف نشده — فقط علتِ قرمزی درست برچسب می‌خورد. */
+const PG_WAIT_MS = Math.max(0, Number(process.env.S13_PG_WAIT_MS ?? 90000) || 0);
+const PG_INTERVAL_MS = Math.max(50, Number(process.env.S13_PG_INTERVAL_MS ?? 1000) || 1000);
+
+function environmentBlocked(reason, detail) {
+  console.log('  ❌ P0-PG ' + reason + ' — ' + String(detail || '').slice(0, 300));
+  console.log('\nserver13: 0/1 — شکست: P0-PG ' + reason + ' (محیط/وابستگی، نه رفتارِ محصول)');
+  process.exit(1);
+}
+
 (async () => {
   console.log('\n▸ دور 85 — P1-4: fail-fastِ TLS در production');
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-s13-'));
 
-  const targetDbUrl = process.env.DATABASE_URL || process.env.PGURL || 'postgres://payesh:payesh@127.0.0.1:5432/payesh_ci';
-  try {
-    require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'tools/migrate-ledger.js'), 'up'], {
-      cwd: ROOT,
-      env: Object.assign({}, process.env, { DATABASE_URL: targetDbUrl }),
-      stdio: 'ignore',
-      timeout: 60000
-    });
-  } catch (_err) { /* best-effort pre-migrate */ }
+  const targetDbUrl = resolveTargetDbUrl(process.env);
+  const ready = await waitForPostgres(targetDbUrl, { budgetMs: PG_WAIT_MS, intervalMs: PG_INTERVAL_MS });
+  if (!ready.ok) {
+    environmentBlocked('ENVIRONMENT — PostgreSQL unreachable',
+      'target=' + redactTarget(targetDbUrl) + ' budget_ms=' + ready.budget_ms + ' attempts=' + ready.attempts +
+      ' waited_ms=' + ready.waited_ms + ' last=' + ready.last_error);
+  }
+  console.log('  · P0-PG pg-ready target=' + ready.target + ' attempts=' + ready.attempts + ' waited_ms=' + ready.waited_ms);
+
+  const mig = await ensureMigrated(targetDbUrl, { attempts: 3, retryMs: 2000, timeoutMs: 60000 });
+  if (!mig.ok) {
+    environmentBlocked('ENVIRONMENT — ledger migrations did not apply',
+      'target=' + redactTarget(targetDbUrl) + ' attempts=' + mig.attempts + ' last=' + mig.last_error + ' out=' + String(mig.out).slice(0, 200));
+  }
+  console.log('  · P0-MIG migrations-applied attempts=' + mig.attempts + ' ' + String(mig.out).slice(0, 80));
 
   const nb = new Date(Date.now() - 86400000), na = new Date(Date.now() + 86400000 * 900);
   const selfSigned = makeSelfSigned('payesh-local', nb, na);

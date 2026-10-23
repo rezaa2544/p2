@@ -42,15 +42,15 @@
    in tools/ (not docs/) because a new docs/*.md is counted by
    tests/docs-freeze-marker.js and would need an rc bump to stay green.
 
-   --selftest output (29 checks: 19 positive, 10 negative), verified:
+   --selftest output (33 checks: 21 positive, 12 negative), verified:
 
      $ node tools/psql-min.js --selftest
      psql-min --selftest (pure; no database needed)
        ✅ P1 a ";" inside a single-quoted string does not split
-       … P2–P19 (splitting, nesting, interpolation, arg parsing)
+       … P2–P21 (splitting, nesting, interpolation, arg parsing, SQL source)
        ✅ N1 G1 — an unknown meta-command is a hard failure
-       … N2–N10 (every guard exercised by a FAILING case)
-     psql-min --selftest: 29/29
+       … N2–N12 (every guard exercised by a FAILING case)
+     psql-min --selftest: 33/33
 
    Every negative case must exit non-zero — none of them is allowed to skip,
    because a guard that is never exercised by a failing case is not a guard.
@@ -271,6 +271,29 @@ function assertGsetRows(rows, rowCount) {
   return rows[0];
 }
 
+/* منبعِ SQL و مرزِ مسیر — بیرون از run() نشسته تا با --selftest (بدونِ
+   دیتابیس) قابلِ اثبات بماند.
+
+   🔴 نقصِ برطرف‌شده (M15-01، ۲۰۲۶-۱۰-۲۳): نسخهٔ پیشین `path.resolve(opts.file)`
+   را بی‌شرط صدا می‌زد، حتی وقتی `-c` استفاده می‌شد و `opts.file`-null بود:
+     $ node tools/psql-min.js "<dsn>" -c 'SELECT 1;'
+     psql-min: The "paths[0]" argument must be of type string. Received null
+   یعنی هر مصرف‌کننده‌ای که به `tools/bin/psql` (shimِ همین فایل) اتکا می‌کند —
+   یعنی هر ماشینِ بدونِ psqlِ واقعی — روی ساده‌ترین شکلِ `-c` می‌شکست. مرزِ مسیر
+   حفظ شده؛ فقط وقتی اعمال می‌شود که واقعاً `-f` داده شده باشد. */
+function resolveSqlSource(opts, baseDir, readFile) {
+  const read = readFile || ((f) => fs.readFileSync(f, 'utf8'));
+  const hasFile = opts.file !== null && opts.file !== undefined;
+  if (hasFile) {
+    const filePath = path.resolve(baseDir, String(opts.file));
+    if (filePath !== baseDir && !filePath.startsWith(baseDir + path.sep)) {
+      throw new GuardError('refusing to read file outside the working directory: ' + opts.file);
+    }
+    return read(filePath);
+  }
+  return opts.command !== null && opts.command !== undefined ? String(opts.command) : '';
+}
+
 class GuardError extends Error {}
 class SqlError extends Error {}
 
@@ -310,14 +333,7 @@ async function run(opts) {
   /* 🔴 مرزِ مسیر: -f FILE نسبت به دایرکتوریِ اجرایِ ابزار حل می‌شود و باید
      داخلِ همان دایرکتوری بماند (استفادهٔ مستند: -f migrations/NNN_name.sql).
      resolve + بررسیِ مالک، انحراف از مسیرِ پایه را غیرممکن می‌کند. */
-  const baseDir = path.resolve('.');
-  const filePath = path.resolve(opts.file);
-  if (filePath !== baseDir && !filePath.startsWith(baseDir + path.sep)) {
-    throw new GuardError('refusing to read file outside the working directory: ' + opts.file);
-  }
-  const sql = opts.file !== null
-    ? fs.readFileSync(filePath, 'utf8')
-    : (opts.command !== null ? opts.command : '');
+  const sql = resolveSqlSource(opts, path.resolve('.'));
   if (!sql) throw new GuardError('nothing to execute (need -f FILE or -c COMMAND)');
 
   const client = new pg.Client({ connectionString: opts.url, connectionTimeoutMillis: 20000 });
@@ -500,6 +516,23 @@ function selftest() {
     assert.strictEqual(out, 'DO $$ BEGIN');
   });
 
+  /* ── M15-01: منبعِ SQL و مرزِ مسیر (crash-of-the-day: -c با opts.file=null) ── */
+  t('P20 -c without -f never touches the path guard (no TypeError on null)', () => {
+    assert.strictEqual(resolveSqlSource({ file: null, command: 'SELECT 1;' }, '/repo'), 'SELECT 1;');
+  });
+  t('P21 -f inside the base directory is resolved against it', () => {
+    let seen = null;
+    const sql = resolveSqlSource({ file: 'migrations/012_x.sql', command: null }, '/repo', (f) => { seen = f; return 'SELECT 2;'; });
+    assert.strictEqual(sql, 'SELECT 2;');
+    assert.strictEqual(seen, path.resolve('/repo', 'migrations/012_x.sql'));
+  });
+  t('N11 -f escaping the base directory is a hard failure', () => {
+    throwsGuard(() => resolveSqlSource({ file: '../../etc/passwd', command: null }, '/repo', () => 'never read'));
+  });
+  t('N12 neither -f nor -c yields empty SQL (run() must turn it into a guard error)', () => {
+    assert.strictEqual(resolveSqlSource({ file: null, command: null }, '/repo'), '');
+  });
+
   console.log('\npsql-min --selftest: ' + pass + '/' + (pass + fails.length)
     + (fails.length ? '  FAILED: ' + fails.join(' | ') : ''));
   return fails.length ? 1 : 0;
@@ -524,5 +557,5 @@ if (require.main === module) {
 
 module.exports = {
   scanSegments, splitStatements, parseMeta, extractMeta, assertSupportedMeta, interpolate,
-  assertGsetRows, parseArgs, truthy, GuardError, SqlError, SUPPORTED_META, selftest
+  assertGsetRows, parseArgs, truthy, GuardError, SqlError, SUPPORTED_META, resolveSqlSource, selftest
 };

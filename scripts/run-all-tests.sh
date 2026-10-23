@@ -327,6 +327,33 @@ PORT_P2=$(echo $PORT_ALL | tr ' ' '\n' | grep -xFf <(echo "$PHASE2_SET") | sed '
 LANE_A=$(echo "$PHASE1_SET" | grep -vxFf <(echo "$PORT_P1") | sed '/^$/d')
 LANE_B=$(echo "$PHASE2_SET" | grep -vxFf <(echo "$PORT_P2") | sed '/^$/d')
 
+# ── CI-FLAKE-01 (M15-01): bounded per-suite PostgreSQL readiness wait ─────────
+# The parallel base/copy lanes used to start their suites with NO readiness check
+# at all (only run_live_one waited). On the shared CI service container that let a
+# short PostgreSQL window — postmaster crash-restart under load, or the DDL churn of
+# ~60 suites against payesh_ci — surface as a product-looking RED in an unrelated
+# suite (observed: "RED suite server13-mutations", Node.js CI run 40007436008 /
+# check-run 120598819123 step 7, "connect ECONNREFUSED 127.0.0.1:5432").
+# The wait is bounded (40 x 0.5s) and ONLY armed when a live PostgreSQL was seen at
+# startup (WAVE23_REQUIRE_PG), so a PG-less machine never pays it. It converts no
+# RED into GREEN: if PostgreSQL stays down, the suites run anyway and fail closed.
+pg_wait_if_expected() {
+  if [ "${WAVE23_REQUIRE_PG:-0}" != "1" ]; then return 0; fi
+  if ! command -v psql >/dev/null 2>&1; then return 0; fi
+  if psql "$LIVE_PG_URL" -c 'SELECT 1;' >/dev/null 2>&1; then return 0; fi
+  local _pgw=0
+  while [ "$_pgw" -lt 40 ]; do
+    _pgw=$((_pgw + 1))
+    sleep 0.5
+    if psql "$LIVE_PG_URL" -c 'SELECT 1;' >/dev/null 2>&1; then
+      echo "[pg-wait] $1: PostgreSQL answered after ${_pgw} x 0.5s — transient window absorbed" >> $OUT
+      return 0
+    fi
+  done
+  echo "[pg-wait] WARNING $1: PostgreSQL still unreachable after 20s — suites that need it FAIL CLOSED (no skip, no fake green)" >> $OUT
+  return 0
+}
+
 SUITE_TIMEOUT="${SUITE_TIMEOUT:-900}"
 suite_env_prefix() {
   if echo "$DEV_MEM_AUTH_SUITES" | grep -qxF "$1"; then
@@ -337,6 +364,7 @@ run_one() {
   f="$1"; name=$(basename "$f" .js)
   start=$(date +%s)
   echo "[suite] START $name"
+  pg_wait_if_expected "$name"
   extra_env=$(suite_env_prefix "$f")
   if [ -n "$extra_env" ]; then
     env $extra_env timeout -k 30 "$SUITE_TIMEOUT" node "$f" > /tmp/at-$name.log 2>&1
@@ -370,6 +398,7 @@ run_copy() {
   tar cf - --exclude=node_modules --exclude=.git --exclude=tmp . | (cd "$dir" && tar xf -)
   ln -s "$PWD/node_modules" "$dir/node_modules"
   ln -s "$ROOT_GIT_DIR" "$dir/.git"
+  pg_wait_if_expected "$name (copy)"
   start=$(date +%s)
   echo "[suite] START $name (isolated copy)"
   extra_env=$(suite_env_prefix "$f")
@@ -502,7 +531,7 @@ port_lane() {
   for f in $PORT_P1; do run_one "$f"; lane_sweep; done
   for f in $PORT_P2; do run_copy "$f"; lane_sweep; done
 }
-export -f suite_env_prefix run_one run_copy run_live_one uses_port port_lane
+export -f suite_env_prefix run_one run_copy run_live_one uses_port port_lane pg_wait_if_expected
 export OUT PORT_P1 PORT_P2 SUITE_TIMEOUT ROOT_GIT_DIR
 
 NA=$(echo "$LANE_A" | sed '/^$/d' | wc -l)
