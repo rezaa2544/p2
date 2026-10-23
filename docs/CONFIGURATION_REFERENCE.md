@@ -171,8 +171,9 @@
 | `OLD_PGHOST` · `OLD_PGPORT` | `127.0.0.1`/`5432` | `tools/failover-postgres.sh` | اصلی قدیم هنگام فیلاور |
 | `MAX_LAG_BYTES` | `67108864` | `tools/failover-postgres.sh` | سقف تأخیر کپی پیش از برش (۶۴ مگابایت) |
 | `COMPOSE_F` | (خالی) | `tools/failover-postgres.sh` | مسیر کامپوز سفارشی |
+| `PGBOUNCER_SERVICE` · `PGBOUNCER_INI` · `PGBOUNCER_HOST` · `PGBOUNCER_PORT` · `PGBOUNCER_ADMIN_USER` · `PGBOUNCER_ADMIN_PASSWORD` | `pgbouncer`/`/etc/pgbouncer/pgbouncer.ini`/`127.0.0.1`/`6432` | `tools/failover-postgres.sh` | بازمسیردهی و بارگذاری مجدد پی‌جی‌بونسر پس از فیلاور |
 | `PGHOST` · `PGPORT` · `PGUSER` · `PGDATABASE` | کتابخانهٔ پی‌جی | اسکریپت‌های دیتابیس | اتصال استاندارد پستگرس |
-| `PBR_BIN` · `PBR_EXEC` · `PBR_STANZA` · `PBR_PORT` · `PBR_DEST_ROOT` | پیش‌فرض اسکریپت | `tools/pitr-restore.sh` | پارامترهای بازیابی نقطه‌ای پی‌جی‌بک‌رست |
+| `PBR_BIN` · `PBR_EXEC` · `PBR_STANZA` · `PBR_PORT` · `PBR_DEST_ROOT` · `PBR_READY_ATTEMPTS` | پیش‌فرض اسکریپت | `tools/pitr-restore.sh` | پارامترهای بازیابی نقطه‌ای پی‌جی‌بک‌رست |
 | `DAST_ENV` · `DAST_PORT` · `DAST_REDIS_URL` | `development`/پیش‌فرض | `tools/dast-live.sh` | هدف تست نفوذ زنده (پی۰ #۶) |
 | `OUT_DIR` | `out/dast-live` | `tools/dast-live.sh` | خروجی اسکن دی‌ای‌اس‌تی (گیت‌ایگنورد) |
 | `ZAP_BIN` · `ZAP_IMAGE` | (خالی = جست‌وجوی خودکار) | `tools/dast-live.sh` | مکان یاب زپ |
@@ -187,7 +188,7 @@
 | `POSTGRES_USER` · `POSTGRES_PASSWORD` | رشته | — | در اچ‌ای | تولید | حساب اصلی پستگرس (`infra/postgres/env.ha.example`) | — |
 | `PGPASSWORD` | رشته | — | در اچ‌ای | تولید | گذرواژهٔ اتصال اسکریپت‌های پستگرس | — |
 | `PGHA_PASSWORD` · `PGHA_SUPERUSER` | رشته | — | در اچ‌ای | تولید | حساب سوپریوزر اچ‌ای | — |
-| `PGHA_REPLICATION_PASSWORD` · `REPLICATION_PASSWORD` | رشته | — | در اچ‌ای | تولید | گذرواژهٔ کپی‌برداری | — |
+| `PGHA_REPLICATION_PASSWORD` · `REPLICATION_PASSWORD` · `PGHA_PGBOUNCER_PASSWORD` · `PGBOUNCER_PASSWORD` | رشته | — | در اچ‌ای | تولید | گذرواژهٔ کپی‌برداری و نقش احراز پی‌جی‌بونسر | — |
 | `PGHA_S3_KEY` · `PGHA_S3_SECRET` | رشته | — | با اس۳ | تولید | اعتبار اس۳ برای پشتیبان پی‌جی | — |
 | `PB_REPO_S3_BUCKET` · `PB_REPO_S3_ENDPOINT` · `PB_REPO_S3_REGION` · `PB_REPO_S3_VERIFY_TLS` | رشته | — | با پی‌جی‌بک‌رست | تولید | مخزن اس۳ پشتیبان | — |
 | `PGBACKREST_REPO1_S3_KEY` · `PGBACKREST_REPO1_S3_KEY_SECRET` | رشته | — | با پی‌جی‌بک‌رست | تولید | کلیدهای مخزن پشتیبان | — |
