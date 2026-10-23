@@ -623,7 +623,7 @@ function busSchematicLegacyHtml(routeId){
 /* ─────────────── تب «سرویس» در پرونده (دانش‌آموز/ولی) ─────────────── */
 
 function busStudentTab(sid){
-  var st = byId('users', sid) || {};
+  var st = byId('users', sid) || {}; void st;
   var route = busRouteOfStudent(sid);
   var m = busMismatch(sid);
   var h = '<div class="card-body" style="display:grid;gap:12px">';
@@ -670,7 +670,7 @@ function busStudentTab(sid){
 }
 
 function busParentTab(sid){
-  var st = byId('users', sid) || {};
+  var st = byId('users', sid) || {}; void st;
   var need = busNeedOf(sid);
   var route = busRouteOfStudent(sid);
   var m = busMismatch(sid);

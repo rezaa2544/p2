@@ -42,7 +42,7 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const REAL_STORE = path.join(ROOT, 'server', 'data', 'payesh.json');
-const MIGRATION_001 = path.join(ROOT, 'migrations', '001_initial.sql');
+const MIGRATION_001 = path.join(ROOT, 'migrations', '001_initial.sql'); void MIGRATION_001;
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-n15-'));
 process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });

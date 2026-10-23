@@ -166,7 +166,7 @@ async function boot(port, storeFile, tmp) {
   console.log('\n  — National model (10M users)');
   {
     const m = NATIONAL_MODEL;
-    chk('NL1 the model starts from the roadmap figure of 10M users', m.users === 10_000_000, 'users=' + fmt(m.users));
+    chk('NL1 the model starts from the roadmap figure of 10M users', m.users === 10000000, 'users=' + fmt(m.users));
 
     /* every collection ROADMAP §21 names must be in the model */
     const required = ['schools', 'classes', 'enrollments', 'attendance_per_day',
@@ -431,8 +431,8 @@ async function boot(port, storeFile, tmp) {
     const heap0 = process.memoryUsage().heapUsed;
     const storeSize0 = fs.existsSync(storeFile) ? fs.statSync(storeFile).size : 0;
     const series0 = parseMetrics(await metricsText()).filter((s) => s.name === 'payesh_http_requests_total').length;
-    const lag0 = await metricSum('payesh_node_eventloop_lag_seconds');
-    const outbox0 = await metricSum('payesh_outbox_depth');
+    const lag0 = await metricSum('payesh_node_eventloop_lag_seconds'); void lag0;
+    const outbox0 = await metricSum('payesh_outbox_depth'); void outbox0;
     const cache0 = await metricSum('payesh_cache_lookups_total');
 
     const ROUNDS = 30, PER = 16;

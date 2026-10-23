@@ -306,7 +306,7 @@ async function main() {
     }));
     chk('T4a سرورِ TLS بالا آمد (dev + self-signed)', !!t4);
     if (t4) {
-      const j4 = {};
+      const j4 = {}; void j4;
       const sc = await req('POST', 9009, '/api/auth/send-code', { phone: String(SA.phone).replace(/[\s\-()]/g, '') }, null, https);
       const lgt = await req('POST', 9009, '/api/auth/login', { phone: String(SA.phone).replace(/[\s\-()]/g, ''), code: sc.json && sc.json.demo_code, national_id: SA.national_id }, null, https);
       const cks = Array.isArray(lgt.headers['set-cookie']) ? lgt.headers['set-cookie'].join('; ') : String(lgt.headers['set-cookie'] || '');
@@ -352,9 +352,9 @@ async function main() {
   const code2 = s2.json.demo_code;
   /* phone1: 2 send شده (O1, O3) — 3 تا دیگر تا سقفِ روزانهٔ 5 */
   await sleep(5200);
-  const s3 = await req('POST', OTP_PORT, '/api/auth/send-code', { phone: phone1 });
+  const s3 = await req('POST', OTP_PORT, '/api/auth/send-code', { phone: phone1 }); void s3;
   await sleep(5200);
-  const s4 = await req('POST', OTP_PORT, '/api/auth/send-code', { phone: phone1 });
+  const s4 = await req('POST', OTP_PORT, '/api/auth/send-code', { phone: phone1 }); void s4;
   await sleep(5200);
   const s4b = await req('POST', OTP_PORT, '/api/auth/send-code', { phone: phone1 });
   chk('O4a sendِ پنجمِ phone1 → 200 (آخرِ سقف)', s4b.status === 200, s4b.status);
@@ -475,7 +475,7 @@ async function main() {
     chk('E0 سرورِ 9007 (enum) بالا آمد', up);
     if (up) {
       const em = {};
-      const lgE = await login(9007, phone2, M2.national_id, em);
+      const lgE = await login(9007, phone2, M2.national_id, em); void lgE;
       const tick = async (p) => { const a = Date.now(); await req('GET', 9007, p, null, em.ck); return Date.now() - a; };
       for (let i = 0; i < 3; i++) await tick('/api/students/9990' + i);
       const aud0 = fs.existsSync(env.PAYESH_AUDIT) ? fs.readFileSync(env.PAYESH_AUDIT, 'utf8') : '';

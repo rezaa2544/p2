@@ -21,10 +21,10 @@
  */
 const assert = require('assert');
 const path = require('path');
-const fs = require('fs');
-const os = require('os');
+const fs = require('fs'); void fs;
+const os = require('os'); void os;
 
-const ROOT = path.join(__dirname, '..');
+const ROOT = path.join(__dirname, '..'); void ROOT;
 const PG_HOST = process.env.PGHOST || '127.0.0.1';
 const PG_PORT = process.env.PGPORT || '5432';
 const PG_USER = process.env.PGUSER || 'postgres';

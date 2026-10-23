@@ -160,7 +160,7 @@ async function main() {
     W(`document.getElementById('a_title').value=${JSON.stringify(PAYLOAD + ' اطلاعیه')}`);
     W(`document.getElementById('a_body').value='متن آزمایشی'`);
     clk('ann-save');
-    const h1 = W('render()');
+    const h1 = W('render()'); void h1;
     /* نگهبان صوری‌نبودی: payload (فرار‌شده) واقعاً باید در DOM باشد —
        وگرنه این آزمون چیزی نمی‌سنجد (دام آزمون، بند ۵.۳۱) */
     const mainHtml = W(`document.querySelector('.content').innerHTML`);
@@ -267,7 +267,7 @@ async function main() {
     W(`S.user=db.users.find(u=>u.username==='manager1');S.persona=null;S.boss=null;`);
     W(`(function(){var a=add('announcements',{school_id:db.schools[0].id,title:${JSON.stringify(PAYLOAD)},body:'x',audience:'all',created_by:S.user.id});window._ann=a.id;})()`);
     clk('ann-del', { id: W('window._ann') });
-    const h = W(`document.getElementById('modal').innerHTML`);
+    const h = W(`document.getElementById('modal').innerHTML`); void h;
     assert(sentinelAlive() === false, '🔴 payload در جعبهٔ تأیید parse شد');
     W('closeModal()');
     W(`remove('announcements',window._ann);`);

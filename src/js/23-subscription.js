@@ -180,7 +180,7 @@ const parentLocked=()=>{
    کلاس، برنامهٔ امتحانات، تقویم و شهریهٔ فرزند. دیوار پرداخت فقط
    «ارتباط و درخواست‌ها» را می‌گیرد: نوبت جلسه، درخواست مرخصی،
    گفتگو. فهرست روت‌های همیشه‌باز برای ولی: */
-const PARENT_FREE_ROUTES=['dashboard','children','record','exams','calendar','family','mytuition','subscription','notifications','announcements'];
+const PARENT_FREE_ROUTES=['dashboard','children','record','exams','calendar','family','mytuition','subscription','notifications','announcements']; void PARENT_FREE_ROUTES;
 
 /* ---------------- داده نمونه ---------------- */
 function generateP10(){

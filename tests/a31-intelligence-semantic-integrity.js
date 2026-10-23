@@ -33,7 +33,7 @@
 const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
+const os = require('os'); void os;
 
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;

@@ -10,7 +10,7 @@
    اجرا:  node tests/lock-atomic.js
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
-const path = require('path');
+const path = require('path'); void path;
 
 delete process.env.NODE_ENV;      // حالت توسعه → درایور حافظه
 delete process.env.REDIS_URL;

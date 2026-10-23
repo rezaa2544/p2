@@ -177,7 +177,7 @@ function wAddVisitor(schoolId, name, purpose, inAt, outAt){
     const fx = await wFx();
     try{
       const vidIn = wAddVisitor(fx.sc, 'مهمان_A', 'بازدید', new Date().toISOString(), '');
-      const vidOut = wAddVisitor(fx.sc, 'مهمان_B', 'ارائه', new Date(Date.now()-3600*1000).toISOString(), new Date(Date.now()-1800*1000).toISOString());
+      const vidOut = wAddVisitor(fx.sc, 'مهمان_B', 'ارائه', new Date(Date.now()-3600*1000).toISOString(), new Date(Date.now()-1800*1000).toISOString()); void vidOut;
       W(`S.user=byId('users',${fx.mgr});S.persona=null;S.boss=null;S.route='visitors';S.filters={};S.page=1;`);
       let out = W(`renderRoute()`);
       assert(out.indexOf('مهمان_A')>=0 && out.indexOf('مهمان_B')>=0, 'ردیف‌ها نیستند');

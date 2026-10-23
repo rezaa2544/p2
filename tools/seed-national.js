@@ -35,8 +35,8 @@ const os = require('os');
    absolute counts fall out of USERS = 10M. Changing one ratio changes the
    whole model consistently — that is the point. */
 const RATIOS = {
-  USERS: 10_000_000,            // ROADMAP §21: the headline figure
-  SCHOOLS: 110_000,             // ~95k–110k schools nationally
+  USERS: 10000000,            // ROADMAP §21: the headline figure
+  SCHOOLS: 110000,             // ~95k–110k schools nationally
   /* classes are DERIVED from students and a class size, not from a
      classes-per-school guess: with 6M students a "12 classes per school"
      input silently implies 4.5 pupils per class, which is not a school. */

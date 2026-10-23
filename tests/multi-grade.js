@@ -62,7 +62,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
      window.__g10 = sts.filter((s,i)=>i%2===0).map(s=>s.id);
      window.__g11 = sts.filter((s,i)=>i%2===1).map(s=>s.id);
      S.filters={}; render(); 0;`);
-  const nAll = W('window.__all.length'), n10 = W('window.__g10.length'), n11 = W('window.__g11.length');
+  const nAll = W('window.__all.length'), n10 = W('window.__g10.length'), n11 = W('window.__g11.length'); void n11;
   chk('M6 ماتریس رندر شد: ستون هر دو پایه + برچسب چندپایه',
     D.body.textContent.includes('پایهٔ دهم') && D.body.textContent.includes('پایهٔ یازدهم')
     && !!D.querySelector('[data-act="mg-att-col"]'));

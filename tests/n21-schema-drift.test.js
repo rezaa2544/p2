@@ -22,7 +22,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
-const os = require('os');
+const os = require('os'); void os;
 
 const ROOT = path.join(__dirname, '..');
 const SCHEMA_FILE = path.join(ROOT, 'server', 'schema.sql');

@@ -362,7 +362,8 @@ exit 0
       && pgInitSource.includes('AND NOT u.userepl')
       && !pgInitSource.includes('CREATE OR REPLACE VIEW pgbouncer.pg_shadow')
       && pgInitSource.includes('GRANT EXECUTE ON FUNCTION pgbouncer.pg_shadow_lookup(TEXT) TO pgbouncer;')
-      && pgInitSource.includes('ALTER ROLE pgbouncer SET search_path = pgbouncer, pg_catalog;'));
+      && pgInitSource.includes('ALTER ROLE pgbouncer SET search_path = pgbouncer, pg_catalog;')
+      && pgComposeSource.includes('AUTH_QUERY: SELECT usename, passwd FROM pgbouncer.pg_shadow_lookup($1)'));
   check('PgBouncer keeps read-only bind mount while staging 0600 runtime config for live RELOAD/RECONNECT',
     pgComposeSource.includes('./pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro')
       && pgComposeSource.includes('cp /etc/pgbouncer/pgbouncer.ini /var/run/pgbouncer/pgbouncer.ini')

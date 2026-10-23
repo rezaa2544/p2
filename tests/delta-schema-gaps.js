@@ -72,7 +72,7 @@ const EXPECTED = [
   'announcements', 'hw_assignments', 'hw_submissions', 'vclass_sessions',
   'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
 ];
-const DEAD = ['homework', 'vclass_rooms'];
+const DEAD = ['homework', 'vclass_rooms']; void DEAD;
 
 function makeStore() {
   const store = { __deleted_records: [], __server_version: 42 };

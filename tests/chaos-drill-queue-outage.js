@@ -17,7 +17,7 @@
    اجرا: timeout 150 node tests/chaos-drill-queue-outage.js
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
-const fs = require('fs');
+const fs = require('fs'); void fs;
 const path = require('path');
 const L = require('./chaos-drill-lib');
 const root = (p) => path.join(__dirname, '..', p);

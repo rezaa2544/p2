@@ -81,7 +81,7 @@ async function main() {
 
   /* دلتای عظیم مصنوعی: همهٔ حضورهای مدرسهٔ ۱ را «به‌تازگی تغییر کرده» جا بزن */
   const NOW = Date.now();
-  const RECENT = new Date(NOW - 30 * 1000).toISOString();
+  const RECENT = new Date(NOW - 30 * 1000).toISOString(); void RECENT;
   let touched = 0;
   for (const a of store.attendance) {
     if (a.school_id === 1) { a.updated_at = new Date(NOW - 40 * 1000 + (touched % 1000)).toISOString(); touched++; }

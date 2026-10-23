@@ -44,7 +44,8 @@ function openModal(html){
   /* فوکوسِ اولیه: نخستین کنترلِ فرم اگر بود، وگرنه نخستین فوکوس‌پذیر (دکمهٔ ✕) */
   const list=_modalFocusables();
   const target=list.find(el=>/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName))||list[0];
-  if(target){try{target.focus();}catch(e){}}
+  if(target){try{target.focus();}catch(e){ // noop
+}}
   /* S9-4: ثبتِ trap. افزودنِ شنوندهٔ *یکسان* (نوع + callback + capture) در DOM
      ادغام می‌شود، پس بازِ تودرتو هم شنوندهٔ دومی نمی‌سازد و نیازی به removeِ
      پیش از add نیست (AF8 در tests/a11y-modal-focus.js همین را قفل می‌کند). */
@@ -57,14 +58,16 @@ function closeModal(){
   /* بدونِ مودالِ باز، هیچ فوکوسی جابه‌جا نمی‌شود (closeModal در جریان‌های
      عادی هم بی‌قید صدا زده می‌شود و نباید فوکوسِ کاربر را برُباید). */
   if(!wasOpen){_modalOpener=null;return;}
-  if(_modalOpener&&document.contains(_modalOpener)){try{_modalOpener.focus();}catch(e){}_modalOpener=null;return;}
+  if(_modalOpener&&document.contains(_modalOpener)){try{_modalOpener.focus();}catch(e){ // noop
+}_modalOpener=null;return;}
   _modalOpener=null;
   /* S9-4: بازکننده در دسترس نیست (رندرِ مجددِ پوسته یا زنجیرهٔ ناتمام) —
      فوکوس نباید به <body> سقوط کند (WCAG 2.4.3)؛ به محتوای اصلی می‌رود. */
   const m=document.querySelector('.main');
   if(m){
     if(!m.hasAttribute('tabindex'))m.setAttribute('tabindex','-1');
-    try{m.focus();}catch(e){}
+    try{m.focus();}catch(e){ // noop
+}
   }
 }
 function modalTpl(title,body,saveAct,danger,okLabel){

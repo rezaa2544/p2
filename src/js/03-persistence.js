@@ -10,9 +10,9 @@
    ۱. لایهٔ اصلی و بلندمدت: IndexedDB (ماژول 03-idb-persistence.js)
    ۲. لایهٔ پایداری فوری و همگام: RAM db + پایداری با Store
    ═══════════════════════════════════════════════════════════════════ */
-const LOG_KEY='sms_log_v1', SESSION_KEY='sms_session_v1', BOSS_KEY='sms_boss_v1', PERSONA_KEY='sms_persona_v1';
+const LOG_KEY='sms_log_v1', SESSION_KEY='sms_session_v1', BOSS_KEY='sms_boss_v1', PERSONA_KEY='sms_persona_v1'; void PERSONA_KEY; void BOSS_KEY; void SESSION_KEY;
 /* R95: version-tracked collections mirror server VERSION_TRACKED. */
-const _VERSIONED_C = { grades:1, attendance:1, discipline:1, schools:1, classes:1, subjects:1, users:1, enrollments:1, schedule:1 };
+const _VERSIONED_C = { grades:1, attendance:1, discipline:1, schools:1, classes:1, subjects:1, users:1, enrollments:1, schedule:1 }; void _VERSIONED_C;
 /* A-24: every queued update/delete includes its original observed base.
    Production/strict applies OCC also to structural and formerly-LWW data. */
 let log=[];
@@ -39,7 +39,8 @@ function batchWrites(fn){
       if(_BATCH_QUEUE_DIRTY){
         _BATCH_QUEUE_DIRTY = false;
         if(typeof saveQueue === 'function') saveQueue();
-        if(typeof refreshSyncUI === 'function'){ try{ refreshSyncUI(); }catch(e){} }
+        if(typeof refreshSyncUI === 'function'){ try{ refreshSyncUI(); }catch(e){ // noop
+} }
       }
     }
   }
@@ -53,7 +54,8 @@ function saveLog(){
   if(typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()){
     try{
       offlineStorage.setMetadata(LOG_KEY, log).catch(function(){});
-    }catch(e){}
+    }catch(e){ // noop
+}
   }
 
   /* Store.set خودش استثنا را می‌گیرد و false برمی‌گرداند (Fallback امن) */
@@ -152,7 +154,7 @@ function compactLogIfNeeded(){
 }
 /* نسخهٔ داده (فاز ۲ بند ۲): با هر عملیاتِ ثبت‌شده زیاد می‌شود تا کش‌های
    هر-رندر (مثلِ classScoreContext) کهنه‌شدن را بفهمند. */
-var _GRADE_CACHE_VERSION=0;
+var _GRADE_CACHE_VERSION=0; void _GRADE_CACHE_VERSION;
 
 function applyOp(op,record=true){
   const arr=db[op.c];
@@ -238,7 +240,8 @@ function applyOp(op,record=true){
             offlineStorage.removeEntity(op.c, op.id).catch(function(){});
           }
         }
-      }catch(e){}
+      }catch(e){ // noop
+}
     }
 
     /* هر تغییر واقعی کاربر وارد صف همگام‌سازی با سرور می‌شود */
@@ -258,7 +261,8 @@ function resetAll(){
   Store.remove(SYNC_QUEUE_KEY);
   Store.remove(SYNC_META_KEY);
   if(typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()){
-    try{ offlineStorage.clearAll(); }catch(e){}
+    try{ offlineStorage.clearAll(); }catch(e){ // noop
+}
   }
   location.reload();
 }

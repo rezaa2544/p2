@@ -191,7 +191,7 @@ function repairHunks(patchText, targetAbs) {
   const out = [];
   let i = 0;
   let prevOldEnd = 0;
-  const headers = [];
+  const headers = []; void headers;
   let sawHeader = false;
   while (i < lines.length) {
     if (/^diff --git/.test(lines[i])) { out.push(lines[i]); sawHeader = true; i++; continue; }

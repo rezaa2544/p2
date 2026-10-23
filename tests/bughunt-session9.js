@@ -43,7 +43,7 @@
 const path = require('path');
 const zlib = require('zlib');
 const crypto = require('crypto');
-const ROOT = path.join(__dirname, '..');
+const ROOT = path.join(__dirname, '..'); void ROOT;
 const { createCursor, resolveSecret } = require('../server/cursor');
 const { sendJsonCompressed, negotiateEncoding } = require('../server/compress');
 const { createPull } = require('../server/pull');

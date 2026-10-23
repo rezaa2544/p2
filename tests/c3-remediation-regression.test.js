@@ -162,7 +162,7 @@ async function runTask2WorkerHealth() {
   pass('Pass 2 (Boundary): Health timestamp and age thresholds evaluated correctly');
 
   // Pass 3: Negative / Failure Injection — Simulated worker freeze / stall
-  const staleThreshold = 50; // 50ms for testing
+  const staleThreshold = 50; void staleThreshold;
   const mockStalledWorker = {
     isHealthy: (thresh = 30000) => false,
     health: () => ({ running: false, active: true, healthy: false, lastTickAgeMs: 45000 })

@@ -20,8 +20,8 @@ async function freshOutbox() {
 
   // TASK 1: processing-stuck / crash recovery
   {
-    const o = await freshOutbox(), s = o && o;
-    const store = o.__store; // intentionally absent: use direct fixture below
+    const o = await freshOutbox(), s = o && o; void s; // intentionally absent: use direct fixture below
+    const store = o.__store; void store;
   }
   {
     const store = { outbox: [] }, o = createOutbox({ store, db: null });
@@ -166,7 +166,7 @@ async function freshOutbox() {
   }
   {
     const store = { outbox: [{ id: 8502, type: 't5.replay', status: 'pending' }] };
-    const o = createOutbox({ store, db: null });
+    const o = createOutbox({ store, db: null }); void o;
     // Replay idempotency is represented by the same local event identity.
     const first = store.outbox.find(e => e.id === 8502);
     const second = store.outbox.find(e => e.id === 8502);

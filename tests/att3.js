@@ -101,7 +101,7 @@ async function main() {
 
   /* ── ۱) برچسبِ «خروج از کلاس» ───────────────────────────── */
   test('T1 برچسب: ATT_FA و دکمهٔ جدول «خروج از کلاس» است', () => {
-    const r = W(`({fa:ATT_FA.early_exit, n:document.querySelectorAll('[data-act="att-set"][data-s="early_exit"]').length})`);
+    const r = W(`({fa:ATT_FA.early_exit, n:document.querySelectorAll('[data-act="att-set"][data-s="early_exit"]').length})`); void r;
     teacherOn();
     const r2 = W(`({fa:ATT_FA.early_exit,
       first:document.querySelector('[data-act="att-set"][data-s="early_exit"]').textContent})`);

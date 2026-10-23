@@ -68,7 +68,7 @@ function boot(port, env) {
     const t = setInterval(async () => {
       tries++;
       try {
-        const r = await req('GET', port, '/api/health');
+        const r = await req('GET', port, '/api/health'); void r;
         clearInterval(t);
         resolve({ proc: proc, storeFile: storeFile, ok: true, log: () => log });
       } catch (e) {

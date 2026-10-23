@@ -39,10 +39,10 @@ import { Rate, Trend, Counter } from 'k6/metrics';
      peak_api_rps        = 2,500 × 8        = 20,000 rps
    اگر نسبت‌ها عوض شوند، این جدول باید از همان مدل بازمحاسبه شود. */
 const NATIONAL = {
-  users: 10_000_000,
+  users: 10000000,
   normal_api_rps: 500,
-  peak_api_rps: 20_000,
-  peak_writes_per_sec: 2_500
+  peak_api_rps: 20000,
+  peak_writes_per_sec: 2500
 };
 
 const BASE = __ENV.PAYESH_BASE_URL || 'http://localhost:3000';

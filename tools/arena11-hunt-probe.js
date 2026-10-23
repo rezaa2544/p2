@@ -61,7 +61,7 @@ async function login(port, infra, phone, nid) {
   /* ── HF1: regional-intelligence — manager with region_id param ── */
   const mgr = await login(rd, infra, '09992630039', byId(2).national_id);
   rec(mgr.ok ? 'EVIDENCE' : 'BLOCKED', 'login manager', 'status=' + mgr.loginStatus);
-  const su = await login(rd, infra, edu ? P(edu.phone) : '09999838444', (edu || byId(1)).national_id);
+  const su = await login(rd, infra, edu ? P(edu.phone) : '09999838444', (edu || byId(1)).national_id); void su;
 
   const regMan = await L.httpReq(rd, 'GET', '/api/v1/analytics/regional-intelligence?region_id=' + school3District, null, { jar: mgr.jar });
   rec(regMan.status !== 200 ? 'PASS' : 'FAIL', 'HF1 regional-intelligence: manager + region_id=' + school3District + ' (school-3 district) → expect deny', 'status=' + regMan.status + ' ' + JSON.stringify(regMan.json).slice(0, 140));

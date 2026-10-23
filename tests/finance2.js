@@ -210,7 +210,7 @@ test('adF2 — پنجرهٔ ۷ روزه: قسطِ ۵ روزِ پیشِ رو یا
 });
 
 test('adF3 — ضداسپم: اجرای دوبارهٔ همان روز، اعلانِ تازه نمی‌سازد', () => {
-  const ctx = global.__finctx;
+  const ctx = global.__finctx; void ctx;
   const before = W('db.notifications.length');
   const r = W('tuitionReminders()');
   const after = W('db.notifications.length');

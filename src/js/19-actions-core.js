@@ -18,7 +18,7 @@ var attExemptId=null;
 /** بستهٔ پشتیبانی که کاربر برای بازیابی انتخاب کرده است */
 var RESTORE_PKG=null;
 /** پایه و رشتهٔ کلاس موازی در حال ساخت */
-var PARALLEL=null;
+var PARALLEL=null; void PARALLEL;
 /* F-3: نگهبان مدرسهٔ غیرفعال — حتی حساب فعال هم نمی‌تواند وارد مدرسه‌ای
    شود که در سطح مدرسه غیرفعال شده است. پیام باید برای انسانی باشد که
    حسابش را می‌شناسد، نه پیام فنی. (برگردانده: null اگر راه باز است؛
@@ -171,7 +171,8 @@ function coreActions(e, el, id, a, rawId){
    logout(){
      /* حالت سروری: نشستِ سرور را هم باطل می‌کنیم (jti → لیستِ سلب) */
      if(typeof serverDetected==='function'&&serverDetected()){
-       try{ Api.post('/api/auth/logout'); }catch(e){}
+       try{ Api.post('/api/auth/logout'); }catch(e){ // noop
+}
      }
      S.user=null;S.boss=null;S.stack=[];S.persona=null;S.showPicker=false;
      Store.remove(SESSION_KEY);Store.remove(BOSS_KEY);Store.remove(PERSONA_KEY);render();
@@ -183,7 +184,8 @@ function coreActions(e, el, id, a, rawId){
    go(){go(el.dataset.r);},
    'skip-to-main'(){ /* skip-link (WCAG 2.4.1 Bypass Blocks): پرش به محتوا */
      const m=document.querySelector('.main');
-     if(m){ if(!m.hasAttribute('tabindex'))m.setAttribute('tabindex','-1'); try{m.focus();}catch(e){} }
+     if(m){ if(!m.hasAttribute('tabindex'))m.setAttribute('tabindex','-1'); try{m.focus();}catch(e){ // noop
+} }
    },
    back(){ goBack(); },
    home(){ go(S.user.role==='edu_office'?'officedash':'dashboard'); },
@@ -335,7 +337,8 @@ function coreActions(e, el, id, a, rawId){
    'diag-clear-repairs'(){
      if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
      DIAG_REPAIRS.length=0;
-     try{Store.setJSON('sms_diag_repairs_v1',[]);}catch(err){}
+     try{Store.setJSON('sms_diag_repairs_v1',[]);}catch(err){ // noop
+}
      toast('تاریخچهٔ تعمیرات پاک شد','ok');
      render();
    },

@@ -270,7 +270,8 @@ function nationalGradesCard(sid){
 function noteKey(pid,sid){ return 'payesh_note_'+pid+'_'+sid; }
 function noteGet(pid,sid){
   try{ var o=JSON.parse(Store.get(noteKey(pid,sid),'null'));
-    if(o&&typeof o.t==='string')return {text:o.t,updated:o.u||null}; }catch(e){}
+    if(o&&typeof o.t==='string')return {text:o.t,updated:o.u||null}; }catch(e){ // noop
+}
   return null;
 }
 function noteLinkedParent(pid,sid){

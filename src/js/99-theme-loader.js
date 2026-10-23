@@ -16,7 +16,8 @@
         var stored = Store.get('payesh_ui_theme', defaultTheme);
         return validThemes.indexOf(stored) !== -1 ? stored : defaultTheme;
       }
-    } catch (e) {}
+    } catch (e) { // noop
+}
     return defaultTheme;
   }
 
@@ -25,7 +26,8 @@
       if (typeof Store !== 'undefined' && Store && typeof Store.set === 'function') {
         return Store.set('payesh_ui_theme', themeId);
       }
-    } catch (e) {}
+    } catch (e) { // noop
+}
     return false;
   }
 

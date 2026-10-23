@@ -35,7 +35,7 @@
 
 const crypto = require('crypto');
 const path = require('path');
-const ROOT = path.join(__dirname, '..');
+const ROOT = path.join(__dirname, '..'); void ROOT;
 
 const { createCursor, regionName } = require('../server/cursor');
 const { createPull } = require('../server/pull');

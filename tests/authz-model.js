@@ -139,7 +139,7 @@ const DEMO_ONLY = { tuition_plans: 1 };
 console.log('');
 console.log('— A) فیلدهای نوشته‌شدهٔ کلاینت ⊆ مدل —');
 const clientFields = {};
-let callSites = 0, spreadSkipped = 0;
+let callSites = 0, spreadSkipped = 0; void spreadSkipped;
 for (const f of fs.readdirSync(SRC).filter(x => x.endsWith('.js'))) {
   const t = fs.readFileSync(path.join(SRC, f), 'utf8');
   for (const c of extractWriteCalls(t)) {

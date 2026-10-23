@@ -186,7 +186,7 @@ services:
       DB_USER: pgbouncer
       DB_PASSWORD: ${PGHA_REPLICATION_PASSWORD}
       AUTH_TYPE: scram-sha-256
-      AUTH_QUERY: SELECT usename, passwd FROM pg_shadow WHERE usename=$1
+      AUTH_QUERY: SELECT usename, passwd FROM pgbouncer.pg_shadow_lookup($1)
       POOL_MODE: transaction
       MAX_CLIENT_CONN: "3500"
       DEFAULT_POOL_SIZE: "80"

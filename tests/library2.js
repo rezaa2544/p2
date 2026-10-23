@@ -185,7 +185,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       const l1 = J(`libLend(${bid},${f.s1},'')`);
       const l2 = J(`libLend(${bid},${f.s2},'')`);
       tagLoan(l1.rec.id); tagLoan(l2.rec.id);
-      const nm1 = J(`byId('users',${f.s1}).full_name`);
+      const nm1 = J(`byId('users',${f.s1}).full_name`); void nm1;
       const nm2 = J(`byId('users',${f.s2}).full_name`);
       asStu(f, f.s1);
       const out = W(`(S.route='library',S.filters={},S.page=1,renderRoute())`);

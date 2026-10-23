@@ -21,7 +21,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const path = require('path');
+const path = require('path'); void path;
 
 let okc = 0, failc = 0, skipped = 0;
 const fails = [];

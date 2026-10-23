@@ -258,7 +258,7 @@ async function main() {
   }
   const SETTLE_MS = 2600; /* ≥ یک چرخهٔ کاملِ تیکرِ persist */
   async function settleCount() { await sleep(SETTLE_MS); return countReportLogs(); }
-  const before = countReportLogs();
+  const before = countReportLogs(); void before; mutatedFile
 
   /* ── A01-2: مورد P1 اصلی — teacher → report_logs ins ─────── */
   console.log('— A01-2: موردِ P1 اصلی — teacher → report_logs registration —');

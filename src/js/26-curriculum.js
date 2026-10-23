@@ -10,7 +10,7 @@ const LEVELS = ['ابتدایی', 'متوسطه اول', 'متوسطه دوم'];
    هر نوعی در هر مقطع قابل انتخاب است (اعتبارسنجی ترکیب
    مقطع×نوع عمداً نیست). رکوردهای قدیمی بدون type، «عادی»
    خوانده می‌شوند (s.type||'عادی'). */
-const SCHOOL_TYPES = ['عادی', 'علوم تجربی', 'ریاضی', 'فنی و حرفه‌ای'];
+const SCHOOL_TYPES = ['عادی', 'علوم تجربی', 'ریاضی', 'فنی و حرفه‌ای']; void SCHOOL_TYPES;
 
 const GRADES_OF_LEVEL = {
   'ابتدایی'    : ['اول', 'دوم', 'سوم', 'چهارم', 'پنجم', 'ششم'],
@@ -33,7 +33,7 @@ function finalGradeOk(grade){
    درسی (internal)، نهایی (national_final)، جبرانی (makeup).
    داده‌های قدیمی که فقط is_final دارند، خوانده می‌شوند ولی
    هرگز دوباره is_final نوشته نمی‌شود. */
-const EXAM_SOURCES=[['internal','درسی'],['national_final','نهایی'],['makeup','جبرانی']];
+const EXAM_SOURCES=[['internal','درسی'],['national_final','نهایی'],['makeup','جبرانی']]; void EXAM_SOURCES;
 /** منشأ یک جلسهٔ امتحان (با سازگاری رو به عقب برای is_final) */
 function examSource(e){
   if(!e) return 'internal';
@@ -68,9 +68,9 @@ function examSourceBadge(e){
      internal (پیش‌فرض) | national
    رکوردهای قدیمی که `source` ندارند «داخلی» خوانده می‌شوند و هرگز
    خودکار «نهایی» نمی‌شوند (خواستهٔ صریح: پیش‌فرض internal). */
-const GRADE_SOURCES=[['internal','داخلی'],['national','نهایی کشوری']];
+const GRADE_SOURCES=[['internal','داخلی'],['national','نهایی کشوری']]; void GRADE_SOURCES;
 /** مقدارِ EXAM_TYPES که نشان‌دهندهٔ امتحان نهایی کشوری است */
-const NATIONAL_EXAM_TYPE='امتحان نهایی';
+const NATIONAL_EXAM_TYPE='امتحان نهایی'; void NATIONAL_EXAM_TYPE;
 
 /** نمای دوحالتی منشأ جلسهٔ امتحان: 'internal' | 'national' */
 function examTypeOf(e){

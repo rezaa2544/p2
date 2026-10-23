@@ -245,7 +245,7 @@ async function main() {
         return a.school_id===${ctx.sid} && a.status==='absent' && !a.excused && a.date>=from;})[0] || null;
     })()`);
     assert(abs, 'رکوردِ غیابِ قابل موجه‌سازی پیدا نشد');
-    const recId = abs.id, stuName = abs.student_id;
+    const recId = abs.id, stuName = abs.student_id; void stuName;
 
     W(`(function(){
       var clsRow=(db.attendance||[]).find(function(a){return a.id===${recId};});

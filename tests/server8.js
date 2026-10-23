@@ -131,7 +131,7 @@ process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }
 
   // B2: superadmin backup
   const b1 = await httpReq(port, 'POST', '/api/admin/backup', {}, saJar);
-  const dirFiles0 = fs.existsSync(backupsDir) ? fs.readdirSync(backupsDir) : [];
+  const dirFiles0 = fs.existsSync(backupsDir) ? fs.readdirSync(backupsDir) : []; void dirFiles0;
   let parsed = null;
   try { parsed = JSON.parse(fs.readFileSync(path.join(backupsDir, b1.json && b1.json.file), 'utf8')); } catch (e) {/* intentional no-op */}
   chk('B2a backup: 200 + فایل روی disk با اندازه', b1.status === 200 && b1.json && b1.json.ok === true &&

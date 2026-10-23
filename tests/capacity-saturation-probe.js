@@ -3,7 +3,7 @@
 const assert=require('assert');
 const http=require('http');
 const {spawnSync}=require('child_process');
-const fs=require('fs');
+const fs=require('fs'); void fs;
 const path=require('path');
 const ROOT=path.join(__dirname,'..'), TOOL=path.join(ROOT,'tools','capacity-saturation-probe.js');
 function run(args){return spawnSync(process.execPath,[TOOL,...args],{cwd:ROOT,encoding:'utf8',timeout:15000});}

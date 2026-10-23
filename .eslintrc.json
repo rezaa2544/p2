@@ -1,12 +1,12 @@
 {
   "root": true,
   "env": {
-    "es2021": true,
+    "es6": true,
     "node": true,
     "browser": true
   },
   "parserOptions": {
-    "ecmaVersion": "latest",
+    "ecmaVersion": 2020,
     "sourceType": "script"
   },
   "extends": [
@@ -16,7 +16,14 @@
     "node_modules/\u002a\u002a",
     "dist/\u002a\u002a",
     "tests/performance/results/\u002a\u002a",
-    "tests/\u002a.cjs"
+    "tests/\u002a.cjs",
+    "eslint.config.js",
+    "\u002a\u002a/\u002a.json",
+    "\u002a\u002a/\u002a.html",
+    "\u002a\u002a/\u002a.md",
+    "\u002a\u002a/\u002a.css",
+    "\u002a\u002a/\u002a.yml",
+    "\u002a\u002a/\u002a.yaml"
   ],
   "rules": {
     "no-empty": "warn",
@@ -736,14 +743,23 @@
         "tests/performance/\u002a\u002a/\u002a.js"
       ],
       "parserOptions": {
-        "ecmaVersion": "latest",
+        "ecmaVersion": 2020,
         "sourceType": "module"
       },
       "globals": {
         "__ENV": "readonly",
         "__VU": "readonly",
-        "__ITER": "readonly"
+        "__ITER": "readonly",
+        "open": "readonly"
       }
     }
-  ]
+  ],
+  "globals": {
+    "BigInt": "readonly",
+    "globalThis": "readonly",
+    "AbortController": "readonly",
+    "fetch": "readonly",
+    "DecompressionStream": "readonly",
+    "structuredClone": "readonly"
+  }
 }

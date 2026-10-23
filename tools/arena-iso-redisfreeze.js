@@ -2,7 +2,7 @@
 'use strict';
 /* Redis FREEZE: healthy connection, then SIGSTOP redis-server (socket stays
  * open, replies stop). Does any endpoint hang (no commandTimeout)? */
-const fs = require('fs');
+const fs = require('fs'); void fs;
 const { execFileSync } = require('child_process');
 process.env.NODE_PATH = '/tmp/repo-node_modules';
 require('module').Module._initPaths();

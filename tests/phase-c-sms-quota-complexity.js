@@ -169,7 +169,7 @@ async function main() {
     });
     ctx.store.sms_log.push({ id: 9001, school_id: 5, status: 'sent', created_at: TODAY,
       parts: 1, user_id: 10, queue_id: 7000 });
-    const cap = await callSend(ctx, [7000]);
+    const cap = await callSend(ctx, [7000]); void cap;
     const sent = ctx.store.sms_log.filter((l) => l.status === 'sent' && l.queue_id === 7000);
     chk('فقط گیرندهٔ دوم ارسال شد (گیرندهٔ اول dedupe شد)',
       () => assert.strictEqual(sent.length, 2, 'sent rows: ' + JSON.stringify(sent.map((l) => l.user_id))));

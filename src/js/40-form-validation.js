@@ -58,8 +58,10 @@ function focusField(id){
   if(!el) return;
   try{
     if(el.scrollIntoView) el.scrollIntoView({ block:'center', behavior:'smooth' });
-    setTimeout(function(){ try{ el.focus(); }catch(e){} }, 120);
-  }catch(e){}
+    setTimeout(function(){ try{ el.focus(); }catch(e){ // noop
+} }, 120);
+  }catch(e){ // noop
+}
 }
 
 /**

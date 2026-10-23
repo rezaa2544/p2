@@ -14,7 +14,7 @@
 'use strict';
 const crypto = require('crypto');
 
-const NAMESPACES = new Set(['attendance', 'classes', 'grades', 'users']);
+const NAMESPACES = new Set(['attendance', 'classes', 'grades', 'users', 'sync_conflicts']);
 
 function createIds({ db, cache }){
   const bootstrapped = new Set(); /* دنباله‌های هم‌ترازشده در این فرایند */
@@ -67,8 +67,8 @@ function createIds({ db, cache }){
       const ownedSeq = seqRes && seqRes.rows && seqRes.rows[0] && seqRes.rows[0].seq;
       if(ownedSeq){
         const r = await db.query(
-          `SELECT setval($1, GREATEST(nextval($1), (SELECT COALESCE(MAX(id), 0) + 1 FROM "${col}")), true) AS next_id`,
-          [ownedSeq]
+          `SELECT pg_advisory_xact_lock($2), setval($1, GREATEST(nextval($1), (SELECT COALESCE(MAX(id), 0) + 1 FROM "${col}")), true) AS next_id`,
+          [ownedSeq, advisoryKey(ownedSeq)]
         );
         return Number(r.rows[0].next_id);
       }

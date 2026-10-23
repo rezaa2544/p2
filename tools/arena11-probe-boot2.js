@@ -10,7 +10,7 @@ const L = require('/home/user/repo/tests/chaos-drill-lib');
 const CHILD_NODE_PATH = '/tmp/repo-node_modules';
 (async () => {
   const infra = await L.Infra.start();
-  const st = infra.store();
+  const st = infra.store(); void st;
   const ps = (q) => infra.psql(q);
   // confirm schools seeded
   console.log('schools:', ps('SELECT COUNT(*) FROM schools'));

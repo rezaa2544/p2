@@ -309,7 +309,7 @@ for (const c of cases) {
     if (c.extra && c.extra.addFile) {
       fs.writeFileSync(path.join(dir, c.extra.addFile.path), c.extra.addFile.content);
     }
-    const head = finishFixture(dir, reg);
+    const head = finishFixture(dir, reg); void head;
     if (c.extra && c.extra.prContext) {
       if (c.extra.divergentPrOrigin) {
         /* Create a sibling commit directly so the fixture's rewritten registry

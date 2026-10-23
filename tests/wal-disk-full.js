@@ -571,7 +571,7 @@ function liveAvailable() {
 
     // «پاک کردنِ WALِ قدیمی» ⇒ آزادسازیِ فضا
     const freedTo = freeWalSpace();
-    const tFreed = Date.now();
+    const tFreed = Date.now(); void tFreed;
     console.log('      فضا آزاد شد → ' + (freedTo / 1048576).toFixed(1) + 'MB مصرف (' +
       walPct().toFixed(1) + '%)');
 
@@ -618,7 +618,7 @@ function liveAvailable() {
     } else {
       console.log('      replica بالا آمد روی پورتِ ' + rp.port);
       // یک نوشتنِ تازه روی primary، سپس انتظار برای replica
-      const lsnBefore = (psql('select pg_current_wal_lsn()').stdout || '').trim();
+      const lsnBefore = (psql('select pg_current_wal_lsn()').stdout || '').trim(); void lsnBefore;
       const wl = writeLoad(1, 1200);
       const lsn = (psql('select pg_current_wal_lsn()').stdout || '').trim();
       console.log('      [' + elapsed() + '] انتظار برای رسیدنِ replica به ' + lsn);

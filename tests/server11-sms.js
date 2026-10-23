@@ -56,7 +56,7 @@ async function loginAs(user){
   r = await req('/api/auth/login', 'POST', { phone: String(user.phone).replace(/\D/g, ''), code, national_id: user.national_id != null ? String(user.national_id) : null }, cookieOf(r));
   return { cookie: cookieOf(r), r, j: r.j };
 }
-const PARENTS = [17, 1025];
+const PARENTS = [17, 1025]; void PARENTS;
 const PHONES = ['09998544082', '09990001234', '09992630039'];
 const SA = store.users.find(u => u.role === 'superadmin');
 const MGR = store.users.find(u => u.role === 'manager' && u.school_id === 1);

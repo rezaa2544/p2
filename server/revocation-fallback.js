@@ -64,6 +64,10 @@ const fs = require('fs');
 const path = require('path');
 
 const JOURNAL_NAME = 'revocation-journal.json';
+const LOCK_NAME = 'revocation-journal.lock';
+const LOCK_STALE_MS = 5000;
+const LOCK_WAIT_MS = 2500;
+const LOCK_SLEEP_BUF = new Int32Array(new globalThis.SharedArrayBuffer(4));
 
 /* Bound the journal so a long outage cannot grow it without limit. Entries
    past token expiry are already pruned on read; this is the hard cap. */
@@ -73,32 +77,125 @@ function journalPath(dataDir) {
   return path.join(dataDir || path.join(__dirname, '..', 'data'), JOURNAL_NAME);
 }
 
+function _lockPath(dataDir) {
+  return path.join(dataDir || path.join(__dirname, '..', 'data'), LOCK_NAME);
+}
+
+function _sleepMs(ms) {
+  globalThis.Atomics.wait(LOCK_SLEEP_BUF, 0, 0, ms);
+}
+
+function _isPidAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return err && err.code === 'EPERM';
+  }
+}
+
+function _evictIfStale(lockFile) {
+  try {
+    const raw = fs.readFileSync(lockFile, 'utf8');
+    const parsed = JSON.parse(raw);
+    const age = Date.now() - (Number(parsed && parsed.at) || 0);
+    if (age > LOCK_STALE_MS || !_isPidAlive(parsed && parsed.pid)) {
+      fs.unlinkSync(lockFile);
+    }
+  } catch (err) {
+    try {
+      const st = fs.statSync(lockFile);
+      if (Date.now() - st.mtimeMs > LOCK_STALE_MS) fs.unlinkSync(lockFile);
+    } catch (inner) {
+      // Lock file already disappeared between race ticks.
+    }
+  }
+}
+
+function _withLock(dataDir, fn) {
+  const targetDir = dataDir || path.join(__dirname, '..', 'data');
+  const lockFile = _lockPath(targetDir);
+  try {
+    fs.mkdirSync(targetDir, { recursive: true });
+  } catch (err) {
+    return false;
+  }
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  let fd = null;
+  while (fd === null) {
+    try {
+      fd = fs.openSync(lockFile, 'wx');
+      fs.writeSync(fd, JSON.stringify({ pid: process.pid, at: Date.now() }));
+    } catch (err) {
+      fd = null;
+      if (!err || err.code !== 'EEXIST') return false;
+      _evictIfStale(lockFile);
+      if (Date.now() >= deadline) return false;
+      _sleepMs(5);
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    try {
+      fs.closeSync(fd);
+    } catch (err) {
+      // ignore close error
+    }
+    try {
+      fs.unlinkSync(lockFile);
+    } catch (err) {
+      // ignore unlink race
+    }
+  }
+}
+
 function _load(dataDir) {
   try {
     const parsed = JSON.parse(fs.readFileSync(journalPath(dataDir), 'utf8'));
     if (parsed && Array.isArray(parsed.entries)) return parsed;
-  } catch (e) { /* absent or corrupt → start fresh; reads never throw */ }
+  } catch (e) {
+    // absent or corrupt -> start fresh; reads never throw
+  }
   return { entries: [] };
 }
 
-function _save(dataDir, entries) {
+function _saveUnlocked(dataDir, entries) {
+  const target = journalPath(dataDir);
+  const tmp = `${target}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
   try {
-    fs.writeFileSync(journalPath(dataDir), JSON.stringify({ entries }, null, 0), 'utf8');
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(tmp, JSON.stringify({ entries }, null, 0), 'utf8');
+    fs.renameSync(tmp, target);
     return true;
-  } catch (e) { return false; }
+  } catch (e) {
+    try {
+      fs.unlinkSync(tmp);
+    } catch (cleanupErr) {
+      // ignore temp cleanup failure
+    }
+    return false;
+  }
 }
 
-/* ── write side: record a revocation Redis did not confirm ── */
+function _save(dataDir, entries) {
+  return _withLock(dataDir, () => _saveUnlocked(dataDir, entries));
+}
+
+/* ── write side: record a revocation revocation-journal Redis did not confirm ── */
 
 function appendJournal(dataDir, entry) {
   if (!entry || typeof entry.jti !== 'string') return false;
-  const entries = _load(dataDir).entries.filter((e) => e && e.jti !== entry.jti);
-  entries.push({ jti: entry.jti, exp: Number(entry.exp) || 0, at: Date.now() });
-  if (entries.length > MAX_JOURNAL_ENTRIES) {
-    entries.sort((a, b) => a.exp - b.exp);
-    entries.splice(0, entries.length - MAX_JOURNAL_ENTRIES);
-  }
-  return _save(dataDir, entries);
+  return _withLock(dataDir, () => {
+    const entries = _load(dataDir).entries.filter((e) => e && e.jti !== entry.jti);
+    entries.push({ jti: entry.jti, exp: Number(entry.exp) || 0, at: Date.now() });
+    if (entries.length > MAX_JOURNAL_ENTRIES) {
+      entries.sort((a, b) => a.exp - b.exp);
+      entries.splice(0, entries.length - MAX_JOURNAL_ENTRIES);
+    }
+    return _saveUnlocked(dataDir, entries);
+  });
 }
 
 /* Entries are only meaningful while the JWT could still be presented. */
@@ -131,18 +228,23 @@ async function replayJournal(dataDir, setFn) {
   const entries = readJournal(dataDir);
   if (entries.length === 0) return 0;
   let replayed = 0;
-  const remaining = [];
+  const replayedJtis = new Set();
   for (const e of entries) {
     const ttl = Math.max(1, Number(e.exp) - Math.floor(Date.now() / 1000));
     try {
       await setFn(e.jti, ttl);
       replayed++;
+      replayedJtis.add(e.jti);
     } catch (err) {
-      /* Redis still not writable → keep the entry for the next cycle. */
-      remaining.push(e);
+      // Redis still not writable -> keep entry for the next cycle.
     }
   }
-  if (replayed > 0) _save(dataDir, remaining);
+  if (replayed > 0) {
+    _withLock(dataDir, () => {
+      const fresh = pruneExpired(_load(dataDir).entries).filter((e) => !replayedJtis.has(e.jti));
+      return _saveUnlocked(dataDir, fresh);
+    });
+  }
   return replayed;
 }
 

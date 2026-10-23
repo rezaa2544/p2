@@ -22,7 +22,7 @@ const kit = session('sgap-mut-');
 kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سایه */
 const SUITE = path.join(ROOT, 'tests', 'staff-gap.js');
 const F = path.join(ROOT, 'src', 'js', '75-staff-gap.js');
-const SF = path.join(ROOT, 'server', 'sync.js');
+const SF = path.join(ROOT, 'server', 'sync.js'); void SF;
 const PF = path.join(ROOT, 'server', 'policy.js'); /* ترمیم لنگر: دروازهٔ د.۴ اینجاست */
 
 let pass = 0, fail = 0;

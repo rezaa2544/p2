@@ -455,7 +455,11 @@ run_live_one() {
     code=$?
     psql "$LIVE_ADMIN_URL" -c "DROP DATABASE IF EXISTS payesh_bench;" >/dev/null 2>&1 || true
   else
-    if [ "$f" = "tests/pg-relational-seed.js" ] || [ "$f" = "tests/sync-occ-adversarial-live.js" ] || [ "$f" = "tests/sync-replay-adversarial-live.js" ] || [ "$f" = "tests/multi-instance.js" ]; then
+    for _pg_ready in $(seq 1 30); do
+      psql "$LIVE_PG_URL" -c 'SELECT 1;' >/dev/null 2>&1 && break
+      sleep 0.5
+    done
+    if [ "$f" = "tests/pg-relational-seed.js" ] || [ "$f" = "tests/sync-occ-adversarial-live.js" ] || [ "$f" = "tests/sync-replay-adversarial-live.js" ] || [ "$f" = "tests/multi-instance.js" ] || [ "$f" = "tests/r5-prod-redis-boot-gate.js" ]; then
       psql "$LIVE_PG_URL" -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;" >/dev/null 2>&1 || true
       DATABASE_URL="$LIVE_PG_URL" node tools/migrate-ledger.js up >/dev/null 2>&1 || true
       if [ "$f" = "tests/multi-instance.js" ]; then

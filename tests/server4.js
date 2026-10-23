@@ -141,7 +141,7 @@ process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }
       }),
       stdio: 'ignore'
     });
-    const base = 'http://127.0.0.1:' + p;
+    const base = 'http://127.0.0.1:' + p; void base;
     // wait for health — but only trust a server whose pid is THIS spawned one
     let okBoot = false;
     for (let i = 0; i < 50; i++) {

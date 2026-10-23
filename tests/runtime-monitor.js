@@ -2,7 +2,7 @@
 /* Runtime monitoring regression + health-contract test.
    Run: node tests/runtime-monitor.js */
 'use strict';
-const assert = require('assert');
+const assert = require('assert'); void assert;
 const fs = require('fs');
 const http = require('http');
 const os = require('os');

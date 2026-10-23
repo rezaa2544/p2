@@ -49,20 +49,20 @@ const jalali = iso => {
 };
 const todayISO = ()=> new Date().toISOString().slice(0,10);
 const daysAgoISO = d => { const t=new Date(); t.setDate(t.getDate()-d); return t.toISOString().slice(0,10); };
-const DAYS=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه'];
-const DAYS_FULL=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه'];
+const DAYS=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه']; void DAYS;
+const DAYS_FULL=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه']; void DAYS_FULL;
 const DEFAULT_WORK_DAYS=[0,1,2,3,4]; /* شنبه تا چهارشنبه — پنجشنبه اختیاری و پیش‌فرض خاموش (تصمیم کاربر) */
-const ROLE_FA={superadmin:'سوپر ادمین',manager:'مدیر مدرسه',teacher:'دبیر',student:'دانش‌آموز',parent:'ولی',edu_office:'اداره آموزش و پرورش',counselor:'مشاور',driver:'راننده سرویس'};
-const ROLE_BADGE={superadmin:'b-purple',manager:'b-blue',teacher:'b-green',student:'b-amber',parent:'b-gray',edu_office:'b-purple',counselor:'b-cyan'};
-const ATT_FA={present:'حاضر',absent:'غایب',late:'تأخیر',excused:'موجه',early_exit:'خروج از کلاس'};
-const ATT_BADGE={present:'b-green',absent:'b-red',late:'b-amber',excused:'b-purple',early_exit:'b-cyan'};
-const ATT_COLOR={present:'var(--green)',absent:'var(--red)',late:'var(--amber)',excused:'var(--purple)',early_exit:'#0b7fa8'};
-const TERMS=['نوبت اول','نوبت دوم'];
+const ROLE_FA={superadmin:'سوپر ادمین',manager:'مدیر مدرسه',teacher:'دبیر',student:'دانش‌آموز',parent:'ولی',edu_office:'اداره آموزش و پرورش',counselor:'مشاور',driver:'راننده سرویس'}; void ROLE_FA;
+const ROLE_BADGE={superadmin:'b-purple',manager:'b-blue',teacher:'b-green',student:'b-amber',parent:'b-gray',edu_office:'b-purple',counselor:'b-cyan'}; void ROLE_BADGE;
+const ATT_FA={present:'حاضر',absent:'غایب',late:'تأخیر',excused:'موجه',early_exit:'خروج از کلاس'}; void ATT_FA;
+const ATT_BADGE={present:'b-green',absent:'b-red',late:'b-amber',excused:'b-purple',early_exit:'b-cyan'}; void ATT_BADGE;
+const ATT_COLOR={present:'var(--green)',absent:'var(--red)',late:'var(--amber)',excused:'var(--purple)',early_exit:'#0b7fa8'}; void ATT_COLOR;
+const TERMS=['نوبت اول','نوبت دوم']; void TERMS;
 /* امتحان نهایی (دور ۶۳، بند ۵): آزمون پایانیِ پایه‌های پایانی
    (نهم و دوازدهم). قاعدهٔ پایه در finalGradeOk (26-curriculum)
    اعمال می‌شود — خودِ فهرست قاعده ندارد تا گزینه برای همه
    در دسترس باشد و اعتبارسنجی در محل ثبت باشد. */
-const EXAM_TYPES=['کلاسی','میان‌ترم','پایان‌ترم','عملی','امتحان نهایی'];
+const EXAM_TYPES=['کلاسی','میان‌ترم','پایان‌ترم','عملی','امتحان نهایی']; void EXAM_TYPES;
 function toast(msg,type=''){const w=$('#toasts');if(!w)return;const d=document.createElement('div');d.className='toast '+type;d.setAttribute('role','status');d.textContent=msg;w.appendChild(d);setTimeout(()=>d.remove(),3000);}
 function empty(emoji,title,desc,btn){return `<div class="empty"><span class="emoji">${emoji}</span><h4>${esc(title)}</h4><div class="small">${esc(desc||'')}</div>${btn?`<div style="margin-top:14px">${btn}</div>`:''}</div>`;}
 function bar(v,max,color){return `<div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,(v/(max||1))*100)}%;background:${color}"></div></div>`;}
@@ -83,5 +83,6 @@ function a11yScrollablePass(root){
         el.removeAttribute('tabindex');
       }
     });
-  }catch(e){}
+  }catch(e){ // noop
+}
 }

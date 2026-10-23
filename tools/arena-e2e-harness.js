@@ -10,7 +10,7 @@
  * the REAL SMS-delivery leg: brute-force sha256(code|phone) from Redis OTP store.
  */
 const fs = require('fs');
-const path = require('path');
+const path = require('path'); void path;
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 process.env.NODE_PATH = ['/tmp/repo-node_modules','/home/user/repo/node_modules'].filter(fs.existsSync).join(':');

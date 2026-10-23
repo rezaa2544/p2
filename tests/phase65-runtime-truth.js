@@ -251,10 +251,10 @@ async function flood(port, n, pth, headers) {
 
   /* ── RT-09 NOC metrics vs real samples ──────────────────────────── */
   console.log('\n── RT-09 NOC metric comparison');
-  const clientLat = [];
+  const clientLat = []; void clientLat;
   const M = 5000;
   const t1 = Date.now();
-  const nocSamples = await flood(PORTA, M, '/api/health', { 'x-province-code': '07' });
+  const nocSamples = await flood(PORTA, M, '/api/health', { 'x-province-code': '07' }); void nocSamples;
   const wall = Date.now() - t1;
   const avgClient = wall / M;
   const noc = await req(PORTA, 'GET', '/api/v1/system/national/health', null, cookie);

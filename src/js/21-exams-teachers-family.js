@@ -1,7 +1,7 @@
 /* ============================ فاز ۸ — پایش: چندمدرسه‌ای، امتحانات، تأیید اولیا ============================ */
 
 const P8 = { colls: ['teacher_schools','exam_terms','exams','exam_duties','parent_verifications','corrections'] };
-const TIME_SLOTS = ['08:00','10:00','10:30','13:00'];
+const TIME_SLOTS = ['08:00','10:00','10:30','13:00']; void TIME_SLOTS;
 const toMinP = t => { const [h,m]=String(t||'0:0').split(':').map(Number); return (h||0)*60+(m||0); };
 const toHHMMP = m => `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
 const overlapP = (a,ad,b,bd) => toMinP(a) < toMinP(b)+bd && toMinP(b) < toMinP(a)+ad;

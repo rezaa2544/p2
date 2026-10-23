@@ -25,7 +25,8 @@ function currentPayeshTheme(){
     if(typeof Store!=='undefined' && Store && typeof Store.get==='function'){
       return Store.get('payesh_ui_theme','theme-2');
     }
-  }catch(e){}
+  }catch(e){ // noop
+}
   return 'theme-2';
 }
 

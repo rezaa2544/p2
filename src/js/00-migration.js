@@ -100,7 +100,8 @@ function migrateFromLocalStorageToIdb(customStorage) {
           Store.set(IDB_MIGRATION_FLAG, 'true');
           Store.set(IDB_MIGRATION_REPAIR_FLAG, 'true');
         }
-      } catch (e) {}
+      } catch (e) { // noop
+}
       return true;
     }).catch(function(err) {
       console.error('خطا در فرآیند مهاجرت داده‌ها به IndexedDB:', err);
@@ -116,12 +117,15 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   try {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function() {
-        try { migrateFromLocalStorageToIdb(); } catch (e) {}
+        try { migrateFromLocalStorageToIdb(); } catch (e) { // noop
+}
       });
     } else {
       setTimeout(function() {
-        try { migrateFromLocalStorageToIdb(); } catch (e) {}
+        try { migrateFromLocalStorageToIdb(); } catch (e) { // noop
+}
       }, 0);
     }
-  } catch (e) {}
+  } catch (e) { // noop
+}
 }

@@ -14,7 +14,7 @@ const path = require('path');
 delete process.env.NODE_ENV;
 delete process.env.REDIS_URL;
 
-const ROOT = path.join(__dirname, '..');
+const ROOT = path.join(__dirname, '..'); void ROOT;
 const { createIds } = require('../server/ids.js');
 const cache = require('../server/cache.js');
 

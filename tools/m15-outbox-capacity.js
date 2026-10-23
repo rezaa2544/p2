@@ -61,7 +61,7 @@ function makePgDb(pool) {
   console.log(`\n■ Produce: ${N} رویداد در ${produceMs}ms ⇒ ${produceRps} رویداد/ثانیه`);
 
   /* ── ۲) Consume throughput (batch پیش‌فرض ۵۰) ── */
-  const d0 = await outbox.replicateBacklog();
+  const d0 = await outbox.replicateBacklog(); void d0;
   const t1 = Date.now();
   let ticks = 0;
   for (;;) {

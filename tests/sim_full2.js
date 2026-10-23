@@ -66,7 +66,7 @@ const rootHtml = () => win.document.getElementById('root').innerHTML;
 /* یک بخش: خطای هر بخش، آن بخش را ❌ می‌کند اما شبیه‌سازی ادامه می‌یابد */
 async function section(name, fn) {
   console.log('\n▸ ' + name);
-  const errs = consoleErrs.length;
+  const errs = consoleErrs.length; void errs;
   try { await fn(); }
   catch (e) { T(false, name + ' — خطای ناگهانی: ' + String(e.message || e)); }
 }

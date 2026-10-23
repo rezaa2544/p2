@@ -637,8 +637,8 @@ async function executeMigration(store) {
 async function main() {
   const args = process.argv.slice(2);
   const isExecute = args.includes('--execute');
-  const isSqlOnly = args.includes('--sql') || args.includes('--dump-sql');
-  const isDryRun = args.includes('--dry-run');
+  const isSqlOnly = args.includes('--sql') || args.includes('--dump-sql'); void isSqlOnly;
+  const isDryRun = args.includes('--dry-run'); void isDryRun;
 
   let store = {};
   if (fs.existsSync(STORE_FILE)) {
@@ -647,7 +647,7 @@ async function main() {
     console.log('Note: No store file found at ' + STORE_FILE + '. Generating schema DDL only.');
   }
 
-  const { sql, totalRows } = generateMigrationSQL(store);
+  const { sql, totalRows } = generateMigrationSQL(store); void sql;
 
   /* P0-BUG-03 fix (side-effect guard): this tool used to OVERWRITE the tracked
      server/schema.sql on EVERY run — a crashed/failed --execute left the repo's

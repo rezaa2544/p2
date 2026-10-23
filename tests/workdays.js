@@ -64,8 +64,8 @@ console.log('\n▸ روزهای کاری (دور ۶۵)');
 
 /* ۲۰۲۶-۰۹-۰۵ شنبه · ۲۰۲۶-۰۹-۰۳ پنجشنبه (ایندکسِ ۵ — روزِ اختیاری) · ۲۰۶-۰۹-۱۱ جمعه */
 const THU = "new Date('2026-09-03T09:05:00')";
-const FRI = "new Date('2026-09-11T10:00:00')";
-const SAT = "new Date('2026-09-05T09:05:00')";
+const FRI = "new Date('2026-09-11T10:00:00')"; void FRI;
+const SAT = "new Date('2026-09-05T09:05:00')"; void SAT;
 
 test('W1 — پیش‌فرض: شنبه تا سه‌شنبه + DAYS_FULL هفت‌عضو', () => {
   assert(W(`DAYS_FULL.length`) === 7, 'DAYS_FULL باید ۷ روز داشته باشد');

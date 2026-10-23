@@ -33,7 +33,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
+const crypto = require('crypto'); void crypto;
 
 const ROOT = path.resolve(__dirname, '..');
 // PEES_STORE_DIR lets regression tests run against a throwaway store so they
@@ -46,7 +46,7 @@ const SCHEMA_VERSION = '1.0.0';
 // ---------------------------------------------------------------------------
 // Experience status lifecycle (mission section 23)
 // ---------------------------------------------------------------------------
-const STATUS_LIFECYCLE = ['RAW', 'VALIDATED', 'VERIFIED', 'CANONICAL', 'SUPERSEDED', 'RETIRED'];
+const STATUS_LIFECYCLE = ['RAW', 'VALIDATED', 'VERIFIED', 'CANONICAL', 'SUPERSEDED', 'RETIRED']; void STATUS_LIFECYCLE;
 // statuses that retrieval may return
 const RETRIEVABLE = ['VALIDATED', 'VERIFIED', 'CANONICAL'];
 

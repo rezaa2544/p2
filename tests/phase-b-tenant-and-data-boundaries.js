@@ -40,8 +40,8 @@ console.log('\n■ F#1/F#5 — گاردِ edu_office و حلِ استانِ دف
 const EDU_PROV1 = { id: 1027, role: 'edu_office', office_id: 1 };        // دفترِ استانیِ کردستان
 const EDU_SUB = { id: 1031, role: 'edu_office', office_id: 3 };          // دفارِ ناحیه‌ای (cty1/dist1)
 const EDU_NOOFFICE = { id: 9999, role: 'edu_office' };                   // بدون دفتر → fail-closed
-const schoolInProv1 = school(1);
-const schoolOut = school(3);                                             // تهران
+const schoolInProv1 = school(1); void schoolInProv1; // تهران
+const schoolOut = school(3); void schoolOut;
 
 chk('edu_office استانی: مدارسِ استانِ خودش مجازند', () => {
   for (const sid of [1, 2, 5]) {

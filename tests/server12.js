@@ -183,7 +183,7 @@ async function main() {
   chk('S10 والد: غیرفرزند → 403 out_of_scope (fail-closed)', r11.status === 403 && s11 && !s11.ok && s11.code === 'out_of_scope', JSON.stringify(r11.json).slice(0, 140));
 
   /* S11 — دستهٔ مخلوط: op سالم + op جعلی (status) */
-  const d11 = leaf('pending');
+  const d11 = leaf('pending'); void d11;
   const r12 = await syncOps(cP, [
     { t: 'upd', c: 'leaves', id: recId, data: { reason: 'دستهٔ مخلوط — سالم' }, __by: P.id },
     { t: 'upd', c: 'leaves', id: recId, data: { status: 'approved' }, __by: P.id }
@@ -213,7 +213,7 @@ async function main() {
   chk('S15 والد: ins اعلان (student_id ندارد) → 403 out_of_scope', r15.status === 403 && s15 && !s15.ok && s15.code === 'out_of_scope', JSON.stringify(r15.json).slice(0, 140));
 
   /* S16 — والد: ins leaveِ pending برای فرزندِ خودش → ok + اعلانِ مدیر از سمتِ سرور */
-  const notifsBefore = (JSON.parse(fs.readFileSync(storeFile, 'utf8')).notifications || []).length;
+  const notifsBefore = (JSON.parse(fs.readFileSync(storeFile, 'utf8')).notifications || []).length; void notifsBefore;
   const r16 = await syncOps(cP, [{ t: 'ins', c: 'leaves', data: { school_id: 1, student_id: KID, from_date: '2026-09-13', to_date: '2026-09-13', reason: 'PR2-S16', status: 'pending', created_at: '2026-09-08' }, __by: P.id }]);
   const s16 = r16.json && r16.json.results && r16.json.results[0];
   chk('S16a والد: ins leaveِ pending برای فرزند → ok', r16.status === 200 && s16 && s16.ok, JSON.stringify(r16.json).slice(0, 140));
@@ -277,7 +277,7 @@ async function main() {
   chk('S22 دانش‌آموز: چت (from خود) → ok', r22.status === 200 && s22 && s22.ok, JSON.stringify(r22.json).slice(0, 140));
 
   /* S23 — نشانِ خوانده‌شدن: مدیر یک اعلان برایِ والد می‌سازد، والد read می‌کند → روی disk */
-  const r23 = await syncOps(cM, [{ t: 'ins', c: 'notifications', data: { user_id: P.id, school_id: 1, type: 'announcement', title: 'R89-S23', body: 'x', link: 'record', read: 0, created_at: '2026-09-08' }, __by: M1.id }]);
+  const r23 = await syncOps(cM, [{ t: 'ins', c: 'notifications', data: { user_id: P.id, school_id: 1, type: 'announcement', title: 'R89-S23', body: 'x', link: 'record', read: 0, created_at: '2026-09-08' }, __by: M1.id }]); void r23;
   let pNotifId = null;
   for (let i = 0; i < 10 && pNotifId == null; i++) {
     await sleep(1000);

@@ -192,7 +192,8 @@ function attPartialSync(sid){
   try{
     if(typeof attDraftGet!=='function'||typeof attDraftDiff!=='function') return false;
     /* هم‌رفتار با رندرِ کامل: ارسالِ خودکارِ پیامک (محافظِ ۳۰ ثانیه‌ای درونِ تابع) */
-    if(typeof notifyAutoTick==='function'){ try{ notifyAutoTick(); }catch(e){} }
+    if(typeof notifyAutoTick==='function'){ try{ notifyAutoTick(); }catch(e){ // noop
+} }
     const cls=visibleClasses();
     if(!cls.length) return false;
     const _now=(S.bellNow||null);
@@ -259,7 +260,7 @@ function viewAttendance(){
   /* دور ۱۰۲: زمینۀ مشترک با به‌روزرسانیِ جزئی (attPartialSync) */
   const ctx=attCtx(cid,date);
   const dev=ctx.dev, _timers=ctx._timers;
-  const _nTimers=Object.keys(_timers).length;
+  const _nTimers=Object.keys(_timers).length; void _nTimers;
   const nDraft=Object.keys(ctx.draft).length;
 
   /* تفاوت واقعی با پایگاه داده — مبنای دکمهٔ ثبت */

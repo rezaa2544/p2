@@ -72,7 +72,7 @@ async function main() {
   src.__auth.codes['+989900000001'] = { code: '1234', at: now - 10 * 60000, user_id: 1, tries: 0 };
   src.__auth.codes['+989900000002'] = { code: '5678', at: now - 1 * 60000, user_id: 1, tries: 0 };
   fs.writeFileSync(storeFile, JSON.stringify(src), { mode: 0o600 });
-  const sizeBefore = fs.statSync(storeFile).size;
+  const sizeBefore = fs.statSync(storeFile).size; void sizeBefore;
 
   const M = src.users.find(u => u.role === 'manager' && u.school_id === 1);
   chk('G0 حسابِ مدیرِ seed موجود است', !!M);

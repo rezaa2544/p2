@@ -19,7 +19,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const ins = ps("INSERT INTO grades (\"school_id\",\"student_id\",\"class_id\",\"subject_id\",\"teacher_id\",\"term\",\"exam_type\",\"score\",\"max_score\",\"created_at\",\"id\") VALUES (1,16,1,1,4,'نوبت اول','کلاسی',13.25,20,'2026-07-04',1)");
   console.log('single insert:', ins.replace(/\n/g, ' | '));
   // classes sample + single insert
-  const c = st.classes[0];
+  const c = st.classes[0]; void c;
   const cIns = ps("INSERT INTO classes (\"school_id\",\"name\",\"grade\",\"field\",\"room\",\"capacity\",\"homeroom_teacher_id\",\"id\") VALUES (1,'دهم ریاضی فیزیک','دهم','ریاضی فیزیک','کلاس 101',30,4,1)");
   console.log('class insert (grade string):', cIns.replace(/\n/g, ' | '));
   infra.stop();

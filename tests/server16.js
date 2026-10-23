@@ -252,7 +252,7 @@ async function main() {
   r = await syncOps(C.st, [{ t: 'upd', c: 'meeting_slots', id: 1, by: CAST.st.id, data: { status: 'booked', parent_id: CAST.p.id } }]);
   chk('M3i student: meeting_slots.status → رد', r.status === 403 || ['role_denied', 'field_denied', 'out_of_scope'].includes(res0(r).code), r.status + ' ' + JSON.stringify(res0(r)));
   /* والد: رزرو نوبت — transitionِ مجاز */
-  const msRec = (seed.meeting_slots || [])[0] || {};
+  const msRec = (seed.meeting_slots || [])[0] || {}; void msRec;
   /* نوبتِ تازهٔ M2e (دبیرِ T1، بدونِ رزرو) */
   const msRec2 = { id: null };
   {

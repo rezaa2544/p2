@@ -16,8 +16,8 @@
    ═════════════════════════════════════════════════════════════════ */
 'use strict';
 const path = require('path');
-const fs = require('fs');
-const { spawn, spawnSync } = require('child_process');
+const fs = require('fs'); void fs;
+const { spawn, spawnSync } = require('child_process'); void spawnSync; void spawn;
 
 const ROOT = path.join(__dirname, '..');
 process.chdir(ROOT);
@@ -203,7 +203,7 @@ async function main() {
   {
     const store = {};
     const outbox = createOutbox({ store });
-    const cache = fakeCache();
+    const cache = fakeCache(); void cache;
     const order = [];
     const w = createWorker({
       store, outbox,

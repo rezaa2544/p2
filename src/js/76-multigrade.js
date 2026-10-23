@@ -176,7 +176,7 @@ function mgAttMatrix(cls, date, rows, gradeCols, head, canEdit){
 /* ─────────────── ماتریسِ نمره: سطر=دانش‌آموز، ستون=پایه ─────────────── */
 function mgGradesMatrix(cls, rows, gradeCols, head, canEdit){
   const cid = cls.id;
-  const u = S.user;
+  const u = S.user; void u;
   const subs = visibleSubjects();
   const subId = Number(S.filters.mgsub || (subs[0] || {}).id || 0);
   const term = S.filters.mgterm || TERMS[0];
@@ -291,7 +291,8 @@ const MG_ACTIONS = {
     };
     if(typeof batchWrites === 'function') batchWrites(write); else write();
     /* پیامکِ نمرهٔ زیرِ آستانه — همان مسیرِ grade-save */
-    if(typeof notifyGradeSync === 'function') madeIds.forEach(gid => { try{ notifyGradeSync(gid); }catch(e){} });
+    if(typeof notifyGradeSync === 'function') madeIds.forEach(gid => { try{ notifyGradeSync(gid); }catch(e){ // noop
+} });
     if(bad) toast('نمره باید بین ۰ تا ۲۰ باشد — ' + fa(bad) + ' خانه ثبت نشد', 'err');
     else if(!n){ toast('هیچ نمره‌ای وارد نشده است', 'err'); return; }
     if(n) toast(fa(n) + ' نمره ثبت شد', 'ok');

@@ -505,7 +505,7 @@ await test('MX3 پوشِ غیرخالی شمرده می‌شود؛ خالی نه
   /* کرسرِ منقضی: امضا با ttl کوتاه + ساعتِ جلو */
   const c = createCursor({ secret: 'k'.repeat(64), ttlS: 60, now: () => Math.floor(Date.now() / 1000) - 7200 });
   const tok = c.sign(iso(Date.now() - 7200e3));
-  const { pull } = mkPullCtx();
+  const { pull } = mkPullCtx(); void pull;
   const beforeExp = metrics.syncHealthStats(metrics.snapshot());
   const ctl = createPull({
     store: { __deleted_records: [], __server_version: 1, grades: [] }, db: null,

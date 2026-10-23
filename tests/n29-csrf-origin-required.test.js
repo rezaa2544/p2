@@ -95,7 +95,7 @@ function mkReq(headers, method, url) {
 async function main() {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   BASE = 'http://127.0.0.1:' + server.address().port;
-  const origin = 'http://127.0.0.1:' + server.address().port;
+  const origin = 'http://127.0.0.1:' + server.address().port; void origin;
 
   console.log('\n🔍 N-29: CSRF origin-required gate');
 

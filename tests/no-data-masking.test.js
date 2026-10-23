@@ -10,7 +10,7 @@
 'use strict';
 
 const assert = require('assert');
-const path = require('path');
+const path = require('path'); void path;
 
 let pass = 0, fail = 0;
 function check(name, fn) {

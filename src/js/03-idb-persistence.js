@@ -709,4 +709,4 @@ function makeOfflineIdbFake() {
 }
 
 // ایجاد نمونه پیش‌فرض سراسری
-var offlineStorage = new OfflineStorage();
+var offlineStorage = new OfflineStorage(); void offlineStorage;

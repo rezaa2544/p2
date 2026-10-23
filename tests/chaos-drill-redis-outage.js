@@ -50,7 +50,7 @@ const rows = [];
 
   /* ── تزریق: خاموشیِ واقعیِ Redis ─────────────────────────────── */
   infra.stopRedis('shutdown');
-  const t0 = Date.now();
+  const t0 = Date.now(); void t0;
   const dead = await L.until(async () => infra.redis(['ping']).startsWith('ERR:'), { timeoutMs: 8000, stepMs: 20, label: 'redis-dead' });
   L.check(rows, 'inject: Redis واقعاً از دسترس خارج شد (PING خطا)', dead.ok, 'after=' + dead.ms + 'ms');
   L.check(rows, 'inject: پورتِ Redis بسته شد', (await L.readiness(api.port).catch(() => null)) !== null, 'api پاسخ می‌دهد (پروسه زنده)');

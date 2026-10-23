@@ -107,7 +107,7 @@ let URL;
   chk('موتور قناری کلاستر دارد (id=' + cluster.id + ')', !!cluster.id, JSON.stringify(cluster).slice(0, 80));
   if (!cluster.id) process.exit(1);
   const cid = cluster.id;
-  const w0 = Number(cluster.weight != null ? cluster.weight : (cluster.traffic_weight != null ? cluster.traffic_weight : 0));
+  const w0 = Number(cluster.weight != null ? cluster.weight : (cluster.traffic_weight != null ? cluster.traffic_weight : 0)); void w0;
 
   /* governance negative: approved===true alone is NEVER enough ⇒ 403 */
   const noApprove = await req('POST', '/api/v1/system/phase6/canary/promote', { cluster_id: cid, target_weight: 10, approved: true }, cookie);

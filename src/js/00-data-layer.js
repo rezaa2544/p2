@@ -130,7 +130,7 @@ var Store = {
    همه‌چیز عین دموِ آفلاین می‌ماند.
    */
 
-var SERVER_DETECTED = false;
+var SERVER_DETECTED = false; void SERVER_DETECTED;
 
 function detectServer(){
   if(DATA_MODE !== 'local') return Promise.resolve(false);
@@ -298,13 +298,16 @@ function httpGetJson(url, timeoutMs){
       return;
     }
     var ctl = null, to = null, timedOut = false;
-    try{ ctl = new AbortController(); }catch(e){}
-    if(ctl) to = setTimeout(function(){ timedOut = true; try{ ctl.abort(); }catch(e){} }, timeoutMs || 6000);
+    try{ ctl = new AbortController(); }catch(e){ // noop
+}
+    if(ctl) to = setTimeout(function(){ timedOut = true; try{ ctl.abort(); }catch(e){ // noop
+} }, timeoutMs || 6000);
     fetch(url, { method:'GET', signal: ctl ? ctl.signal : undefined })
       .then(function(res){
         if(to) clearTimeout(to);
         var serverTime = null;
-        try{ serverTime = res.headers ? res.headers.get('Date') : null; }catch(e){}
+        try{ serverTime = res.headers ? res.headers.get('Date') : null; }catch(e){ // noop
+}
         return res.json()
           .then(function(j){ return { ok:res.ok, status:res.status, code:res.status, serverTime:serverTime, data:j, error:null }; })
           .catch(function(){ return { ok:res.ok, status:res.status, code:res.status, serverTime:serverTime, data:null, error:'bad_json' }; });

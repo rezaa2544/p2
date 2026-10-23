@@ -21,7 +21,7 @@ const kit = session('uann-mut-');
 kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سایه */
 const SUITE = path.join(ROOT, 'tests', 'urgent-ann.js');
 const QF = path.join(ROOT, 'src', 'js', '04-queries.js');
-const SF = path.join(ROOT, 'server', 'sync.js');
+const SF = path.join(ROOT, 'server', 'sync.js'); void SF;
 const PF = path.join(ROOT, 'server', 'policy.js'); /* ترمیم لنگر: دروازهٔ د.۳ اینجاست */
 const AF = path.join(ROOT, 'src', 'js', '19-actions-core.js');
 

@@ -42,7 +42,8 @@ function navRoutesOf(role){
       var items = groups[i][1] || [];
       for(var j=0;j<items.length;j++) out.push(items[j][0]);
     }
-  }catch(e){}
+  }catch(e){ // noop
+}
   return out;
 }
 
@@ -71,14 +72,16 @@ function canRoute(route, role){
     try{
       var me = (typeof S !== 'undefined') ? S.user : null;
       if(me && me.lib_staff === 1) return true;
-    }catch(e){}
+    }catch(e){ // noop
+}
   }
   /* رئیس اداره: کاربرِ edu_office با پرچمِ is_head=1 روت‌های مدیریتی اداره را می‌بیند */
   if(role === 'edu_office' && (route === 'office-msg' || route === 'office-print' || route === 'office-dash')){
     try{
       var me = (typeof S !== 'undefined') ? S.user : null;
       if(me && me.is_head === 1) return true;
-    }catch(e){}
+    }catch(e){ // noop
+}
   }
   /* تحویلدار: دبیرِ دارای پرچمِ asset_staff، روتِ اموال را می‌بیند
      (دبیرِ بی‌مجوز همچنان رد می‌شود — تستِ assets/A2). */
@@ -86,7 +89,8 @@ function canRoute(route, role){
     try{
       var me = (typeof S !== 'undefined') ? S.user : null;
       if(me && me.asset_staff === 1) return true;
-    }catch(e){}
+    }catch(e){ // noop
+}
   }
   return !!allowedRoutes(role)[route];
 }

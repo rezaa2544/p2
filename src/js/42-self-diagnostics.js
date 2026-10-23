@@ -419,7 +419,8 @@ var DIAG_CHECKS = [
       if(!SYNC.online)
         return { msg:'آنلاین نیستیم — اتصال شبکه بازگردد، صف خودکار ارسال می‌شود', before:[] };
       var n = SYNC.queue.filter(function(x){ return x.status==='pending'||x.status==='failed'; }).length;
-      try{ syncNow(true); }catch(e){}
+      try{ syncNow(true); }catch(e){ // noop
+}
       return { msg: n + ' عملیات به‌صورت دستی به سرور فرستاده شد؛ نتیجه در چند لحظه در همین آزمون می‌آید', before:[] };
     },
     fixDesc:'صف به‌صورت دستی ارسال می‌شود. اگر همچنان ماند: اتصال به سرور (سنجش سرور) را ببینید.',
@@ -615,7 +616,8 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
       bad.forEach(function(r){
         if(cur.indexOf(r) < 0){ cur.push(r); added++; }
       });
-      try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){}
+      try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){ // noop
+}
       if(!added) return { msg:'گزینه‌های معیوب قبلاً پنهان بودند', before:[] };
       return { msg: added + ' گزینهٔ معیوب تا زمان تعمیر از منو پنهان شد'
                   + ' (دکمهٔ «بازگردانی گزینه‌های پنهان» در بالای صفحه)',
@@ -665,7 +667,8 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
       var before = [{ coll:'__nav', rec:cur.slice(), existed:true }];
       var added = 0;
       bad.forEach(function(r){ if(cur.indexOf(r) < 0){ cur.push(r); added++; } });
-      try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){}
+      try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){ // noop
+}
       if(!added) return { msg:'گزینه‌ها قبلاً پنهان بودند', before:[] };
       return { msg: added + ' مسیرِ بی‌عنوان تا زمان تعمیر از منو پنهان شد', before: before };
     },
@@ -717,7 +720,8 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
       var before = [{ coll:'__nav', rec:cur.slice(), existed:true }];
       var added = 0;
       bad.forEach(function(r){ if(cur.indexOf(r) < 0){ cur.push(r); added++; } });
-      try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){}
+      try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){ // noop
+}
       if(!added) return { msg:'گزینه‌ها قبلاً پنهان بودند', before:[] };
       return { msg: added + ' گزینهٔ بی‌مجوز تا زمان هماهنگ‌سازی منو پنهان شد', before: before };
     },
@@ -898,7 +902,8 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
         return { msg:'لایهٔ همگام‌سازی در دسترس نیست', before:[] };
       if(!SYNC.online)
         return { msg:'آنلاین نیستیم — اتصال شبکه بازگردد، صف خودکار ارسال می‌شود', before:[] };
-      try{ syncNow(true); }catch(e){}
+      try{ syncNow(true); }catch(e){ // noop
+}
       return { msg:'صف به‌صورت دستی ارسال شد؛ عملیات ناموفق دوباره امتحان می‌شوند. عملیات «متعارض» نیاز به تصمیم مدیر دارد (دو نسخه از یک رکورد).', before:[] };
     },
     fixDesc:'عملیات ناموفق دوباره ارسال می‌شوند. عملیات متعارض (دو نسخه از یک رکورد) دستی از صفحهٔ مالی/کاربرانه حل می‌شود.',
@@ -918,7 +923,8 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
       ((NAV[role] || [])).forEach(function(grp){
         (grp[1] || []).forEach(function(it){
           var t = Date.now();
-          try{ S.route = it[0]; renderRoute(); }catch(e){}
+          try{ S.route = it[0]; renderRoute(); }catch(e){ // noop
+}
           var ms = Date.now() - t;
           if(ms > worst) worst = ms;
           if(ms > 250) slow.push({ صفحه: it[2] || it[0], 'میلی‌ثانیه': ms });
@@ -984,7 +990,8 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
     fix: function(){
       /* بارگذاری ناقص معمولاً با تازه‌بارگیری حل می‌شود؛ اگر باقی
          ماند، فایل قدیمی یا خراب است. */
-      try{ window.location.reload(); }catch(e){}
+      try{ window.location.reload(); }catch(e){ // noop
+}
       return { msg:'صفحه تازه‌بارگیری شد تا همهٔ ماژول‌ها دوباره بیایند', before:[] };
     },
     fixDesc:'صفحه تازه‌بارگیری می‌شود. اگر خطا باقی ماند، فایلِ باز‌شده قدیمی یا ناقص است — آخرین بیلد را باز کنید.',
@@ -1022,7 +1029,8 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
         : { ok:true, extra: need.length + ' جدول پایه سالم' };
     },
     fix: function(){
-      try{ window.location.reload(); }catch(e){}
+      try{ window.location.reload(); }catch(e){ // noop
+}
       return { msg:'صفحه تازه‌بارگیری شد تا ترتیب ماژول‌ها دوباره اجرا شود', before:[] };
     },
     fixDesc:'صفحه تازه‌بارگیری می‌شود. اگر تکرار شد، ترتیب بارگذاری در بیلد خراب است — بیلد دوباره ساخته شود.',
@@ -1140,7 +1148,8 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
     fix: function(){
       var n = DIAG_SYSLOG.length;
       DIAG_SYSLOG.length = 0;
-      try{ Store.setJSON(DIAG_SYSLOG_KEY, []); }catch(e){}
+      try{ Store.setJSON(DIAG_SYSLOG_KEY, []); }catch(e){ // noop
+}
       return { msg: n + ' خطای قدیمی از لاگ پاک شد (خطاهای تازه دوباره ثبت می‌شوند)', before:[] };
     },
     fixDesc:'لاگ موقت پاک می‌شود تا بررسی بعدی تازه باشد. اگر خطا مکرر است، متن و شمارهٔ خط را برای توسعه‌دهنده بفرستید — این آزمون «مشکل کدنویسی» را از دایرهٔ بی‌خبری بیرون می‌آورد.',
@@ -1204,7 +1213,8 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
       return { ok:true, extra:'نسخهٔ مشترک: ' + p.version };
     },
     fix: function(){
-      try{ window.location.reload(); }catch(e){}
+      try{ window.location.reload(); }catch(e){ // noop
+}
       return { msg:'صفحه تازه‌بارگیری شد تا بیلدِ هم‌نسخه بیاید', before:[] };
     },
     fixDesc:'صفحه تازه‌بارگیری می‌شود (کش را عبور می‌کند). اگر همچنان نمی‌خواند، بیلدِ سمت سرور به‌روز نشده است.',
@@ -1268,11 +1278,14 @@ DIAG_CHECKS = DIAG_CHECKS.concat([
     },
     fix: function(){
       var n = 0;
-      if(typeof compactLog === 'function'){ try{ compactLog(); n++; }catch(e){} }
+      if(typeof compactLog === 'function'){ try{ compactLog(); n++; }catch(e){ // noop
+} }
       DIAG_SYSLOG.length = 0;
-      try{ Store.setJSON(DIAG_SYSLOG_KEY, []); }catch(e){}
+      try{ Store.setJSON(DIAG_SYSLOG_KEY, []); }catch(e){ // noop
+}
       DIAG_PROBES = {};
-      try{ Store.setJSON('sms_diag_probes_v1', {}); }catch(e){}
+      try{ Store.setJSON('sms_diag_probes_v1', {}); }catch(e){ // noop
+}
       return { msg: (n ? 'دفترچهٔ عملیات فشرده و ' : '') + 'لاگ‌های دیاگ پاک شد', before:[] };
     },
     fixDesc:'دفترچهٔ عملیات فشرده و لاگ‌های دیاگ پاک می‌شود. اگر باز هم پر بود: پشتیبان کامل بگیرید، سپس داده‌های سال‌های قدیمی را از طریق توسعه‌دهنده بایگانی کنید.',
@@ -1368,7 +1381,8 @@ function diagFix(id){
 
   /* پشتیبان پیش از تعمیر */
   var snap = null;
-  try{ snap = diagSnapshot(); }catch(e){}
+  try{ snap = diagSnapshot(); }catch(e){ // noop
+}
 
   var before;
   try{ before = chk.check(); }catch(e){ before = { ok:false, count:0 }; }
@@ -1379,13 +1393,15 @@ function diagFix(id){
     var text  = (msg && typeof msg === 'object') ? msg.msg : String(msg);
     var beforeRec = (msg && typeof msg === 'object') ? msg.before : null;
     if(!after.ok){
-      if(snap){ try{ diagRestore(snap); }catch(e2){} }
+      if(snap){ try{ diagRestore(snap); }catch(e2){ // noop
+} }
       return { ok:false, msg:'تعمیر کامل نشد و تغییرات برگشت داده شد: ' + text,
                short:'تعمیر ناموفق — تغییرات برگشت داده شد' };
     }
     if(beforeRec && beforeRec.length) diagRecordRepair(chk, beforeRec, text);
     if(typeof recordAudit === 'function'){
-      try{ recordAudit('diag-fix', chk.title + ' — ' + text); }catch(e){}
+      try{ recordAudit('diag-fix', chk.title + ' — ' + text); }catch(e){ // noop
+}
     }
     var short = text.length > 60 ? text.slice(0, 60) + '…' : text;
     return { ok: !!after.ok, msg:text, short:short,
@@ -1395,7 +1411,8 @@ function diagFix(id){
   var r;
   try{ r = chk.fix(before); }
   catch(e){
-    if(snap){ try{ diagRestore(snap); }catch(e2){} }
+    if(snap){ try{ diagRestore(snap); }catch(e2){ // noop
+} }
     return Promise.resolve({ ok:false,
       msg:'تعمیر خطا داد و تغییرات برگشت داده شد: ' + String(e && e.message),
       short:'تعمیر خطا داد' });
@@ -1404,7 +1421,8 @@ function diagFix(id){
     return r.then(
       function(msg){ return finish(msg); },
       function(err){
-        if(snap){ try{ diagRestore(snap); }catch(e2){} }
+        if(snap){ try{ diagRestore(snap); }catch(e2){ // noop
+} }
         return { ok:false, msg:'تعمیر ناموفق بود: ' + String(err && (err.message || err)),
                  short:'تعمیر ناموفق' };
       }
@@ -1491,7 +1509,8 @@ function diagAutoTick(){
               body: res.done.length + ' عیب خودکار برطرف شد: ' + res.done.join(' · '),
               date: todayISO(), read: 0
             });
-          }catch(e){}
+          }catch(e){ // noop
+}
         }
       });
     }
@@ -1502,7 +1521,8 @@ function diagAutoTick(){
 try{
   diagSyslogLoad();
   diagRepairsLoad();
-}catch(e){}
+}catch(e){ // noop
+}
 
 /* ------------------------------------------------------------------ */
 /*  لاگ خطای زمان‌اجرا (syslog) — دام‌گیر «مشکلات کدنویسی»               */
@@ -1520,7 +1540,8 @@ function diagSyslogLoad(){
   try{
     var s = Store.getJSON(DIAG_SYSLOG_KEY, null);
     if(Array.isArray(s)) DIAG_SYSLOG = s.slice(-DIAG_SYSLOG_MAX);
-  }catch(e){}
+  }catch(e){ // noop
+}
 }
 
 function diagLogError(rec){
@@ -1533,7 +1554,8 @@ function diagLogError(rec){
     user: (typeof S !== 'undefined' && S.user) ? S.user.role : 'guest'
   });
   if(DIAG_SYSLOG.length > DIAG_SYSLOG_MAX) DIAG_SYSLOG = DIAG_SYSLOG.slice(-DIAG_SYSLOG_MAX);
-  try{ Store.setJSON(DIAG_SYSLOG_KEY, DIAG_SYSLOG); }catch(e){}
+  try{ Store.setJSON(DIAG_SYSLOG_KEY, DIAG_SYSLOG); }catch(e){ // noop
+}
 }
 
 (function diagWireErrors(){
@@ -1546,7 +1568,8 @@ function diagLogError(rec){
       var r = ev && ev.reason;
       diagLogError({ message: (r && r.message) ? r.message : String(r), reason: r });
     });
-  }catch(e){}
+  }catch(e){ // noop
+}
 })();
 
 /* ------------------------------------------------------------------ */
@@ -1566,7 +1589,8 @@ function diagRepairsLoad(){
   try{
     var s = Store.getJSON(DIAG_REPAIRS_KEY, null);
     if(Array.isArray(s)) DIAG_REPAIRS = s.slice(0, DIAG_REPAIRS_MAX);
-  }catch(e){}
+  }catch(e){ // noop
+}
 }
 
 /** ثبت یک تعمیر همراه با حالتِ قبلِ رکوردها */
@@ -1577,7 +1601,8 @@ function diagRecordRepair(chk, beforeList, msg){
     before: beforeList || []
   });
   if(DIAG_REPAIRS.length > DIAG_REPAIRS_MAX) DIAG_REPAIRS.length = DIAG_REPAIRS_MAX;
-  try{ Store.setJSON(DIAG_REPAIRS_KEY, DIAG_REPAIRS); }catch(e){}
+  try{ Store.setJSON(DIAG_REPAIRS_KEY, DIAG_REPAIRS); }catch(e){ // noop
+}
 }
 
 /** بازگردانی یک تعمیر به حالت قبل */
@@ -1589,11 +1614,13 @@ function diagRollback(i){
     batchWrites(function(){
       (rec.before || []).forEach(function(b){
         if(b.coll === '__nav'){
-          try{ Store.setJSON('nav_disabled_v1', b.rec || []); }catch(e){}
+          try{ Store.setJSON('nav_disabled_v1', b.rec || []); }catch(e){ // noop
+}
           n++; return;
         }
         if(b.coll === '__ids'){
-          try{ ids[b.rec.c] = b.rec.from; }catch(e){}
+          try{ ids[b.rec.c] = b.rec.from; }catch(e){ // noop
+}
           n++; return;
         }
         if(b.existed && b.rec){
@@ -1609,7 +1636,8 @@ function diagRollback(i){
     if(typeof idxReset === 'function') idxReset();
   }catch(e){ err = String(e && e.message); }
   if(!err){
-    try{ DIAG_REPAIRS.splice(i, 1); Store.setJSON(DIAG_REPAIRS_KEY, DIAG_REPAIRS); }catch(e){}
+    try{ DIAG_REPAIRS.splice(i, 1); Store.setJSON(DIAG_REPAIRS_KEY, DIAG_REPAIRS); }catch(e){ // noop
+}
   }
   return err
     ? { ok:false, msg:'بازگردانی خطا داد: ' + err }
@@ -1656,7 +1684,8 @@ function diagProbeHealth(){
       var recNet = { at:new Date().toISOString(), ok:false,
                      err:String(r.error), ms:ms };
       DIAG_PROBES.health = recNet;
-      try{ Store.setJSON('sms_diag_probes_v1', DIAG_PROBES); }catch(e){}
+      try{ Store.setJSON('sms_diag_probes_v1', DIAG_PROBES); }catch(e){ // noop
+}
       return { ok:false, probed:true,
         msg:'وصل به سرور نشد: ' + String(r.error)
            + ' — دامنه، پورت، HTTPS و اجرای سرور را بررسی کنید' };
@@ -1668,7 +1697,8 @@ function diagProbeHealth(){
       var drift = Math.abs(Date.parse(rec.serverTime) - Date.now());
       if(drift < 86400000) DIAG_PROBES.driftMs = drift; /* ساعت سرور عجیب نبود */
     }
-    try{ Store.setJSON('sms_diag_probes_v1', DIAG_PROBES); }catch(e){}
+    try{ Store.setJSON('sms_diag_probes_v1', DIAG_PROBES); }catch(e){ // noop
+}
     var msg = r.ok
       ? 'سرور پاسخ داد (' + ms + ' میلی‌ثانیه)'
         + (rec.version ? ' · نسخهٔ سرور: ' + rec.version : '')
@@ -1678,7 +1708,8 @@ function diagProbeHealth(){
     var rec = { at:new Date().toISOString(), ok:false,
                 err:String((err && err.message) || err), ms:Date.now() - t0 };
     DIAG_PROBES.health = rec;
-    try{ Store.setJSON('sms_diag_probes_v1', DIAG_PROBES); }catch(e){}
+    try{ Store.setJSON('sms_diag_probes_v1', DIAG_PROBES); }catch(e){ // noop
+}
     return { ok:false, probed:true,
       msg:'وصل به سرور نشد: ' + String((err && err.message) || err)
          + ' — دامنه، پورت، HTTPS و اجرای سرور را بررسی کنید' };
@@ -1701,11 +1732,13 @@ function navDisabledRoutes(){
 function navDisableAdd(route){
   var cur = navDisabledRoutes();
   if(cur.indexOf(route) < 0) cur.push(route);
-  try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){}
+  try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){ // noop
+}
   return cur;
 }
 function navRestoreAll(){
-  try{ Store.remove('nav_disabled_v1'); }catch(e){}
+  try{ Store.remove('nav_disabled_v1'); }catch(e){ // noop
+}
 }
 
 /** اسکن همهٔ مسیرهای منو؛ خروجی: فهرست مسیرهای معیوب + شمارندهٔ دیده‌شده‌ها */

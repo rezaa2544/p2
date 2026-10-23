@@ -39,8 +39,8 @@ kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سای
 const MUTS = [
   {
     file: 'server/auth.js', suite: 'tests/server1.js', heap: 1500,
-    bad: " store.__revoked_jti[v.payload.jti] = Date.now(); await revocation.revokeSession(v.payload.jti, Math.max(1, v.payload.exp - Math.floor(Date.now() / 1000)));",
-    mut: " /* M1: ثبتِ لغو در خروج حذف شد */",
+    bad: "        store.__revoked_jti[v.payload.jti] = Date.now();\n        const revokeRecorded = await revocation.revokeSession(v.payload.jti, Math.max(1, v.payload.exp - Math.floor(Date.now() / 1000)));\n        /* A-22 (Mission 02): when revokeSession could NOT confirm the Redis write\n           (returns false), journal durably for recovery replay. */\n        if (revokeRecorded === false) {\n          revocationFallback.appendJournal(revocationDataDir, { jti: v.payload.jti, exp: v.payload.exp });\n          try { audit('revocation_journalled', { user_id: v.payload.sub, jti: v.payload.jti, reason: 'redis_unconfirmed_write' }); } catch (_) {/* swallowed: intentional — _ unused */}\n        }",
+    mut: "        /* M1: ثبتِ لغو در خروج حذف شد */",
     name: 'M1 ثبتِ لغوِ نشست در خروج حذف شد (هر دو لایهٔ بررسی بی‌خبر می‌مانند)',
     expectFail: 'S11'
   },
@@ -86,8 +86,8 @@ const MUTS = [
   },
   {
     file: 'src/js/19-actions-core.js', suite: 'tests/server2.js', heap: 1500,
-    bad: "try{ Api.post('/api/auth/logout'); }catch(e){}",
-    mut: "if(false){}",
+    bad: "try{ Api.post('/api/auth/logout'); }catch(e){ // noop\n}",
+    mut: "if(false){ // noop\n}",
     name: 'M7 خروج بدونِ خبرِ سرور',
     expectFail: 'F2'
   },

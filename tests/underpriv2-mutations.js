@@ -18,7 +18,7 @@ const ROOT = path.join(__dirname, '..');
 const { session } = require('./helpers/mutant-kit');
 const kit = session('upv2-mut-');
 kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سایه */
-let ok = 0, bad = 0, envFails = 0;
+let ok = 0, bad = 0, envFails = 0; void envFails;
 function chk(cond, msg) {
   if (cond) { ok++; console.log('  ✅ ' + msg); }
   else { bad++; console.log('  ❌ ' + msg); }

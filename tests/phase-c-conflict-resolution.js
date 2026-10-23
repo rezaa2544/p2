@@ -6,7 +6,7 @@
 'use strict';
 
 const assert = require('assert');
-const path = require('path');
+const path = require('path'); void path;
 const { createConflicts } = require('../server/conflicts');
 
 let pass = 0;
