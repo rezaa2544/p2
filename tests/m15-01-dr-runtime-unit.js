@@ -356,10 +356,12 @@ exit 0
   const pgComposeSource = fs.readFileSync(path.join(ROOT, 'infra/postgres/docker-compose.ha.yml'), 'utf8');
   check('PostgreSQL init grants pgbouncer least-privilege SCRAM shadow lookup without superuser',
     pgInitSource.includes('CREATE SCHEMA IF NOT EXISTS pgbouncer;')
-      && pgInitSource.includes('CREATE OR REPLACE FUNCTION pgbouncer.lookup_shadow()')
+      && pgInitSource.includes('CREATE OR REPLACE FUNCTION pgbouncer.pg_shadow_lookup(p_usename TEXT)')
       && pgInitSource.includes('SECURITY DEFINER')
-      && pgInitSource.includes('CREATE OR REPLACE VIEW pgbouncer.pg_shadow AS')
-      && pgInitSource.includes('REVOKE ALL ON TABLE pgbouncer.pg_shadow FROM PUBLIC;')
+      && pgInitSource.includes('u.usename = p_usename::name')
+      && pgInitSource.includes('AND NOT u.userepl')
+      && !pgInitSource.includes('CREATE OR REPLACE VIEW pgbouncer.pg_shadow')
+      && pgInitSource.includes('GRANT EXECUTE ON FUNCTION pgbouncer.pg_shadow_lookup(TEXT) TO pgbouncer;')
       && pgInitSource.includes('ALTER ROLE pgbouncer SET search_path = pgbouncer, pg_catalog;'));
   check('PgBouncer keeps read-only bind mount while staging 0600 runtime config for live RELOAD/RECONNECT',
     pgComposeSource.includes('./pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro')

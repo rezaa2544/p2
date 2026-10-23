@@ -170,6 +170,63 @@ const check = (name, fn) => {
     } finally {
       redis.__setClientForTests(null);
     }
+
+    // A-22 concurrent race: overlapping logouts where one Redis write fails slowly
+    // while another succeeds concurrently must still journal the failed JTI.
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    const { createAuth } = require('../server/auth');
+    const revocationFallback = require('../server/revocation-fallback');
+    const tmpJournalDir = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-a22-race-'));
+    const raceClient = {
+      async get() { return null; },
+      async incr() { return 1; },
+      async set(key) {
+        if (String(key).includes('jti-race-fail')) {
+          await new Promise(r => setTimeout(r, 30));
+          throw new Error('transient-redis-write-error');
+        }
+        await new Promise(r => setTimeout(r, 5));
+        return 'OK';
+      },
+      disconnect() {}
+    };
+    redis.__setClientForTests(raceClient);
+    try {
+      const store = {
+        users: [{ id: 11, full_name: 'Race User', role: 'teacher', school_id: 1, active: true }],
+        schools: [{ id: 1, active: true }],
+        __revoked_jti: {}
+      };
+      const crypto = require('crypto');
+      const auth = createAuth({
+        store,
+        JWT_SECRET: crypto.randomBytes(32).toString('hex'),
+        SESSION_NAME: 'payesh_sid',
+        SESSION_TTL_S: 3600,
+        CODE_TTL_MS: 120000,
+        DEMO_CODE_ECHO: false,
+        audit: () => {},
+        isHttps: () => false,
+        revocationDataDir: tmpJournalDir
+      });
+      const now = Math.floor(Date.now() / 1000);
+      const tokFail = auth.jwtSign({ sub: 11, role: 'teacher', school_id: 1, iat: now, exp: now + 3600, jti: 'jti-race-fail', sv: 0 });
+      const tokOk = auth.jwtSign({ sub: 11, role: 'teacher', school_id: 1, iat: now, exp: now + 3600, jti: 'jti-race-ok', sv: 0 });
+      const mkRes = () => ({ setHeader() {}, writeHead() {}, end() {} });
+      await Promise.all([
+        auth.apiLogout({ headers: { cookie: 'payesh_sid=' + tokFail }, socket: {} }, mkRes()),
+        auth.apiLogout({ headers: { cookie: 'payesh_sid=' + tokOk }, socket: {} }, mkRes())
+      ]);
+      check('A-22 concurrent race: failed overlapping logout is durably journalled even when sibling logout succeeds', () => {
+        assert.strictEqual(revocationFallback.journalContains(tmpJournalDir, 'jti-race-fail'), true);
+        assert.strictEqual(revocationFallback.journalContains(tmpJournalDir, 'jti-race-ok'), false);
+      });
+    } finally {
+      redis.__setClientForTests(null);
+      fs.rmSync(tmpJournalDir, { recursive: true, force: true });
+    }
   }
 
   console.log('\nA-18..A-22 security battery: ' + pass + ' checks passed');

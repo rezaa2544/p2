@@ -96,7 +96,7 @@ function internshipOverviewHtml(schoolId){
     var pr = internshipProgress(sid);
     var cert = internshipCert(sid);
     return '<tr><td><b>' + esc(st.full_name || '—') + '</b></td>'
-      + '<td class="muted">' + esc(((typeof classOf === 'function') ? classOf(sid) : null || {}).name || '—') + '</td>'
+      + '<td class="muted">' + esc((((typeof classOf === 'function') ? classOf(sid) : null) || {}).name || '—') + '</td>'
       + '<td><b>' + fa(pr.approved) + '</b> <span class="muted">از ' + fa(pr.required) + '</span></td>'
       + '<td>' + bar(pr.approved, pr.required, pr.done ? 'var(--green)' : 'var(--primary)') + '</td>'
       + '<td>' + (cert

@@ -127,7 +127,7 @@ tools/failover-postgres.sh            # گاردها؛ سپس SELECT pg_promote(
   پاک‌سازیِ محتویاتِ `$PGDATA` بدون حذفِ mountpointِ volume در `infra/postgres/entrypoints/standby-entrypoint.sh`,
   الگویِ `PGBACKREST_REPO1_S3_URI_STYLE=path` و پیشوندِ صریحِ `http://` در `infra/postgres/entrypoints/render-config.sh`
   هنگامِ غیرفعال بودنِ TLS داخلی، بازیابیِ ایزولهٔ `tools/pitr-restore.sh` روی پورتِ مجزا (`54329`)،
-  نمایشگرِ کمینه-دسترسیِ `pgbouncer.pg_shadow` روی تابعِ `SECURITY DEFINER` `pgbouncer.lookup_shadow()`
-  (`ALTER ROLE pgbouncer SET search_path = pgbouncer, pg_catalog`) برایِ احرازِ هویتِ SCRAM روی PG16 بدونِ `SUPERUSER`،
+  تابعِ پارامتریِ کمینه-دسترسیِ `SECURITY DEFINER` `pgbouncer.pg_shadow_lookup(text)`
+  (`u.usename = p_usename::name AND NOT u.userepl AND u.usename <> 'pgbouncer'`، بدونِ ویویِ همهٔ کاربران) برایِ احرازِ هویتِ SCRAM روی PG16 بدونِ `SUPERUSER`،
   و بازهدایتِ زمانِ اجرایِ `pgbouncer` (`/var/run/pgbouncer/pgbouncer.ini` با حفظِ مونتِ `:ro` روی `/etc/pgbouncer/pgbouncer.ini` + `RELOAD;` و `RECONNECT payesh;` و تأییدِ خواندن/نوشتنِ `pg.Pool` روی `6432`) در مانورِ تک‌میزبانیِ E3؛
   ارزیابیِ عملیاتیِ چندمیزبانیِ E4 تا تأمینِ زیرساختِ تفکیک‌شده همچنان **BLOCKED** است (`E3 != E4`).

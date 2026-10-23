@@ -11,15 +11,7 @@ const crypto = require('crypto');
 const path = require('path');
 const { validate } = require('./validate');
 const rateLimit = require('./rate-limit'); /* R dist: شمارنده‌های Redis (اتمیک) */
-const _rawRevocation = require('./revocation'); /* ابطالِ توزیع‌شدهٔ نشست */
-let _lastRevokeRecorded = null;
-const revocation = Object.assign({}, _rawRevocation, {
-  async revokeSession(jti, ttl) {
-    const ok = await _rawRevocation.revokeSession(jti, ttl);
-    _lastRevokeRecorded = (ok === true);
-    return ok;
-  }
-});
+const revocation = require('./revocation'); /* ابطالِ توزیع‌شدهٔ نشست */
 /* A-22 (Mission 02): durable journal for revocations Redis could not
    confirm, plus replay on recovery. Bounds the window where a revoked
    session silently becomes valid again after Redis returns.
@@ -504,11 +496,11 @@ let rLi, rLp;
     if(tok){
       const v = jwtVerify(tok);
       if(!v.err){
-        _lastRevokeRecorded = null;
-        store.__revoked_jti[v.payload.jti] = Date.now(); await revocation.revokeSession(v.payload.jti, Math.max(1, v.payload.exp - Math.floor(Date.now() / 1000)));
+        store.__revoked_jti[v.payload.jti] = Date.now();
+        const revokeRecorded = await revocation.revokeSession(v.payload.jti, Math.max(1, v.payload.exp - Math.floor(Date.now() / 1000)));
         /* A-22 (Mission 02): when revokeSession could NOT confirm the Redis write
            (returns false), journal durably for recovery replay. */
-        if (_lastRevokeRecorded === false) {
+        if (revokeRecorded === false) {
           revocationFallback.appendJournal(revocationDataDir, { jti: v.payload.jti, exp: v.payload.exp });
           try { audit('revocation_journalled', { user_id: v.payload.sub, jti: v.payload.jti, reason: 'redis_unconfirmed_write' }); } catch (_) {/* swallowed: intentional — _ unused */}
         }

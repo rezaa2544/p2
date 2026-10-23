@@ -1345,10 +1345,10 @@ var c1 = tx.objectStore('entities').clear();
 var c2 = tx.objectStore('sync_queue').clear();
 var c3 = tx.objectStore('metadata').clear();
 var completed = 0;
-function checkDone() {
+var checkDone = function() {
 completed++;
 if (completed >= 3) resolve(true);
-}
+};
 if (c1) c1.onsuccess = checkDone; else checkDone();
 if (c2) c2.onsuccess = checkDone; else checkDone();
 if (c3) c3.onsuccess = checkDone; else checkDone();
@@ -5889,7 +5889,7 @@ var st = byId('users', sid) || {};
 var pr = internshipProgress(sid);
 var cert = internshipCert(sid);
 return '<tr><td><b>' + esc(st.full_name || '—') + '</b></td>'
-+ '<td class="muted">' + esc(((typeof classOf === 'function') ? classOf(sid) : null || {}).name || '—') + '</td>'
++ '<td class="muted">' + esc((((typeof classOf === 'function') ? classOf(sid) : null) || {}).name || '—') + '</td>'
 + '<td><b>' + fa(pr.approved) + '</b> <span class="muted">از ' + fa(pr.required) + '</span></td>'
 + '<td>' + bar(pr.approved, pr.required, pr.done ? 'var(--green)' : 'var(--primary)') + '</td>'
 + '<td>' + (cert
@@ -14470,7 +14470,7 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}td{padding:7px 4px;bo
 <tr><td>مبلغ دریافتی</td><td class="amount">${rial(i.paid_amount)} ریال</td></tr></table>
 <div class="sign"><span>مهر و امضای امور مالی مدرسه</span><span class="stamp">پرداخت شد</span></div></div>
 <div class="noprint" style="text-align:center;margin-top:14px"><button onclick="window.print()" style="padding:8px 22px;border-radius:9px;border:none;background:#1e40af;color:#fff;font-family:inherit;cursor:pointer">🖨️ چاپ رسید</button></div>
-<script>window.addEventListener('load',function(){setTimeout(function(){window.print();},400)});<\/script></body></html>`);
+<script>window.addEventListener('load',function(){setTimeout(function(){window.print();},400)});${'</' + 'script>'}</body></html>`);
   w.document.close();
 }
 

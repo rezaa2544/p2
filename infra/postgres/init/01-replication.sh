@@ -18,23 +18,25 @@ psql -v ON_ERROR_STOP=1 -v repl_pw="$REPLICATION_PASSWORD" \
   WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'pgbouncer') \gexec
   GRANT pg_read_all_stats TO pgbouncer;
   CREATE SCHEMA IF NOT EXISTS pgbouncer;
-  CREATE OR REPLACE FUNCTION pgbouncer.lookup_shadow()
+  DROP VIEW IF EXISTS pgbouncer.pg_shadow;
+  DROP FUNCTION IF EXISTS pgbouncer.lookup_shadow();
+  CREATE OR REPLACE FUNCTION pgbouncer.pg_shadow_lookup(p_usename TEXT)
   RETURNS TABLE(usename NAME, passwd TEXT)
   LANGUAGE sql
   SECURITY DEFINER
   SET search_path = pg_catalog
   AS $fn$
     SELECT u.usename, u.passwd
-    FROM pg_catalog.pg_shadow AS u;
+    FROM pg_catalog.pg_shadow AS u
+    WHERE p_usename IS NOT NULL
+      AND u.usename = p_usename::name
+      AND NOT u.userepl
+      AND u.usename <> 'pgbouncer'::name;
   $fn$;
-  CREATE OR REPLACE VIEW pgbouncer.pg_shadow AS
-    SELECT usename, passwd FROM pgbouncer.lookup_shadow();
   REVOKE ALL ON SCHEMA pgbouncer FROM PUBLIC;
-  REVOKE ALL ON FUNCTION pgbouncer.lookup_shadow() FROM PUBLIC;
-  REVOKE ALL ON TABLE pgbouncer.pg_shadow FROM PUBLIC;
+  REVOKE ALL ON FUNCTION pgbouncer.pg_shadow_lookup(TEXT) FROM PUBLIC;
   GRANT USAGE ON SCHEMA pgbouncer TO pgbouncer;
-  GRANT EXECUTE ON FUNCTION pgbouncer.lookup_shadow() TO pgbouncer;
-  GRANT SELECT ON TABLE pgbouncer.pg_shadow TO pgbouncer;
+  GRANT EXECUTE ON FUNCTION pgbouncer.pg_shadow_lookup(TEXT) TO pgbouncer;
   ALTER ROLE pgbouncer SET search_path = pgbouncer, pg_catalog;
 EOSQL
 echo "01-replication.sh: replicator + pgbouncer آماده شدند"
