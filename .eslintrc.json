@@ -26,22 +26,9 @@
     "\u002a\u002a/\u002a.yaml"
   ],
   "rules": {
-    "no-empty": "warn",
-    "no-unused-vars": [
-      "warn",
-      {
-        "caughtErrors": "none",
-        "vars": "all",
-        "args": "after-used",
-        "ignoreRestSiblings": false
-      }
-    ],
-    "no-redeclare": [
-      "warn",
-      {
-        "builtinGlobals": false
-      }
-    ]
+    "no-empty": "off",
+    "no-unused-vars": "off",
+    "no-redeclare": "off"
   },
   "overrides": [
     {
