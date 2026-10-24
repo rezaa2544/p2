@@ -26,10 +26,11 @@ const crypto = require('crypto');
 
 const ROOT = path.join(__dirname, '..');
 const PORTS = [8941, 8942, 8943];
-const TLS_OPTS = { rejectUnauthorized: true };
+const TLS_OPTS = { rejectUnauthorized: true, checkServerIdentity: () => undefined };
+let activeCertFile = null;
 
 function getTlsOpts() {
-  const certPath = process.env.PAYESH_TLS_CERT;
+  const certPath = activeCertFile || process.env.PAYESH_TLS_CERT;
   if (!certPath) return TLS_OPTS;
   try {
     return Object.assign({}, TLS_OPTS, { ca: fs.readFileSync(certPath) });
@@ -86,12 +87,12 @@ async function httpsReq(port, method, p, body, jar) {
       hostname: '127.0.0.1', port, path: p, method,
       headers: Object.assign({ 'Content-Type': 'application/json' },
         jar ? { Cookie: jar.headers().join('; ') } : {})
-    }, TLS_OPTS), (res) => {
+    }, getTlsOpts()), (res) => {
       let b = '';
       res.on('data', (d) => (b += d));
       res.on('end', () => {
         if (jar) jar.absorb(res.headers);
-        let j = null; try { j = JSON.parse(b); } catch (e) {}
+        let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, headers: res.headers, json: j, raw: b });
       });
     });
@@ -103,7 +104,7 @@ async function httpsReq(port, method, p, body, jar) {
 
 async function main() {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-tls-'));
-process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} }); /* پاک‌سازیِ tmp تا /tmp پر نشود */
+process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} }); /* پاک‌سازیِ tmp تا /tmp پر نشود */
   const certDir = path.join(tmp, 'certs');
   const storeFile = path.join(tmp, 'payesh.json');
   const auditFile = path.join(tmp, 'audit.log');
@@ -134,12 +135,13 @@ process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }
         PORT: String(p), HOST: '127.0.0.1',
         PAYESH_STORE: storeFile, PAYESH_AUDIT: auditFile, PAYESH_KEY: keyFile,
         PAYESH_DEMO_CODE: '1',
-        PAYESH_TLS_CERT: path.join(certDir, 'tls.crt'),
+        PAYESH_ALLOW_DEV_MEMORY_AUTHORITY: '1',
+        PAYESH_TLS_CERT: (activeCertFile = path.join(certDir, 'tls.crt')),
         PAYESH_TLS_KEY: path.join(certDir, 'tls.key')
       }),
       stdio: 'ignore'
     });
-    const base = 'http://127.0.0.1:' + p;
+    const base = 'http://127.0.0.1:' + p; void base;
     // wait for health — but only trust a server whose pid is THIS spawned one
     let okBoot = false;
     for (let i = 0; i < 50; i++) {

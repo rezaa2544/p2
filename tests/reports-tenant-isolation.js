@@ -20,7 +20,7 @@ const ROOT = path.join(__dirname, '..');
 const REAL_STORE = path.join(ROOT, 'server', 'data', 'payesh.json');
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-rpt-tenant-'));
-process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 
 /* پ۳ (2026-09-12): pin صریحِ حالتِ حافظه — این سوئیت جداسازیِ tenant را
    در برابرِ شمارشِ مستقل روی همان JSON store ی که خودش seed کرده می‌سنجد؛
@@ -52,7 +52,7 @@ async function req(method, p, { body, cookie } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
   let json = null;
-  try { json = await res.json(); } catch (e) {}
+  try { json = await res.json(); } catch (e) {/* intentional no-op */}
   return { status: res.status, json, headers: res.headers };
 }
 
@@ -179,8 +179,14 @@ async function main() {
   });
 
   await test('sync: معلم ثبت report_logs = رد (role/scope)', async () => {
+    const before = (store.report_logs || []).length;
     const r = await req('POST', '/api/sync', { cookie: cTch, body: { ops: [mkOp('rt-deny-1', teacher1.id, 1)] } });
-    assert.strictEqual(r.status, 403, 'status=' + r.status);
+    const rejected = r.status === 403
+      || (r.status === 200 && r.json && Array.isArray(r.json.results)
+          && r.json.results[0] && r.json.results[0].ok === false
+          && r.json.results[0].code === 'role_denied');
+    assert.ok(rejected, 'status=' + r.status + ' body=' + JSON.stringify(r.json));
+    assert.strictEqual((store.report_logs || []).length, before, 'هیچ ردیفی اضافه نشد');
   });
 
   await test('sync: مدیر ثبت برای مدرسهٔ دیگر = رد (out_of_scope)', async () => {

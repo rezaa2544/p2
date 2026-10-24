@@ -172,4 +172,9 @@ function tombstonesSql(o) {
   };
 }
 
-module.exports = { deltaRowsSql, deltaRowsByChgSql, deltaKeysetSql, tombstonesSql, tableName, CHG_TABLES };
+function maxChgWatermarkSql(collection) {
+  const t = tableName(collection);
+  return { sql: `SELECT COALESCE(MAX(chg_id), 0) AS m FROM "${t}"`, params: [] };
+}
+
+module.exports = { deltaRowsSql, deltaRowsByChgSql, deltaKeysetSql, tombstonesSql, maxChgWatermarkSql, tableName, CHG_TABLES };

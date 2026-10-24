@@ -5,7 +5,7 @@ name: Node.js CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main", "arena/**"]
   pull_request:
     branches: [ "main" ]
 
@@ -15,7 +15,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180
     strategy:
       matrix:
         node-version: [22.x]
@@ -74,6 +74,45 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm ci
+    - name: Provision PostgreSQL server tools for embedded-pg harness
+      run: |
+        set -euo pipefail
+        pg_bin="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -n 1 || true)"
+        if [ -z "$pg_bin" ] || [ ! -x "$pg_bin/postgres" ] || ! command -v redis-server >/dev/null 2>&1; then
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq postgresql-client postgresql redis-server
+          sudo service redis-server stop || sudo systemctl stop redis-server || true
+          sudo service postgresql stop || sudo systemctl stop postgresql || true
+          pg_bin="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)"
+        fi
+        test -x "$pg_bin/postgres" && test -x "$pg_bin/initdb"
+        sudo mkdir -p /usr/lib/postgresql/17
+        if [ ! -e /usr/lib/postgresql/17/bin ]; then
+          sudo ln -s "$pg_bin" /usr/lib/postgresql/17/bin
+        fi
+        mkdir -p /tmp/chaos-drill-tmpfs
+        if ! mountpoint -q /tmp/chaos-drill-tmpfs; then
+          sudo mount -t tmpfs -o size=100M,mode=1777 tmpfs /tmp/chaos-drill-tmpfs
+        fi
+        sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 >/dev/null 2>&1 || true
+        if [ ! -d /var/tmp/pw-tools/node_modules/@axe-core/playwright ]; then
+          mkdir -p /var/tmp/pw-tools
+          npm install --prefix /var/tmp/pw-tools --no-audit --no-fund playwright @axe-core/playwright
+        fi
+        /var/tmp/pw-tools/node_modules/.bin/playwright install --with-deps chromium
+        PW_CHROME="$(find "$HOME/.cache/ms-playwright" -type f \( -name 'chrome' -o -name 'chrome-headless-shell' \) | head -n 1 || true)"
+        SYS_CHROME="${PW_CHROME:-/usr/bin/google-chrome}"
+        printf '#!/usr/bin/env bash\nexec "%s" --no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage "$@"\n' "$SYS_CHROME" | sudo tee /usr/local/bin/chromium-headless >/dev/null
+        sudo chmod +x /usr/local/bin/chromium-headless
+        /usr/local/bin/chromium-headless --version
+        echo "CHROMIUM_PATH=/usr/local/bin/chromium-headless" >> "$GITHUB_ENV"
+        echo "NODE_PATH=$GITHUB_WORKSPACE/node_modules:/var/tmp/pw-tools/node_modules" >> "$GITHUB_ENV"
+        if ! pg_isready -h 127.0.0.1 -p 55432 >/dev/null 2>&1; then
+          sudo rm -rf /var/tmp/pgdata-wal-drill /var/tmp/pgdata-wal-replica /var/tmp/wal-drill-run
+          sudo PGBIN="$pg_bin" bash infra/wal-drill/bootstrap.sh
+        fi
+        DATABASE_URL="$PGURL" node tools/seed-idor-fixture.js
+        echo "$pg_bin" >> "$GITHUB_PATH"
     # N-23: the lint contract used to be configured (.eslintrc.json) but eslint
     # was not a dependency, had no script, and no CI step ran it — the rule set
     # was entirely unenforced. Now installed as a devDependency and gated here.
@@ -90,7 +129,7 @@ jobs:
     # and its verdicts are always surfaced; the lint failure still fails the
     # job exactly as before (no continue-on-error, no gate weakening).
     - name: Comprehensive canonical regression runner
-      timeout-minutes: 25
+      timeout-minutes: 120
       run: npm run test:all
     - name: Reset shared test ports, Redis state, and clean payesh_ci schema after canonical runner
       if: always()
@@ -182,7 +221,7 @@ jobs:
       run: node tests/semantic-layer/a31-semantic-certification-integrity.test.js
     - name: Critical orphan — server security regression
       if: always()
-      run: node tests/security2.js
+      run: env -u REDIS_URL -u PGURL -u DATABASE_URL node tests/security2.js
     - name: Critical orphan — atomic sync batch
       if: always()
       run: node tests/sync-atomic-batch.js

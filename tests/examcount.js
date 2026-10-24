@@ -61,7 +61,7 @@ async function main() {
   chk('T5 past exam ignored', W('nextExamFor(' + S.st + ',"' + ISO + '").days') === 3);
 
   // ── یادآوری: رندر با ۱ روز فاصله (۰ و ۱ و ۲ روز ⇒ پنجره) ──
-  const q0 = W('db.notify_queue.length'), n0 = W('db.notifications.length');
+  const q0 = W('db.notify_queue.length'), n0 = W('db.notifications.length'); void n0; void q0;
   W('examCountdownCard(' + S.st + ',addDaysISO("' + ISO + '",1));'); // near: 2 روز مانده
   const q1 = W('db.notify_queue.filter(q=>q.source_ref==="examrem:' + S.near + '").length');
   const nSt = W('db.notifications.filter(n=>n.type==="exam_remind"&&n.user_id===' + S.st + ').length');
@@ -117,7 +117,7 @@ async function main() {
 
   console.log('examcount: ' + okc + ' pass / ' + failc + ' fail');
   if (failc) { console.log('FAILURES:'); fails.forEach(f => console.log(' - ' + f)); }
-  try { dom.window.close(); } catch (e) {}
+  try { dom.window.close(); } catch (e) {/* intentional no-op */}
   process.exit(failc ? 1 : 0);
 }
 main().catch(e => { console.error('FATAL', e); process.exit(1); });

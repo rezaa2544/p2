@@ -95,7 +95,7 @@ function req(port, method, p, body, cookie) {
       rs.on('data', (c) => { b += c; });
       rs.on('end', () => {
         const ms = Number(process.hrtime.bigint() - started) / 1e6;
-        let json = null; try { json = JSON.parse(b); } catch (e) {}
+        let json = null; try { json = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: rs.statusCode, json, raw: b, headers: rs.headers, ms });
       });
     });
@@ -154,7 +154,7 @@ async function boot(port, storeFile, tmp) {
   srv.stderr.on('data', (d) => { stderr += d; });
   for (let i = 0; i < 80; i++) {
     await sleep(250);
-    try { const h = await req(port, 'GET', '/api/health'); if (h.status === 200) return { srv, stderr: () => stderr }; } catch (e) {}
+    try { const h = await req(port, 'GET', '/api/health'); if (h.status === 200) return { srv, stderr: () => stderr }; } catch (e) {/* intentional no-op */}
   }
   return null;
 }
@@ -166,7 +166,7 @@ async function boot(port, storeFile, tmp) {
   console.log('\n  — National model (10M users)');
   {
     const m = NATIONAL_MODEL;
-    chk('NL1 the model starts from the roadmap figure of 10M users', m.users === 10_000_000, 'users=' + fmt(m.users));
+    chk('NL1 the model starts from the roadmap figure of 10M users', m.users === 10000000, 'users=' + fmt(m.users));
 
     /* every collection ROADMAP §21 names must be in the model */
     const required = ['schools', 'classes', 'enrollments', 'attendance_per_day',
@@ -431,8 +431,8 @@ async function boot(port, storeFile, tmp) {
     const heap0 = process.memoryUsage().heapUsed;
     const storeSize0 = fs.existsSync(storeFile) ? fs.statSync(storeFile).size : 0;
     const series0 = parseMetrics(await metricsText()).filter((s) => s.name === 'payesh_http_requests_total').length;
-    const lag0 = await metricSum('payesh_node_eventloop_lag_seconds');
-    const outbox0 = await metricSum('payesh_outbox_depth');
+    const lag0 = await metricSum('payesh_node_eventloop_lag_seconds'); void lag0;
+    const outbox0 = await metricSum('payesh_outbox_depth'); void outbox0;
     const cache0 = await metricSum('payesh_cache_lookups_total');
 
     const ROUNDS = 30, PER = 16;
@@ -555,9 +555,9 @@ async function boot(port, storeFile, tmp) {
   }
 
   /* ── teardown ───────────────────────────────────────────────────── */
-  try { S.srv.kill('SIGKILL'); } catch (e) {}
+  try { S.srv.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
   await sleep(200);
-  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
 
   console.log('\n  جمع: ' + okc + ' موفق، ' + failc + ' ناموفق از ' + (okc + failc));
   if (fails.length) { console.log('  شکست‌ها:'); fails.forEach((f) => console.log('   - ' + f)); }

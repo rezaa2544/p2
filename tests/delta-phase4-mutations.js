@@ -47,7 +47,7 @@ function mutate(file, old, newTxt) {
   const src = fs.readFileSync(p, 'utf8');
   if (src.indexOf(old) === -1) throw new Error('anchor not found in ' + file + ': ' + old.slice(0, 50));
   const mcopy = kit.mutant(p, src.replace(old, newTxt)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-  try { fs.chmodSync(mcopy, fs.statSync(p).mode); } catch (_) {}
+  try { fs.chmodSync(mcopy, fs.statSync(p).mode); } catch (_) {/* intentional no-op */}
   return src;
 }
 function runSuite(e) {
@@ -73,8 +73,7 @@ function buildClient(e) {
 
   /* M2: fail-open حذف — خطای موتور پرتاب می‌شود */
   orig = mutate('server/sync.js',
-    "} catch (_) { r = null; /* fail-open — همان قراردادِ rate-limit.js */ }",
-    "} catch (e) { throw e; /*MUT: fail-open حذف*/ }");
+    "      } catch (rlE) {",    "      } catch (rlE) { throw rlE; /*MUT: uncaught limiter crash*/");
   chk('M2 جهشِ «fail-open حذف» کشته شد', runSuite(kit.env()) !== 0);
   kit.clear(path.join(ROOT, 'server/sync.js'));
 

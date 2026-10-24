@@ -57,7 +57,7 @@ function findPgBin() {
   try {
     const w = cp.execFileSync('which', ['initdb'], { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w) cand.push(path.dirname(w));
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   for (const d of cand) {
     if (['initdb', 'postgres', 'pg_ctl'].every((b) => fs.existsSync(path.join(d, b)))) return d;
   }
@@ -73,7 +73,7 @@ if (!BIN || !hasPgModule()) {
   process.exit(2);
 }
 
-const PORT = 55460;
+const PORT = 25460;
 const DATA = '/tmp/w10tenant-' + process.pid;
 const ROOT = path.join(__dirname, '..');
 
@@ -83,8 +83,8 @@ function pgctl(args) {
   return cp.execFileSync('pg_ctl', ['-D', DATA].concat(args), { stdio: 'pipe', timeout: 60000, env: pgEnv() }).toString();
 }
 function cleanup() {
-  try { pgctl(['stop', '-m', 'immediate', '-w']); } catch (e) {}
-  try { fs.rmSync(DATA, { recursive: true, force: true }); } catch (e) {}
+  try { pgctl(['stop', '-m', 'immediate', '-w']); } catch (e) {/* intentional no-op */}
+  try { fs.rmSync(DATA, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
 }
 process.on('exit', cleanup);
 process.on('SIGINT', () => { cleanup(); process.exit(130); });
@@ -114,7 +114,7 @@ process.on('SIGINT', () => { cleanup(); process.exit(130); });
   const dbUrl = `postgres://payesh@127.0.0.1:${PORT}/payesh`;
   for (const f of files) {
 const sql = fs.readFileSync(path.join(ROOT, 'migrations', f), 'utf8');
-    if (/^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql)) {
+    if (/^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql) || /\bCALL\s+/i.test(sql)) {
       /* فایلِ متاکامنددار — قرارداد §۹.۷ WAVE10_DB_SCALE: فقط psql (الگوی #163) */
       execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '--quiet', '-f', path.join(ROOT, 'migrations', f), dbUrl], { stdio: 'pipe' });
     } else {

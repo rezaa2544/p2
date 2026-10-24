@@ -42,10 +42,10 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
 const REAL_STORE = path.join(ROOT, 'server', 'data', 'payesh.json');
-const MIGRATION_001 = path.join(ROOT, 'migrations', '001_initial.sql');
+const MIGRATION_001 = path.join(ROOT, 'migrations', '001_initial.sql'); void MIGRATION_001;
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-n15-'));
-process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 const STORE_COPY = path.join(TMP, 'store.json');
 fs.copyFileSync(REAL_STORE, STORE_COPY);
 
@@ -89,7 +89,7 @@ async function main() {
       body: body ? JSON.stringify(body) : undefined,
     });
     let json = null;
-    try { json = await res.json(); } catch (e) {}
+    try { json = await res.json(); } catch (e) {/* intentional no-op */}
     return { status: res.status, json, headers: res.headers };
   };
 
@@ -284,11 +284,11 @@ async function main() {
         try {
           await c.query('DROP TABLE IF EXISTS n15_grades');
           await c.query('DROP TABLE IF EXISTS n15_attendance');
-        } catch (_) {}
+        } catch (_) {/* intentional no-op */}
         c.release();
       }
     });
-    try { await pool.end(); } catch (_) {}
+    try { await pool.end(); } catch (_) {/* intentional no-op */}
   }
 
   console.log('\nN-15 regression tests: ' + pass + '/' + (pass + fail) + ' passed' + (skipped ? ' (' + skipped + ' skipped)' : ''));

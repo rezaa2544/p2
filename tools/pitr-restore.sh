@@ -11,7 +11,7 @@
 #   ۴) promote در نقطهٔ هدف و چاپِ connection-stringِ موقت
 #
 # مصرف:
-#   tools/pitr-restore.sh --time "2026-09-10 09:15:00+03:30"
+#   tools/pitr-restore.sh [--native] --time "2026-09-10 09:15:00+03:30"
 #   tools/pitr-restore.sh --name before_bad_release
 #   tools/pitr-restore.sh --latest --no-verify
 #   PBR_DATABASE نامِ دیتابیسِ برنامه برایِ pitr-verify است (پیش‌فرض: payesh).
@@ -30,12 +30,27 @@ PBR_EXEC="${PBR_EXEC:-}"           # مثال: "docker compose exec -T pg-backup
 TARGET_SPEC=""                      # ریکاردِ --type/--target برای pgbackrest
 NO_START=0
 SKIP_VERIFY=0
+INSTANCE_STARTED=0
+RESTORE_COMPLETE=0
+RUN_DIR=""
 declare -a RESTORE_OPTS=()
 
-usage(){ echo "مصرف: $0 (--time 'TS'|--name N|--xid ID|--latest) [--no-start] [--no-verify] [--dest DIR] [--port N] [--stanza S]"; exit 1; }
+cleanup_failed_pitr() {
+  local exit_code=$?
+  if [ "$INSTANCE_STARTED" -eq 1 ] && [ "$RESTORE_COMPLETE" -eq 0 ] && [ -n "$RUN_DIR" ] && [ -d "$RUN_DIR/data" ]; then
+    pg_ctl -D "$RUN_DIR/data" -m fast -w stop >/dev/null 2>&1 || true
+  fi
+  return "$exit_code"
+}
+trap cleanup_failed_pitr EXIT
+
+usage(){ echo "مصرف: $0 [--native] (--time 'TS'|--name N|--xid ID|--latest) [--no-start] [--no-verify] [--dest DIR] [--port N] [--stanza S]"; exit 1; }
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --native)
+      PBR_EXEC=""
+      shift;;
     --time)
       [ $# -ge 2 ] || usage
       TARGET_SPEC="--type=time --target=$2 --target-action=promote"
@@ -64,17 +79,25 @@ while [ $# -gt 0 ]; do
   esac
 done
 [ -n "$TARGET_SPEC" ] || usage
+if [[ ! "$STANZA" =~ ^[A-Za-z0-9_.-]{1,63}$ ]]; then
+  echo "FAIL: STANZA must be a valid pgBackRest stanza identifier" >&2
+  exit 1
+fi
+if [[ ! "$PBR_PORT" =~ ^[0-9]+$ ]] || [ "$PBR_PORT" -lt 1 ] || [ "$PBR_PORT" -gt 65535 ]; then
+  echo "FAIL: PBR_PORT must be an integer TCP port in 1..65535" >&2
+  exit 1
+fi
 if [[ ! "$PBR_DATABASE" =~ ^[A-Za-z_][A-Za-z0-9_]{0,62}$ ]]; then
   echo "FAIL: PBR_DATABASE must be a simple PostgreSQL database name" >&2
   exit 1
 fi
 
 run_pbr(){ # اجرایِ pgbackrest (روی میزبان یا داخلِ سرویسِ کانتینری)
-  if [ -n "$PBR_EXEC" ]; then $PBR_EXEC pgbackrest "$@"; else pgbackrest "$@"; fi
+  if [ -n "$PBR_EXEC" ]; then $PBR_EXEC pgbackrest "$@"; else "${PBR_BIN:-pgbackrest}" "$@"; fi
 }
 
 # ── پیش‌نیازها (fail-closed) ──
-if [ -z "$PBR_EXEC" ] && ! command -v pgbackrest >/dev/null 2>&1; then
+if [ -z "$PBR_EXEC" ] && ! command -v "${PBR_BIN:-pgbackrest}" >/dev/null 2>&1; then
   echo "FAIL: pgbackrest در PATH نیست؛ روی میزبان نصبش کن یا PBR_EXEC را روی سرویسِ کانتینری تنظیم کن (docs/HA_POSTGRES.md §۶)" >&2; exit 1
 fi
 if ! command -v psql >/dev/null 2>&1; then echo "FAIL: psql لازم است" >&2; exit 1; fi
@@ -112,6 +135,7 @@ CONF
 echo "restore_command = 'pgbackrest --stanza=$STANZA --pg1-path=$RUN_DIR/data archive-get %f \"%p\"'" >> "$RUN_DIR/data/postgresql.auto.conf"
 
 if [ "$NO_START" -eq 1 ]; then
+  RESTORE_COMPLETE=1
   echo "OK (--no-start): دیتا در $RUN_DIR/data آماده است؛ بوتِ دستی:"
   echo "  pg_ctl -D '$RUN_DIR/data' -o \"-c config_file='$RUN_DIR/etc/postgresql.conf'\" -l '$RUN_DIR/log/postgres.log' start"
   exit 0
@@ -121,9 +145,10 @@ fi
 pg_ctl -D "$RUN_DIR/data" -o "-c config_file=$RUN_DIR/etc/postgresql.conf" \
   -l "$RUN_DIR/log/postgres.log" -w -t 120 start \
   || { echo "FAIL: pg_ctl start failed:" >&2; cat "$RUN_DIR/log"/* >&2 2>/dev/null || true; exit 1; }
+INSTANCE_STARTED=1
 
 READY=0
-for _ in $(seq 1 60); do
+for _ in $(seq 1 "${PBR_READY_ATTEMPTS:-60}"); do
   if pg_isready -h "$RUN_DIR/run" -p "$PBR_PORT" >/dev/null 2>&1; then READY=1; break; fi
   sleep 1
 done
@@ -135,6 +160,7 @@ if [ "$SKIP_VERIFY" -eq 0 ]; then
     --host-dir "$RUN_DIR/run" --port "$PBR_PORT" --stanza "$STANZA" --target-spec "$TARGET_SPEC"
 fi
 
+RESTORE_COMPLETE=1
 echo "════════════════════════════════════════════"
 echo "PITR_READY dir=$RUN_DIR port=$PBR_PORT socket=$RUN_DIR/run"
 echo "اتصال: psql \"host=$RUN_DIR/run port=$PBR_PORT dbname=$PBR_DATABASE user=postgres\""

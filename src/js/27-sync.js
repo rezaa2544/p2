@@ -110,7 +110,8 @@ function loadQueue(){
   try{
     const m = Store.getJSON(SYNC_META_KEY, {}) || {};
     SYNC.lastSync = m.lastSync || null;
-  }catch(e){}
+  }catch(e){ // noop
+}
 }
 function saveQueue(){
   /* در عملیات انبوه (batchWrites) ذخیره‌سازی به پایان دسته موکول می‌شود؛
@@ -126,7 +127,8 @@ function saveQueue(){
       var _have = {};
       for(var _i = 0; _i < SYNC.queue.length; _i++){ if(SYNC.queue[_i]) _have[SYNC.queue[_i].uid] = 1; }
       for(var _j = 0; _j < _disk.length; _j++){ if(_disk[_j] && !_have[_disk[_j].uid]) SYNC.queue.push(_disk[_j]); }
-    }catch(e){}
+    }catch(e){ // noop
+}
     _QUEUE_LOADED = true;
   }
   return Store.setJSON(SYNC_QUEUE_KEY, SYNC.queue);   /* P1-10: خروجی false یعنی حافظهٔ مرورگر پر است */
@@ -289,13 +291,14 @@ function secureRandomBase36(len){
 }
 
 function enqueueOp(op){
-  /* R96 P0-5: کلیدهایِ محلی (idِ ریکوردِ کلاینت + by که در سطحِ op هست)
+  /* R96 P0-5: کلیدهایِ محلی (idِ ریکوردِ کلاینت + by که در سطحِ op هست +
+     versionِ رکورد که سرور مدیریت می‌کند و base_version جایِ آن است)
      جزوِ schema نیستند — دروازهٔ فیلدِ سرور آن‌ها را unknown_field می‌داند.
      نسخهٔ پاک می‌رود (رکوردهایِ دمو دست‌نخورده می‌مانند). */
-  if(op && op.data && (op.data.id !== undefined || op.data.by !== undefined)){
+  if(op && op.data && (op.data.id !== undefined || op.data.by !== undefined || op.data.version !== undefined)){
     const clean = {};
     for(const k in op.data){
-      if(k === 'id' || k === 'by') continue;
+      if(k === 'id' || k === 'by' || k === 'version') continue;
       clean[k] = op.data[k];
     }
     op = Object.assign({}, op, { data: clean });
@@ -837,7 +840,8 @@ function storageQuotaEstimate(){
         }).catch(function(){ resolve({ usage:0, quota:0, ratio:0, known:false }); });
         return;
       }
-    }catch(e){}
+    }catch(e){ // noop
+}
     resolve({ usage:0, quota:0, ratio:0, known:false });
   });
 }
@@ -1140,7 +1144,8 @@ function bgRegisterSync(){
       if(reg && reg.sync && typeof reg.sync.register === 'function')
         return reg.sync.register(BGSYNC_TAG);
     }).catch(function(){ /* ثبت‌نشدنِ sync خطایِ کاربر نیست — مسیرِ عادیِ تب باز کار می‌کند */ });
-  }catch(e){}
+  }catch(e){ // noop
+}
 }
 /* پیامِ SW پس از تخلیهٔ پس‌زمینه: صفِ محلی با نتیجهٔ SW آشتی داده می‌شود */
 function bgApplyResult(msg){
@@ -1172,7 +1177,8 @@ function bgListen(){
     navigator.serviceWorker.addEventListener('message', function(e){
       if(e && e.data && e.data.type === 'payesh-bgsync-done') bgApplyResult(e.data);
     });
-  }catch(e){}
+  }catch(e){ // noop
+}
 }
 
 /* ---------- W8-5: Pull-to-Refresh (کشیدن برایِ همگام‌سازی) ----------
@@ -1255,11 +1261,13 @@ function ptrTrigger(){
   PTR.busy = true;
   ptrRender();
   var jobs = [];
-  try{ jobs.push(Promise.resolve(syncNow(true))); }catch(e){}
+  try{ jobs.push(Promise.resolve(syncNow(true))); }catch(e){ // noop
+}
   try{
     if(typeof pullFromServer === 'function' && typeof isServerMode === 'function' && isServerMode())
       jobs.push(Promise.resolve(pullFromServer()).catch(function(){}));
-  }catch(e){}
+  }catch(e){ // noop
+}
   return Promise.all(jobs).catch(function(){}).then(function(){
     /* حداقل نیم‌ثانیه نشان بده تا پرش نکند؛ بعد آزاد کن */
     return new Promise(function(r){ setTimeout(r, 500); });

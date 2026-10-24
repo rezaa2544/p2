@@ -56,7 +56,8 @@ function printableDoc(o){
     win.document.write(html);
     win.document.close();
     /* چاپ خودکار پس از بارگذاری فونت‌ها */
-    setTimeout(function(){ try{ win.print(); }catch(e){} }, 500);
+    setTimeout(function(){ try{ win.print(); }catch(e){ // noop
+} }, 500);
   }catch(e){ return false; }
   return true;
 }

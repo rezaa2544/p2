@@ -55,7 +55,8 @@ function vclassIdbOpen(storeNames){
         if(missing.length && allowBump && ver < 10){
           /* استورِ لازم در این نسخه ساخته نشده — نسخه را یکی بالا ببر
              تا onupgradeneeded استورها را بسازد */
-          try{ d.close(); }catch(e){}
+          try{ d.close(); }catch(e){ // noop
+}
           _IDB_DB = null;
           return openAt(ver + 1, allowBump);
         }
@@ -148,7 +149,8 @@ function vclassIdbSpace(){
         });
         return;
       }
-    }catch(e){}
+    }catch(e){ // noop
+}
     resolve({usage:0, quota:400*1048576, left:400*1048576, known:false});
   });
 }
@@ -223,7 +225,8 @@ function makeIdbFake(){
         if(ver > version){
           version = ver;
           if(req.onupgradeneeded){
-            try{ req.onupgradeneeded({ target:{ result: db } }); }catch(err){}
+            try{ req.onupgradeneeded({ target:{ result: db } }); }catch(err){ // noop
+}
           }
         }
         req.result = db;

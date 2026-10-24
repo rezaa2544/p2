@@ -55,7 +55,7 @@ function pdfText(buf) {
   } catch (e) {
     return null; /* pdftotext در دسترس نیست */
   } finally {
-    try { fs.unlinkSync(tmp); } catch (e) {}
+    try { fs.unlinkSync(tmp); } catch (e) {/* intentional no-op */}
   }
 }
 
@@ -130,7 +130,7 @@ setTimeout(async () => {
   /* ── Chromium: همان HTML → PDF واقعی ── */
   let chromium = null;
   try { ({ chromium } = require('playwright-core')); } catch (e) {
-    try { ({ chromium } = require('playwright')); } catch (e2) {}
+    try { ({ chromium } = require('playwright')); } catch (e2) {/* intentional no-op */}
   }
 
   if (!chromium) {
@@ -138,7 +138,7 @@ setTimeout(async () => {
     console.log('  ⚠️ SKIP: playwright-core نصب نیست — تولید PDF واقعی آزموده نشد (سبزِ جعلی ممنوع)');
   } else {
     await testAsync('A4 همان سندِ UI در Chromium به PDF واقعی تبدیل شد (%PDF + حجم)', async () => {
-      const browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+      const browser = await chromium.launch(Object.assign({ executablePath: process.env.CHROMIUM_PATH || (fs.existsSync('/usr/local/bin/chromium-headless') ? '/usr/local/bin/chromium-headless' : undefined) }, {  headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage']  }, { args: ['--no-sandbox', '--disable-dev-shm-usage'] }));
       try {
         const page = await browser.newPage();
         await page.setContent(printedHtml, { waitUntil: 'load' });

@@ -46,7 +46,7 @@ function test(name, fn) {
       () => { pass++; console.log(`  ✅ ${name}`); },
       (e) => { fail++; errors.push(`${name}: ${e.message}`); console.log(`  ❌ ${name}\n     ${e.message}`); }
     ).then(() => {
-      if (typeof gc === 'function') gc();
+      if (typeof global.gc === 'function') global.gc();
       /* jsdom رویدادهای storage را با setTimeout مؤخّر می‌کند و تا شلوغیِ
          تایمر، رشته‌هایِ قدیمی/تازهٔ setItem در صف زنده می‌مانند. مرورگرِ
          واقعی میانِ هر کنش، چرخهٔ رویداد را می‌چرخاند؛ اینجا هم بعد از
@@ -957,7 +957,7 @@ test('بازیابی داده تخریب‌شده را برمی‌گرداند',
     + ".forEach(function(a){remove('announcements',a.id);})");
   assert(W("db.announcements.filter(function(a){return a.title==='نشانه بازیابی';}).length") === 0,
     'تخریب انجام نشد');
-  const res = W('restoreBackup(window.__bk)');
+  const res = W('restoreBackup(window.__bk)'); void res;
   assert(W('restoreBackup(window.__bk).ok') === true, 'بازیابی ناموفق');
   assert(W("db.announcements.filter(function(a){return a.title==='نشانه بازیابی';}).length") === n0,
     'داده برنگشت');
@@ -1052,7 +1052,7 @@ test('ستون‌های فایل واقعی مدرسه شناخته می‌شو�
     'تعداد درس افتاده','تحت پوشش','نوع ارگان','درصد','تعداد خواهر','تعداد برادر',
     'شغل پدر','شغل مادر','موبایل دانش آموز','شماره پدر','شماره مادر','شماره ثابت',
     'محل سکونت','نام روستا','وضعیت اقامت','آدرس','استعداد یابی'];
-  const map = W('suggestMap(' + JSON.stringify(real) + ",'students')");
+  const map = W('suggestMap(' + JSON.stringify(real) + ",'students')"); void map;
   const n = W('Object.keys(suggestMap(' + JSON.stringify(real) + ",'students')).length");
   assert(n >= 33, 'فقط ' + n + ' ستون از ۳۵ شناخته شد');
   const j = W('JSON.stringify(suggestMap(' + JSON.stringify(real) + ",'students'))");
@@ -1087,7 +1087,7 @@ test('شماره دانش‌آموز و پدر جدا ثبت می‌شوند', (
     + 'سینا,سهرابی,۰۹۱۸۱۷۶۳۳۹۴,۰۹۱۲۱۱۱۲۲۳۳,۰۹۳۳۷۷۴۹۶۳۵';
   W('window.__v2=validateImport(prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').rows,"
     + 'prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').mapping,'students')");
-  const d = W('window.__v2.rows[0].data');
+  const d = W('window.__v2.rows[0].data'); void d;
   assert(W('window.__v2.rows[0].data.phone') === '09181763394', 'موبایل دانش‌آموز');
   assert(W('window.__v2.rows[0].data.father_phone') === '09121112233', 'شماره پدر');
   assert(W('window.__v2.rows[0].data.mother_phone') === '09337749635', 'شماره مادر');
@@ -1216,7 +1216,7 @@ test('اعداد مالی با پایگاه داده می‌خوانند', () =>
 
 test('گزارش سلامت مقادیر معتبر می‌دهد', () => {
   W("S.user=db.users.find(u=>u.role==='superadmin');S.persona=null;S.boss=null");
-  const h = W('healthReport()');
+  const h = W('healthReport()'); void h;
   assert(W('healthReport().storage.percent') >= 0, 'درصد حافظه منفی');
   assert(W('healthReport().index.rate') >= 0 && W('healthReport().index.rate') <= 100, 'نرخ ایندکس نامعتبر');
   const real = W('(function(){var n=0;Object.keys(db).forEach(function(k){'
@@ -1268,7 +1268,7 @@ test('خواندن csv با جداکننده‌های مختلف', () => {
 test('تشخیص ردیف تیتر و نگاشت هوشمند ستون‌ها', () => {
   const NL = String.fromCharCode(10);
   const csv = 'نام و نام خانوادگی,کد ملی,کلاس,جنسیت' + NL + 'علی رضایی,0013542419,دهم الف,پسر';
-  const sh = W('prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students')");
+  const sh = W('prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students')"); void sh;
   assert(W('prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').headers.length") === 4, 'تعداد ستون');
   const map = W('JSON.stringify(prepSheet(parseCSV(' + JSON.stringify(csv) + "),'students').mapping)");
   assert(map.indexOf('full_name') > -1 && map.indexOf('national_id') > -1
@@ -1323,7 +1323,7 @@ test('کد ملی متعلق به مدرسه دیگر رد و تعارض ثبت 
 
 test('ثبت نهایی: کاربر، کلاس، ثبت‌نام و حساب ولی ساخته می‌شود', () => {
   W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
-  const sid = W('S.user.school_id');
+  const sid = W('S.user.school_id'); void sid;
   W("window.__M=(function(){var out=[];var n=5000;while(out.length<2){n++;var b=String(n).padStart(9,'0');"
     + "var s=0;for(var i=0;i<9;i++)s+=Number(b[i])*(10-i);var r=s%11;var c=r<2?r:11-r;var nid=b+c;"
     + "if(validNid(nid)&&!nidOwner(nid))out.push(nid);}return out;})()");
@@ -1410,7 +1410,7 @@ test('شمارش قطعه پیامک بر پایه ۷۰ نویسه است', () =
 test('کیف پول پیامک ساخته و شارژ می‌شود', () => {
   W("S.user=db.users.find(u=>u.role==='manager');S.persona=null;S.boss=null");
   const sid = W('S.user.school_id');
-  const wal = W('smsWalletOf(' + sid + ')');
+  const wal = W('smsWalletOf(' + sid + ')'); void wal;
   assert(W('db.sms_wallet.some(function(x){return x.school_id===' + sid + ';})'), 'کیف پول ساخته نشد');
   W("(function(){var w=smsWalletOf(" + sid + ");update('sms_wallet',w.w.id,{balance:1000});})()");
   assert(W('smsWalletOf(' + sid + ').balance') === 1000, 'شارژ ثبت نشد');
@@ -1422,7 +1422,7 @@ test('ارسال پیامک: اعتبار درست کسر و رکورد ثبت �
   W("(function(){var w=smsWalletOf(" + sid + ");update('sms_wallet',w.w.id,{balance:5000});})()");
   const before = W('smsWalletOf(' + sid + ').balance');
   const n0 = W('db.sms_log.length');
-  const tg = W("smsTargets(" + sid + ",'teachers','')");
+  const tg = W("smsTargets(" + sid + ",'teachers','')"); void tg;
   const cnt = W("smsTargets(" + sid + ",'teachers','').length");
   if(!cnt) return;
   W("(function(){var t=smsTargets(" + sid + ",'teachers','');var need=t.length*smsParts('متن آزمایشی برای ارسال گروهی');"
@@ -1453,7 +1453,7 @@ test('سند چاپی: ساختار درست و بدون تزریق', () => {
   if(!W('studentsOfClass(' + cid + ').length')) return;
   W("(function(){var s=studentsOfClass(" + cid + ")[0];"
     + "update('users',s.id,{full_name:'<img src=x onerror=XSS>'});})()");
-  const d = W("formGradeSheet(byId('classes'," + cid + "),null,'نوبت اول')");
+  const d = W("formGradeSheet(byId('classes'," + cid + "),null,'نوبت اول')"); void d;
   const body = W("formGradeSheet(byId('classes'," + cid + "),null,'نوبت اول').body");
   assert(body.includes('&lt;img'), 'نام مخرب escape نشد');
   assert(!body.includes('<img src=x'), 'تگ خام در سند چاپی');
@@ -1542,7 +1542,7 @@ test('ولی: رزرو نوبت و منع رزرو دوم در همان روز',
     + "return s&&(s.status||'active')==='active';});S.user=byId('users',l.parent_id);S.persona='parent';S.boss=null;})()");
   W("db.parent_subscriptions.filter(function(s){return s.user_id===S.user.id;})"
     + ".forEach(function(s){update('parent_subscriptions',s.id,{status:'active',end_date:addDaysISO(todayISO(),90)});})");
-  const kid = W('myKids()[0]');
+  const kid = W('myKids()[0]'); void kid;
   if(!W('myKids().length')) return;
   const sid2 = W('myKids()[0].school_id');
   const D = W("addDaysISO(todayISO(),11)");
@@ -1607,7 +1607,7 @@ test('batch تودرتو و استثنا پرچم را گیر نمی‌اندا�
   W("batchWrites(function(){insert('student_archive',{school_id:1,student_id:1,full_name:'n1',year_code:'x'});"
     + "batchWrites(function(){insert('student_archive',{school_id:1,student_id:2,full_name:'n2',year_code:'x'});});})");
   assert(W('log.length') - l0 === 2, 'batch تودرتو نادرست');
-  try{ W("batchWrites(function(){throw new Error('boom');})"); }catch(e){}
+  try{ W("batchWrites(function(){throw new Error('boom');})"); }catch(e){/* intentional no-op */}
   assert(W('_BATCH_DEPTH') === 0, 'عمق batch پس از استثنا صفر نشد');
   assert(W("JSON.parse(localStorage.getItem(LOG_KEY)).length===log.length"), 'پس از استثنا ناهمگام شد');
 });
@@ -1967,7 +1967,7 @@ test('مودال مدرسه برای متوسطه دوم انتخابگر را �
   const box = dom.window.document.querySelector('#m_branch_box');
   assert(box, 'جعبهٔ شاخه پیدا نشد');
   assert(box.style.display === 'block', 'باید باز باشد، هست: ' + box.style.display);
-  const closeBtn = dom.window.document.querySelector('[data-act="modal-close"],.modal-back');
+  const closeBtn = dom.window.document.querySelector('[data-act="modal-close"],.modal-back'); void closeBtn;
   W('closeModal&&closeModal()');
 });
 
@@ -2158,7 +2158,7 @@ test('نام واقعی مادر از فایل خوانده می‌شود نه �
 });
 
 test('ایندکس پس از درج افزایشی تازه می‌ماند', () => {
-  const n0 = W('db.users.length');
+  const n0 = W('db.users.length'); void n0;
   W("window.__u=insert('users',{school_id:db.schools[0].id,role:'student',full_name:'آزمون ایندکس',username:'idxtest1',password:'1',active:1,national_id:'1111111112'})");
   const found = W('byId("users",window.__u.id)');
   assert(found && found.full_name === 'آزمون ایندکس', 'رکورد تازه از ایندکس پیدا نشد');
@@ -2798,13 +2798,13 @@ test('قرارداد سرور: هر عملیات صف مُهر هویت دارد
      کاربر احراز هویت‌شدهٔ ژتون یکی نبود، کل دسته رد می‌شود.
      پس نبودشان یعنی سرور ابزار داوری ندارد. */
   const before = W('S.user ? S.user.id : null');
-  const n0 = W('SYNC.queue.length');
+  const n0 = W('SYNC.queue.length'); void n0;
   let id = null;
   try{
     W('S.user = db.users.find(function(u){return u.role==="manager"})');
     const uid = W('S.user.id');
     id = W('insert("announcements",{title:"آزمون مهر",body:"م",school_id:1,date:todayISO()}).id');
-    const item = W('SYNC.queue[SYNC.queue.length-1]');
+    const item = W('SYNC.queue[SYNC.queue.length-1]'); void item;
     assert(W('SYNC.queue[SYNC.queue.length-1].op.by') === uid, 'فیلد by ثبت نشد');
     assert(W('SYNC.queue[SYNC.queue.length-1].user_id') === uid, 'user_id ثبت نشد');
     assert(typeof W('SYNC.queue[SYNC.queue.length-1].op.at') === 'string', 'زمان ثبت نشد');
@@ -7958,7 +7958,7 @@ test('R95 بند ۲.۵: نسخه‌گذاریِ لایهٔ محلی (insert→۱
     try {
       if (gid) W(`remove('grades',${gid})`);
       if (aid) W(`remove('announcements',${aid})`);
-    } catch (cle) {}
+    } catch (cle) {/* intentional no-op */}
     W(`S.user=${prev === 'null' ? 'null' : `byId('users',${prev})`};S.persona=null;`);
   }
 });

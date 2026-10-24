@@ -33,7 +33,7 @@
 const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
+const os = require('os'); void os;
 
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
@@ -262,7 +262,7 @@ async function pgQ(connStr, sql, params) {
 
 async function freshDb() {
   try { await pgQ(ADMIN_URL, `DROP DATABASE IF EXISTS ${DB_NAME} WITH (FORCE)`); }
-  catch (e) { try { await pgQ(ADMIN_URL, `DROP DATABASE IF EXISTS ${DB_NAME}`); } catch (_) {} }
+  catch (e) { try { await pgQ(ADMIN_URL, `DROP DATABASE IF EXISTS ${DB_NAME}`); } catch (_) {/* intentional no-op */} }
   await pgQ(ADMIN_URL, `CREATE DATABASE ${DB_NAME}`);
   const { Client } = require('pg');
   const c = new Client({ connectionString: DB_URL });
@@ -326,7 +326,8 @@ async function partB() {
   process.env.PAYESH_SMS_DAILY_CAP = '10000';
   delete process.env.NODE_ENV;
 
-  const { server } = require('../server/index.js');
+  const { server, ready } = require('../server/index.js');
+  if (typeof ready === 'function') await ready();
   let BASE = '';
   await new Promise((resolve) => server.listen(0, '127.0.0.1', () => { BASE = `http://127.0.0.1:${server.address().port}`; resolve(); }));
 
@@ -336,14 +337,17 @@ async function partB() {
       headers: Object.assign(body ? { 'Content-Type': 'application/json' } : {}, cookie ? { Cookie: cookie } : {}),
       body: body ? JSON.stringify(body) : undefined
     });
-    let json = null; try { json = await res.json(); } catch (e) {}
+    let json = null; try { json = await res.json(); } catch (e) {/* intentional no-op */}
     return { status: res.status, json, headers: res.headers };
   };
-  /* آمادگیِ زیرساخت: اتصالِ ردیس ناهمگام است؛ برای ارسالِ کد تلاش مجدد می‌کنیم */
+  /* آمادگیِ زیرساخت: اتصالِ پستگرس (hydrate) و ردیس هر دو ناهمگام‌اند */
   const waitInfra = async () => {
-    for (let i = 0; i < 40; i++) {
-      const sc = await req('POST', '/api/auth/send-code', { body: { phone: phOf(102) } });
-      if (sc.status === 200) return true;
+    for (let i = 0; i < 60; i++) {
+      const rd = await req('GET', '/api/health');
+      if (rd.status === 200 && rd.json && rd.json.ok === true) {
+        const sc = await req('POST', '/api/auth/send-code', { body: { phone: phOf(102) } });
+        if (sc.status === 200) return true;
+      }
       await new Promise(r => setTimeout(r, 250));
     }
     return false;
@@ -442,7 +446,7 @@ async function partB() {
       });
     }
   } finally {
-    try { server.close(); } catch (e) {}
+    try { server.close(); } catch (e) {/* intentional no-op */}
   }
 }
 

@@ -98,7 +98,7 @@ console.log('\n▸ PR #60 — نشانهٔ کرسرِ امضاشده (server/cur
 
 /* ── C6/C7/C8: زمان ── */
 {
-  let t = 1_800_000_000;
+  let t = 1800000000;
   const c = createCursor({ secret: STRONG, ttlS: 600, now: () => t });
   const tok = c.sign('2026-09-11T00:00:00Z');
   chk('C6a داخلِ TTL ⇒ ok', c.verify(tok).ok === true);

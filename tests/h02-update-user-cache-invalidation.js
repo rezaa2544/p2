@@ -83,9 +83,9 @@ const procs = [];
 const tmpdirs = [];
 const mutatedPaths = [];
 process.on('exit', () => {
-  for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} }
-  for (const d of tmpdirs) { try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {} }
-  for (const f of mutatedPaths) { try { fs.unlinkSync(f); } catch (e) {} }
+  for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
+  for (const d of tmpdirs) { try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} }
+  for (const f of mutatedPaths) { try { fs.unlinkSync(f); } catch (e) {/* intentional no-op */} }
 });
 function spawnServer(env) {
   const p = spawn(process.execPath, ['server/index.js'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -95,7 +95,7 @@ function spawnServer(env) {
   procs.push(p);
   return p;
 }
-function close(p) { try { p.kill('SIGKILL'); } catch (e) {} }
+function close(p) { try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
 
 function req(port, method, p, body, headers) {
   return new Promise((resolve) => {
@@ -110,7 +110,7 @@ function req(port, method, p, body, headers) {
       let b = '';
       res.on('data', (d) => (b += d));
       res.on('end', () => {
-        let j = null; try { j = JSON.parse(b); } catch (e) {}
+        let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, json: j, headers: res.headers, text: b });
       });
     });
@@ -400,6 +400,6 @@ async function main() {
 
 main().catch((e) => {
   console.error('FATAL', e);
-  for (const p of procs) { try { p.kill('SIGKILL'); } catch (_) {} }
+  for (const p of procs) { try { p.kill('SIGKILL'); } catch (_) {/* intentional no-op */} }
   process.exit(2);
 });

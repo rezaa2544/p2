@@ -64,11 +64,11 @@ async function collect(redis) {
       }
       push('payesh_redis_keys_no_ttl', 'Keys without expiry (audit warning when > allowed-persistent set)', 'gauge', noTtl);
     }
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
 
   /* متریک‌های بومی ردیس از INFO */
   let infoMap = {};
-  try { infoMap = parseInfo(await redis.info()); } catch (e) {}
+  try { infoMap = parseInfo(await redis.info()); } catch (e) {/* intentional no-op */}
   const num = (k, d) => { const v = Number(infoMap[k]); return Number.isFinite(v) ? v : d; };
 
   push('redis_used_memory_bytes', 'Total allocated memory (used_memory)', 'gauge', num('used_memory', 0));
@@ -133,7 +133,7 @@ if (require.main === module) {
     if (!port) {
       const text = renderText(await collect(redis));
       process.stdout.write(text);
-      try { await redis.close(); } catch (e) {}
+      try { await redis.close(); } catch (e) {/* intentional no-op */}
       process.exit(0);
     }
 
@@ -156,8 +156,8 @@ if (require.main === module) {
     server.listen(port, process.env.HOST || '0.0.0.0', () => {
       console.log('[redis-metrics] /metrics روی پورت ' + port + ' آمادهٔ اسکریپ است');
     });
-    process.on('SIGTERM', () => { try { server.close(); } catch (e) {} process.exit(0); });
-    process.on('SIGINT', () => { try { server.close(); } catch (e) {} process.exit(0); });
+    process.on('SIGTERM', () => { try { server.close(); } catch (e) {/* intentional no-op */} process.exit(0); });
+    process.on('SIGINT', () => { try { server.close(); } catch (e) {/* intentional no-op */} process.exit(0); });
   }).catch((e) => { console.error('خطا:', e.message); process.exit(1); });
 }
 

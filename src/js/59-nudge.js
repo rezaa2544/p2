@@ -89,7 +89,7 @@ function nudgeTeacher(o){
   if(pending) return {ok:false, msg:'یادآوریِ قبلی هنوز در انتظار است'};
   if(recent) return {ok:false, msg:'هنوز در مهلتِ ۱۰ دقیقهٔ ضداسپم است'};
 
-  var t = byId('users', teacherId) || {};
+  var t = byId('users', teacherId) || {}; void t;
   var nu = insert('nudges', {
     school_id: schoolId, class_id: classId, teacher_id: teacherId,
     period: period, date: dateISO, status: 'pending',

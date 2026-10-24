@@ -381,7 +381,7 @@ const done = {};
     const cls = Math.floor(k / P.studentsPerClass) + 1;
     const school = Math.ceil(cls / P.classesPerSchool);
     const tStart = ID.teachers[0] + (school - 1) * P.classesPerSchool;
-    const homeroom = tStart + ((cls - 1) % P.classesPerSchool);
+    const homeroom = tStart + ((cls - 1) % P.classesPerSchool); void homeroom;
     const exams = P.GR_BASE + (k % 2 === 0 ? 1 : 0);
     for(let e = 0; e < exams; e++){
       n++;
@@ -565,7 +565,7 @@ const TS = (d, hh, mm) => SCHOOL_DAYS[d % SCHOOL_DAYS.length] + 'T' + String(hh)
   const w = new CsvWriter(path.join(OUT_DIR, 'outbox.csv'), 'id,type,collection,record_id,actor_id,version,status,created_at');
   for(let k = 0; k < P.outbox; k++){
     const cls = classOfStudent(k);
-    const school = schoolOfClass(cls);
+    const school = schoolOfClass(cls); void school;
     const homeroom = homeroomOfClass(cls);
     w.push([k + 1, k % 2 ? 'upd' : 'ins', k % 3 === 0 ? 'grades' : 'attendance',
       k + 1, homeroom, 1, 'processed', TS(k % 8, 15, k % 60)]);

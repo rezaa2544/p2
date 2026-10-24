@@ -22,7 +22,7 @@ function check(name, fn) {
 }
 
 const { createSemanticAnalyticsRoutes } = require('../server/routes/semantic-analytics.js');
-const STORE_PATH = path.join(__dirname, '..', 'server', 'data', 'payesh.json');
+const STORE_PATH = path.join(__dirname, '..', 'server', 'data', 'payesh.json'); void STORE_PATH;
 
 let store;
 try {

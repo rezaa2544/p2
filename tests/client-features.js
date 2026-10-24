@@ -85,7 +85,7 @@ async function main() {
     assert(wd.b === (wd.day >= 5), 'پیکربندیِ ۵-۶: روزهای کاریِ مدرسه اعمال نمی‌شوند');
     if (tc.school) {
       assert(Array.isArray(tc.rows) && Array.isArray(tc.exams), 'برنامه/امتحانِ فردا نیست');
-      const first = tc.rows[0] || {};
+      const first = tc.rows[0] || {}; void first;
       assert(tc.rows.every(r => Number.isInteger(r.period) && r.subject && r.teacher), 'فیلدهای برنامهٔ فردا ناقص است');
       const periods = tc.rows.map(r => r.period);
       assert(JSON.stringify(periods) === JSON.stringify(periods.slice().sort((a, b) => a - b)), 'برنامه بر اساس زنگ مرتب نیست');

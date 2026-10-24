@@ -18,7 +18,7 @@
  */
 'use strict';
 
-const assert = require('assert');
+const assert = require('assert'); void assert;
 const {
   CANONICAL_PHASE3_CATALOG,
   PHASE3_ENGINE_ID,
@@ -51,7 +51,7 @@ function check(name, cond, detail) {
 console.log('\n🛡️  گواهی انتشار غیرچرخشی (D5 Non-Circular Certification Gate)\n');
 
 // ── ۱. کاتالوگ همهٔ ۲۰ موتور را پوشش می‌دهد ─────────────────────────────
-const allIds = Object.values(PHASE3_ENGINE_ID);
+const allIds = Object.values(PHASE3_ENGINE_ID); void allIds;
 check('کاتالوگ دقیقاً ۲۰ موتور را ثبت کرده (۱۲ فاز ۳ + ۸ لایه معنایی)',
   CANONICAL_PHASE3_CATALOG.length === 20, `length=${CANONICAL_PHASE3_CATALOG.length}`);
 

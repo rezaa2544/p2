@@ -97,7 +97,7 @@ if (require.main === module) {
   console.log('═══════════════════════════════════════════════════════════════════');
   console.log('🚀 اجرای آزمون‌های کامل RESTful API Backend (فاز ۳ و ۴)');
   console.log('═══════════════════════════════════════════════════════════════════\n');
-  process.exit(runSuites(API_TESTS));
+  if (runSuites(API_TESTS) !== 0) process.exit(1);
 }
 
 module.exports = { runSuites, API_TESTS };

@@ -115,7 +115,7 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
               try {
                 const dlq = await outbox.moveToDlq(evt, errMsg, leaseToken, rc);
                 transitioned = !!(dlq && dlq.ok === true);
-              } catch (_) {}
+              } catch (_) {/* intentional no-op */}
             }
           }
           if (!transitioned) {
@@ -167,7 +167,7 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
         if (!h) {
           /* scope ناشناخته — fail-closed: به DLQ، نه تخریبِ دستیِ کش */
           if (outbox && typeof outbox.moveToDlq === 'function') {
-            try { await outbox.moveToDlq(evt, 'no handler for ' + String(evt.type), null, Number(evt.retry_count) || maxRetries); } catch (_) {}
+            try { await outbox.moveToDlq(evt, 'no handler for ' + String(evt.type), null, Number(evt.retry_count) || maxRetries); } catch (_) {/* intentional no-op */}
           }
           lastOkId = id;
           failedDelta++;
@@ -183,7 +183,7 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
           if (outbox && typeof outbox.mark === 'function') {
             try {
               await outbox.mark(id, { status: 'processed', processed_at: new Date().toISOString(), last_error: null }, null);
-            } catch (_) {}
+            } catch (_) {/* intentional no-op */}
           }
         } catch (err) {
           const rc = (Number(evt.retry_count) || 0) + 1;
@@ -201,14 +201,14 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
               try {
                 const dlq = await outbox.moveToDlq(evt, errMsg, null, rc);
                 if (dlq && dlq.ok) { lastOkId = id; failedDelta++; }
-              } catch (_) {}
+              } catch (_) {/* intentional no-op */}
             } else { lastOkId = id; failedDelta++; }
             metrics.inc('payesh_cache_outbox_events_processed_total', { outcome: 'dead_letter' });
             continue;
           }
           /* قابلِ تلاشِ مجدد: علامت کن و sticky بمان */
           if (outbox && typeof outbox.mark === 'function') {
-            try { await outbox.mark(id, { status: 'pending', retry_count: rc, last_error: errMsg }, null); } catch (_) {}
+            try { await outbox.mark(id, { status: 'pending', retry_count: rc, last_error: errMsg }, null); } catch (_) {/* intentional no-op */}
           }
           metrics.inc('payesh_cache_outbox_events_processed_total', { outcome: 'retried' });
           break;
@@ -272,7 +272,7 @@ function createWorker({ store, outbox, handlers, intervalMs, maxRetries }) {
     if (process.env.PAYESH_ENV === 'test' && process.env.PAYESH_M15_RUNTIME_DIAGNOSTICS === '1') {
       try {
         if (outbox && typeof outbox.instanceId === 'function') snapshot.outboxInstanceId = String(outbox.instanceId());
-      } catch (_) {}
+      } catch (_) {/* intentional no-op */}
       snapshot.cacheReplicationProcessedTotal = cacheReplicationProcessedTotal;
       snapshot.cacheReplicationLastWatermarkTargetId = lastReplicateWatermarkTargetId;
       snapshot.cacheReplicationLastWatermarkAdvanceOk = lastReplicateWatermarkAdvanceOk;

@@ -40,7 +40,7 @@ const PEPPER = 'n08-test-pepper-0123456789abcdef0123456789abcdef0123456789';
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-n08-'));
 const OTP_FILE = path.join(TMP, 'otp.json');
-process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 fs.copyFileSync(REAL_STORE, path.join(TMP, 'store.json'));
 
 process.env.PAYESH_STORE = path.join(TMP, 'store.json');
@@ -72,7 +72,7 @@ async function readOtpRecord(key) {
     try {
       const doc = JSON.parse(fs.readFileSync(OTP_FILE, 'utf8'));
       if (doc && doc.codes && doc.codes[key] && doc.codes[key].h) return doc.codes[key];
-    } catch (e) {}
+    } catch (e) {/* intentional no-op */}
     await sleep(100);
   }
   return null;
@@ -92,7 +92,7 @@ async function main() {
       body: body ? JSON.stringify(body) : undefined,
     });
     let json = null;
-    try { json = await res.json(); } catch (e) {}
+    try { json = await res.json(); } catch (e) {/* intentional no-op */}
     return { status: res.status, json, headers: res.headers };
   };
 

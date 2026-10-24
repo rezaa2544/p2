@@ -78,8 +78,8 @@ const summarize = () => {
 const procs = [];
 const tmpdirs = [];
 process.on('exit', () => {
-  for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} }
-  for (const d of tmpdirs) { try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {} }
+  for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
+  for (const d of tmpdirs) { try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} }
 });
 function spawnServer(env) {
   const p = spawn(process.execPath, ['server/index.js'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -89,7 +89,7 @@ function spawnServer(env) {
   procs.push(p);
   return p;
 }
-function close(p) { try { p.kill('SIGKILL'); } catch (e) {} }
+function close(p) { try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
 
 function req(port, method, p, body, headers) {
   return new Promise((resolve) => {
@@ -104,7 +104,7 @@ function req(port, method, p, body, headers) {
       let b = '';
       res.on('data', (d) => (b += d));
       res.on('end', () => {
-        let j = null; try { j = JSON.parse(b); } catch (e) {}
+        let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, json: j, headers: res.headers, text: b });
       });
     });
@@ -200,7 +200,7 @@ async function waitFor(fn, timeoutMs, stepMs) {
 function redisCmd(url, cmd, key) {
   return new Promise((resolve) => {
     let host = '127.0.0.1', port = 6379;
-    try { const u = new URL(url); host = u.hostname; port = Number(u.port) || 6379; } catch (e) {}
+    try { const u = new URL(url); host = u.hostname; port = Number(u.port) || 6379; } catch (e) {/* intentional no-op */}
     const s = net.connect(port, host, () => {
       const k = Buffer.from(key, 'utf8');
       const body = cmd.toUpperCase() === 'PING'
@@ -222,7 +222,7 @@ function redisCmd(url, cmd, key) {
       }
     });
     s.on('error', () => resolve(null));
-    setTimeout(() => { try { s.destroy(); } catch (e) {} resolve(null); }, 2000);
+    setTimeout(() => { try { s.destroy(); } catch (e) {/* intentional no-op */} resolve(null); }, 2000);
   });
 }
 const probeRedis = (url) => redisCmd(url, 'PING', 'x').then((t) => typeof t === 'string' && t.indexOf('PONG') >= 0);
@@ -411,7 +411,7 @@ async function main() {
     await cache.init();
     const INVAL_CHANNEL = 'payesh:pubsub:inval';
     const busEvents = [];
-    await redis.subscribe(INVAL_CHANNEL, (msg) => { try { busEvents.push(JSON.parse(msg)); } catch (e) {} });
+    await redis.subscribe(INVAL_CHANNEL, (msg) => { try { busEvents.push(JSON.parse(msg)); } catch (e) {/* intentional no-op */} });
     const payload = (uid, schoolId, role) => ({ user: { id: uid, role }, school: schoolId == null ? null : { id: schoolId }, role });
 
     const u6 = 9001, s6 = 21;
@@ -484,7 +484,7 @@ async function main() {
       const live = fs.readFileSync(CACHE_PATH, 'utf8');
       if (live.split(M[MUT][0]).length - 1 !== 1) { console.error('الگوی جهش مچ نشد'); process.exit(2); }
       fs.writeFileSync(p, live.replace(M[MUT][0], M[MUT][1]));
-      process.on('exit', () => { try { fs.unlinkSync(p); } catch (_) {} });
+      process.on('exit', () => { try { fs.unlinkSync(p); } catch (_) {/* intentional no-op */} });
       process.env.REDIS_URL = '';
       const mutCache = require('../server/cache.b02-mutated.js');
       await mutCache.init();
@@ -518,6 +518,6 @@ async function main() {
 
 main().catch((e) => {
   console.error('FATAL', e);
-  for (const p of procs) { try { p.kill('SIGKILL'); } catch (_) {} }
+  for (const p of procs) { try { p.kill('SIGKILL'); } catch (_) {/* intentional no-op */} }
   process.exit(2);
 });

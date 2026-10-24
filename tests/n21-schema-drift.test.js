@@ -22,17 +22,24 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
-const os = require('os');
+const os = require('os'); void os;
 
 const ROOT = path.join(__dirname, '..');
 const SCHEMA_FILE = path.join(ROOT, 'server', 'schema.sql');
 const MIGRATE_TOOL = path.join(ROOT, 'tools', 'migrate-to-pg.js');
 
-const PG_HOST = '127.0.0.1';
-const PG_PORT = '5433';
-const PG_USER = 'postgres';
+const _pgUrl = (() => {
+  const raw = process.env.PGURL || process.env.DATABASE_URL || '';
+  if (!raw) return null;
+  try { return new URL(raw); } catch (e) { return null; }
+})();
+const PG_HOST = (_pgUrl && _pgUrl.hostname) || process.env.PGHOST || '127.0.0.1';
+const PG_PORT = (_pgUrl && _pgUrl.port) || process.env.PGPORT || '5433';
+const PG_USER = (_pgUrl && decodeURIComponent(_pgUrl.username)) || process.env.PGUSER || 'postgres';
+const PG_PASS = (_pgUrl && decodeURIComponent(_pgUrl.password)) || process.env.PGPASSWORD || 'postgres';
+const PG_ADMIN_DB = (_pgUrl && _pgUrl.pathname && _pgUrl.pathname.replace(/^\//, '')) || 'postgres';
 const TEST_DB = 'payesh_n21_drift';
-const PG_BIN = 'C:\\Program Files\\PostgreSQL\\16\\bin';
+const PG_BIN = process.platform === 'win32' ? 'C:\\Program Files\\PostgreSQL\\16\\bin' : '';
 
 let results = [];
 let failures = 0;
@@ -127,23 +134,23 @@ function norm(s) {
      working database whose OCC contract holds. Text parity alone cannot
      catch a column that reads correctly but behaves wrong. */
   await check('N21-5 live build: the DDL creates a database where version defaults to 1 and an OCC UPDATE matches', async () => {
-    const psql = path.join(PG_BIN, 'psql.exe');
+    const psql = PG_BIN ? path.join(PG_BIN, 'psql.exe') : 'psql';
     /* -t -A: tuples-only, unaligned — so a scalar SELECT yields a bare value
        that parseInt can read (with headers the output starts with the column
        name and parseInt yields NaN). */
     const run = (db, sql) => new Promise((resolve, reject) => {
       execFile(psql, ['-h', PG_HOST, '-p', PG_PORT, '-U', PG_USER, '-d', db, '-q', '-t', '-A', '-v', 'ON_ERROR_STOP=1', '-c', sql],
-        { env: Object.assign({}, process.env, { PGPASSWORD: 'postgres' }) },
+        { env: Object.assign({}, process.env, { PGPASSWORD: PG_PASS }) },
         (err, stdout, stderr) => err ? reject(new Error(stderr || String(err))) : resolve(stdout));
     });
     const fileApply = (db) => new Promise((resolve, reject) => {
       execFile(psql, ['-h', PG_HOST, '-p', PG_PORT, '-U', PG_USER, '-d', db, '-q', '-v', 'ON_ERROR_STOP=1', '-f', SCHEMA_FILE],
-        { env: Object.assign({}, process.env, { PGPASSWORD: 'postgres' }) },
+        { env: Object.assign({}, process.env, { PGPASSWORD: PG_PASS }) },
         (err, stdout, stderr) => err ? reject(new Error(String(stderr || err).split('\n').filter(l => /ERROR/i.test(l)).slice(0, 3).join(' | '))) : resolve());
     });
 
-    await run('postgres', 'DROP DATABASE IF EXISTS ' + TEST_DB + ';');
-    await run('postgres', 'CREATE DATABASE ' + TEST_DB + ';');
+    await run(PG_ADMIN_DB, 'DROP DATABASE IF EXISTS ' + TEST_DB + ';');
+    await run(PG_ADMIN_DB, 'CREATE DATABASE ' + TEST_DB + ';');
     await fileApply(TEST_DB);
 
     /* version must be NOT NULL DEFAULT 1 on every APP collection. Internal
@@ -172,7 +179,7 @@ function norm(s) {
     const upd = await run(TEST_DB, "UPDATE users SET full_name='N21 bumped', version=version+1 WHERE id=77001 AND version=1 RETURNING version;");
     assert.ok(/2/.test(upd), 'OCC UPDATE with base_version=1 did not match the row, got: ' + upd);
 
-    await run('postgres', 'DROP DATABASE IF EXISTS ' + TEST_DB + ';');
+    await run(PG_ADMIN_DB, 'DROP DATABASE IF EXISTS ' + TEST_DB + ';');
   });
 
   console.log('\n=== N-21 schema drift / migration-chain parity ===');

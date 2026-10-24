@@ -65,7 +65,7 @@ function startRelay(mode) {
       let open = true;
       sock.on('data', (d) => { if (open) up.write(d); });
       up.on('data', (d) => { if (open) sock.write(d); });
-      const fin = () => { if (open) { open = false; try { sock.destroy(); } catch (e) {} try { up.destroy(); } catch (e) {} } };
+      const fin = () => { if (open) { open = false; try { sock.destroy(); } catch (e) {/* intentional no-op */} try { up.destroy(); } catch (e) {/* intentional no-op */} } };
       sock.on('error', fin); sock.on('close', fin);
       up.on('error', fin); up.on('close', fin);
     });
@@ -74,7 +74,7 @@ function startRelay(mode) {
       const api = {
         srv,
         /* قطعِ واقعی: هم listener و هم همهٔ جفت‌های برقرارشده. */
-        sever: () => { try { srv.close(); } catch (e) {} for (const p of pairs) { try { p[0].destroy(); } catch (e) {} if (p[1]) { try { p[1].destroy(); } catch (e) {} } } pairs.length = 0; },
+        sever: () => { try { srv.close(); } catch (e) {/* intentional no-op */} for (const p of pairs) { try { p[0].destroy(); } catch (e) {/* intentional no-op */} if (p[1]) { try { p[1].destroy(); } catch (e) {/* intentional no-op */} } } pairs.length = 0; },
       };
       resolve(api);
     });
@@ -88,7 +88,7 @@ function get(path) {
       res.on('data', (c) => { body += c; });
       res.on('end', () => {
         let json = null;
-        try { json = JSON.parse(body); } catch (e) {}
+        try { json = JSON.parse(body); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, json, raw: body.slice(0, 300) });
       });
     });
@@ -212,15 +212,15 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
         'driver=' + (h1.json && h1.json.redis && h1.json.redis.driver) + ' alive=' + (h1.json && h1.json.redis && h1.json.redis.alive) + ' cache=' + (h1.json && h1.json.cache));
       check('positive: readiness is fail-closed (503 — P0-13 gate intact)', (await get('/api/readiness')).status === 503, '');
     }
-    try { bh.sever(); } catch (e) {}
+    try { bh.sever(); } catch (e) {/* intentional no-op */}
   } finally {
-    try { relay.sever(); } catch (e) {}
-    try { proc.kill('SIGTERM'); } catch (e) {}
+    try { relay.sever(); } catch (e) {/* intentional no-op */}
+    try { proc.kill('SIGTERM'); } catch (e) {/* intentional no-op */}
     try {
       if (proc.exitCode === null && proc.signalCode === null) {
         await new Promise((r) => { const t = setTimeout(r, 1500); proc.on('exit', () => { clearTimeout(t); r(); }); });
       }
-    } catch (e) {}
+    } catch (e) {/* intentional no-op */}
   }
 
   const failed = results.filter((r) => !r.ok);

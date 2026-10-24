@@ -78,7 +78,7 @@ const run = (cmd, args) => new Promise((res) => {
 
   /* R2: dry-run */
   try {
-    const before = await live.query("SELECT count(*)::int AS n FROM pg_inherits i JOIN pg_class c ON c.oid=i.inhrelid WHERE i.inhparent='grades'::regclass");
+    const before = await live.query("SELECT count(*)::int AS n FROM pg_inherits i JOIN pg_class c ON c.oid=i.inhrelid WHERE i.inhparent='grades'::regclass"); void before;
     const r = await run('node', [TOOL, '--pg', LIVE_URL, '--tables', 'grades', '--keep-years', '5']);
     const after = await live.query('SELECT count(*)::int AS n FROM grades');
     chk('R2 dry-run: y2021 را «حذف می‌شد» فهرست می‌کند', r.code === 0 && /DRY\s+grades_y2021/.test(r.so), r.so.split('\n').filter((l) => /DRY|KEEP/.test(l)).join(' | ').slice(0, 140));
@@ -110,7 +110,7 @@ const run = (cmd, args) => new Promise((res) => {
   } catch (e) { chk('R5 سیاست', false, String(e.message).slice(0, 140)); }
 
   /* پاک‌سازی برای اجرای دوباره */
-  try { await live.query('DROP TABLE IF EXISTS grades, attendance, grades_old, attendance_old, schools, users, classes, subjects CASCADE'); } catch (e) {}
+  try { await live.query('DROP TABLE IF EXISTS grades, attendance, grades_old, attendance_old, schools, users, classes, subjects CASCADE'); } catch (e) {/* intentional no-op */}
   await live.end();
 
   console.log('\n────────────────────────────────────────────');

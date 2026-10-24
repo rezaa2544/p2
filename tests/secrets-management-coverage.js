@@ -36,7 +36,7 @@ grp('شاهدهای کد (راستی‌آزمایی زنده)');
 const idx = rd('server/index.js');
 const auth = rd('server/auth.js');
 chk('fail-fast کلید مشترک در کد هست', idx.includes('requires a shared PAYESH_JWT_SECRET'));
-chk('بررسی ۲۵۶ بیت در کد هست', idx.includes('JWT key shorter than 256 bits'));
+chk('بررسی ۲۵۶ بیت در کد هست', idx.includes('weakJwtKeyReason') && rd('server/key-strength.js').includes('256'));
 chk('چرخش غلتان در کد هست', auth.includes('PAYESH_JWT_SECRET_PREV'));
 chk('کلید خودساخته ۳۲ بایتی در کد هست', idx.includes('crypto.randomBytes(32)'));
 chk('.gitignore کلیدها را می‌گیرد', rd('.gitignore').includes('*.key') && rd('.gitignore').includes('jwt.key'));

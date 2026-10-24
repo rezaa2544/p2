@@ -22,7 +22,7 @@ catch { console.log('⏭️  jsdom نصب نیست — تست رد شد.  (npm i
 
 const ROOT = path.join(__dirname, '..');
 // hardening: rebuild base index.html (a previously crashed mutation suite may have left a mutated build)
-try { require('child_process').execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
+try { require('child_process').execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {/* intentional no-op */}
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
 let pass = 0, fail = 0;
@@ -127,6 +127,7 @@ test('AY3 مودال: سلکت سال + ذخیرهٔ واقعی', () => {
   const mgr = 'aymgr_' + Date.now().toString(36);
   global.__AY_CODE = code;
   W(`(function(){
+    window.__AY_CODE=${JSON.stringify(code)};
     document.getElementById('m_active_year').value=${JSON.stringify(prev)};
     document.getElementById('m_name').value='مدرسهٔ آزمایشی سال';
     document.getElementById('m_code').value=window.__AY_CODE;

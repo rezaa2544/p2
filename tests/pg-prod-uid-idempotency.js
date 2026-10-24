@@ -49,7 +49,7 @@ if (!pg) { console.log(NAME + ': NOT-RUN — pg driver not resolvable (set NODE_
   const probe = new pg.Pool({ connectionString: PGURL, max: 2, connectionTimeoutMillis: 5000 });
   try { await probe.query('SELECT 1'); }
   catch (e) { console.log(NAME + ': NOT-RUN — PostgreSQL not reachable: ' + e.message); process.exit(2); }
-  finally { try { await probe.end(); } catch (e) {} }
+  finally { try { await probe.end(); } catch (e) {/* intentional no-op */} }
 
   /* ── 1. production + the idempotency table missing ⇒ throw ── */
   process.env.NODE_ENV = 'production';
@@ -85,7 +85,7 @@ if (!pg) { console.log(NAME + ': NOT-RUN — pg driver not resolvable (set NODE_
   chk('2b an unknown uid is reported as NOT processed', no === false, 'got ' + no);
 
   await db.query('DROP TABLE IF EXISTS server_processed_uids');
-  try { await db.close(); } catch (e) {}
+  try { await db.close(); } catch (e) {/* intentional no-op */}
 
   /* ── 3. development keeps warn-and-continue (no regression) ── */
   {
@@ -100,7 +100,7 @@ if (!pg) { console.log(NAME + ': NOT-RUN — pg driver not resolvable (set NODE_
     chk('3a development does NOT throw on the same failure', devThrew === false,
       'it threw — that would break local/offline runs');
     chk('3b development still answers from the in-memory store', devVal === true, 'got ' + devVal);
-    try { await dv.close(); } catch (e) {}
+    try { await dv.close(); } catch (e) {/* intentional no-op */}
   }
 
   /* ── 4. structural: the empty catch is gone ── */

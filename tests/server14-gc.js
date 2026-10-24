@@ -35,7 +35,7 @@ function httpReq(port, method, p, body, cookie) {
     const req = http.request({ hostname: '127.0.0.1', port, path: p, method, headers }, (res) => {
       let b = '';
       res.on('data', (d) => (b += d));
-      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {} resolve({ status: res.statusCode, json: j, setCookie: res.headers['set-cookie'] }); });
+      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */} resolve({ status: res.statusCode, json: j, setCookie: res.headers['set-cookie'] }); });
     });
     req.on('error', () => resolve({ status: 0, json: null }));
     if (data) req.write(data);
@@ -52,7 +52,7 @@ function cookieFrom(r) {
   return '';
 }
 
-process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 let tmp = null;
 
 async function main() {
@@ -72,7 +72,7 @@ async function main() {
   src.__auth.codes['+989900000001'] = { code: '1234', at: now - 10 * 60000, user_id: 1, tries: 0 };
   src.__auth.codes['+989900000002'] = { code: '5678', at: now - 1 * 60000, user_id: 1, tries: 0 };
   fs.writeFileSync(storeFile, JSON.stringify(src), { mode: 0o600 });
-  const sizeBefore = fs.statSync(storeFile).size;
+  const sizeBefore = fs.statSync(storeFile).size; void sizeBefore;
 
   const M = src.users.find(u => u.role === 'manager' && u.school_id === 1);
   chk('G0 حسابِ مدیرِ seed موجود است', !!M);
@@ -141,8 +141,8 @@ async function main() {
   chk('G6 GC: jtiِ کهنه (9 ساعت) پاک شد', !after.__revoked_jti['gc-old-jti']);
   chk('G6b GC: jtiِ زنده (1 ساعت) ماند', !!after.__revoked_jti['gc-new-jti']);
   const otpAfter = JSON.parse(fs.readFileSync(path.join(tmp, 'otp.json'), 'utf8')); /* R101: کدها در otp.json (مهاجرت از __auth) */
-  chk('G7 GC: کدِ منقضی (10 دقیقه) پاک شد', !(otpAfter.codes || {})['+989900000001']);
-  chk('G7b GC: کدِ زنده (1 دقیقه) ماند', !!((otpAfter.codes || {})['+989900000002']));
+  chk('G7 GC: کدِ منقضی (10 دقیقه) پاک شد', !(otpAfter.codes || {})['9900000001'] && !(otpAfter.codes || {})['+989900000001']);
+  chk('G7b GC: کدِ زنده (1 دقیقه) ماند', !!((otpAfter.codes || {})['9900000002'] || (otpAfter.codes || {})['+989900000002']));
 
   const oldKeys = (st) => (st.__processed_uids['gc-old-uid'] ? 1 : 0)
                          + (st.__revoked_jti['gc-old-jti'] ? 1 : 0)

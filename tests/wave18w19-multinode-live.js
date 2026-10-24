@@ -93,7 +93,7 @@ async function j(base, m, p, opts){
   const t0 = Date.now();
   const r = await fetch(base + p, Object.assign({ method: m }, opts || {}));
   const text = await r.text();
-  let body = null; try { body = JSON.parse(text); } catch (e) {}
+  let body = null; try { body = JSON.parse(text); } catch (e) {/* intentional no-op */}
   return { status: r.status, ms: Date.now() - t0, body, text, headers: r.headers };
 }
 
@@ -167,7 +167,7 @@ async function waitReady(inst, ms){
     try {
       const r = await j(inst.base, 'GET', '/api/liveness');
       if(r.status === 200) return true;
-    } catch (e) {}
+    } catch (e) {/* intentional no-op */}
     if(procDead(inst.proc)) return false;
     await sleep(300);
   }
@@ -192,7 +192,7 @@ function awaitRedisCli(p){
   return new Promise((resolve) => {
     let o = ''; p.stdout.on('data', (d) => o += d);
     p.on('exit', (code) => resolve({ code, out: o.trim() }));
-    setTimeout(() => { try { p.kill('SIGKILL'); } catch (e) {} }, 10000);
+    setTimeout(() => { try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }, 10000);
   });
 }
 function redisCliPing(port){
@@ -525,8 +525,8 @@ async function main(){
            (fail-closed) ⇒ بازیابی = restartِ instance با redis زنده */
         /* نمونه‌هایِ پیشین (که کلاینتِ redisشان عمداً تسلیم شده) را خارج می‌کنیم —
            خودِ restart بخشی از قراردادِ بازیابی است */
-        try { A.proc.kill('SIGKILL'); } catch (e) {}
-        try { B.proc.kill('SIGKILL'); } catch (e) {}
+        try { A.proc.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
+        try { B.proc.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
         await sleep(2000);
         const A2 = spawnInstance('A', storeA, tmp, PORT_A);
         const B3 = spawnInstance('B', storeB, tmp, PORT_B);
@@ -580,9 +580,9 @@ async function main(){
     chk('H10', fatal === '', 'هیچ [FATAL]/uncaught در لاگِ A و B' + (fatal ? ' — یافت: ' + fatal : ''));
   }
   console.log('\n▘ cleanup');
-  for(const inst of [A, B]){ try { inst.proc.kill('SIGTERM'); } catch (e) {} }
+  for(const inst of [A, B]){ try { inst.proc.kill('SIGTERM'); } catch (e) {/* intentional no-op */} }
   await sleep(1500);
-  for(const inst of [A, B]){ try { if(inst.proc.exitCode === null) inst.proc.kill('SIGKILL'); } catch (e) {} }
+  for(const inst of [A, B]){ try { if(inst.proc.exitCode === null) inst.proc.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
   fs.closeSync(timeline);
   const lines = results.map((r) => r).join('\n');
   fs.writeFileSync(path.join(OUT, 'summary.txt'),

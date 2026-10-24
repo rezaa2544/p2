@@ -6,7 +6,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 const assert = require('assert');
-const crypto = require('crypto');
+const crypto = require('crypto'); void crypto;
 const fs = require('fs');
 const http = require('http');
 const os = require('os');
@@ -45,7 +45,7 @@ function request(port, method, requestPath, opts = {}) {
       res.on('data', (chunk) => { raw += chunk; });
       res.on('end', () => {
         let json = null;
-        try { json = JSON.parse(raw); } catch (_) {}
+        try { json = JSON.parse(raw); } catch (_) {/* intentional no-op */}
         resolve({ status: res.statusCode, headers: res.headers, raw, json });
       });
     });

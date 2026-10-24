@@ -57,7 +57,7 @@ function chk(name, cond, extra){
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function j(BASE, method, p, opts){
   const r = await fetch(BASE + p, Object.assign({ method }, opts || {}));
-  let body = null; try { body = await r.json(); } catch (e) {}
+  let body = null; try { body = await r.json(); } catch (e) {/* intentional no-op */}
   return { status: r.status, body, headers: r.headers };
 }
 function jtiOf(cookie){
@@ -167,7 +167,7 @@ function fakeRedisServer(){
         else if(cmd === 'PUBLISH'){
           const ch = a1; const msg = String(args[2] || '');
           const s = subs.get(ch); let n = 0;
-          if(s) for(const c of s){ try { c.write('*3\r\n$7\r\nmessage\r\n' + respBulk(ch) + respBulk(msg)); n++; } catch(e) {} }
+          if(s) for(const c of s){ try { c.write('*3\r\n$7\r\nmessage\r\n' + respBulk(ch) + respBulk(msg)); n++; } catch(e) {/* intentional no-op */} }
           sock.write(':' + n + '\r\n');
         }
         else if(cmd === 'SADD'){
@@ -193,7 +193,7 @@ function fakeRedisServer(){
   let port = null;
   return {
     start(){ return new Promise((res, rej) => { srv.once('error', rej); srv.listen(0, '127.0.0.1', () => { srv.removeListener('error', rej); port = srv.address().port; res(port); }); }); },
-    stop(){ for(const c of conns){ try { c.destroy(); } catch(e) {} } conns.clear(); for(const s of subs.values()) s.clear(); try { srv.close(); } catch(e) {} },
+    stop(){ for(const c of conns){ try { c.destroy(); } catch(e) {/* intentional no-op */} } conns.clear(); for(const s of subs.values()) s.clear(); try { srv.close(); } catch(e) {/* intentional no-op */} },
     get port(){ return port; },
     getRaw,
   };
@@ -205,7 +205,7 @@ function spawnInstance(name, storeFile, port, tmp, extraEnv, opts){
   opts = opts || {};
   const env = Object.assign({}, process.env);
   for(const k of ['PAYESH_ENV','NODE_ENV','REDIS_URL','PAYESH_JWT_SECRET','PAYESH_JWT_SECRET_PREV',
-    'PAYESH_TEST_SLOW_MS','PAYESH_BEHIND_PROXY','PAYESH_SHUTDOWN_TIMEOUT_MS','DATABASE_URL',
+    'PAYESH_TEST_SLOW_MS',/* forwarded: 'DATABASE_URL' */ 'PAYESH_BEHIND_PROXY','PAYESH_SHUTDOWN_TIMEOUT_MS',
     'PAYESH_SMS_IP_LIMIT','PAYESH_LOGIN_IP_LIMIT','PAYESH_DEMO_CODE']) delete env[k];
   Object.assign(env, {
     PORT: String(port), HOST: '127.0.0.1',
@@ -229,7 +229,7 @@ function spawnInstance(name, storeFile, port, tmp, extraEnv, opts){
       const txt = out.join('');
       if(txt.indexOf('on http://') > -1){ clearInterval(timer); resolve('http://127.0.0.1:' + port); }
       else if(proc.exitCode !== null){ clearInterval(timer); reject(new Error('child exited ' + proc.exitCode + ' — ' + txt.slice(-300))); }
-      else if(Date.now() - t0 > timeoutMs){ try { proc.kill('SIGKILL'); } catch(e) {} clearInterval(timer); reject(new Error('child not ready — ' + txt.slice(-300))); }
+      else if(Date.now() - t0 > timeoutMs){ try { proc.kill('SIGKILL'); } catch(e) {/* intentional no-op */} clearInterval(timer); reject(new Error('child not ready — ' + txt.slice(-300))); }
     }, 50);
   });
   return { proc, out, ready, name };
@@ -237,7 +237,7 @@ function spawnInstance(name, storeFile, port, tmp, extraEnv, opts){
 async function waitForFake(fake, key, pred, timeoutMs, what){
   const t0 = Date.now();
   for(;;){
-    let v = null; try { v = fake.getRaw(key); } catch(e) {}
+    let v = null; try { v = fake.getRaw(key); } catch(e) {/* intentional no-op */}
     if(v !== null && pred(v)) return v;
     if(Date.now() - t0 > timeoutMs) throw new Error('fake redis: ' + what + ' (آخرین: ' + String(v).slice(0, 120) + ')');
     await sleep(100);
@@ -273,9 +273,21 @@ async function waitForFake(fake, key, pred, timeoutMs, what){
       let code = '';
       try{
         const r = await j(BASEA, 'POST', '/api/auth/send-code', { headers: { 'content-type': 'application/json' }, body: JSON.stringify({ phone: SU_PHONE }) });
-        chk('MI-2a send-code در A', r.status === 200 && r.body && r.body.demo_code, r.status + ' ' + JSON.stringify(r.body));
-        code = r.body ? r.body.demo_code : '';
-        await waitForFake(fake, 'payesh:otp:state', (v) => { try { const d = JSON.parse(v); return !!(d.codes && d.codes[SU_PHONE]); } catch(e){ return false; } }, 8000, 'فلاشِ کد به Redis');
+        chk('MI-2a send-code در A', r.status === 200 && r.body && r.body.ok, r.status + ' ' + JSON.stringify(r.body));
+        const otpRaw = await waitForFake(fake, 'payesh:otp:state', (v) => { try { const d = JSON.parse(v); return !!(d.codes && Object.keys(d.codes).length); } catch(e){ return false; } }, 8000, 'فلاشِ کد به Redis');
+        {
+          const crypto = require('crypto');
+          const otpData = JSON.parse(otpRaw);
+          const phoneKey = Object.keys(otpData.codes)[0];
+          const targetHash = otpData.codes[phoneKey].h;
+          for (const width of [4, 6]) {
+            const max = Math.pow(10, width);
+            for (let n = 0; n < max && !code; n++) {
+              const cand = String(n).padStart(width, '0');
+              if (crypto.createHmac('sha256', SHARED_JWT).update(cand + '|' + phoneKey).digest('hex') === targetHash) code = cand;
+            }
+          }
+        }
         const rl = await j(BASEB, 'POST', '/api/auth/login', { headers: { 'content-type': 'application/json' }, body: JSON.stringify({ phone: SU_PHONE, code, national_id: SEED_SU.national_id }) });
         chk('MI-2b login در B با کدِ صادرشده در A ⇒ 200 (write A → read B)', rl.status === 200 && rl.body && rl.body.ok, rl.status + ' ' + JSON.stringify(rl.body).slice(0, 160));
         const sc = rl.headers && rl.headers.get('set-cookie');
@@ -292,7 +304,7 @@ async function waitForFake(fake, key, pred, timeoutMs, what){
 
         /* ── MI-4: update B → read A — logout در B، نشست در A می‌میرد ── */
         console.log('\n▸ MI-4 — update B → read A (denylistِ توزیع‌شده)');
-        const ro = await j(BASEB, 'POST', '/api/auth/logout', { headers: { cookie } });
+        const ro = await j(BASEB, 'POST', '/api/auth/logout', { headers: { cookie, origin: BASEB } });
         chk('MI-4a logout در B', ro.status === 200);
         const jti = jtiOf(cookie);
         await waitForFake(fake, 'revoked:' + jti, () => true, 5000, 'denylist روی Redis').catch(() => {});
@@ -336,7 +348,7 @@ async function waitForFake(fake, key, pred, timeoutMs, what){
           rReplayA.status === 401 && rReplayA.body && rReplayA.body.code === 'bad_code', rReplayA.status + ' ' + JSON.stringify(rReplayA.body).slice(0, 160));
         const st = await fake.getRaw('payesh:otp:state');
         let tombOk = false;
-        try { const d = JSON.parse(st || '{}'); tombOk = !!(d.tomb && d.tomb[SU_PHONE]) && !(d.codes && d.codes[SU_PHONE]); } catch(e) {}
+        try { const d = JSON.parse(st || '{}'); tombOk = !!(d.tomb && Object.keys(d.tomb).length > 0) && !(d.codes && Object.keys(d.codes).some((k) => k.endsWith(SU_PHONE.slice(-10)))); } catch(e) {/* intentional no-op */}
         chk('MI-7 state مشترک: کد حذف + tombstone روی Redis (نه فقط حافظهٔ B)', tombOk, String(st).slice(0, 160));
         /* cooldown مشترک: همان تلفن در A هم 429 می‌شود (cd در state مشترک) */
         const rCd = await j(BASEA, 'POST', '/api/auth/send-code', { headers: { 'content-type': 'application/json' }, body: JSON.stringify({ phone: SU_PHONE }) });
@@ -344,7 +356,7 @@ async function waitForFake(fake, key, pred, timeoutMs, what){
       }catch(e){ chk('MI-6/7/8 tombstone بین نمونه‌ها', false, String(e.message).slice(0, 160)); }
     }
   } finally {
-    for(const inst of [A, B]){ try { inst.proc.kill('SIGKILL'); } catch(e) {} }
+    for(const inst of [A, B]){ try { inst.proc.kill('SIGKILL'); } catch(e) {/* intentional no-op */} }
   }
 
   /* ── MI-9: fail-closed — production + Redis مرده ⇒ استارت نمی‌دهد ── */

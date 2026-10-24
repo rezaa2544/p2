@@ -2,7 +2,7 @@ name: Runtime Reliability
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "arena/**"]
   pull_request:
     branches: ["main"]
 

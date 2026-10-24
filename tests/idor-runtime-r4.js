@@ -23,8 +23,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
-const ROOT = path.join(__dirname, '..');
-const EVID_PATH = process.env.PIN_EVID || '/home/user/idor-evidence-pins-r4.jsonl';
+const ROOT = path.join(__dirname, '..'); void ROOT;
 
 if (!process.env.DATABASE_URL) { console.error('BLOCKED: DATABASE_URL required (PG-only gate)'); process.exit(2); }
 if (!process.env.REDIS_URL)   { console.error('BLOCKED: REDIS_URL required (OTP state)');   process.exit(2); }
@@ -32,7 +31,8 @@ if (!process.env.REDIS_URL)   { console.error('BLOCKED: REDIS_URL required (OTP 
 delete process.env.NODE_ENV;
 delete process.env.PAYESH_ENV;
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-idor-r4-'));
-process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
+const EVID_PATH = process.env.PIN_EVID || path.join(TMP, 'idor-evidence-pins-r4.jsonl');
+process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 process.env.PAYESH_KEY = path.join(TMP, 'jwt.key');
 process.env.PAYESH_AUDIT = path.join(TMP, 'audit.log');
 process.env.PAYESH_DEMO_CODE = '1';
@@ -55,11 +55,11 @@ function log(id, desc, status, expect, extra) {
 async function req(method, p, { body, cookie } = {}) {
   const res = await fetch(BASE + p, {
     method,
-    headers: Object.assign(body ? { 'Content-Type': 'application/json' } : {}, cookie ? { Cookie: cookie } : {}),
+    headers: Object.assign({ Origin: BASE }, body ? { 'Content-Type': 'application/json' } : {}, cookie ? { Cookie: cookie } : {}),
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
-  let json = null; try { json = JSON.parse(text); } catch (e) {}
+  let json = null; try { json = JSON.parse(text); } catch (e) {/* intentional no-op */}
   return { status: res.status, json, text, headers: res.headers };
 }
 async function login(phone, nationalId) {
@@ -109,7 +109,7 @@ async function ensureFixture() {
       SELECT 20,5,1,'present','1405-01-01' WHERE NOT EXISTS (SELECT 1 FROM attendance WHERE student_id=20)`);
   /* sequence sync (R-6 fix prerequisite; without it the pin's fixture is self-destructing) */
   for (const t of ['users', 'classes', 'enrollments', 'attendance', 'grades']) {
-    try { await pg(`SELECT setval(pg_get_serial_sequence($1,'id'), (SELECT max(id) FROM ${t}))`, [t]); } catch (e) {}
+    try { await pg(`SELECT setval(pg_get_serial_sequence($1,'id'), (SELECT max(id) FROM ${t}))`, [t]); } catch (e) {/* intentional no-op */}
   }
 }
 
@@ -121,7 +121,7 @@ async function ensureFixture() {
   const ready = await (async () => {
     const t0 = Date.now();
     while (Date.now() - t0 < 90000) {
-      try { const r = await fetch(BASE + '/api/health'); if (r.status === 200) return true; } catch (e) {}
+      try { const r = await fetch(BASE + '/api/health'); if (r.status === 200) return true; } catch (e) {/* intentional no-op */}
       await new Promise(r => setTimeout(r, 250));
     }
     return false;

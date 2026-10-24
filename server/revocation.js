@@ -19,6 +19,28 @@ const cacheEvents = require('./cache-invalidation-events'); /* N-36 — مسیر
 
 const DENY_PREFIX = 'revoked:';
 const VER_PREFIX = 'sessver:';
+const pendingRevocations = new Map();
+
+async function replayPendingRevocations() {
+  if (!pendingRevocations.size) return;
+  const now = Date.now();
+  for (const [jti, expiresAt] of pendingRevocations.entries()) {
+    const remSec = Math.floor((expiresAt - now) / 1000);
+    if (remSec <= 0) {
+      pendingRevocations.delete(jti);
+      continue;
+    }
+    try {
+      await redis.set(DENY_PREFIX + jti, '1', 'EX', remSec);
+      pendingRevocations.delete(jti);
+    } catch (_) {
+      return;
+    }
+  }
+}
+setInterval(() => {
+  replayPendingRevocations().catch(() => {});
+}, 500).unref();
 
 /* ابطالِ یک نشست (jti) تا ttlSeconds آینده. خروجی: true = در denylist ثبت شد. */
 async function revokeSession(jti, ttlSeconds) {
@@ -26,8 +48,10 @@ async function revokeSession(jti, ttlSeconds) {
   const ttl = Math.max(1, Math.floor(Number(ttlSeconds)) || 28800);
   try {
     await redis.set(DENY_PREFIX + jti, '1', 'EX', ttl);
+    pendingRevocations.delete(jti);
     return true;
   } catch (e) {
+    pendingRevocations.set(jti, Date.now() + ttl * 1000);
     return false;
   }
 }
@@ -42,7 +66,7 @@ async function isRevoked(jti) {
     try {
       const { audit } = require('./audit');
       audit('revocation_redis_error', { op: 'isRevoked', jti, error: e && e.message ? e.message : String(e) });
-    } catch (_) {}
+    } catch (_) { /* ignore */ }
     const err = new Error('REVOCATION_UNAVAILABLE');
     err.code = 'REVOCATION_UNAVAILABLE';
     throw err;
@@ -55,11 +79,11 @@ async function revokeAllUserSessions(userId) {
   if (userId === null || userId === undefined) return 0;
   try {
     const res = await redis.incr(VER_PREFIX + userId);
-    try { await cache.invalidateUser(userId); } catch (_) {}
+    try { await cache.invalidateUser(userId); } catch (_) { /* ignore */ }
     /* N-36 — مسیرِ دوام‌دار: اگر pubsub گم شد، worker روی هر نمونه
        invalidateUser را اجرا می‌کند. این مسیر PG-write ندارد که
        atomic‌اش کنیم — استثنایِ صریحِ DESIGN §C؛ best-effort. */
-    try { await cacheEvents.appendRoute({ collection: 'users', userId: Number(userId), origin: 'revoke' }); } catch (_) {}
+    try { await cacheEvents.appendRoute({ collection: 'users', userId: Number(userId), origin: 'revoke' }); } catch (_) { /* ignore */ }
     return res;
   } catch (e) {
     const err = new Error('REVOCATION_UNAVAILABLE');
@@ -79,7 +103,7 @@ async function getSessionVersion(userId) {
     try {
       const { audit } = require('./audit');
       audit('revocation_redis_error', { op: 'getSessionVersion', userId, error: e && e.message ? e.message : String(e) });
-    } catch (_) {}
+    } catch (_) { /* ignore */ }
     const err = new Error('REVOCATION_UNAVAILABLE');
     err.code = 'REVOCATION_UNAVAILABLE';
     throw err;

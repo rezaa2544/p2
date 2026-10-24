@@ -122,7 +122,8 @@ function schoolSupportSignals(r){
   if(r.avg>0&&r.avg<14) out.push('میانگین نمره پایین ('+fa(r.avg)+')');
   if(r.att>0&&r.att<85) out.push('حضور پایین ('+fa(r.att)+')٪');
   var hi=0;
-  try{ hi=(typeof atRiskList==='function')?atRiskList(90,r.s.id).filter(function(i){return i.level==='high';}).length:0; }catch(e){}
+  try{ hi=(typeof atRiskList==='function')?atRiskList(90,r.s.id).filter(function(i){return i.level==='high';}).length:0; }catch(e){ // noop
+}
   if(hi>=3) out.push('پیش‌آگهیِ افت بالا ('+fa(hi)+' دانش‌آموزِ پرخطر)');
   return out;
 }
@@ -900,7 +901,8 @@ function render(){
      چیزی رفت، شمارنده‌های همان رندر به‌روز باشند. محافظ ۳۰ ثانیه‌ای
      درون خودِ تابع است، پس فراخوانی مکرر بی‌ضرر است. */
   if(typeof notifyAutoTick === 'function'){
-    try{ notifyAutoTick(); }catch(e){}
+    try{ notifyAutoTick(); }catch(e){ // noop
+}
   }
 
   /* موقعیت اسکرول منو و ناحیهٔ محتوا پیش از بازسازی.
@@ -916,7 +918,8 @@ function render(){
   var mainTop = mainEl ? mainEl.scrollTop : 0;
   /* اسکرول پنجره هم برای نمای موبایل که محتوا اسکرول جدا ندارد */
   var winTop = 0;
-  try { winTop = window.pageYOffset || document.documentElement.scrollTop || 0; } catch(e) {}
+  try { winTop = window.pageYOffset || document.documentElement.scrollTop || 0; } catch(e) { // noop
+}
 
   const picker=(S.user&&S.showPicker&&isMultiRole())?panelPicker():'';
   const gate=(S.user&&activePersona()==='parent'&&!parentLocked()&&!S.gateSkipped&&!picker)?safeHTML(parentGate()):'';
@@ -944,7 +947,8 @@ function render(){
     if(sb){
       var aTop = act.offsetTop, aBot = aTop + act.offsetHeight;
       if(aTop < sb.scrollTop || aBot > sb.scrollTop + sb.clientHeight){
-        try{ act.scrollIntoView({ block:'nearest' }); }catch(e){}
+        try{ act.scrollIntoView({ block:'nearest' }); }catch(e){ // noop
+}
       }
     }
   }
@@ -959,11 +963,13 @@ function render(){
   var main = document.querySelector('.main');
   if(S.__routeChanged){
     if(main) main.scrollTop = 0;
-    try { window.scrollTo(0, 0); } catch(e) {}
+    try { window.scrollTo(0, 0); } catch(e) { // noop
+}
     S.__routeChanged = false;
   } else {
     if(main && mainTop) main.scrollTop = mainTop;
-    if(winTop) { try { window.scrollTo(0, winTop); } catch(e) {} }
+    if(winTop) { try { window.scrollTo(0, winTop); } catch(e) { // noop
+} }
   }
   /* پاسِ دسترس‌پذیری: ناحیه‌هایِ اسکرول‌شونده فوکوس‌پذیر شوند
      (axe: scrollable-region-focusable — رفعِ serious دورِ a11y-تعاملی) */

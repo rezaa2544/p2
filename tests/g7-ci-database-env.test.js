@@ -82,9 +82,19 @@ function runProbe(env) {
 
   /* T1 — THE ORIGINAL DEFECT: no DATABASE_URL, no PGURL, no live PG.
      Before the fix this aborted with "DATABASE_URL: unbound variable". */
+  const noPgBinDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'g7-nopgbin-'));
+  process.on('exit', () => { try { fs.rmSync(noPgBinDir, { recursive: true, force: true }); } catch (_) { /* ignore */ } });
+  for (const cmd of ['bash', 'sh', 'dirname', 'tee', 'cat', 'grep', 'sed', 'awk', 'rm', 'mkdir', 'df']) {
+    for (const d of ['/usr/bin', '/bin']) {
+      if (fs.existsSync(path.join(d, cmd))) {
+        try { fs.symlinkSync(path.join(d, cmd), path.join(noPgBinDir, cmd)); } catch (_) { /* ignore */ }
+        break;
+      }
+    }
+  }
   const clean = {
     DATABASE_URL: '', PGURL: '', REDIS_URL: '',
-    PATH: process.env.PATH, HOME: process.env.HOME, // pg_isready must not be found
+    PATH: noPgBinDir, HOME: process.env.HOME, // pg_isready must not be found
   };
   let r1;
   try {

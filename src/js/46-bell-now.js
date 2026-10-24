@@ -544,7 +544,8 @@ function bellLiveTickServer(){
       if(r && r.studentId != null) attMap[r.studentId] = (r.att == null ? null : r.att);
     });
     bellLiveCache = j;
-    try{ (typeof Store !== 'undefined') && Store.set(SERVER_TIME_KEY, now.toISOString()); }catch(e){}
+    try{ (typeof Store !== 'undefined') && Store.set(SERVER_TIME_KEY, now.toISOString()); }catch(e){ // noop
+}
     var roots = document.querySelectorAll('[data-bell-live]');
     if(!roots.length){ bellLiveStop(); return; }
     roots.forEach(function(root){
@@ -579,9 +580,11 @@ function bellLiveTick(){
 function bellLiveEnsure(){
   if(typeof S === 'undefined' || !S.user){ bellLiveStop(); return; }
   if(bellLiveTimer) return;
-  try{ bellLiveTimer = setInterval(bellLiveTick, BELL_LIVE_INTERVAL); }catch(e){}
+  try{ bellLiveTimer = setInterval(bellLiveTick, BELL_LIVE_INTERVAL); }catch(e){ // noop
+}
 }
 
 function bellLiveStop(){
-  if(bellLiveTimer){ try{ clearInterval(bellLiveTimer); }catch(e){} bellLiveTimer = null; }
+  if(bellLiveTimer){ try{ clearInterval(bellLiveTimer); }catch(e){ // noop
+} bellLiveTimer = null; }
 }

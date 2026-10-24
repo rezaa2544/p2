@@ -62,8 +62,8 @@ const ROLES = [
   ['student', '09992336550'],
   ['parent', '09990001234'],
   ['edu_office', '09995425098'],
-  ['counselor', '09995068284'],
-  ['driver', '09998149493'],
+  ['counselor', '09999265181'],
+  ['driver', '09997917018'],
 ];
 
 main().catch((e) => { console.error(e); process.exit(1); });

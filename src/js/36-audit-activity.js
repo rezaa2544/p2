@@ -16,7 +16,7 @@
 
 /* ─────────────── کلیدهای ذخیره‌سازی ─────────────── */
 var VISITS_KEY = 'sms_visits_v1';
-var PERF_KEY   = 'sms_perf_v1';
+var PERF_KEY   = 'sms_perf_v1'; void PERF_KEY;
 
 /* ─────────── بخش ۱: سابقهٔ تغییرات ─────────── */
 

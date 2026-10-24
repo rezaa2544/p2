@@ -48,7 +48,7 @@ const jres = (obj, status) => ({ ok: (status || 200) < 400, status: status || 20
         if (p === '/api/auth/me') return Promise.resolve(jres({ ok: false, code: 'no_session' }, 401));
         if (p === '/api/sync') {
           let body = null;
-          try { body = o && o.body ? JSON.parse(o.body) : null; } catch (e) {}
+          try { body = o && o.body ? JSON.parse(o.body) : null; } catch (e) {/* intentional no-op */}
           const ops = (body && body.ops) || [];
           w.__attempts += 1;
           const mode = w.__mode;

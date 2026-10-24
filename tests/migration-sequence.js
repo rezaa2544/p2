@@ -23,7 +23,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const assert = require('assert');
+const assert = require('assert'); void assert;
 
 const ROOT = path.join(__dirname, '..');
 const MIG = path.join(ROOT, 'migrations');

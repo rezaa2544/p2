@@ -33,7 +33,7 @@
 'use strict';
 
 const assert = require('assert');
-const crypto = require('crypto');
+const crypto = require('crypto'); void crypto;
 const fs = require('fs');
 const os = require('os');
 const path = require('path');

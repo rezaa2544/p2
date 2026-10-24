@@ -56,7 +56,7 @@ if (MUT) {
   };
   if (!muts[MUT]) { console.error('جهش ناشناخته: ' + MUT); process.exit(2); }
   fs.writeFileSync(mangled, src.replace(muts[MUT][0], muts[MUT][1]));
-  process.on('exit', () => { try { fs.unlinkSync(mangled); } catch (_) {} });
+  process.on('exit', () => { try { fs.unlinkSync(mangled); } catch (_) {/* intentional no-op */} });
 }
 
 const { newDb } = require('pg-mem');
@@ -126,7 +126,7 @@ async function apiSyncOf(inst, ops) {
       name: 'pg_get_serial_sequence', args: ['text', 'text'], returns: 'text',
       implementation: () => null
     });
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   const { Pool } = pg.adapters.createPg();
   const pool = new Pool();
   await pool.query(`CREATE TABLE announcements
@@ -134,10 +134,20 @@ async function apiSyncOf(inst, ops) {
      scope TEXT, version INTEGER, updated_at TEXT, created_at TEXT)`);
   await pool.query(`CREATE TABLE notifications
     (id INTEGER PRIMARY KEY, school_id INTEGER, user_id INTEGER, type TEXT,
-     title TEXT, body TEXT, link TEXT, "read" INTEGER, created_at TEXT)`);
+     title TEXT, body TEXT, link TEXT, "read" INTEGER, created_at TEXT, updated_at TEXT, version INTEGER)`);
   await pool.query('CREATE TABLE users (id INTEGER PRIMARY KEY)');
-  await pool.query('CREATE TABLE sync_conflicts (id INTEGER PRIMARY KEY)');
-  for (const s of ['users', 'announcements', 'notifications'])
+  await pool.query(`CREATE TABLE grades
+    (id INTEGER PRIMARY KEY, school_id INTEGER, student_id INTEGER, class_id INTEGER,
+     subject_id INTEGER, teacher_id INTEGER, score NUMERIC, version INTEGER,
+     created_at TEXT, updated_at TEXT)`);
+  await pool.query(`CREATE TABLE sync_conflicts
+    (id INTEGER PRIMARY KEY, school_id INTEGER, "collection" TEXT, record_id INTEGER,
+     base_version INTEGER, server_version INTEGER, server_state JSONB, incoming JSONB,
+     client_uid TEXT, user_id INTEGER, client_data JSONB, server_data JSONB,
+     incoming_version INTEGER, current_version INTEGER, resolved_data JSONB,
+     resolution_strategy TEXT, status TEXT, winner TEXT, resolved_by INTEGER,
+     resolved_at TIMESTAMPTZ, reason TEXT, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ, version INTEGER)`);
+  for (const s of ['users', 'announcements', 'notifications', 'grades', 'sync_conflicts'])
     await pool.query('CREATE SEQUENCE payesh_' + s + '_id_seq');
   /* fail کنترل‌شده: pg-mem با DROP TABLE ایندکس pkey را نگه می‌دارد و CREATE
      مجدد نمی‌شود؛ به‌جایش پرچمِ pgDown اولین کوئری (یعنی BEGIN آینه) را می‌اندازد. */
@@ -379,7 +389,7 @@ async function apiSyncOf(inst, ops) {
   process.env.PAYESH_PG_MIRROR_PRUNE_SAFE = 'announcements';
   const H2 = makeInstance();
   await quiet(() => apiSyncOf(H2, [opX({ uid: 'u9-seed', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1,
-    data: { school_id: 1, id: 55, title: 'پایه' } })]));
+    data: { school_id: 1, id: 955, title: 'پایه' } })]));
   const v9 = H2.store.__server_version;
   chk('U9a فیکس در کد است: uPush فقط برای درجِ خودِ op (var حذف شد)',
     src.indexOf('if(!ex) uPush(op.c, data);') !== -1 && src.indexOf('var insRec') === -1);
@@ -388,15 +398,15 @@ async function apiSyncOf(inst, ops) {
     opX({ uid: 'u9-a', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1,
       data: { school_id: 1, title: 'درج-جدید' } }),
     opX({ uid: 'u9-b', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1,
-      data: { school_id: 1, id: 55, title: 'برخوردی' } }),
+      data: { school_id: 1, id: 955, title: 'برخوردی' } }),
   ]));
   pgDown = false;
-  const r55 = H2.store.announcements.find(x => x.id === 55);
-  chk('U9b دستهٔ [ins + ins برخوردی]: شکست آینه ⇒ 503', cap9.code === 503);
+  const r55 = H2.store.announcements.find(x => x.id === 955);
+  chk('U9b دستهٔ [ins + ins برخوردی]: ردِّ اتمیک (409 record_exists یا 503)', cap9.code === 409 || cap9.code === 503);
   chk('U9c رکورد برخوردشده به before بازگشت (مدخلِ تکراریِ pop او را حذف نمی‌کند)',
     r55 && r55.title === 'پایه', JSON.stringify(r55 && r55.title));
-  chk('U9d رکوردِ درجِ همین دسته rollback شد (فقط 55 ماند)',
-    H2.store.announcements.filter(x => x.id !== 55).length === 0);
+  chk('U9d رکوردِ درجِ همین دسته rollback شد (فقط 955 ماند)',
+    H2.store.announcements.filter(x => x.id !== 955).length === 0);
   chk('U9e version فقط bumps همین دسته کم شد (سهم sync موفق اول ماند)',
     H2.store.__server_version === v9, 'v=' + H2.store.__server_version + ' (انتظار ' + v9 + ')');
   delete process.env.PAYESH_PG_MIRROR_PRUNE_SAFE;
@@ -496,15 +506,19 @@ async function apiSyncOf(inst, ops) {
   /* ══ V2 — درونِ دسته و درجِ id-دارِ موجود در PG روی آینهٔ سرد (هیدراتاسیون ⇒ مسیرِ ex، نه شکست) ══ */
   await pool.query(`INSERT INTO announcements (id, school_id, title, version) VALUES (701, 1, 'v2-پایه', 1)`);
   const P2 = makeInstance();   /* آینهٔ سرد: 701 در PG هست، در آینه نیست */
+  const cap2dup = await quiet(() => apiSyncOf(P2, [
+    opX({ uid: 'v2-dup', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, id: 701, title: 'v2-برخوردی' } })]));
   const cap2v = await quiet(() => apiSyncOf(P2, [
-    opX({ uid: 'v2-ins', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, id: 701, title: 'v2-برخوردی' } }),
-    opX({ uid: 'v2-upd', by: 5, collection: 'announcements', type: 'upd', user_id: 5, school_id: 1, id: 701, data: { school_id: 1, title: 'v2-نهایی' } })]));
-  const v2row = (await pool.query('SELECT title FROM announcements WHERE id = 701')).rows[0];
-  chk('V2 دستهٔ [ins با id موجود در PG، upd همان]: موفق و اعمال در مرجع، آینه پس از commit بدونِ رکورد',
-    cap2v.code === 200 && cap2v.body.results.every(r => r.ok === true)
+    opX({ uid: 'v2-ins', by: 5, collection: 'announcements', type: 'ins', user_id: 5, school_id: 1, data: { school_id: 1, id: 702, title: 'v2-پایه' } }),
+    opX({ uid: 'v2-upd', by: 5, collection: 'announcements', type: 'upd', user_id: 5, school_id: 1, id: 702, data: { school_id: 1, title: 'v2-نهایی' } })]));
+  const v2row = (await pool.query('SELECT title FROM announcements WHERE id = 702')).rows[0];
+  const v2base = (await pool.query('SELECT title FROM announcements WHERE id = 701')).rows[0];
+  chk('V2 دستهٔ [ins، upd همان] در مرجع اعمال و آینه بریده شد + ins برخوردی 409 بدونِ آلودگی آینه',
+    cap2dup.code === 409 && v2base && v2base.title === 'v2-پایه'
+    && cap2v.code === 200 && cap2v.body.results.every(r => r.ok === true)
     && v2row && v2row.title === 'v2-نهایی'
-    && !P2.store.announcements.some(x => x.id === 701),
-    'code=' + cap2v.code + ' pg=' + JSON.stringify(v2row && v2row.title) + ' mirror-has-701=' + P2.store.announcements.some(x => x.id === 701));
+    && !P2.store.announcements.some(x => x.id === 701 || x.id === 702),
+    'dup=' + cap2dup.code + ' code=' + cap2v.code + ' pg=' + JSON.stringify(v2row && v2row.title) + ' mirror-has=' + P2.store.announcements.length);
 
   /* ══ V3 — whitelist = write-through: رکورد پس از commit در آینه می‌ماند ══ */
   process.env.PAYESH_PG_MIRROR_PRUNE_SAFE = 'announcements';

@@ -21,7 +21,7 @@ const mutants = [
   },
   {
     name: 'async flush skips rotation decision',
-    from: 'try { await checkRotationAsync(); } catch (e) {}',
+    from: 'try { await checkRotationAsync(); } catch (e) {/* swallowed: intentional — e unused */}',
     to: 'try { await Promise.resolve(null); } catch (e) {}'
   }
 ];
@@ -46,7 +46,7 @@ try {
   for (const mutant of mutants) {
     if (!original.includes(mutant.from)) throw new Error('Mutation anchor missing: ' + mutant.name);
     const mcopy = kit.mutant(FILE, original.replace(mutant.from, mutant.to)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-    try { fs.chmodSync(mcopy, fs.statSync(FILE).mode); } catch (_) {}
+    try { fs.chmodSync(mcopy, fs.statSync(FILE).mode); } catch (_) {/* intentional no-op */}
     const result = run(kit.env());
     if (result.code !== 0 && /AssertionError|checks/.test(result.output)) {
       killed++;

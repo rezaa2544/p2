@@ -16,6 +16,55 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
+const RESOLVED_KEEP_DEFAULT = 500;
+const DELETED_RING_MAX = 5000;
+
+function resolvedKeepMax() {
+  const raw = process.env.PAYESH_RESOLVED_CONFLICTS_MAX;
+  if (raw !== undefined && raw !== '') {
+    const n = Number(raw);
+    if (Number.isFinite(n) && n >= 0) return Math.floor(n);
+  }
+  return RESOLVED_KEEP_DEFAULT;
+}
+
+function pruneResolved(conflicts, store) {
+  if (!Array.isArray(conflicts)) return [];
+  const keep = resolvedKeepMax();
+  const resolvedIdx = [];
+  for (let i = 0; i < conflicts.length; i++) {
+    if (conflicts[i] && conflicts[i].status === 'resolved') resolvedIdx.push(i);
+  }
+  const excess = resolvedIdx.length - keep;
+  if (excess <= 0) return [];
+  const toDrop = new Set(resolvedIdx.slice(0, excess));
+  const dropped = [];
+  const next = [];
+  for (let i = 0; i < conflicts.length; i++) {
+    if (toDrop.has(i)) dropped.push(conflicts[i]);
+    else next.push(conflicts[i]);
+  }
+  conflicts.length = 0;
+  for (let i = 0; i < next.length; i++) conflicts.push(next[i]);
+  if (store && dropped.length) {
+    if (!Array.isArray(store.__deleted_records)) store.__deleted_records = [];
+    const deletedAt = new Date().toISOString();
+    for (let i = 0; i < dropped.length; i++) {
+      const c = dropped[i];
+      store.__deleted_records.push({
+        c: 'sync_conflicts',
+        id: c.id,
+        school_id: c.school_id == null ? null : c.school_id,
+        at: deletedAt
+      });
+    }
+    if (store.__deleted_records.length > DELETED_RING_MAX) {
+      store.__deleted_records.splice(0, store.__deleted_records.length - DELETED_RING_MAX);
+    }
+  }
+  return dropped;
+}
+
 function defaultSendJson(res, statusCode, data) {
   res.statusCode = statusCode;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -116,6 +165,7 @@ function createConflicts(ctx) {
           if (!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
           const i = store.sync_conflicts.findIndex(x => String(x.id) === String(resolved.id));
           if (i < 0) store.sync_conflicts.push(resolved); else store.sync_conflicts[i] = resolved;
+          pruneResolved(store.sync_conflicts, store);
           if (!Array.isArray(store[resolved.collection])) store[resolved.collection] = [];
           const j = store[resolved.collection].findIndex(x => Number(x.id) === Number(target.id));
           if (j < 0) store[resolved.collection].push(target); else store[resolved.collection][j] = target;
@@ -265,6 +315,7 @@ function createConflicts(ctx) {
       }
     }
 
+    pruneResolved(store.sync_conflicts, store);
     ctx.markDirty();
     audit('sync_conflict_resolved', {
       user_id: s.id,

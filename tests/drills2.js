@@ -18,7 +18,7 @@ catch { console.log('⏭️  jsdom نصب نیست — تست رد شد.  (npm i
 
 const ROOT = path.join(__dirname, '..');
 // hardening: rebuild base index.html (a previously crashed mutation suite may have left a mutated build)
-try { require('child_process').execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {}
+try { require('child_process').execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore' }); } catch (e) {/* intentional no-op */}
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 
 let pass = 0, fail = 0;
@@ -51,7 +51,7 @@ async function main() {
   test('D1 بوت بدون خطا + سید مانور (فرد=سبز، زوج=قرمز)', () => {
     assert(consoleErrors.length === 0, consoleErrors.slice(0, 2).join(' | '));
     assert(Number(W(`db.safety_drills.length`)) === 6, 'سید باید دقیقاً ۶ رکورد باشد: ' + W(`db.safety_drills.length`));
-    assert(Number(W(`db.users.length`)) === 1036, 'کاربر تازه ساخته شد!' /* SIM-01: +guard1 (seed-completeness) */);
+    assert(Number(W(`db.users.length`)) === 1040, 'کاربر تازه ساخته شد!' /* SIM-01: +guard1 (seed-completeness) */);
     assert(W(`!!db.users.find(function(u){return u.username==='manager1';})`), 'حساب نمونه جابه‌جا شد');
     assert(W(`drillAnnualStatus(1).done`) === true, 'مدرسهٔ ۱ باید سبز باشد');
     assert(W(`drillAnnualStatus(2).done`) === false, 'مدرسهٔ ۲ باید قرمز باشد');

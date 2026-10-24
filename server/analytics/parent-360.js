@@ -245,13 +245,13 @@ function buildParent360Profile(params = {}, options = {}) {
 /**
  * ۳) تولید مرکز اقدامات والدین (generateParentActionItems)
  */
-function generateParentActionItems(params = {}, options = {}) {
+function generateParentActionItems(params = {}, options = {}) { void options;
   const {
     student = params.student || {},
     attendance = params.attendance || [],
     grades = params.grades || [],
     timeline = params.timeline || []
-  } = params;
+  } = params; void timeline;
 
   const sId = student.id || params.studentId || 1;
   const actions = [];
@@ -315,7 +315,7 @@ function generateParentActionItems(params = {}, options = {}) {
 /**
  * ۴) اعتبارسنجی و ثبت رسمی درخواست موجه‌سازی غیبت (validateAbsenceJustification)
  */
-function validateAbsenceJustification(params = {}, options = {}) {
+function validateAbsenceJustification(params = {}, options = {}) { void options;
   const {
     parentId = params.parentId || params.parent_id,
     studentId = params.studentId || params.student_id,
@@ -362,7 +362,7 @@ function validateAbsenceJustification(params = {}, options = {}) {
 /**
  * ۵) محاسبه شاخص تعامل خانواده (calculateParentEngagementIndex)
  */
-function calculateParentEngagementIndex(params = {}, options = {}) {
+function calculateParentEngagementIndex(params = {}, options = {}) { void options;
   const {
     actionsCompleted = 0,
     totalActions = 0,

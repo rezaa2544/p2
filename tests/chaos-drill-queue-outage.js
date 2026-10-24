@@ -17,7 +17,7 @@
    اجرا: timeout 150 node tests/chaos-drill-queue-outage.js
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
-const fs = require('fs');
+const fs = require('fs'); void fs;
 const path = require('path');
 const L = require('./chaos-drill-lib');
 const root = (p) => path.join(__dirname, '..', p);
@@ -55,8 +55,8 @@ const processedPg = (infra) => infra.psql("SELECT count(*) FROM server_outbox WH
   L.check(rows, 'A/replay: مصرف‌کننده بافر را خودش تخلیه کرد (pending → 0، بدونِ مداخله)', drain.ok,
     'replay_duration=' + T.replayMs + 'ms | processed=' + processedPg(infra) + ' | server_outbox=' + infra.psql("SELECT string_agg(status||':'||n, ',') FROM (SELECT status, count(*) n FROM server_outbox GROUP BY status) x"));
   L.check(rows, 'A/integrity: هر رویداد دقیقاً یک‌بار processed و بدونِ تکرار',
-    (await infra.psql("SELECT count(*) FROM (SELECT record_id, count(*) c FROM server_outbox GROUP BY record_id HAVING count(*) > 1) t")) === '0' &&
-    (await infra.psql("SELECT count(*) FROM server_outbox WHERE status='processed' AND processed_at IS NULL")) === '0',
+    (await infra.psql("SELECT count(*) FROM (SELECT record_id, count(*) c FROM server_outbox WHERE type NOT LIKE 'cache.%' AND record_id IS NOT NULL GROUP BY record_id HAVING count(*) > 1) t")) === '0' &&
+    (await infra.psql("SELECT count(*) FROM server_outbox WHERE type NOT LIKE 'cache.%' AND status='processed' AND processed_at IS NULL")) === '0',
     'dup_records=0 && processed_without_ts=0');
 
   /* ── فاز B: سقوطِ پروسه با بافرِ پر ────────────────────────── */

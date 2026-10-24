@@ -34,6 +34,7 @@ const PATTERNS = [
   { name: 'GitHub fine-grained', re: /\bgithub_pat_[A-Za-z0-9_]{20,}\b/g },
   { name: 'AWS access key', re: /\bAKIA[0-9A-Z]{16}\b/g },
   { name: 'PEM private key', re: /-----BEGIN (RSA|EC|OPENSSH|DSA|PGP)? ?PRIVATE KEY-----/g },
+  { name: 'Session JWT cookie (payesh_session)', re: /\bpayesh_session=eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g },
   { name: 'long hex (≥64) — کاندیدای کلید', re: /\b[0-9a-fA-F]{64,}\b/g },
   { name: 'Bearer/Authorization hardcoded', re: /Authorization['"]?\s*[:=]\s*['"][A-Za-z0-9._-]{16,}/g },
 ];
@@ -73,18 +74,30 @@ const hexAllow = {
 /* استثناهایِ «hex بلند» در یک تابعِ نام‌دار، تا هم حلقهٔ اسکن و هم کنترلِ
    منفیِ پایین دقیقاً همین منطق را اجرا کنند (نه کپی‌ای از آن). ترتیبِ شرط‌ها
    معنادار است و دست‌نخورده مانده. */
-function hexAllowed(f, line, hex) {
+const CREDENTIAL_KEY_RE = /\b(?:secret|token|password|passwd|cookie|authorization|bearer|private[ _-]?key|api[ _-]?key|session)\b/i;
+function hexAllowed(f, line, hex, fullLine) {
+  const normFile = String(f || '').split('\\').join('/');
+  const whole = fullLine === undefined ? String(line || '') + String(hex || '') : String(fullLine);
   if (/0x|digest|sha256|example|dummy|test|fixture|deadbeef/i.test(line)) return true;
   /* SPDX package checksums are public supply-chain integrity metadata,
      not credentials. Allow only the exact standardized checksum field;
      other long hexadecimal strings in documentation remain findings. */
-  if (f === 'docs' + path.sep + 'SBOM.spdx.json' && /"checksumValue"\s*:\s*"$/.test(line)) return true;
+  if (normFile === 'docs/SBOM.spdx.json' && /"checksumValue"\s*:\s*"$/.test(line)) return true;
+  /* SI-013 Option A: verified 64-char lowercase SHA-256 backup/file integrity
+     checksums inside archived DR evidence JSON (`\"checksum\": \"<sha256>\"`)
+     and FT-METRIC-01 verification ledgers. Never permits credentials, cookies,
+     non-64-char hex, or production/source paths. */
+  if (/^[0-9a-f]{64}$/.test(hex) && !CREDENTIAL_KEY_RE.test(whole)) {
+    if (/^docs\/arena-evidence\/.+\.json$/.test(normFile) && /\\"checksum\\"\s*:\s*\\"$/.test(line)) return true;
+    if (/^tools\/ft\/FT-METRIC-01-[A-Za-z0-9-]+\.md$/.test(normFile)
+        && /(?:metric-v2(?:\.test)?\.js|benchmark\.js|source (?:hash|untouched))/.test(whole)) return true;
+  }
   /* stats.json دیتاستِ ملی: همان الگو. T7d در tests/wave18-load-test.js
      «checksums» را در این فایل الزامی می‌داند و مقدارها sha256 خودِ
      فایل‌های CSVاند (با hash واقعی تطبیق داده شد)، نه کلید. فقط همان
      فیلد مجاز است؛ هر hex بلندی جایِ دیگر در این فایل همچنان هیت است. */
-  if (/stats\.json$/.test(f) && /^\s*"[^"]+\.csv"\s*:\s*"$/.test(line)) return true;
-  if (hexAllow[f]) return true;
+  if (/stats\.json$/.test(normFile) && /^\s*"[^"]+\.csv"\s*:\s*"$/.test(line)) return true;
+  if (hexAllow[f] || hexAllow[normFile]) return true;
   /* padding/dummy ثابت (مثلاً ۶۴ صفر برایِ timing-safe-equal) */
   if (/^(.)\1+$/.test(hex)) return true;
   return false;
@@ -92,19 +105,21 @@ function hexAllowed(f, line, hex) {
 
 for (const f of files) {
   const t = fs.readFileSync(path.join(ROOT, f), 'utf8');
+  const allLines = t.split('\n');
   for (const p of PATTERNS) {
     p.re.lastIndex = 0;
     let m;
     while ((m = p.re.exec(t))) {
+      const lineNo = t.slice(0, m.index).split('\n').length;
       /* hex: فقط اگر شبیهِ ثابتِ کد (0x / digest نمونه) نباشد —
          خط را ببین و تصمیم بگیر؛ الگویِ hex فقط رویِ مقادیرِ متغیر
          (بعد از = / : / ') هشدار می‌دهد. */
       if (p.name.indexOf('long hex') > -1) {
         /* خطِ خودِ هیت (نه خطِ قبل) — آف‌بای‌وانِ قبلی فیلتر را روی خط اشتباه می‌سنجید */
         const line = t.slice(0, m.index).split('\n').pop() || '';
-        if (hexAllowed(f, line, m[0])) continue;
+        const fullLine = allLines[lineNo - 1] || '';
+        if (hexAllowed(f, line, m[0], fullLine)) continue;
       }
-      const lineNo = t.slice(0, m.index).split('\n').length;
       hits++;
       console.log('   ⚠️  ' + f + ':' + lineNo + ' — ' + p.name + ': ' + m[0].slice(0, 24) + '…');
     }
@@ -150,11 +165,27 @@ const HEXCASES = [
   ['server/handler.js', 'const pad = "',                             '0'.repeat(64), true,
     'padding یک‌نواخت (timing-safe-equal)'],
   ['server/handler.js', 'const key = "',                             H64('a', 'b'), false,
-    'کلیدِ واقعیِ ۶۴ hex در کد']
+    'کلیدِ واقعیِ ۶۴ hex در کد'],
+  ['docs/arena-evidence/2026-09-25/arena8-dr/evidence/metadata1.json', '  "stdout": "{\\"checksum\\": \\"', H64('a', 'b'), true,
+    'SI-013 مثبت: فیلدِ checksum درونِ شواهدِ آرشیویِ DR'],
+  ['docs/arena-evidence/2026-09-25/arena8-dr/evidence/metadata1.json', '  "stdout": "{\\"api_key\\": \\"', H64('a', 'b'), false,
+    'SI-013 منفی: کلیدِ api_key درونِ docs/arena-evidence همچنان رد می‌شود'],
+  ['docs/arena-evidence/2026-09-25/arena8-dr/evidence/metadata1.json', '  "stdout": "{\\"token\\": \\"', H64('a', 'b'), false,
+    'SI-013 منفی: کلیدِ token درونِ docs/arena-evidence همچنان رد می‌شود'],
+  ['docs/arena-evidence/2026-09-25/arena8-dr/evidence/metadata1.json', '  "stdout": "{\\"checksum\\": \\"', H64('a', 'b') + '0', false,
+    'SI-013 منفی: رشتهٔ ۶۵ کاراکتری (غیر از SHA-256 دقیق) رد می‌شود'],
+  ['server/handler.js', '  const s = "{\\"checksum\\": \\"',         H64('a', 'b'), false,
+    'SI-013 منفی: همان شکلِ checksum درونِ کدِ تولید رد می‌شود'],
+  ['tools/ft/FT-METRIC-01-VERIFICATION-PACKAGE.md', '| `tools/ft/metric-v2.js` | `', H64('a', 'b'), true,
+    'SI-013 مثبت: هشِ فایلِ metric-v2.js در بستهٔ راستی‌آزماییِ FT-METRIC-01'],
+  ['tools/ft/FT-METRIC-01-VERIFICATION-PACKAGE.md', 'api_secret = ', H64('a', 'b'), false,
+    'SI-013 منفی: مقدارِ رازگونه درونِ tools/ft همچنان رد می‌شود'],
+  ['tools/ft/other.js', '| `tools/ft/metric-v2.js` | `',             H64('a', 'b'), false,
+    'SI-013 منفی: فایلِ اجراییِ جاوااسکریپت درونِ tools/ft مستثنا نیست']
 ];
 let hexBad = 0;
 for (const [f, line, hex, want, label] of HEXCASES) {
-  const got = hexAllowed(f, line, hex);
+  const got = hexAllowed(f, line, hex, line + hex);
   if (got !== want) {
     hexBad++;
     console.log('   ⚠️  کنترلِ منفی: ' + label + ' → انتظار ' + want + '، دریافت ' + got

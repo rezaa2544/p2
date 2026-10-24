@@ -3,48 +3,64 @@
   "generated_at": "2026-09-11",
   "lockfile": "package-lock.json",
   "lockfile_version": 3,
-  "lockfile_sha256": "bbf621178e16d91511d65c6deb98eb5abc17ba81b51f136be080c128a623e047",
-  "package_count": 126,
+  "lockfile_sha256": "1d98b3ffc6c96177b8e81720969793edc43a0548948175a117243511d5937a10",
+  "package_count": 194,
   "direct_dependencies": {
+    "@eslint/js": {
+      "declared": "^10.0.1",
+      "resolved": "10.0.1"
+    },
     "@opentelemetry/api": {
       "declared": "^1.9.1",
       "resolved": "1.9.1"
     },
     "@opentelemetry/context-async-hooks": {
-      "declared": "^2.11.0",
-      "resolved": "2.11.0"
+      "declared": "^2.12.0",
+      "resolved": "2.12.0"
     },
     "@opentelemetry/exporter-trace-otlp-http": {
-      "declared": "^0.222.0",
-      "resolved": "0.222.0"
+      "declared": "^0.223.0",
+      "resolved": "0.223.0"
     },
     "@opentelemetry/instrumentation-http": {
-      "declared": "^0.222.0",
-      "resolved": "0.222.0"
+      "declared": "^0.223.0",
+      "resolved": "0.223.0"
     },
     "@opentelemetry/resources": {
       "declared": "^2.11.0",
-      "resolved": "2.11.0"
+      "resolved": "2.12.0"
     },
     "@opentelemetry/sdk-trace-node": {
-      "declared": "^2.11.0",
-      "resolved": "2.11.0"
+      "declared": "^2.12.0",
+      "resolved": "2.12.0"
     },
     "@opentelemetry/semantic-conventions": {
       "declared": "^1.43.0",
       "resolved": "1.43.0"
+    },
+    "@vercel/analytics": {
+      "declared": "^2.0.1",
+      "resolved": "2.0.1"
+    },
+    "eslint": {
+      "declared": "^10.13.0",
+      "resolved": "10.13.0"
+    },
+    "globals": {
+      "declared": "^17.13.0",
+      "resolved": "17.13.0"
     },
     "ioredis": {
       "declared": "^6.0.0",
       "resolved": "6.0.0"
     },
     "jsdom": {
-      "declared": "^25.0.1",
-      "resolved": "25.0.1"
+      "declared": "^30.1.3",
+      "resolved": "30.1.3"
     },
     "pg": {
-      "declared": "^8.23.0",
-      "resolved": "8.23.0"
+      "declared": "^8.23.1",
+      "resolved": "8.23.1"
     },
     "pg-mem": {
       "declared": "^3.0.14",

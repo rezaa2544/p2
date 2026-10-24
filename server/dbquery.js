@@ -180,7 +180,7 @@ function compositeCursorKey(cols) {
 /**
  * students list — mirrors server/routes/students.js getStudentsList.
  */
-function buildStudentsList({ user, office, classId, grade, search, limit, cursor }) {
+function buildStudentsList({ user, office, classId, grade, search, limit, cursor }) { void office;
   const from = '"users" u';
   const parts = [`u.role = 'student'`];
   const params = [];
@@ -203,7 +203,8 @@ function buildStudentsList({ user, office, classId, grade, search, limit, cursor
     parts.push(`EXISTS (SELECT 1 FROM "${tableName('enrollments')}" e WHERE e.student_id = u.id AND e.class_id = $${c})`);
   }
   if (grade != null && grade !== '') {
-    const g = push(Number(grade));
+    const ng = Number(grade);
+    const g = push(Number.isFinite(ng) ? ng : String(grade));
     parts.push(`u.grade_level = $${g}`);
   }
   if (search) {
@@ -351,8 +352,14 @@ function buildClassesList({ user, office, grade, limit, cursor }) {
   }
   _roleScopeParts('c', 'classes', user, parts, push);
   if (grade != null && grade !== '') {
-    const g = push(Number(grade));
-    parts.push(`c.grade = $${g}`);
+    const ng = Number(grade);
+    if (Number.isFinite(ng)) {
+      const g = push(ng);
+      parts.push(`c.grade = $${g}`);
+    } else {
+      const g = push(String(grade));
+      parts.push(`CAST(c.grade AS TEXT) = $${g}`);
+    }
   }
 
   const enr = `"${tableName('enrollments')}"`;

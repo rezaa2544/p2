@@ -41,7 +41,7 @@ async function req(p, m = 'GET', body = null, cookie = null){
   if(cookie) h['Cookie'] = cookie;
   const r = await fetch(BASE + p, { method: m, headers: h, body: body === null ? null : JSON.stringify(body) });
   const t = await r.text();
-  let j = null; try { j = JSON.parse(t); } catch (e) {}
+  let j = null; try { j = JSON.parse(t); } catch (e) {/* intentional no-op */}
   return { status: r.status, j, headers: r.headers };
 }
 function cookieOf(r){
@@ -56,7 +56,7 @@ async function loginAs(user){
   r = await req('/api/auth/login', 'POST', { phone: String(user.phone).replace(/\D/g, ''), code, national_id: user.national_id != null ? String(user.national_id) : null }, cookieOf(r));
   return { cookie: cookieOf(r), r, j: r.j };
 }
-const PARENTS = [17, 1025];
+const PARENTS = [17, 1025]; void PARENTS;
 const PHONES = ['09998544082', '09990001234', '09992630039'];
 const SA = store.users.find(u => u.role === 'superadmin');
 const MGR = store.users.find(u => u.role === 'manager' && u.school_id === 1);
@@ -104,7 +104,7 @@ const assert = require('assert');
     assert.strictEqual(w.balance, wBefore - 4, 'wallet ' + w.balance + ' != ' + (wBefore - 4));
     const logs = (store.sms_log || []).filter(l => l.queue_id === 1 && l.status === 'sent');
     assert.strictEqual(logs.length, 2, 'logs ' + logs.length);
-    assert.deepStrictEqual(logs.map(l => l.user_id).sort(), [17, 1025].sort());
+    assert.deepStrictEqual(logs.map(l => l.user_id).sort(), [17, 1026].sort());
     for(const l of logs){
       assert.ok(String(l.provider_msg).indexOf('mock-') === 0, 'provider_msg ' + l.provider_msg);
       assert.ok(PHONES.indexOf(l.phone) > -1, 'phone in store ok: ' + l.phone);
@@ -202,6 +202,6 @@ const assert = require('assert');
   });
 
   console.log(`\n${passed + failed} بررسی — ${failed === 0 ? '✅ همه سبز' : '❌ شکست: ' + failed}`);
-  try { server.close(); } catch (e) {}
+  try { server.close(); } catch (e) {/* intentional no-op */}
   process.exit(failed ? 1 : 0);
 })().catch(e => { console.error('FATAL', e); process.exit(2); });

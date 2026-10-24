@@ -15,7 +15,7 @@ name: Codacy Security Scan
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main", "arena/**"]
   pull_request:
     # The branches below must be a subset of the branches above
     branches: [ "main" ]
@@ -38,6 +38,36 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # codacy/codacy-analysis-cli:4.0.0 runs an Alpine JVM without a UTF-8 locale,
+      # so Charset.defaultCharset() defaults to US-ASCII and Sarif.createResults
+      # throws MalformedInputException on valid UTF-8 Persian source files. Pass
+      # explicit UTF-8 JVM/POSIX locale environment variables into the CLI container
+      # while preserving the exact unmasked container exit status.
+      - name: Configure UTF-8 locale for Codacy CLI container
+        shell: bash
+        run: |
+          set -euo pipefail
+          WRAP_DIR="/tmp/codacy-utf8-docker"
+          mkdir -p "$WRAP_DIR"
+          cat > "$WRAP_DIR/docker" <<'EOF'
+          #!/usr/bin/env bash
+          if [ "${1:-}" = "run" ]; then
+            shift
+            set +e
+            /usr/bin/docker run \
+              -e JAVA_OPTS="-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8" \
+              -e JAVA_TOOL_OPTIONS="-Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8" \
+              -e LANG=C.UTF-8 \
+              -e LC_ALL=C.UTF-8 \
+              "$@" 2>&1 | tee /tmp/codacy-cli.log
+            rc="${PIPESTATUS[0]}"
+            exit "$rc"
+          fi
+          exec /usr/bin/docker "$@"
+          EOF
+          chmod 0755 "$WRAP_DIR/docker"
+          echo "$WRAP_DIR" >> "$GITHUB_PATH"
+
       # Execute only the JavaScript analyzer. The repository contains no Java
       # source, so PMD/PMD-legacy add no security coverage and their Codacy
       # containers fail with "No rules found". Limiting the scan also prevents
@@ -56,8 +86,46 @@ jobs:
           # This is not a clean-scan claim; SARIF remains uploaded and findings stay visible.
           max-allowed-issues: 2655
 
+      - name: Surface Codacy CLI failure tail annotation
+        if: failure()
+        shell: bash
+        run: |
+          sarif_summary=""
+          if [ -f results.sarif ]; then
+            sarif_summary="$(python3 -c 'import json; d=json.load(open("results.sarif")); print("sarif_runs=" + str([len(r.get("results",[])) for r in d.get("runs",[])]))')"
+          fi
+          if [ -f /tmp/codacy-cli.log ]; then
+            set +e
+            err_msg="$(grep -B1 -A15 -E 'Exception|Caused by:|ERROR|Failed' /tmp/codacy-cli.log | tail -n 30 | tr '\r\n' '  ' | cut -c1-1600)"
+            set -e
+            if [ -z "$err_msg" ]; then
+              err_msg="$(tail -n 30 /tmp/codacy-cli.log | tr '\r\n' '  ' | cut -c1-1600)"
+            fi
+            printf '::error title=Codacy CLI failure tail::%s %s\n' "$sarif_summary" "$err_msg"
+          fi
+
+      # codacy/codacy-analysis-cli:4.0.0 runs as root inside Docker (writing
+      # root-owned results.sarif) and emits three ESLint runs with identical
+      # tool.driver metadata and no run.automationDetails.id, which GitHub Code
+      # Scanning rejects since 2025-07-21. Write a runner-owned copy with a
+      # deterministic per-pass automationDetails.id while keeping every finding,
+      # rule, and artifact intact.
+      - name: Assign distinct SARIF automationDetails.id per analyzer pass
+        shell: python3 {0}
+        run: |
+          import json
+          with open("results.sarif", "r", encoding="utf-8") as fh:
+              sarif = json.load(fh)
+          for idx, run in enumerate(sarif.get("runs", []), start=1):
+              details = dict(run.get("automationDetails") or {})
+              if not details.get("id"):
+                  details["id"] = f"codacy-eslint/pass-{idx}/"
+              run["automationDetails"] = details
+          with open("/tmp/results-normalized.sarif", "w", encoding="utf-8") as fh:
+              json.dump(sarif, fh, ensure_ascii=False)
+
       # Upload the SARIF file generated in the previous step
       - name: Upload SARIF results file
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: results.sarif
+          sarif_file: /tmp/results-normalized.sarif

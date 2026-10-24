@@ -195,14 +195,14 @@ chk('DR_RUNBOOK هر دو فایلِ infra را صدا می‌زند',
 /* ── CFG-PGB ── */
 grp('CFG-PGB — pgbouncer.ini');
 const pgb = rd('infra/postgres/pgbouncer/pgbouncer.ini') || '';
-chk('auth_query با ستونِ صحیحِ pg_shadow (usename — نه username)', /auth_query = SELECT usename, passwd FROM pg_shadow WHERE usename = \$1/.test(pgb) && !/WHERE username/.test(pgb));
+chk('auth_query با ستونِ صحیحِ pg_shadow (usename — نه username)', /auth_query = SELECT usename, passwd FROM pgbouncer\.pg_shadow_lookup\(\$1\)/.test(pgb) && !/WHERE username/.test(pgb));
 chk('هر دو دیتابیسِ primary/readonly تعریف شده', /^payesh\s+=/m.test(pgb) && /^payesh-readonly\s+=/m.test(pgb));
 chk('pool_mode=transaction + max_client_conn قفل', /pool_mode = transaction/.test(pgb) && /max_client_conn = (2000|3500)/.test(pgb));
 
 /* ── CFG-DEEP (اختیاری: در نبودِ ابزار ⏭️) ── */
 grp('CFG-DEEP — اعتبارسنجیِ عمیقِ انتخابی');
 let yamlOk = null;
-try { const r = spawnSync('python3', ['-c', 'import yaml'], { encoding: 'utf8' }); yamlOk = r.status === 0; } catch (e) {}
+try { const r = spawnSync('python3', ['-c', 'import yaml'], { encoding: 'utf8' }); yamlOk = r.status === 0; } catch (e) {/* intentional no-op */}
 if (yamlOk) {
   for (const f of ['infra/postgres/docker-compose.ha.yml', 'infra/redis/docker-compose.sentinel.yml']) {
     const r = spawnSync('python3', ['-c', `import yaml,sys; list(yaml.safe_load_all(open(${JSON.stringify(path.join(ROOT, f))})))`], { encoding: 'utf8' });
@@ -210,7 +210,7 @@ if (yamlOk) {
   }
 } else console.log('     ⏭️  python3-yaml نیست — parse عمیقِ YAML در CI اجرا می‌شود');
 let hasDocker = false;
-try { hasDocker = spawnSync('docker', ['--version'], { encoding: 'utf8' }).status === 0; } catch (e) {}
+try { hasDocker = spawnSync('docker', ['--version'], { encoding: 'utf8' }).status === 0; } catch (e) {/* intentional no-op */}
 console.log(hasDocker ? '     (docker هست — می‌توان «docker compose config» را دستی زد)' : '     ⏭️  docker نیست (sandbox) — config-check در محیطِ میزبان');
 
 console.log('\n' + '─'.repeat(52));

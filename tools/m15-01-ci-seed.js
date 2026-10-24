@@ -213,7 +213,7 @@ async function seedDatabase(connectionString, profile) {
         phone_or_national_id_recorded: false
       };
     } catch (error) {
-      try { await client.query('ROLLBACK;'); } catch (_) {}
+      try { await client.query('ROLLBACK;'); } catch (_) {/* intentional no-op */}
       throw error;
     }
   } finally {

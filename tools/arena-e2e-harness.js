@@ -10,7 +10,7 @@
  * the REAL SMS-delivery leg: brute-force sha256(code|phone) from Redis OTP store.
  */
 const fs = require('fs');
-const path = require('path');
+const path = require('path'); void path;
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 process.env.NODE_PATH = ['/tmp/repo-node_modules','/home/user/repo/node_modules'].filter(fs.existsSync).join(':');
@@ -42,7 +42,7 @@ const P = (v) => String(v).replace(/\D/g, '');
 async function until(fn, ms, label) {
   const t0 = Date.now();
   for (;;) {
-    try { const r = await fn(); if (r) return { ok: true, ms: Date.now() - t0, value: r }; } catch (e) {}
+    try { const r = await fn(); if (r) return { ok: true, ms: Date.now() - t0, value: r }; } catch (e) {/* intentional no-op */}
     if (Date.now() - t0 > ms) return { ok: false, ms: Date.now() - t0, value: null, label };
     await sleep(80);
   }
@@ -60,7 +60,7 @@ async function recoverCode(infra, phone) {
             if (codeHash(String(n), phone) === r.h) return String(n);
           }
         }
-      } catch (e) {}
+      } catch (e) {/* intentional no-op */}
     }
     await sleep(120);
   }
@@ -373,7 +373,7 @@ function auditGrep(infra, needle) {
 })().catch((e) => {
   console.error('HARNESS ERROR: ' + (e && e.stack || e));
   rows.push({ name: 'harness-crash', status: 'FAIL', detail: String(e).slice(0, 300) });
-  try { finish(); } catch (_) {}
+  try { finish(); } catch (_) {/* intentional no-op */}
 });
 
 function finish() {

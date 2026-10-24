@@ -52,8 +52,8 @@ async function bootCapture(extraEnv, waitMs) {
     await sleep(200);
   }
   await sleep(400); /* فرصتِ تخلیهٔ stderr */
-  try { p.kill('SIGKILL'); } catch (e) {}
-  try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {}
+  try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
+  try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   return { out, exited };
 }
 

@@ -23,7 +23,7 @@ async function recover(infra, phone) {
   for (let i = 0; i < 20; i++) {
     const raw = infra.redis(['get', 'payesh:otp:state']);
     if (raw && !raw.startsWith('ERR') && raw !== '(nil)') {
-      try { const d = JSON.parse(raw); const r = d.codes && d.codes[phone]; if (r && r.h) { for (let n = 100000; n < 1000000; n++) if (codeHash(String(n), phone) === r.h) return String(n); } } catch (e) {}
+      try { const d = JSON.parse(raw); const r = d.codes && d.codes[phone]; if (r && r.h) { for (let n = 100000; n < 1000000; n++) if (codeHash(String(n), phone) === r.h) return String(n); } } catch (e) {/* intentional no-op */}
     }
     await sleep(120);
   }

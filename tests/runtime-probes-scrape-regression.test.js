@@ -82,8 +82,8 @@ async function run() {
   console.log('  ✅ 3. HEAD /metrics boundary handled without error');
 
   const redisMod = require('../server/redis');
-  try { await redisMod.close(); } catch (_) {}
-  try { metrics.stopRuntimeCollector(); } catch (_) {}
+  try { await redisMod.close(); } catch (_) {/* intentional no-op */}
+  try { metrics.stopRuntimeCollector(); } catch (_) {/* intentional no-op */}
   await new Promise((resolve) => server.close(resolve));
   console.log('\nResult: M1 runtime probes scrape regression: ALL PASS ✅\n');
 }

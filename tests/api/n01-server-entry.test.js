@@ -29,7 +29,7 @@ const REAL_STORE = path.join(ROOT, 'server', 'data', 'payesh.json');
 /* Isolated store/audit/key so this suite never touches developer data and
    never needs PostgreSQL (same dev-store convention as the other suites). */
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-n01-'));
-process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 fs.copyFileSync(REAL_STORE, path.join(TMP, 'store.json'));
 process.env.PAYESH_STORE = path.join(TMP, 'store.json');
 process.env.PAYESH_AUDIT = path.join(TMP, 'audit.log');
@@ -73,7 +73,7 @@ async function main() {
       body: body ? JSON.stringify(body) : undefined,
     });
     let json = null;
-    try { json = await res.json(); } catch (e) {}
+    try { json = await res.json(); } catch (e) {/* intentional no-op */}
     return { status: res.status, json, headers: res.headers };
   };
 

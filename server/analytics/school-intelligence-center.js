@@ -75,7 +75,7 @@ function enforceSchoolIntelligenceAccessGuard(requester, targetSchoolId, options
  * @param {Object} [options]
  * @returns {Object} HealthIndexResult
  */
-function calculateSchoolHealthIndex(snapshot = {}, options = {}) {
+function calculateSchoolHealthIndex(snapshot = {}, options = {}) { void options;
   const academic = snapshot.academic_summary || {};
   const attendance = snapshot.attendance_summary || {};
   const engagement = snapshot.engagement_summary || snapshot.parent_summary || {};
@@ -212,7 +212,7 @@ function calculateSchoolHealthIndex(snapshot = {}, options = {}) {
  * @param {Object} [options]
  * @returns {Array<Object>} PrincipalActionItems
  */
-function generatePrincipalActionCenter(snapshot = {}, options = {}) {
+function generatePrincipalActionCenter(snapshot = {}, options = {}) { void options;
   const actions = [];
 
   const att = snapshot.attendance_summary || {};
@@ -499,8 +499,8 @@ function buildSchoolIntelligenceSnapshot(data = {}, options = {}) {
     intervention_summary: interventionSummary
   };
 
-  const healthIndex = calculateSchoolHealthIndex(intermediateSnapshot, options);
-  const actionCenter = generatePrincipalActionCenter(intermediateSnapshot, options);
+  const healthIndex = calculateSchoolHealthIndex(intermediateSnapshot, options); void healthIndex;
+  const actionCenter = generatePrincipalActionCenter(intermediateSnapshot, options); void actionCenter;
 
   return assembleSchoolIntelligenceSnapshot({
     schoolId,

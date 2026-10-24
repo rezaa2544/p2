@@ -10,7 +10,7 @@
  */
 'use strict';
 
-const { assertNoZeroRanking, deepFreeze, createZeroTrustError, ZERO_TRUST_ERRORS } = require('./zero-trust-runtime');
+const { assertNoZeroRanking, deepFreeze, createZeroTrustError, ZERO_TRUST_ERRORS } = require('./zero-trust-runtime'); void ZERO_TRUST_ERRORS; void createZeroTrustError;
 
 // الگوهای تشخیص احتمالی نشت کلید و رمز
 const LEAK_PATTERNS = [
@@ -195,7 +195,7 @@ function checkUnsafeRuntimeState(runtimeMetrics = {}) {
 /**
  * ساخت گزارش جامع انطباق‌پذیری امنیتی
  */
-function evaluateCompliance({ config = {}, runtimeState = {}, user = null, schoolId = null } = {}) {
+function evaluateCompliance({ config = {}, runtimeState = {}, user = null, schoolId = null } = {}) { void user;
   const secretCheck = checkSecretExposure(config);
   const configCheck = checkConfigurationSecurity(config);
   const runtimeCheck = checkUnsafeRuntimeState(runtimeState);

@@ -41,12 +41,12 @@ const PORT = Number(process.env.A11Y_PORT || 3199);
    pickUser یک تابعِ انتخاب‌گر است که در scopeِ صفحه اجرا می‌شود؛
    هیچ متنِ کدی ساخته یا الحاق نمی‌شود. */
 const ROLES = [
-  { role: 'manager',   pickUser: (db) => db.users.find((u) => u.username === 'manager1') },
-  { role: 'teacher',   pickUser: (db) => db.users.find((u) => u.username === 'teacher1_1') },
-  { role: 'parent',    pickUser: (db) => db.users.find((u) => u.username === 'parent_multi') || db.users.find((u) => u.role === 'parent') },
-  { role: 'student',   pickUser: (db) => db.users.find((u) => u.role === 'student') },
+  { role: 'manager',   pickSpec: { username: 'manager1' } },
+  { role: 'teacher',   pickSpec: { username: 'teacher1_1' } },
+  { role: 'parent',    pickSpec: { username: 'parent_multi', fallbackRole: 'parent' } },
+  { role: 'student',   pickSpec: { role: 'student' } },
   /* brief گفته staff؛ نقشِ staff در مخزن نیست — counselor جایگزینِ صادقانه */
-  { role: 'counselor', pickUser: (db) => db.users.find((u) => u.username === 'counselor1') || db.users.find((u) => u.role === 'counselor') },
+  { role: 'counselor', pickSpec: { username: 'counselor1', fallbackRole: 'counselor' } },
 ];
 const MAX_VIEWS_PER_ROLE = 10;
 
@@ -85,10 +85,11 @@ function startStaticServer() {
   }
 
   const srv = await startStaticServer();
-  const browser = await chromium.launch();
+  const launchArgs = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'];
+  const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH, args: launchArgs } : { args: launchArgs });
   /* bypassCSP فقط برایِ تزریقِ axe-core لازم است (CSP تک‌فایلی nonce دارد)؛
      خودِ سنجشِ a11y ربطی به CSP ندارد. */
-  const context = await browser.newContext({ bypassCSP: true, viewport: { width: 1280, height: 900 } });
+  const context = await browser.newContext({ bypassCSP: true, reducedMotion: 'reduce', viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
   page.setDefaultTimeout(30000);
 
@@ -130,15 +131,17 @@ function startStaticServer() {
     /* db/S/NAV/finishLogin/closeModal/render همگی متغیرهایِ lexicalِ سراسریِ
        صفحه‌اند؛ تابعِ انتخاب‌گر را مستقیماً می‌فرستیم تا در همان scope
        اجرا شود. هیچ متنی ساخته یا الحاق نمی‌شود. */
-    const ok = await page.evaluate((pick) => {
-      const u = pick(db);
+    const ok = await page.evaluate((spec) => {
+      const u = (spec.username && db.users.find((x) => x.username === spec.username))
+        || (spec.fallbackRole && db.users.find((x) => x.role === spec.fallbackRole))
+        || (spec.role && db.users.find((x) => x.role === spec.role));
       if (!u) return null;
       finishLogin(u);
       S.showPicker = false;
       if (typeof closeModal === 'function') closeModal();
       render();
       return { username: u.username, role: u.role };
-    }, R.pickUser);
+    }, R.pickSpec);
     if (!ok) { console.log(`  ⚠️ ${R.role}: کاربرِ دمو پیدا نشد — رد شد`); continue; }
 
     const routes = await page.evaluate((max) => {
@@ -155,7 +158,8 @@ function startStaticServer() {
         if (typeof closeModal === 'function') closeModal();
         render();
       }, route);
-      await page.waitForTimeout(120); /* بگذار paint تمام شود */
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+      await page.waitForTimeout(150); /* بگذار paint تمام شود */
       await scan(R.role, route);
     }
   }

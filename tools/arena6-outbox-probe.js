@@ -60,7 +60,7 @@ function scratchFile(name) {
     chk('DUP1b both delivered (consumer must be idempotent)', calls === 2 && store.outbox.every(x => x.status === 'processed'), 'calls=' + calls);
     /* consumer-side idempotency of the REAL handler contract: cache.invalidateCollection
        is a set-delete op — verify double-invalidation is a no-op via fake cache */
-    let size = 3;
+    let size = 3; void size;
     const fakeCache = { set: new Set(['a','b','c']), invalidateCollection() { this.set.clear(); } };
     fakeCache.invalidateCollection('classes', 1);
     const after1 = fakeCache.set.size;
@@ -205,7 +205,7 @@ function scratchFile(name) {
     const store = {}; const obx = createOutbox({ store });
     await obx.append({ type: 'hang.job' });
     const w = createWorker({ store, outbox: obx, handlers: { 'hang.job': () => new Promise(() => {}) }, intervalMs: 50 });
-    const t0 = Date.now();
+    const t0 = Date.now(); void t0;
     const first = w.tick();               /* this tick will never settle */
     await sleep(200);
     const second = await w.tick();        /* re-entry guard: skipped */

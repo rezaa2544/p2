@@ -26,7 +26,7 @@ const RPT_KINDS = [
   ['teachers',   '👨‍🏫', 'عملکرد معلمان']
 ];
 const RPT_ATT_STS = ['present', 'absent', 'late', 'excused', 'early_exit'];
-const RPT_ATT_FA = { present: 'حاضر', absent: 'غایب', late: 'تأخیر', excused: 'موجه', early_exit: 'خروج زودتر' };
+const RPT_ATT_FA = { present: 'حاضر', absent: 'غایب', late: 'تأخیر', excused: 'موجه', early_exit: 'خروج زودتر' }; void RPT_ATT_FA;
 
 /* وضعیت صفحه — بین renderها می‌ماند */
 var RPT_STATE = null;

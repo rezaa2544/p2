@@ -894,6 +894,68 @@ try {
       assert.strictEqual(leakAudit.audit_pass, false);
       assert.strictEqual(leakAudit.secret_hits > 0, true);
       assert.strictEqual(leakAudit.commands_log_sha256_match, false);
+
+      // Verify notice budget & priority: current-head ZIP summaries are emitted first and total notices <= 10.
+      const mainAuditOut = execFileSync(process.execPath, ['-e', [
+        "const assert = require('assert');",
+        "const http = require('http');",
+        "const fs = require('fs');",
+        "const { execFileSync } = require('child_process');",
+        "const audit = require('./tools/m15-01-artifact-audit');",
+        "const head = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();",
+        "const stage = process.argv[1];",
+        "const zipPath = process.argv[2];",
+        "const cmdSha = process.argv[3];",
+        "fs.writeFileSync(stage + '/commands.log', '$ docker ps\\nCONTAINER ID\\n');",
+        "fs.writeFileSync(stage + '/dr-runtime-evidence.json', JSON.stringify({",
+        "  source_sha: head, status: 'PASS', failed_stages: [],",
+        "  commands_log_sha256: cmdSha, cleanup: { containers_remaining: 0 },",
+        "  postgres: { failover: { pgbouncer_endpoint_reroute_tested: true, promotion_to_verified_pgbouncer_write_ms: 912 } }",
+        "}));",
+        "fs.unlinkSync(stage + '/evidence.json');",
+        "execFileSync('zip', ['-j', '-q', zipPath, stage + '/commands.log', stage + '/dr-runtime-evidence.json']);",
+        "const buf = fs.readFileSync(zipPath);",
+        "const srv = http.createServer((req, res) => {",
+        "  if (req.url.includes('/runs/999/artifacts')) {",
+        "    res.setHeader('Content-Type', 'application/json');",
+        "    res.end(JSON.stringify({ artifacts: [",
+        "      { id: 101, name: 'm15-01-runtime-a-PASS', expired: false },",
+        "      { id: 102, name: 'm15-01-runtime-b-PASS', expired: false },",
+        "      { id: 103, name: 'm15-01-dr-PASS', expired: false }",
+        "    ] }));",
+        "    return;",
+        "  }",
+        "  if (req.url.includes('/runs/888/artifacts')) {",
+        "    res.setHeader('Content-Type', 'application/json');",
+        "    res.end(JSON.stringify({ artifacts: [",
+        "      { id: 201, name: 'm15-01-hist-a', expired: false },",
+        "      { id: 202, name: 'm15-01-hist-b', expired: false },",
+        "      { id: 203, name: 'm15-01-hist-dr', expired: false }",
+        "    ] }));",
+        "    return;",
+        "  }",
+        "  if (req.url.endsWith('/zip')) { res.statusCode = 200; res.end(buf); return; }",
+        "  res.statusCode = 404; res.setHeader('Content-Type', 'application/json'); res.end('{}');",
+        "});",
+        "srv.listen(0, '127.0.0.1', async () => {",
+        "  try {",
+        "    process.env.GITHUB_API_URL = 'http://127.0.0.1:' + srv.address().port;",
+        "    process.env.GITHUB_REPOSITORY = 'rezaa2544/p2';",
+        "    process.env.GITHUB_RUN_ID = '999';",
+        "    process.env.GITHUB_SHA = head;",
+        "    process.env.GH_TOKEN = 'test-token';",
+        "    process.env.HISTORICAL_RUN_ID = '888';",
+        "    process.env.HISTORICAL_EXPECTED_SHA = head;",
+        "    process.env.HISTORICAL_ATTEMPT1_IDS = '1,2,3';",
+        "    await audit.main();",
+        "  } finally { srv.close(); }",
+        "});"
+      ].join('\n'), zipStage, path.join(temp, 'dr-valid.zip'), cmdSha], { encoding: 'utf8' });
+      const noticeLines = mainAuditOut.split(/\r?\n/).filter((line) => line.startsWith('::notice '));
+      assert.strictEqual(noticeLines.length, 7);
+      assert(noticeLines[0].startsWith('::notice title=M15-01 ZIP Summary (current)::'));
+      assert(noticeLines[1].startsWith('::notice title=M15-01 ZIP Summary (current)::'));
+      assert(noticeLines[2].startsWith('::notice title=M15-01 ZIP Summary (current)::'));
     });
   } finally {
     fs.rmSync(temp, { recursive: true, force: true });

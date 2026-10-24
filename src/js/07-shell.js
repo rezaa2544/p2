@@ -4,7 +4,8 @@
    ═══════════════════════════════════════════════════════════════════ */
 function renderShell(){
   /* کنترلگرِ تم: اعمالِ نمایِ درست (سگمنت/پاپ‌اور) پس از نشستنِ DOM. */
-  setTimeout(function(){ try{ if(typeof themeSegApply==='function') themeSegApply(); }catch(e){} }, 0);
+  setTimeout(function(){ try{ if(typeof themeSegApply==='function') themeSegApply(); }catch(e){ // noop
+} }, 0);
   const u=Object.assign({},S.user,{role:activePersona()}), school=u.school_id?byId('schools',u.school_id):(u.office_id?{name:(byId('offices',u.office_id)||{}).name}:null);
   const t=TITLES[S.route]||['سامانه','']; 
   return `<a href="#" class="skip-link" data-act="skip-to-main">پرش به محتوای اصلی</a>
@@ -29,7 +30,7 @@ function renderShell(){
     <header class="topbar"><button class="burger" data-act="opennav" aria-label="باز کردن منوی ناوبری">☰</button>
       ${(S.stack.length||S.route!==(u.role==='edu_office'?'officedash':'dashboard'))?`<button class="icon-btn back-btn" data-act="back" title="بازگشت" aria-label="بازگشت">→</button>`:''}
       <div><h1>${t[0]}</h1><div class="sub">${t[1]}</div></div><div class="spacer"></div>
-      <button class="icon-btn" data-act="go" data-r="notifications" title="اعلان‌ها" aria-label="اعلان‌ها" style="position:relative;font-size:17px">🔔${(()=>{const n=unreadCount();return n?`<span style="position:absolute;top:-4px;inset-inline-end:-4px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px;border:2px solid #fff">${n>99?'۹۹+':fa(n)}</span>`:''})()}</button>
+      ${(()=>{const n=unreadCount(),b=n?(n>99?'۹۹+':fa(n)):'';return`<button class="icon-btn" data-act="go" data-r="notifications" title="اعلان‌ها" aria-label="${b?'اعلان‌ها '+b:'اعلان‌ها'}" style="position:relative;font-size:17px"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>${b?`<span style="position:absolute;top:-4px;inset-inline-end:-4px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px;border:2px solid #fff">${b}</span>`:''}</button>`;})()}
       ${typeof syncBadge==='function'?syncBadge():''}
       ${typeof themeSegHtml==='function'?themeSegHtml():''}
       ${(()=>{try{if(typeof activeYearOf!=='function')return '';var yc=activeYearOf(u.school_id||null);if(!yc)return '';var t=(typeof yearCodeTitle==='function')?yearCodeTitle(yc):yc;return `<span class="badge b-gray" title="سال تحصیلی عملیاتی">📅 ${esc(t)}</span>`;}catch(e){return '';}})()}
@@ -123,7 +124,8 @@ function childSwitcherBar(){
 
 /* یادآوری فصل پایان سال به مدیر — هر هفت روز یک بار در تیر و مرداد */
 function checkYearEnd(){
-  if(typeof yearEndReminder === 'function'){ try{ yearEndReminder(); }catch(e){} }
+  if(typeof yearEndReminder === 'function'){ try{ yearEndReminder(); }catch(e){ // noop
+} }
 }
 
 function renderRoute(){
@@ -133,7 +135,8 @@ function renderRoute(){
   finally{
     if(typeof perfSample==='function'){
       var _t1=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
-      try{ perfSample(S.route, _t1-_t0); }catch(e){}
+      try{ perfSample(S.route, _t1-_t0); }catch(e){ // noop
+}
     }
   }
 }
@@ -263,7 +266,8 @@ function themeSegBtn(id, name, on, block){
 /** نمایِ سگمنت (دسکتاپ) + پاپ‌اور (موبایل) برایِ نوارِ بالا. */
 function themeSegHtml(){
   var cur = 'theme-2';
-  try{ if(typeof currentPayeshTheme === 'function') cur = currentPayeshTheme() || cur; }catch(e){}
+  try{ if(typeof currentPayeshTheme === 'function') cur = currentPayeshTheme() || cur; }catch(e){ // noop
+}
   var list = themeSegList();
   var seg = '<div data-tseg role="group" aria-label="پوستهٔ برنامه" ' +
     'style="display:inline-flex;align-items:center;gap:2px;background:var(--surface-2);' +
@@ -287,7 +291,8 @@ function themeSegApply(){
     for(var i = 0; i < segs.length; i++) segs[i].style.display = mobile ? 'none' : 'inline-flex';
     var pops = document.querySelectorAll('[data-tpopwrap]');
     for(var j = 0; j < pops.length; j++) pops[j].style.display = mobile ? '' : 'none';
-  }catch(e){}
+  }catch(e){ // noop
+}
 }
 /** تازه‌سازیِ حالتِ فعالِ دکمه‌ها پس از سوئیچ (بدونِ رندرِ مجدد). */
 function themeSegPaint(){
@@ -301,13 +306,15 @@ function themeSegPaint(){
       b.style.color = on ? '#fff' : 'var(--muted)';
       b.style.boxShadow = on ? '0 1px 4px rgba(0,0,0,.18)' : 'none';
     }
-  }catch(e){}
+  }catch(e){ // noop
+}
 }
 function themeSegCloseMenus(){
   try{
     var ms = document.querySelectorAll('[data-tpopmenu]');
     for(var i = 0; i < ms.length; i++) ms[i].hidden = true;
-  }catch(e){}
+  }catch(e){ // noop
+}
 }
 /* سیم‌کشیِ یک‌باره: کلیک (سگمنت/پاپ‌اور) + resize. */
 (function themeSegBind(){
@@ -359,7 +366,8 @@ function themeSegCloseMenus(){
       themeSegCloseMenus();
       var wrapEl = menu.parentElement;
       var btn = wrapEl ? wrapEl.querySelector('[data-tpop]') : null;
-      if(btn){ try{ btn.focus(); }catch(e){} }
+      if(btn){ try{ btn.focus(); }catch(e){ // noop
+} }
     }
   }, true); /* capture: پیش از هندلرِ Escape سراسری اجرا شود */
   if(typeof window.addEventListener === 'function') window.addEventListener('resize', themeSegApply);

@@ -19,7 +19,7 @@ const kit = session('hi-mut-');
 
 const ROOT = path.join(__dirname, '..');
 const NODE = process.execPath;
-let pass = 0, fail = 0;
+let pass = 0, fail = 0; void fail;
 function chk(c, m) { if (c) { pass++; console.log('  ✅ ' + m); } else { fail++; console.log('  ❌ ' + m); } }
 
 let lastFile = null;

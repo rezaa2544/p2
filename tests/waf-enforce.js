@@ -68,7 +68,7 @@ function boot(port, env) {
     const t = setInterval(async () => {
       tries++;
       try {
-        const r = await req('GET', port, '/api/health');
+        const r = await req('GET', port, '/api/health'); void r;
         clearInterval(t);
         resolve({ proc: proc, storeFile: storeFile, ok: true, log: () => log });
       } catch (e) {
@@ -80,8 +80,8 @@ function boot(port, env) {
 }
 function close(s) {
   if (!s) return;
-  try { process.kill(s.proc.pid, 'SIGKILL'); } catch (e) {}
-  try { fs.unlinkSync(s.storeFile); } catch (e) {}
+  try { process.kill(s.proc.pid, 'SIGKILL'); } catch (e) {/* intentional no-op */}
+  try { fs.unlinkSync(s.storeFile); } catch (e) {/* intentional no-op */}
 }
 
 async function main() {
@@ -117,13 +117,13 @@ async function main() {
     const r1 = await req('GET', 8991, xss);
     chk('B1a XSS ⇒ 403', r1.status === 403, 'status=' + r1.status);
     let j1 = {};
-    try { j1 = JSON.parse(r1.body); } catch (e) {}
+    try { j1 = JSON.parse(r1.body); } catch (e) {/* intentional no-op */}
     chk('B1b code=waf_blocked + rule=xss', j1.ok === false && j1.code === 'waf_blocked' && j1.rule === 'xss', r1.body.slice(0, 120));
     chk('B1c X-WAF-Action: block', r1.headers['x-waf-action'] === 'block', JSON.stringify(r1.headers['x-waf-action']));
     const sqli = '/api/students/1?f=' + S;
     const r2 = await req('GET', 8991, sqli);
     let j2 = {};
-    try { j2 = JSON.parse(r2.body); } catch (e) {}
+    try { j2 = JSON.parse(r2.body); } catch (e) {/* intentional no-op */}
     chk('B2 SQLi ⇒ 403 waf_blocked (rule=sqli)', r2.status === 403 && j2.code === 'waf_blocked' && j2.rule === 'sqli', 'status=' + r2.status + ' ' + r2.body.slice(0, 120));
     const r3 = await req('GET', 8991, '/api/%2e%2e/%2e%2e/etc/passwd');
     chk('B3 traversal ⇒ 403 (یا 400ِ روتینگ — ولی هرگز 200/500)', r3.status === 403 || r3.status === 400, 'status=' + r3.status);
@@ -163,7 +163,7 @@ async function main() {
     /* seed ممکن است نباشد (CI: gitignored) — fallback: شمارنده‌ها پیش از
        وجود‌سنجی کار می‌کنند، پس رفتارِ test با شمارهٔ نامشخص یکسان است. */
     let known = { users: [] };
-    try { known = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), 'utf8')); } catch (e) {}
+    try { known = JSON.parse(fs.readFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), 'utf8')); } catch (e) {/* intentional no-op */}
     const ph = String((known.users && known.users[0] ? known.users[0].phone : '09121234567')).replace(/[\s\-()]/g, '').slice(-10);
     const ph2 = String((known.users && known.users[1] ? known.users[1].phone : '09121234568')).replace(/[\s\-()]/g, '').slice(-10);
     /* D1: سقفِ per-phoneِ login: ۳ تلاش ⇒ چهارم ۴۲۹ */

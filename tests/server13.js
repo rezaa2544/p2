@@ -18,6 +18,7 @@ const https = require('https');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { makeSelfSigned, tlv, seq, derInt, derUtc, derUtf8, derBitString } = require('../server/tls-cert.js');
+const { resolveTargetDbUrl, redactTarget, waitForPostgres, ensureMigrated } = require('./helpers/live-db-readiness.js');
 
 const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
@@ -68,22 +69,24 @@ function httpGet(port, p, useTls) {
     const opts = { hostname: '127.0.0.1', port, path: p, method: 'GET' };
     if (useTls) {
       opts.rejectUnauthorized = true;
-      if (process.env.TLS_CA) {
-        try { opts.ca = fs.readFileSync(process.env.TLS_CA); } catch (e) {}
+      opts.checkServerIdentity = () => undefined;
+      if (activeCaFile || process.env.TLS_CA) {
+        try { opts.ca = fs.readFileSync(activeCaFile || process.env.TLS_CA); } catch (e) {/* intentional no-op */}
       }
     }
     const req = mod.request(opts, (res) => {
       let b = '';
       res.on('data', (d) => (b += d));
-      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {} resolve({ status: res.statusCode, json: j }); });
+      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */} resolve({ status: res.statusCode, json: j }); });
     });
     req.on('error', () => resolve({ status: 0, json: null }));
     req.end();
   });
 }
 
-process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 let tmp = null;
+let activeCaFile = null;
 
 /* سرور را spawn می‌کند و یا exit(1) با stderr یا health با pid را برمی‌گرداند
    نتیجه: { booted: bool, code: number|null, stderr: string, port: number|null } */
@@ -94,12 +97,26 @@ async function bootScenario({ tlsCert, tlsKey, production, portPool }) {
     HOST: '127.0.0.1',
     PAYESH_STORE: storeFile,
     PAYESH_AUDIT: path.join(tmp, 'audit.log'),
-    PAYESH_KEY: path.join(tmp, 'jwt.key')
+    PAYESH_KEY: path.join(tmp, 'jwt.key'),
+    PAYESH_ALLOW_DEV_MEMORY_AUTHORITY: production ? '' : '1',
+    PAYESH_JWT_SECRET: crypto.randomBytes(32).toString('hex')
   });
+  if (production) {
+    env.PAYESH_ENV = 'production';
+    env.NODE_ENV = 'production';
+    env.PAYESH_WAF_MODE = 'enforce';
+    env.DATABASE_URL = process.env.DATABASE_URL || process.env.PGURL || 'postgres://payesh:payesh@127.0.0.1:5432/payesh_ci';
+    env.REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+  } else {
+    delete env.PAYESH_ENV;
+    delete env.NODE_ENV;
+    delete env.DATABASE_URL;
+    delete env.PGURL;
+    delete env.REDIS_URL;
+  }
   delete env.PAYESH_DEMO_CODE;
   if (tlsCert) env.PAYESH_TLS_CERT = tlsCert;
   if (tlsKey) env.PAYESH_TLS_KEY = tlsKey;
-  if (production) env.PAYESH_ENV = 'production';
   for (const p of portPool) {
     const proc = spawn(process.execPath, ['server/index.js'], { cwd: ROOT, env: Object.assign({}, env, { PORT: String(p) }), stdio: 'pipe' });
     let err = '';
@@ -119,15 +136,49 @@ async function bootScenario({ tlsCert, tlsKey, production, portPool }) {
   return { booted: false, code: null, stderr: 'no port / no exit', port: null };
 }
 
+/* ── دروازهٔ آمادگیِ وابستگی (CI-FLAKE-01) ──────────────────────────────
+   اسناریوهای production این سوئیت سرورِ واقعی را spawn می‌کنند و آن سرور در
+   production JSON-fallback را رد می‌کند؛ پس «نبودِ PostgreSQL» عیناً به‌شکلِ
+   ❌ T2 (سرور بالا نیامد) دیده می‌شد — قرمزیِ گمراه‌کننده روی یک سوئیتِ TLS.
+   اول اتصال با یک کوئریِ واقعی سنجیده می‌شود (کرانه‌دار)، بعد مهاجرت‌ها
+   (بدونِ بلعیدنِ خطا). اگر آماده نشد: صریحاً ENVIRONMENT و exit 1.
+   هیچ assertionِ این سوئیت حذف/تضعیف نشده — فقط علتِ قرمزی درست برچسب می‌خورد. */
+const PG_WAIT_MS = Math.max(0, Number(process.env.S13_PG_WAIT_MS ?? 90000) || 0);
+const PG_INTERVAL_MS = Math.max(50, Number(process.env.S13_PG_INTERVAL_MS ?? 1000) || 1000);
+
+function environmentBlocked(reason, detail) {
+  console.log('  ❌ P0-PG ' + reason + ' — ' + String(detail || '').slice(0, 300));
+  console.log('\nserver13: 0/1 — شکست: P0-PG ' + reason + ' (محیط/وابستگی، نه رفتارِ محصول)');
+  process.exit(1);
+}
+
 (async () => {
   console.log('\n▸ دور 85 — P1-4: fail-fastِ TLS در production');
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-s13-'));
+
+  const targetDbUrl = resolveTargetDbUrl(process.env);
+  const ready = await waitForPostgres(targetDbUrl, { budgetMs: PG_WAIT_MS, intervalMs: PG_INTERVAL_MS });
+  if (!ready.ok) {
+    environmentBlocked('ENVIRONMENT — PostgreSQL unreachable',
+      'target=' + redactTarget(targetDbUrl) + ' budget_ms=' + ready.budget_ms + ' attempts=' + ready.attempts +
+      ' waited_ms=' + ready.waited_ms + ' last=' + ready.last_error);
+  }
+  console.log('  · P0-PG pg-ready target=' + ready.target + ' attempts=' + ready.attempts + ' waited_ms=' + ready.waited_ms);
+
+  const mig = await ensureMigrated(targetDbUrl, { attempts: 3, retryMs: 2000, timeoutMs: 60000 });
+  if (!mig.ok) {
+    environmentBlocked('ENVIRONMENT — ledger migrations did not apply',
+      'target=' + redactTarget(targetDbUrl) + ' attempts=' + mig.attempts + ' last=' + mig.last_error + ' out=' + String(mig.out).slice(0, 200));
+  }
+  console.log('  · P0-MIG migrations-applied attempts=' + mig.attempts + ' ' + String(mig.out).slice(0, 80));
 
   const nb = new Date(Date.now() - 86400000), na = new Date(Date.now() + 86400000 * 900);
   const selfSigned = makeSelfSigned('payesh-local', nb, na);
   fs.writeFileSync(path.join(tmp, 'ss.crt'), selfSigned.certPem);
   fs.writeFileSync(path.join(tmp, 'ss.key'), selfSigned.keyPem, { mode: 0o600 });
   const ca = makeSelfSigned('Payesh Test CA', nb, na);
+  fs.writeFileSync(path.join(tmp, 'ca.crt'), ca.certPem);
+  activeCaFile = path.join(tmp, 'ca.crt');
   const leaf = makeCaSignedLeaf(ca, 'payesh.example.com');
   fs.writeFileSync(path.join(tmp, 'leaf.crt'), leaf.certPem);
   fs.writeFileSync(path.join(tmp, 'leaf.key'), leaf.keyPem, { mode: 0o600 });
@@ -151,6 +202,7 @@ async function bootScenario({ tlsCert, tlsKey, production, portPool }) {
     t2.proc.kill('SIGKILL');
   }
 
+  activeCaFile = path.join(tmp, 'ss.crt');
   /* T3 — development + self-signed → بالا می‌آید (رفتارِ قدیمی دست‌نخورده) */
   const t3 = await bootScenario({ tlsCert: path.join(tmp, 'ss.crt'), tlsKey: path.join(tmp, 'ss.key'), production: false, portPool: [8987, 8986] });
   chk('T3 development + self-signed → سرور بالا آمد', t3.booted === true, 'code=' + t3.code + ' err=' + t3.stderr.slice(0, 120));

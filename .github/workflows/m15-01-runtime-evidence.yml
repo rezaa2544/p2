@@ -33,11 +33,14 @@ jobs:
         run: npm ci
 
       - name: Runtime harness unit and mutation-sensitivity gates
-        run: node tests/m15-01-runtime-evidence-unit.js
+        run: |
+          node tests/m15-01-runtime-evidence-unit.js
+          node tests/m15-01-e4-verify-unit.js
 
       - name: Syntax checks
         run: |
           node --check tools/m15-01-runtime-evidence.js
+          node --check tools/m15-01-e4-verify.js
           node --check tools/m15-01-log-redactor.js
           node --check tools/m15-01-route-load.js
           node --check tools/m15-01-alert-receiver.js
@@ -46,6 +49,7 @@ jobs:
           node --check tools/m15-01-ci-summary.js
           node --check tests/m15-01-runtime-evidence-unit.js
           node --check tests/m15-01-dr-runtime-unit.js
+          node --check tests/m15-01-e4-verify-unit.js
           node --check server/index.js
           bash -n tools/m15-01-ci-runtime.sh
           bash -n tools/m15-01-dr-runtime.sh
@@ -166,4 +170,36 @@ jobs:
           node-version: 22.x
       - name: Download and audit current + historical E3/DR ZIP archives
         run: node tools/m15-01-artifact-audit.js
+      - name: Probe multi-node operational E4 readiness without masking missing targets as PASS
+        id: e4_probe
+        shell: bash
+        run: |
+          set -euo pipefail
+          probe_dir="$RUNNER_TEMP/m15-01-e4-probe-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          mkdir -p "$probe_dir"
+          probe_json="$probe_dir/e4-probe-report.json"
+          set +e
+          summary_line="$(node tools/m15-01-e4-verify.js --output "$probe_json")"
+          e4_rc=$?
+          set -e
+          printf 'e4_probe_rc=%s\n%s\n' "$e4_rc" "$summary_line"
+          if [[ "$e4_rc" -eq 0 ]]; then
+            echo "status=PASS" >> "$GITHUB_OUTPUT"
+            printf '::notice title=M15-01 E4 Operational Probe (PASS)::%s\n' "$summary_line"
+          elif [[ "$e4_rc" -eq 2 ]]; then
+            echo "status=BLOCKED" >> "$GITHUB_OUTPUT"
+            printf '::warning title=M15-01 E4 Operational Probe (BLOCKED)::%s\n' "$summary_line"
+          else
+            echo "status=FAIL" >> "$GITHUB_OUTPUT"
+            printf '::error title=M15-01 E4 Operational Probe (FAIL)::%s\n' "$summary_line"
+            exit 1
+          fi
+      - name: Upload redacted M15-01 E4 operational readiness probe report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: m15-01-e4-probe-${{ steps.e4_probe.outputs.status }}-${{ github.sha }}
+          path: ${{ runner.temp }}/m15-01-e4-probe-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: error
+          retention-days: 30
 

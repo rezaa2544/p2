@@ -9,7 +9,7 @@
 
 'use strict';
 
-const authority = require('../server/infrastructure/authority');
+const authority = require('../server/infrastructure/authority'); void authority;
 const postgresAuthority = require('../server/infrastructure/authority/postgres-authority');
 const dbModule = require('../server/db');
 const {

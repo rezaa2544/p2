@@ -29,15 +29,20 @@ x-sentinel-cmd: &sentinel-cmd
   - sh
   - -c
   - |
-    sed -e "s|__MASTER_NAME__|$${SENTINEL_MASTER_NAME}|g" \
-        -e "s|__MASTER_HOST__|$${SENTINEL_MASTER_HOST}|g" \
-        -e "s|__MASTER_PORT__|6379|g" \
-        -e "s|__REDIS_PASSWORD__|$${REDIS_PASSWORD}|g" \
-        -e "s|__ANNOUNCE_IP__|$${HOSTNAME}|g" \
-        -e "s|__QUORUM__|2|g" \
-        -e "s|__DOWN_AFTER__|5000|g" \
-        -e "s|__FAILOVER_TIMEOUT__|15000|g" \
-        /template/sentinel.conf.template > /data/sentinel.conf
+    if [ ! -s /data/sentinel.conf ]; then
+      umask 0077
+      sed -e "s|__MASTER_NAME__|$${SENTINEL_MASTER_NAME}|g" \
+          -e "s|__MASTER_HOST__|$${SENTINEL_MASTER_HOST}|g" \
+          -e "s|__MASTER_PORT__|6379|g" \
+          -e "s|__REDIS_PASSWORD__|$${REDIS_PASSWORD}|g" \
+          -e "s|__ANNOUNCE_IP__|$${HOSTNAME}|g" \
+          -e "s|__QUORUM__|2|g" \
+          -e "s|__DOWN_AFTER__|5000|g" \
+          -e "s|__FAILOVER_TIMEOUT__|15000|g" \
+          /template/sentinel.conf.template > /data/sentinel.conf.tmp
+      chmod 0600 /data/sentinel.conf.tmp
+      mv -f /data/sentinel.conf.tmp /data/sentinel.conf
+    fi
     exec redis-sentinel /data/sentinel.conf
 
 services:
@@ -51,7 +56,7 @@ services:
     ports:
       - "127.0.0.1:6379:6379"
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$${REDIS_PASSWORD}\" redis-cli ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -109,7 +114,7 @@ services:
     ports:
       - "127.0.0.1:26379:26379"
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -p 26379 -a \"$${REDIS_PASSWORD}\" ping | grep -q PONG"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$${REDIS_PASSWORD}\" redis-cli -p 26379 ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 10

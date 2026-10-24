@@ -59,7 +59,7 @@ if (MUT) {
   fs.writeFileSync(p, live.replace(M[MUT][0], M[MUT][1]));
   mutatedFile = p;
   console.log('[mutated]', MUT, '→', 'sync.a01-mutated.js');
-  process.on('exit', () => { try { fs.unlinkSync(p); } catch (_) {} });
+  process.on('exit', () => { try { fs.unlinkSync(p); } catch (_) {/* intentional no-op */} });
   SYNC_PATH = p;
 }
 
@@ -85,11 +85,11 @@ function spawnServer(env) {
 }
 function close(p) {
   serverLogs.push(p.log || '');
-  try { p.kill('SIGKILL'); } catch (e) {}
+  try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
 }
 process.on('exit', () => {
-  for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} }
-  for (const d of tmpdirs) { try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {} }
+  for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
+  for (const d of tmpdirs) { try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} }
 });
 
 function req(method, p, body, headers) {
@@ -105,7 +105,7 @@ function req(method, p, body, headers) {
       let b = '';
       res.on('data', (d) => (b += d));
       res.on('end', () => {
-        let j = null; try { j = JSON.parse(b); } catch (e) {}
+        let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, json: j, headers: res.headers, text: b });
       });
     });
@@ -258,7 +258,7 @@ async function main() {
   }
   const SETTLE_MS = 2600; /* ≥ یک چرخهٔ کاملِ تیکرِ persist */
   async function settleCount() { await sleep(SETTLE_MS); return countReportLogs(); }
-  const before = countReportLogs();
+  const before = countReportLogs(); void before; mutatedFile
 
   /* ── A01-2: مورد P1 اصلی — teacher → report_logs ins ─────── */
   console.log('— A01-2: موردِ P1 اصلی — teacher → report_logs registration —');
@@ -434,8 +434,8 @@ async function main() {
 }
 
 function cleanupAfterCrash() {
-  for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} }
-  for (const d of tmpdirs) { try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {} }
+  for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
+  for (const d of tmpdirs) { try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} }
 }
 
 main().catch((e) => {

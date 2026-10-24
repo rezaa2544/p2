@@ -5,7 +5,7 @@
 process.env.NODE_PATH = '/tmp/repo-node_modules';
 require('module').Module._initPaths();
 const L = require('/home/user/repo/tests/chaos-drill-lib');
-const runSqlFile = require('child_process').execFileSync;
+const runSqlFile = require('child_process').execFileSync; void runSqlFile;
 
 (async () => {
   const infra = await L.Infra.start();
@@ -40,7 +40,7 @@ const runSqlFile = require('child_process').execFileSync;
   console.log('grades per-row ON CONFLICT(id) result:', single.replace(/\n/g, ' | ').slice(0, 220));
 
   // classes: bulk + single
-  const c0 = st.classes[0];
+  const c0 = st.classes[0]; void c0;
   const clsCols = ['school_id','name','grade','field','room','capacity','homeroom_teacher_id','id'];
   const clBulk = ps('INSERT INTO classes ("' + clsCols.join('","') + '") VALUES (1,\'دهم ریاضی فیزیک\',\'دهم\',\'ریاضی فیزیک\',\'کلاس 101\',30,4,1) ON CONFLICT DO NOTHING');
   console.log('classes bulk result:', clBulk.replace(/\n/g, ' | ').slice(0, 200));

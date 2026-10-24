@@ -70,7 +70,7 @@ let stopping = false;
 async function stop(code) {
   if (stopping) return;
   stopping = true;
-  try { await pg.stop(); } catch (e) {}
+  try { await pg.stop(); } catch (e) {/* intentional no-op */}
   console.log('STOPPED');
   process.exit(code);
 }

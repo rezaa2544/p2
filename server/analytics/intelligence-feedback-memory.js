@@ -80,7 +80,7 @@ function deepFreeze(obj) {
  * @param {Object} [options]
  * @returns {boolean}
  */
-function enforceFeedbackMemoryAccessGuard(requester, targetEntity, options = {}) {
+function enforceFeedbackMemoryAccessGuard(requester, targetEntity, options = {}) { void options;
   if (!requester || typeof requester !== 'object') {
     throw new Error('FEEDBACK_ACCESS_FORBIDDEN: requester session is missing');
   }
@@ -335,7 +335,7 @@ function analyzeRecommendationAccuracy(history = [], options = {}) {
  * @param {Object} [options]
  * @returns {Object}
  */
-function calculateInterventionSuccessPatterns(outcomes = [], contextFilters = {}, options = {}) {
+function calculateInterventionSuccessPatterns(outcomes = [], contextFilters = {}, options = {}) { void options;
   const records = Array.isArray(outcomes) ? outcomes : [];
   const groups = new Map();
 
@@ -576,7 +576,7 @@ function buildOrganizationalLearningProfile({ schoolId, regionId, academicYear =
  * @param {Object} [options]
  * @returns {Array<Object>}
  */
-function calibrateRecommendationsWithMemory(recommendations = [], learningMemory = {}, options = {}) {
+function calibrateRecommendationsWithMemory(recommendations = [], learningMemory = {}, options = {}) { void options;
   const recs = Array.isArray(recommendations) ? recommendations : [];
   if (recs.length === 0) return deepFreeze([]);
 

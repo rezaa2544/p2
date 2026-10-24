@@ -61,17 +61,22 @@ function requestAccountDeletion(){
   });
 }
 function clearDeviceData(){
-  try{ (Store.keys() || []).forEach(function(k){ Store.remove(k); }); }catch(e){}
+  try{ (Store.keys() || []).forEach(function(k){ Store.remove(k); }); }catch(e){ // noop
+}
   try{
     if(typeof indexedDB !== 'undefined' && indexedDB.databases){
       indexedDB.databases().then(function(list){
-        list.forEach(function(db){ try{ indexedDB.deleteDatabase(db.name); }catch(e){} });
+        list.forEach(function(db){ try{ indexedDB.deleteDatabase(db.name); }catch(e){ // noop
+} });
       }).catch(function(){});
     }
-  }catch(e){}
-  try{ if(typeof SYNC !== 'undefined'){ SYNC.queue = []; } }catch(e){}
+  }catch(e){ // noop
+}
+  try{ if(typeof SYNC !== 'undefined'){ SYNC.queue = []; } }catch(e){ // noop
+}
   S.user = null; S.persona = null; S.boss = null;
-  try{ if(typeof refreshSyncBadge === 'function') refreshSyncBadge(); }catch(e){}
+  try{ if(typeof refreshSyncBadge === 'function') refreshSyncBadge(); }catch(e){ // noop
+}
 }
 function doDeleteAccount(){
   var isSrv = (typeof DATA_MODE !== 'undefined' && DATA_MODE === 'server');
@@ -80,7 +85,8 @@ function doDeleteAccount(){
     if(typeof toast === 'function')
       toast(isSrv ? 'حساب و داده‌های مرتبط از سرور حذف شد — صفحه تازه می‌شود'
                   : 'داده‌های این دستگاه پاک شد — صفحه تازه می‌شود', 'ok');
-    setTimeout(function(){ try{ location.reload(); }catch(e){} }, 900);
+    setTimeout(function(){ try{ location.reload(); }catch(e){ // noop
+} }, 900);
   };
   if(!isSrv){ finish(); return; }
   if(typeof Api === 'undefined' || typeof Api.request !== 'function'){ finish(); return; }

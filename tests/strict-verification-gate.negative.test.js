@@ -309,7 +309,7 @@ for (const c of cases) {
     if (c.extra && c.extra.addFile) {
       fs.writeFileSync(path.join(dir, c.extra.addFile.path), c.extra.addFile.content);
     }
-    const head = finishFixture(dir, reg);
+    const head = finishFixture(dir, reg); void head;
     if (c.extra && c.extra.prContext) {
       if (c.extra.divergentPrOrigin) {
         /* Create a sibling commit directly so the fixture's rewritten registry
@@ -405,6 +405,72 @@ function runMetadataBindingFixture(name, mergeCommit) {
 }
 runMetadataBindingFixture('positive', false);
 runMetadataBindingFixture('merge-negative', true);
+
+/* ── Issue #472 hardening — every *other* metadata-commit shape must fail closed ──
+   The two cases above pin the allowed shape (single parent, registry as the sole
+   changed path) and the merge rejection. These four pin the smuggle vectors that a
+   weaker reading of "registry-only" would accept:
+     extra-path            registry + one source file in the same commit
+     rename-into-registry  rename whose post-image is the registry path (a deletion of
+                           an unrelated path is hidden when rename detection is on)
+     empty-metadata        an empty commit after a real metadata commit must not
+                           inherit the metadata-only privilege
+     root-no-parent        a parentless commit has no immutable parent to bind to
+   Each asserts the gate (a) refuses the binding, (b) says why, and (c) therefore
+   binds evidence to checkout HEAD, which cannot match a head_bound written earlier. */
+const REG_PATH = 'docs/verification/VERIFICATION_REGISTRY.json';
+
+function runBindingShapeFixture(shape) {
+  const dir = mkFixture('shape-' + shape);
+  try {
+    writeArtifacts(dir);
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-qm', 'immutable source evidence commit']);
+    const sourceSha = git(dir, ['rev-parse', 'HEAD']);
+    const reg = goodRegistry(sourceSha, null, dir);
+    reg.expected_ids = reg.items.map((it) => String(it.id));
+    const writeReg = () => fs.writeFileSync(path.join(dir, REG_PATH), JSON.stringify(reg, null, 2));
+    git(dir, ['update-ref', 'refs/remotes/origin/main', sourceSha]);
+
+    if (shape === 'extra-path') {
+      writeReg();
+      fs.writeFileSync(path.join(dir, 'tests', 'smoke.js'), '// smuggled source change inside the metadata commit\n');
+      git(dir, ['add', '-A']);
+      git(dir, ['commit', '-qm', 'metadata commit smuggling a source change']);
+    } else if (shape === 'rename-into-registry') {
+      fs.writeFileSync(path.join(dir, 'docs', 'verification', 'VERIFICATION_REGISTRY_PREVIOUS_NAME.json'), JSON.stringify(reg, null, 2));
+      git(dir, ['add', '-A']);
+      git(dir, ['commit', '-qm', 'registry under its previous path']);
+      git(dir, ['mv', 'docs/verification/VERIFICATION_REGISTRY_PREVIOUS_NAME.json', REG_PATH]);
+      git(dir, ['commit', '-qm', 'rename-shaped metadata commit']);
+    } else if (shape === 'empty-metadata') {
+      writeReg();
+      git(dir, ['add', REG_PATH]);
+      git(dir, ['commit', '-qm', 'registry-only metadata commit']);
+      git(dir, ['commit', '--allow-empty', '-qm', 'empty commit right after the metadata commit']);
+    } else if (shape === 'root-no-parent') {
+      writeReg();
+      git(dir, ['add', '-A']);
+      git(dir, ['commit', '-qm', 'everything in one parentless commit']);
+      git(dir, ['checkout', '--orphan', 'orphan-metadata']);
+      git(dir, ['add', '-A']);
+      git(dir, ['commit', '-qm', 'parentless metadata commit']);
+    }
+
+    const result = runGate(dir, 'pull_request');
+    const expectMsg = shape === 'root-no-parent' ? 'parent_count=0' : 'expected registry only';
+    const rejected = result.code !== 0 && result.out.includes(expectMsg) && result.out.indexOf('[metadata-only]') === -1;
+    rec('Issue #472 ' + shape + ' commit fails closed for metadata binding', rejected,
+      'exit=' + result.code + (rejected ? '' : ' — ACCEPTED by gate (defect)'));
+  } catch (e) {
+    rec('Issue #472 ' + shape + ' fixture harness error', false, String((e && e.message) || e));
+  } finally {
+    try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* temp cleanup is best-effort */ }
+  }
+}
+for (const shape of ['extra-path', 'rename-into-registry', 'empty-metadata', 'root-no-parent']) {
+  runBindingShapeFixture(shape);
+}
 
 console.log('==== A-30 NEGATIVE RESULT ' + pass + ' pass / ' + fail + ' fail ====');
 if (fail) {

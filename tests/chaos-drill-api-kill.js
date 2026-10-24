@@ -47,7 +47,7 @@ const rows = [];
   console.log('[inject] ۳ درخواست /api/__slow در جریان + SIGKILL به pid=' + pid0);
 
   /* ── ۲) تزریق: kill -9 ──────────────────────────────────────── */
-  const tKill = Date.now();
+  const tKill = Date.now(); void tKill;
   const killed = api.kill9(pid0);
   L.check(rows, 'inject: SIGKILL به PID واقعیِ node ارسال شد', killed, 'pid=' + pid0);
 

@@ -28,7 +28,12 @@ const ROOT = path.join(__dirname, '..');
 let pass = 0, fail = 0;
 function chk(name, ok, detail) {
   if (ok) { pass++; console.log(`  ✅ ${name}`); }
-  else { fail++; console.log(`  ❌ ${name}${detail ? ' — ' + detail : ''}`); }
+  else {
+    fail++;
+    const msg = `${name}${detail ? ' — ' + detail : ''}`;
+    console.log(`  ❌ ${msg}`);
+    console.log(`::error title=A-22 failure::${msg.replace(/\r?\n/g, ' ').slice(0, 400)}`);
+  }
 }
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -68,7 +73,7 @@ function makeRedis(port) {
         buf = parsed.rest;
         if (partitioned) continue; /* بلک‌هول: می‌خوانیم ولی جواب نمی‌دهیم */
         const out = handle(parsed.args);
-        if (out !== null) { try { sock.write(out); } catch (e) {} }
+        if (out !== null) { try { sock.write(out); } catch (e) { /* ignore */ } }
       }
     });
     sock.on('error', () => {});
@@ -147,7 +152,7 @@ function makeRedis(port) {
   }
   return {
     listen: () => new Promise((r) => server.listen(port, '127.0.0.1', () => r())),
-    kill: () => { for (const s of socks) { try { s.destroy(); } catch (e) {} } socks.clear(); try { server.close(); } catch (e) {} },
+    kill: () => { for (const s of socks) { try { s.destroy(); } catch (e) { /* ignore */ } } socks.clear(); try { server.close(); } catch (e) { /* ignore */ } },
     partition: () => { partitioned = true; },
     unpartition: () => { partitioned = false; },
     has: (k) => kv.has(k)
@@ -164,7 +169,11 @@ function bootInstance(port, redisUrl, storeFile, auditFile, keyFile, extra) {
     PAYESH_DEMO_CODE: '1'
   });
   if (redisUrl) env.REDIS_URL = redisUrl; else delete env.REDIS_URL;
-  delete env.NODE_ENV; delete env.DATABASE_URL; delete env.REDIS_CLUSTER_NODES; delete env.REDIS_SENTINELS;
+  delete env.NODE_ENV; delete env.PAYESH_ENV; delete env.PAYESH_JWT_SECRET;
+  delete env.DATABASE_URL; delete env.PGURL;
+  delete env.PG_LIVE_PG; delete env.SYNC_TEST_DATABASE_URL;
+  delete env.PGHOST; delete env.PGPORT; delete env.PGUSER; delete env.PGPASSWORD; delete env.PGDATABASE;
+  delete env.REDIS_CLUSTER_NODES; delete env.REDIS_SENTINELS;
   Object.assign(env, extra || {});
   const child = spawn(process.execPath, ['server/index.js'], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
   /* log باید روی یک شیءِ قابل‌تغییر نگه داشته شود؛ برگرداندنِ string با مقدار
@@ -183,7 +192,7 @@ function makeReq(port, timeoutMs) {
       timeout: timeoutMs || 0,
       headers: Object.assign({ 'content-type': 'application/json' }, data ? { 'content-length': Buffer.byteLength(data) } : {}, cookie ? { cookie } : {}) },
       (res) => { let b = ''; res.on('data', d => (b += d)); res.on('end', () => {
-        let j = null; try { j = JSON.parse(b); } catch (e) {}
+        let j = null; try { j = JSON.parse(b); } catch (e) { /* ignore */ }
         resolve({ status: res.statusCode, json: j, body: b, headers: res.headers });
       }); });
     r.on('error', (e) => resolve({ status: 0, json: null, body: 'ERR:' + e.message, headers: {} }));
@@ -193,13 +202,18 @@ function makeReq(port, timeoutMs) {
 }
 
 async function waitFor(port, req) {
-  /* منتظر می‌ماند تا سرور سوکت باز کند؛ کدِ وضعیتِ health را برمی‌گرداند
-     (ممکن است ۵۰۳ باشد یعنی «آماده نیست ولی سرو می‌دهد»). */
+  /* منتظر می‌ماند تا سرور سوکت باز کند و cache/db آماده شوند (health === 200)؛
+     در پنجرهٔ کوتاهِ بوت پیش از تکمیلِ cache.init، health موقتاً ۵۰۳ است. */
+  let last = 0;
   for (let i = 0; i < 90; i++) {
-    try { const h = await req('GET', '/api/health'); if (h.status !== 0) return h.status; } catch (e) {}
+    try {
+      const h = await req('GET', '/api/health');
+      if (h.status === 200) return 200;
+      if (h.status !== 0) last = h.status;
+    } catch (e) { /* ignore */ }
     await sleep(200);
   }
-  return 0;
+  return last;
 }
 
 async function login(req, phone, nid) {
@@ -219,19 +233,26 @@ function tmpSetup(tag) {
   const src = path.join(ROOT, 'server', 'data', 'payesh.json');
   if (!fs.existsSync(src)) require('child_process').execSync('node server/seed.js', { cwd: ROOT, stdio: 'ignore' });
   const store = path.join(dir, 's.json'); fs.copyFileSync(src, store);
-  return { dir, store, audit: path.join(dir, 'a.log'), key: path.join(dir, 'k.key') };
+  /* کلیدِ JWT را پیش از spawn هم‌زمانِ A و B اتمیک می‌سازیم تا هرگز رقابتِ
+     TOCTOU روی k.key باعثِ دو کلیدِ متفاوت در حافظهٔ A و B نشود (علتِ S2c A=200 B=401). */
+  const key = path.join(dir, 'k.key');
+  fs.writeFileSync(key, crypto.randomBytes(32).toString('hex'), { mode: 0o600 });
+  return { dir, store, audit: path.join(dir, 'a.log'), key };
 }
-function killInst(inst) { try { inst.child.kill('SIGTERM'); } catch (e) {} }
+function killInst(inst) { try { inst.child.kill('SIGTERM'); } catch (e) { /* ignore */ } }
 /* اگر فرزند از قبل تمام شده، منتظرِ رویداد نمان (گرنه هنگ می‌کند). */
 function awaitExit(inst, ms) {
   if (inst.closed) return Promise.resolve();
   return new Promise((resolve) => {
     let done = false; const fin = () => { if (!done) { done = true; resolve(); } };
     inst.child.on('close', fin);
-    setTimeout(fin, ms || 4000);
+    setTimeout(() => {
+      if (!inst.closed) { try { inst.child.kill('SIGKILL'); } catch (e) { /* ignore */ } }
+      setTimeout(fin, 500);
+    }, ms || 4000);
   });
 }
-function rmDir(dir) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {} }
+function rmDir(dir) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* ignore */ } }
 
 async function main() {
   console.log('▸ RE-AUDIT A-22 — Redis در دسترس نیست (ممیزیِ مستقل از صفر)');
@@ -263,7 +284,7 @@ async function main() {
       result.log.indexOf('Cache readiness failed') !== -1 || result.log.indexOf('Cache init crashed') !== -1,
       result.log.slice(-200));
     killInst(inst);
-    try { await awaitExit(inst); } catch (e) {}
+    try { await awaitExit(inst); } catch (e) { /* ignore */ }
     rmDir(t.dir);
   }
 
@@ -351,7 +372,7 @@ async function main() {
       }
     }
     killInst(A); await awaitExit(A);
-    try { fake.kill(); } catch (e) {}
+    try { fake.kill(); } catch (e) { /* ignore */ }
     rmDir(t.dir);
   }
 
@@ -395,7 +416,7 @@ async function main() {
       chk('S4 سرور بالا آمد', false, inst.log.slice(-200));
       killInst(inst);
     }
-    try { fake.kill(); } catch (e) {}
+    try { fake.kill(); } catch (e) { /* ignore */ }
     rmDir(t.dir);
   }
 
@@ -429,7 +450,7 @@ async function main() {
       }
     }
     killInst(inst); await awaitExit(inst);
-    try { fake.kill(); } catch (e) {}
+    try { fake.kill(); } catch (e) { /* ignore */ }
     rmDir(t.dir);
   }
 

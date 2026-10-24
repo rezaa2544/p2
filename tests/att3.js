@@ -79,6 +79,7 @@ async function main() {
   assert(ctx.sid, 'مدرسهٔ فعال پیدا نشد');
   assert(ctx.teacher, 'دبیر پیدا نشد');
   assert(ctx.students.length >= 5, 'دانش‌آموزِ کافی نیست');
+  W(`(db.makeup_classes = db.makeup_classes || []).push({ id: 999991, school_id: ${ctx.sid}, date: todayISO() });`);
 
   const teacherOn = (extra) => W(`(function(){
     S.user=byId('users',${ctx.teacher});S.persona=null;S.boss=null;
@@ -100,7 +101,7 @@ async function main() {
 
   /* ── ۱) برچسبِ «خروج از کلاس» ───────────────────────────── */
   test('T1 برچسب: ATT_FA و دکمهٔ جدول «خروج از کلاس» است', () => {
-    const r = W(`({fa:ATT_FA.early_exit, n:document.querySelectorAll('[data-act="att-set"][data-s="early_exit"]').length})`);
+    const r = W(`({fa:ATT_FA.early_exit, n:document.querySelectorAll('[data-act="att-set"][data-s="early_exit"]').length})`); void r;
     teacherOn();
     const r2 = W(`({fa:ATT_FA.early_exit,
       first:document.querySelector('[data-act="att-set"][data-s="early_exit"]').textContent})`);

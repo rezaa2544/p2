@@ -169,11 +169,11 @@ let stats = null;
   try{
     const th = JSON.parse(fs.readFileSync(path.join(PERF, 'config', 'thresholds.json'), 'utf8'));
     thOk = !!(th.global && th.scenarios && th.suites && th.global['http_req_failed'] && th.suites.soak_24h);
-  }catch(e){}
+  }catch(e){/* intentional no-op */}
   try{
     const ev = JSON.parse(fs.readFileSync(path.join(PERF, 'config', 'environments.json'), 'utf8'));
     envOk = !!(ev.environments && ev.environments.local && ev.environments.staging && ev.environments.cluster);
-  }catch(e){}
+  }catch(e){/* intentional no-op */}
   chk('T5e thresholds.json معتبر (global+scenarios+suites)', thOk);
   chk('T5f environments.json معتبر (local/staging/cluster)', envOk);
 }
@@ -202,7 +202,7 @@ let stats = null;
   chk('T7d stats.json شاملِ sha256 فایل‌ها', Object.keys(stats.checksums).length >= 6);
 }
 
-try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {}
+try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
 console.log('────────────────────────────────────────────');
 console.log('Wave 18 — Load Test: ' + pass + '/' + (pass + fail) + ' موفق' + (fail ? ' — ' + fail + ' خطا ❌' : '  —  بدون خطا ✅'));
 process.exit(fail ? 1 : 0);

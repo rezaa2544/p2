@@ -158,11 +158,11 @@ function main() {
     produced3.length === 0, 'files=' + produced3.join(','));
   chk('B7c کدِ تداخل از کدِ خطایِ واقعی (۱) جداست',
     r3.status === 75, 'status=' + r3.status);
-  if (Number.isFinite(holderPid) && holderPid > 0) { try { process.kill(holderPid, 'SIGKILL'); } catch (e) {} }
+  if (Number.isFinite(holderPid) && holderPid > 0) { try { process.kill(holderPid, 'SIGKILL'); } catch (e) {/* intentional no-op */} }
 
-  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
-  try { fs.rmSync(tmp2, { recursive: true, force: true }); } catch (e) {}
-  try { fs.rmSync(tmp3, { recursive: true, force: true }); } catch (e) {}
+  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
+  try { fs.rmSync(tmp2, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
+  try { fs.rmSync(tmp3, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
 
   const total = pass + fail;
   console.log('────────────────────────────────────────────────────');

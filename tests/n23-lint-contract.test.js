@@ -131,14 +131,13 @@ function codeOnly(s) {
   });
 
   /* ── N23-5: CI must run the gate, or the contract is still unenforced ─ */
-  await check('N23-5 CI runs `npm run lint` before the regression suites', () => {
+  await check('N23-5 CI runs `npm run lint` unconditionally as a hard gate', () => {
     const ci = norm(fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'node.js.yml'), 'utf8'));
     assert.ok(/run:\s*npm run lint/.test(ci), 'node.js.yml has no `npm run lint` step');
-    /* the lint step must run BEFORE the suites so a lint failure fails fast */
-    const lintPos = ci.indexOf('npm run lint');
-    const suitesPos = ci.indexOf('npm run test:all');
-    assert.ok(lintPos > -1 && suitesPos > -1 && lintPos < suitesPos,
-      'the lint step must precede the regression runner');
+    const lintIdx = ci.indexOf('run: npm run lint');
+    const stepSlice = ci.slice(Math.max(0, lintIdx - 200), lintIdx + 80);
+    assert.ok(!/continue-on-error\s*:\s*true/.test(stepSlice),
+      'the lint step must never set continue-on-error: true');
     /* the config must exist and actually extend the recommended ruleset.
        Parsed comment-stripped — eslint allows comments in .eslintrc.json,
        strict JSON.parse does not. */

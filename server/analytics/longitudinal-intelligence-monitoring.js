@@ -68,7 +68,7 @@ function deepFreeze(obj) {
  * @param {Object} [options]
  * @returns {boolean}
  */
-function enforceLongitudinalAccessGuard(requester, targetEntity, options = {}) {
+function enforceLongitudinalAccessGuard(requester, targetEntity, options = {}) { void options;
   if (!requester || typeof requester !== 'object') {
     throw new Error('LONGITUDINAL_ACCESS_FORBIDDEN: requester session is missing');
   }
@@ -510,7 +510,7 @@ function calculateSustainableImprovement(params = {}, options = {}) {
 function generateLongitudinalInsights(params = {}, options = {}) {
   const trends = params.trends || {};
   const changePoints = Array.isArray(params.changePoints) ? params.changePoints : [];
-  const interventions = Array.isArray(params.interventions) ? params.interventions : [];
+  const interventions = Array.isArray(params.interventions) ? params.interventions : []; void interventions;
 
   const insights = [];
   const recommendations = [];

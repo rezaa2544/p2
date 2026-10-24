@@ -16,7 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
-const assert = require('assert');
+const assert = require('assert'); void assert;
 
 const SRC = fs.readFileSync(path.join(__dirname, '..', 'src', 'js', '78-intelligence.js'), 'utf8');
 

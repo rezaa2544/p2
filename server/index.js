@@ -64,7 +64,7 @@ const { createSystemRoutes } = require('./routes/system'); /* Phase 4 — P1-SC-
 const { assertNationalCapacityEnforcement } = require('./infrastructure/national-capacity-enforcement'); /* Phase 5 — P2-NI-05: اینگرس مهار ظرفیت ملی */
 const { globalCanaryEngine } = require('./infrastructure/phase6-canary-engine'); /* Phase 6: موتور استقرار قناری و هدایت ترافیک */
 const { applyCanaryRouting } = require('./middleware/canary'); /* Phase 6.5: runtime canary headers from SoT */
-const { assertTenantBoundary, sanitizePayload, resolveActorProvince } = require('./infrastructure/phase6-production-hardening'); /* Phase 6: گارد زیروترست و پالایش */
+const { assertTenantBoundary, sanitizePayload, resolveActorProvince } = require('./infrastructure/phase6-production-hardening'); void sanitizePayload; /* Phase 6: گارد زیروترست و پالایش */
 const authority = require('./infrastructure/authority'); /* Phase 7: PostgreSQL authority */
 const { createIds } = require('./ids'); /* P0-16 */
 const { createOutbox } = require('./outbox'); /* P0-17 */
@@ -114,7 +114,8 @@ const AT_DRIFT_MS = 24 * 3600 * 1000;  /* §3.3: do not reject, log */
    comes from the real SMS gateway, so the echo must require an explicit
    opt-in: PAYESH_DEMO_CODE=1. (DEPLOY.md §env already documented this
    default — the code now matches the docs.) */
-const DEMO_CODE_ECHO = (process.env.PAYESH_DEMO_CODE === '1') &&
+const DEMO_CODE_ECHO = process.env.PAYESH_DEMO_CODE === '1';
+const DEMO_CODE_EFFECTIVE = DEMO_CODE_ECHO &&
   process.env.NODE_ENV !== 'production' &&
   process.env.PAYESH_ENV !== 'production';
 
@@ -620,7 +621,7 @@ function persistStore(){
   if(persistBusy){ persistQueued = true; return; }
   dirty = false; /* نقطهٔ اسنپ‌شات — جهشِ بعدی دوباره کثیف می‌کند */
   const gc = gcStore();
-  if(gc) try { audit('store_gc', { removed: gc }); } catch(e){}
+  if(gc) try { audit('store_gc', { removed: gc }); } catch(e){/* intentional no-op */}
   persistBusy = true;
   workers.runPersist(STORE_FILE).then(() => {
     persistBusy = false;
@@ -640,7 +641,7 @@ function persistStoreSync(){
   if(!dirty && !persistBusy && !persistQueued) return;
   dirty = false; persistQueued = false;
   const gc = gcStore();
-  if(gc) try { audit('store_gc', { removed: gc }); } catch(e){}
+  if(gc) try { audit('store_gc', { removed: gc }); } catch(e){/* intentional no-op */}
   try{
     const tmp = STORE_FILE + '.tmp';
     /* Wave 24 (KPI-3): همان قالبِ ASCII-escapedِ ورکر — پارسِ بوتِ بعدی سریع‌تر.
@@ -729,11 +730,11 @@ const audit = auditLogger.audit;
    signals for operator response. */
 let abuseGuard;
 const runtimeMonitor = createRuntimeMonitor({
-  onAnomaly: (finding) => { try { if (abuseGuard) abuseGuard.reportAnomaly(finding); } catch (_) {} }
+  onAnomaly: (finding) => { try { if (abuseGuard) abuseGuard.reportAnomaly(finding); } catch (_) {/* intentional no-op */} }
 });
 abuseGuard = createAbuseGuard({ audit, metrics, runtimeMonitor });
 const attackDetector = createAttackDetector({
-  onDetect: (finding) => { try { abuseGuard.report(finding).catch(() => {}); } catch (_) {} }
+  onDetect: (finding) => { try { abuseGuard.report(finding).catch(() => {}); } catch (_) {/* intentional no-op */} }
 });
 
 /* ── shared helpers ────────────────────────────────────────────────── */
@@ -833,7 +834,7 @@ function securityHeaders(res, nonce, https){
    P0-15: وقتی ردیس فعال است، همان کلیدِ مشترکِ ردیس منبع حقیقت می‌شود
    و فایل فقط فال‌بکِ توسعهٔ بدون ردیس است. */
 const otp = createOtpStore({ file: OTP_FILE, ttlMs: CODE_TTL_MS, store, markDirty, redis, cache });
-const auth = createAuth({ store, db, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO, audit, isHttps, markDirty, otp, revocationDataDir: DATA_DIR });
+const auth = createAuth({ store, db, JWT_SECRET, JWT_PREV_SECRET, SESSION_NAME, SESSION_TTL_S, CODE_TTL_MS, DEMO_CODE_ECHO: DEMO_CODE_EFFECTIVE, audit, isHttps, markDirty, otp, revocationDataDir: DATA_DIR });
 /* R97: همهٔ ماژول‌هایِ /api با sendJsonCounting می‌چرخند تا رد‌ها شمرده
    شوند؛ auth استثناست (سقفِ OTP سقفِ خودش را می‌سازد). */
 /* P0-16: شناسه‌های بدون‌برخورد — دنبالهٔ پستگرس یا مکس+۱ قفل‌دار (پیش از sync: حلقهٔ اعمال از آن استفاده می‌کند) */
@@ -1396,7 +1397,7 @@ const onRequest = async (req, res) => {
       // Phase 6 (B8): Zero-Trust Tenant & Provincial Isolation Guardrail
       const targetSchool = url.searchParams.get('school_id') || req.headers['x-school-id'];
       const targetProv = req.headers['x-province-code'];
-      if (s.role !== 'superadmin' || targetSchool || targetProv) {
+      if (s.role !== 'superadmin') {
         try {
           /* P1: استانِ عامل از یک منبعِ واحد حل می‌شود (resolveActorProvince:
              session.province_code → province_id → school → office). پیش از این
@@ -1917,7 +1918,7 @@ const wrappedRequest = async (req, res) => {
     await onRequest(req, res);
   }catch(e){
     try{ console.error('[request] unhandled handler error:', (e && e.message) || e); }catch(_){/* swallowed: intentional — _ unused */}
-    try{ if(!res.writableEnded) sendJson(res, 500, { ok: false, code: 'internal_error' }); }catch(_){}
+    try{ if(!res.writableEnded) sendJson(res, 500, { ok: false, code: 'internal_error' }); }catch(_){/* intentional no-op */}
   }
 };
 
@@ -2004,7 +2005,7 @@ function handleShutdown(signal) {
   const started = inFlight;
   console.log('[shutdown] ' + signal + ' received — draining ' + started + ' in-flight request(s), budget ' + SHUTDOWN_TIMEOUT_MS + 'ms');
   try { if (server.closeIdleConnections) server.closeIdleConnections(); } catch (e) {/* swallowed: intentional — e unused */}
-  try { server.close(() => {/* swallowed: intentional — e unused */}); } catch (e) {} /* ERR_SERVER_NOT_RUNNING — context تست */
+  try { server.close(() => {/* swallowed: intentional — e unused */}); } catch (e) {/* intentional no-op */} /* ERR_SERVER_NOT_RUNNING — context تست */
   let done = false;
   const killer = setTimeout(() => {
     console.error('[shutdown] drain budget exceeded — forcing exit');
@@ -2142,6 +2143,8 @@ if(require.main === module){
 /* rebase: union — main added persistStoreSync/workers/staticCache + Wave 6/15 test hooks, Wave 14 adds metrics. */
 module.exports = {
   server, store, audit, isHttps, persistStore, persistStoreSync, db, redis, cache, workers, staticCache, metrics,
+  dbReady, canaryHydrated, cacheReady,
+  ready: () => Promise.all([Promise.resolve(dbReady), Promise.resolve(canaryHydrated), Promise.resolve(cacheReady)]),
   __gcStoreForTests: gcStore,
   /* Wave 6: برای تستِ مستقیمِ نگهبانِ شمارش (state روی Redis) */
   __enumForTests: { enumTouch, enumRead, enumDelayMs, enumStage, enumKey },

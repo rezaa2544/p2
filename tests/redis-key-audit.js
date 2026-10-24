@@ -14,7 +14,7 @@ const path = require('path');
 delete process.env.NODE_ENV;
 delete process.env.REDIS_URL;
 
-const ROOT = path.join(__dirname, '..');
+const ROOT = path.join(__dirname, '..'); void ROOT;
 const redis = require('../server/redis.js');
 const cache = require('../server/cache.js');
 const rateLimit = require('../server/rate-limit.js');

@@ -210,7 +210,7 @@ function branchPreflight(name, opts) {
       : behind > opts.behindWarn ? 'پایهٔ شاخه ' + fa(behind) + ' کامیت از ' + mainRef + ' عقب‌تر است (ریسکِ تداخل؛ ادغامِ روزانه توصیه می‌شود).'
       : 'پایهٔ شاخه تازه است (' + fa(behind) + ' کامیت عقب‌تر).');
   let ageDays = -1;
-  try { ageDays = ageDaysOf(parseInt(git(['log', '-1', '--format=%ct', tip]), 10)); } catch (e) {}
+  try { ageDays = ageDaysOf(parseInt(git(['log', '-1', '--format=%ct', tip]), 10)); } catch (e) {/* intentional no-op */}
   chk('BP-5', false, ageDays >= 0 && ageDays <= opts.staleDays,
     ageDays < 0 ? 'سنِّ نوکِ شاخه در دسترس نیست.'
       : 'سنِّ نوکِ شاخه: ' + fa(ageDays) + ' روز' + (ageDays > opts.staleDays ? ' (کهنهٔ سنی)' : ''));
@@ -221,7 +221,7 @@ function branchPreflight(name, opts) {
       .map((l) => l.split(' '))
       .filter(([t, n]) => t === tip && n !== name && n !== 'origin/' + name && n !== 'main' && n !== 'origin/main')
       .map(([, n]) => n);
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   chk('BP-6', false, shared.length === 0,
     shared.length === 0 ? 'نوکِ شاخه با نامِ دیگری مشترک نیست.'
       : 'نوکِ شاخه با ' + fa(shared.length) + ' نامِ دیگر مشترک است: ' + shared.slice(0, 5).join('، ') + ' (ریسکِ شاخهٔ اشتراکی).');
@@ -288,7 +288,7 @@ function selftest() {
     /* ۱) سرشماری */
     const fl = runTool(['--fleet', '--json', '--stale-days', '14']);
     chk('سرشماری خروجی ۰ دارد', fl.code === 0, fl.out);
-    let fj = null; try { fj = JSON.parse(fl.out); } catch (e) {}
+    let fj = null; try { fj = JSON.parse(fl.out); } catch (e) {/* intentional no-op */}
     chk('سرشماری جی‌سانِ معتبر دارد', !!fj && fj.mode === 'fleet');
     chk('مرجِ اصلی «main» انتخاب شده (بدون ریموت)', fj && fj.mainRef === 'main');
     chk('منبعِ سرشماری شاخه‌های محلی است (بدون ریموت)', fj && fj.source === 'local-heads');
@@ -316,13 +316,13 @@ function selftest() {
     const hu = runTool(['--fleet', '--stale-days', '14']);
     chk('خروجیِ انسانی سرشماری حاوی شمارِ خوشه‌هاست', hu.code === 0 && /خوشه/.test(hu.out));
     const agedOnly = runTool(['--fleet', '--json', '--stale-days', '999999']);
-    let aj = null; try { aj = JSON.parse(agedOnly.out); } catch (e) {}
+    let aj = null; try { aj = JSON.parse(agedOnly.out); } catch (e) {/* intentional no-op */}
     chk('آستانهٔ بزرگ ⇒ هیچ شاخه‌ای کهنهٔ سنی نیست', aj && aj.counts.aged === 0);
 
     console.log('نتیجه: ' + fa(pass) + ' موفق / ' + fa(failn) + ' ناموفق (از ' + fa(pass + failn) + ')');
     return failn ? 1 : 0;
   } finally {
-    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   }
 }
 

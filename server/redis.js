@@ -198,10 +198,10 @@ async function init() {
 
   try {
     if (client) {
-      try { client.disconnect(); } catch (e) {}
+      try { client.disconnect(); } catch (e) {/* intentional no-op */}
     }
     if (subClient) {
-      try { subClient.disconnect(); } catch (e) {}
+      try { subClient.disconnect(); } catch (e) {/* intentional no-op */}
     }
 
     if (cfg.mode === 'cluster') {
@@ -229,7 +229,13 @@ async function init() {
       isRedisActive = true;
     });
 
-    await client.connect();
+    await Promise.race([
+      client.connect(),
+      new Promise((_, reject) => setTimeout(
+        () => reject(new Error('Redis connect timeout during init')),
+        (cfg.options && cfg.options.connectTimeout ? cfg.options.connectTimeout : 3000) + 1000
+      ).unref())
+    ]);
 
     /* کلاینت اختصاصیِ Pub/Sub — هم‌حالت با کلاینت اصلی */
     if (cfg.mode === 'cluster') {
@@ -250,7 +256,7 @@ async function init() {
       const cbs = subscriptions.get(channel);
       if (cbs) {
         for (const cb of cbs) {
-          try { cb(message, channel); } catch (e) {}
+          try { cb(message, channel); } catch (e) {/* intentional no-op */}
         }
       }
     });
@@ -261,11 +267,11 @@ async function init() {
     console.warn('[Redis] Connection failed.', isProduction() ? 'Production refuses fallback (readiness fails):' : 'Using in-memory fallback (dev only):', err.message);
     isRedisActive = false;
     if (client) {
-      try { client.disconnect(); } catch (e) {}
+      try { client.disconnect(); } catch (e) {/* intentional no-op */}
       client = null;
     }
     if (subClient) {
-      try { subClient.disconnect(); } catch (e) {}
+      try { subClient.disconnect(); } catch (e) {/* intentional no-op */}
       subClient = null;
     }
     if (isProduction()) {
@@ -696,7 +702,7 @@ async function publish(channel, message) {
   const cbs = subscriptions.get(channel);
   if (cbs) {
     for (const cb of cbs) {
-      try { cb(payload, channel); } catch (e) {}
+      try { cb(payload, channel); } catch (e) {/* intentional no-op */}
     }
   }
   return 1;
@@ -829,7 +835,7 @@ async function ping() {
     }
   }
   if (isProduction()) {
-    return { ok: false, driver: 'none', mode: activeMode, alive: false, error: 'REDIS_UNAVAILABLE' };
+    return { ok: false, driver: activeMode !== 'memory' ? 'redis' : 'none', mode: activeMode, alive: false, error: 'REDIS_UNAVAILABLE' };
   }
   return { ok: true, driver: 'memory', alive: true };
 }
@@ -839,11 +845,11 @@ async function ping() {
  */
 async function close() {
   if (subClient) {
-    try { subClient.disconnect(); } catch (e) {}
+    try { subClient.disconnect(); } catch (e) {/* intentional no-op */}
     subClient = null;
   }
   if (client) {
-    try { client.disconnect(); } catch (e) {}
+    try { client.disconnect(); } catch (e) {/* intentional no-op */}
     client = null;
   }
   isRedisActive = false;

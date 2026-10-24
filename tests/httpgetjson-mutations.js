@@ -34,8 +34,8 @@ const MUTS = [
   },
   {
     file: 'src/js/00-data-layer.js', suite: 'tests/httpgetjson.js',
-    bad: 'if(ctl) to = setTimeout(function(){ timedOut = true; try{ ctl.abort(); }catch(e){} }, timeoutMs || 6000);',
-    mut: 'if(ctl) to = setTimeout(function(){ try{ ctl.abort(); }catch(e){} }, timeoutMs || 6000);',
+    bad: 'if(ctl) to = setTimeout(function(){ timedOut = true; try{ ctl.abort(); }catch(e){ // noop\n} }, timeoutMs || 6000);',
+    mut: 'if(ctl) to = setTimeout(function(){ try{ ctl.abort(); }catch(e){ // noop\n} }, timeoutMs || 6000);',
     name: 'M3 علامتِ مهلت (timedOut) حذف شد',
     expectFail: 'H6'
   }

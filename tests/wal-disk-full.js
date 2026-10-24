@@ -119,7 +119,7 @@ function psql(sql, opts = {}) {
    به‌جایِ کاربرِ root، به‌عنوانِ آن کاربر — برایِ pg_ctl که باید مالکِ
    PGDATA باشد، لازم است). pgEnv лож می‌شود وقتی ابزار به متغیرهایِ PG
    نیاز ندارد (pg_ctl). */
-const SUDO_ARG_RE = /^(-[A-Za-z]+|--[a-z-]+|[A-Za-z_][A-Za-z0-9_.]*=.*|\/[A-Za-z0-9_./-]+|[0-9]+|'.*')$/;
+const SUDO_ARG_RE = /^(-[A-Za-z]+|--[a-z-]+|[A-Za-z_][A-Za-z0-9_.]*=.*|\/[A-Za-z0-9_./-]+|[0-9]+|[A-Za-z0-9_]+|select (?:count\(\*\) from attendance|pg_last_wal_replay_lsn\(\) >= '[0-9A-Fa-f]+\/[0-9A-Fa-f]+'::pg_lsn)|'.*')$/;
 function sudoPg(tool, args, opts, hostPort) {
   if (!PG_TOOLS.has(tool)) throw new Error('wal-disk-full: disallowed pg tool: ' + tool);
   if (!Array.isArray(args) || args.some((a) => typeof a !== 'string' || !SUDO_ARG_RE.test(a)))
@@ -175,7 +175,7 @@ function logMarker() {
   const m = {};
   try { for (const f of fs.readdirSync(CFG.logDir)) {
     try { m[f] = fs.statSync(path.join(CFG.logDir, f)).size; } catch (e) { m[f] = 0; }
-  } } catch (e) {}
+  } } catch (e) {/* intentional no-op */}
   return m;
 }
 function newLogsSince(marker) {
@@ -194,7 +194,7 @@ function newLogsSince(marker) {
       fs.readSync(fd, buf, 0, buf.length, from);
       fs.closeSync(fd);
       out.push(buf.toString('utf8'));
-    } catch (e) {}
+    } catch (e) {/* intentional no-op */}
   }
   return out.join('\n');
 }
@@ -209,7 +209,7 @@ function fillWalTo(targetPct) {
   const total = CFG.walMb * 1024 * 1024;
   const target = Math.floor(total * targetPct / 100);
   const fillerDir = path.join(CFG.walMnt, 'drill-filler');
-  try { fs.mkdirSync(fillerDir, { recursive: true }); } catch (e) {}
+  try { fs.mkdirSync(fillerDir, { recursive: true }); } catch (e) {/* intentional no-op */}
   let idx = 0, guard = 0;
   const big = Buffer.alloc(4 * 1024 * 1024, 7);   // 4MB — زیرِ یک segmentِ WAL
   const small = Buffer.alloc(64 * 1024, 7);       // 64KB — برایِ ریزکردنِ لبه
@@ -240,7 +240,7 @@ function fillWalTo(targetPct) {
 function freeWalSpace() {
   // «پاک کردنِ WALِ قدیمی» — در عمل، آزادسازیِ فضا از رویِ دیسکِ WAL.
   const dir = path.join(CFG.walMnt, 'drill-filler');
-  try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {}
+  try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   return walBytes();
 }
 
@@ -319,8 +319,10 @@ function dataChecksum() {
 function sudoChown(target, recursive) {
   const t = path.resolve(String(target || ''));
   const base = path.resolve(CFG.pgdata);
+  const siblingPrefix = path.join(path.dirname(base), 'pgdata-wal-');
   const tmpBase = path.resolve(os.tmpdir());
   const inside = t === base || t.indexOf(base + path.sep) === 0
+    || t.indexOf(siblingPrefix) === 0
     || t === tmpBase || t.indexOf(tmpBase + path.sep) === 0;
   if (!inside) throw new Error('wal-disk-full: refusing to chown outside the drill dirs: ' + t);
   const args = ['-n', 'chown'];
@@ -524,10 +526,18 @@ function liveAvailable() {
     if (wl.errors.length) console.log('      اولین خطا: ' + wl.errors[0]);
 
     psql('checkpoint', { timeout: 15000 });
-    // کلیدِ سناریو: تا وقتی PG می‌تواند سگمنتِ قدیمی را «بازیافت» کند یا داخلِ
-    // سگمنتِ از‌پیش‌تخصیص‌یافته بنویسد، هیچ تخصیصِ تازه‌ای لازم ندارد و پر
-    // بودنِ دیسک را حس نمی‌کند. پس او را وادار می‌کنیم به سگمنتِ تازه برود.
-    psql('select pg_switch_wal()', { timeout: 15000 });
+    // نکتهٔ حیاتیِ PG16+: خودِ CHECKPOINTِ بالا سگمنت‌هایِ WALِ پیش از
+    // checkpoint را unlink می‌کند (~۶ تا ۷ مگابایت فضا در tmpfs آزاد می‌شود)!
+    // پس بلافاصله پس از checkpoint دوباره tmpfs را تا avail=0 پر می‌کنیم تا هیچ
+    // سگمنتِ قابلِ حذفی باقی نماند و اولین سگمنتِ جدید دقیقاً به ENOSPC بخورد.
+    fillWalTo(100);
+    for (let sw = 0; sw < 8 && pgIsReady() && !overBudget('W2s'); sw++) {
+      psql('select pg_switch_wal()', { timeout: 15000 });
+      fillWalTo(100);
+      const rAfter = writeLoad(1, 100);
+      wl.committed += rAfter.committed; wl.errors = wl.errors.concat(rAfter.errors);
+      if (!pgIsReady()) break;
+    }
     psql('checkpoint', { timeout: 15000 });
     for (let i = 0; i < 10 && !down && !overBudget('W2b'); i++) { await sleep(500); down = !pgIsReady(); }
 
@@ -561,7 +571,7 @@ function liveAvailable() {
 
     // «پاک کردنِ WALِ قدیمی» ⇒ آزادسازیِ فضا
     const freedTo = freeWalSpace();
-    const tFreed = Date.now();
+    const tFreed = Date.now(); void tFreed;
     console.log('      فضا آزاد شد → ' + (freedTo / 1048576).toFixed(1) + 'MB مصرف (' +
       walPct().toFixed(1) + '%)');
 
@@ -608,7 +618,7 @@ function liveAvailable() {
     } else {
       console.log('      replica بالا آمد روی پورتِ ' + rp.port);
       // یک نوشتنِ تازه روی primary، سپس انتظار برای replica
-      const lsnBefore = (psql('select pg_current_wal_lsn()').stdout || '').trim();
+      const lsnBefore = (psql('select pg_current_wal_lsn()').stdout || '').trim(); void lsnBefore;
       const wl = writeLoad(1, 1200);
       const lsn = (psql('select pg_current_wal_lsn()').stdout || '').trim();
       console.log('      [' + elapsed() + '] انتظار برای رسیدنِ replica به ' + lsn);
@@ -648,7 +658,7 @@ function finish(liveWhy) {
       summary: { pass, fail, notRun },
       results, timeline,
     }, null, 2));
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   console.log('────────────────────────────────────────────');
   let line = 'WAL disk-full drill: ' + pass + '/' + (pass + fail + notRun) + ' موفق';
   if (notRun) line += ' — ' + notRun + ' سناریو NOT-RUN ⏭️';

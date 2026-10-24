@@ -21,8 +21,8 @@ const ROOT = path.join(__dirname, '..');
 const SUITE = 'tests/sync-atomic-batch.js';
 const MUTS = [
   { file: 'server/db.js',
-    bad: '    await persistOpWithClient(client, op);',
-    mut: '    await persistOpWithClient(client, op).catch(() => {});',
+    bad: '    await persistOpWithClient(client, Object.assign({}, op, { uid: undefined }));',
+    mut: '    await persistOpWithClient(client, Object.assign({}, op, { uid: undefined })).catch(() => {});',
     name: 'M1 بلعِ خطا در دسته', expectFail: 'B4b2' },
   { file: 'server/db.js',
     bad: "return { ok: true, driver: 'memory', count: list.length };",
@@ -31,8 +31,8 @@ const MUTS = [
   { file: 'server/sync.js',
     /* ترمیم لنگر (BH-mut فاز ۲): متغیرِ آینه mirror → batchAll شد (P1-14) —
        لنگرِ قدیمی روی main پوششِ صفر داشت. */
-    bad: '        await db.persistOpsBatch(batchAll);',
-    mut: '        await db.persistOp(batchAll);',
+    bad: '        await (typeof db.persistSyncBatch === \'function\'',
+    mut: '        await db.persistOp(batchAll[0]); if (false) await (typeof db.persistSyncBatch === \'function\'',
     name: 'M3 فراخوانیِ تکی به‌جایِ batch', expectFail: 'B7b' },
   { file: 'server/sync.js',
     bad: 'mirror.push({ uid: op.uid, c: op.c, t: \'ins\', data: (ex || data) });',
@@ -52,7 +52,7 @@ for (const m of MUTS) {
   const abs = path.join(ROOT, m.file);
   if (prevAbs && prevAbs !== abs) kit.clear(prevAbs);
   const mcopy = kit.mutant(abs, src0.replace(m.bad, m.mut)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-  try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {}
+  try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {/* intentional no-op */}
   prevAbs = abs;
   let out = '', crashed = false;
   try { execFileSync('node', [SUITE], { stdio: 'pipe', timeout: 120000, cwd: ROOT, env: kit.env() }); out = 'PASSED (no failure)'; }

@@ -48,6 +48,7 @@ for (const m of MUTS) {
   if (src0.indexOf(m.bad) < 0) { console.log(`  ❌ ${m.name}: الگو پیدا نشد در ${m.file}`); continue; }
   kit.mutant(abs, src0.replace(m.bad, m.mut)); /* کپی جدا؛ سورس اصلی دست‌نخورده */
   execFileSync('node', ['build.js'], { stdio: 'pipe', env: kit.env(), cwd: ROOT });
+  fs.copyFileSync(path.join(ROOT, 'dist', 'payesh.html'), kit.mutant(path.join(ROOT, 'index.html'), fs.readFileSync(path.join(ROOT, 'dist', 'payesh.html'))));
   let out = '', crashed = false;
   const args = ['--max-old-space-size=1500', suite];
   try { execFileSync('node', args, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }

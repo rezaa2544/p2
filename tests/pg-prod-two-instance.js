@@ -56,7 +56,7 @@ function freshDb() {
   catch (e) {
     console.log(NAME + ': NOT-RUN — PostgreSQL not reachable: ' + e.message);
     process.exit(2);
-  } finally { try { await probe.end(); } catch (e) {} }
+  } finally { try { await probe.end(); } catch (e) {/* intentional no-op */} }
   preflightOk = true;
 
   /* ══ Part A — production, both instances on PostgreSQL ══ */
@@ -115,8 +115,8 @@ function freshDb() {
     threw === true && afterRollback.rows[0].n === 0, 'threw=' + threw + ' rows=' + afterRollback.rows[0].n);
 
   await A.query('DROP TABLE IF EXISTS chat1_pkg1_shared');
-  try { await A.close(); } catch (e) {}
-  try { await B.close(); } catch (e) {}
+  try { await A.close(); } catch (e) {/* intentional no-op */}
+  try { await B.close(); } catch (e) {/* intentional no-op */}
 
   /* ══ Part B — the counter-example: memory store diverges per process ══ */
   process.env.NODE_ENV = 'development';

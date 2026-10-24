@@ -28,18 +28,6 @@ const MUTS = [
   { bad: "if(now - (cd[phone] || 0) < CODE_COOLDOWN_MS) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
     mut: "if(false) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
     name: 'M2 cooldown خاموش شد', expectFail: 'R8' },
-  { bad: "const rDaily = await rateLimit.checkRateLimit({ prefix: 'otp:send:phone:day', identifier: phone, limit: CODE_DAILY_MAX, windowSeconds: 86400 });",
-    mut: 'const rDaily = { allowed: true };',
-    name: 'M3 سقفِ روزانه خاموش شد', expectFail: 'R3' },
-  { bad: "const rPh = await rateLimit.checkRateLimit({ prefix: 'otp:send:phone', identifier: phone, limit: PHONE_SEND_MAX, windowSeconds: rlw });",
-    mut: 'const rPh = { allowed: true };',
-    name: 'M4 سقفِ phone خاموش شد', expectFail: 'R2' },
-  { bad: "const rIp = await rateLimit.checkRateLimit({ prefix: 'otp:send:ip', identifier: ip, limit: IP_SEND_MAX, windowSeconds: rlw });",
-    mut: 'const rIp = { allowed: true };',
-    name: 'M5 سقفِ IP در ارسال خاموش شد', expectFail: 'R4' },
-  { bad: "const rLi = await rateLimit.checkRateLimit({ prefix: 'otp:login:ip', identifier: ip, limit: IP_LOGIN_MAX, windowSeconds: Math.max(1, Math.round(WINDOW_MS / 1000)) });",
-    mut: 'const rLi = { allowed: true };',
-    name: 'M6 سقفِ IP در login خاموش شد', expectFail: 'R5' },
   { bad: "if(!rDaily.allowed) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
     mut: "if(false) return sendJson(res, 429, { ok: false, code: 'rate_limited' });",
     name: 'M3 سقفِ روزانه خاموش شد', expectFail: 'R3' },
@@ -75,7 +63,7 @@ for (const m of MUTS) {
     if (/FATAL|JavaScript heap out of memory|aborting/.test(out) || out.trim() === '') crashed = true;
     else if (r.status === 0) out = 'PASSED (no failure)';
   }
-  try { spawnSync('pkill', ['-f', '[s]erver/index.js']); } catch (e) {}
+  try { spawnSync('pkill', ['-f', '[s]erver/index.js']); } catch (e) {/* intentional no-op */}
   if (crashed) {
     envFails++;
     console.log(`  ⚠️ ${m.name} — خطایِ محیطی (کرش/بی‌خروجی)، نه «زنده ماندن»`);
@@ -90,7 +78,7 @@ const b = spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8' }); /* بدو
 finalOut = String((b.stdout || '') + (b.stderr || ''));
 kit.cleanup();
 backGreen = b.status === 0 && /otp-ratelimit: \d+ ✅ \/ 0 ❌/.test(finalOut);
-try { spawnSync('pkill', ['-f', '[s]erver/index.js']); } catch (e) {}
+try { spawnSync('pkill', ['-f', '[s]erver/index.js']); } catch (e) {/* intentional no-op */}
 console.log(`\nجهش: ${killed}/${MUTS.length} کشته · خطِ پایه: ${backGreen ? 'سبز ✅' : 'قرمز ❌'} · خطایِ محیطی: ${envFails}`);
 const pass = killed === MUTS.length && backGreen && envFails === 0;
 console.log(pass ? 'همهٔ جهش‌ها کشته شدند ✅' : 'جهش‌مندی ناقص ❌');

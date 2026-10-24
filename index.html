@@ -847,7 +847,7 @@ return ok;
 }catch(e){ return false; }
 }
 };
-var SERVER_DETECTED = false;
+var SERVER_DETECTED = false; void SERVER_DETECTED;
 function detectServer(){
 if(DATA_MODE !== 'local') return Promise.resolve(false);
 var proto = (typeof location !== 'undefined' && location) ? location.protocol : '';
@@ -935,13 +935,16 @@ error:'fetch در دسترس نیست', networkError:true });
 return;
 }
 var ctl = null, to = null, timedOut = false;
-try{ ctl = new AbortController(); }catch(e){}
-if(ctl) to = setTimeout(function(){ timedOut = true; try{ ctl.abort(); }catch(e){} }, timeoutMs || 6000);
+try{ ctl = new AbortController(); }catch(e){
+}
+if(ctl) to = setTimeout(function(){ timedOut = true; try{ ctl.abort(); }catch(e){
+} }, timeoutMs || 6000);
 fetch(url, { method:'GET', signal: ctl ? ctl.signal : undefined })
 .then(function(res){
 if(to) clearTimeout(to);
 var serverTime = null;
-try{ serverTime = res.headers ? res.headers.get('Date') : null; }catch(e){}
+try{ serverTime = res.headers ? res.headers.get('Date') : null; }catch(e){
+}
 return res.json()
 .then(function(j){ return { ok:res.ok, status:res.status, code:res.status, serverTime:serverTime, data:j, error:null }; })
 .catch(function(){ return { ok:res.ok, status:res.status, code:res.status, serverTime:serverTime, data:null, error:'bad_json' }; });
@@ -1345,10 +1348,10 @@ var c1 = tx.objectStore('entities').clear();
 var c2 = tx.objectStore('sync_queue').clear();
 var c3 = tx.objectStore('metadata').clear();
 var completed = 0;
-function checkDone() {
+var checkDone = function() {
 completed++;
 if (completed >= 3) resolve(true);
-}
+};
 if (c1) c1.onsuccess = checkDone; else checkDone();
 if (c2) c2.onsuccess = checkDone; else checkDone();
 if (c3) c3.onsuccess = checkDone; else checkDone();
@@ -1512,7 +1515,7 @@ return req;
 }
 };
 }
-var offlineStorage = new OfflineStorage();
+var offlineStorage = new OfflineStorage(); void offlineStorage;
 
 var IDB_MIGRATION_FLAG = 'payesh_idb_migrated_v2';
 var IDB_MIGRATION_REPAIR_FLAG = 'payesh_idb_migrated_v3';
@@ -1581,7 +1584,8 @@ if (typeof Store !== 'undefined') {
 Store.set(IDB_MIGRATION_FLAG, 'true');
 Store.set(IDB_MIGRATION_REPAIR_FLAG, 'true');
 }
-} catch (e) {}
+} catch (e) {
+}
 return true;
 }).catch(function(err) {
 console.error('خطا در فرآیند مهاجرت داده‌ها به IndexedDB:', err);
@@ -1595,14 +1599,17 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 try {
 if (document.readyState === 'loading') {
 document.addEventListener('DOMContentLoaded', function() {
-try { migrateFromLocalStorageToIdb(); } catch (e) {}
+try { migrateFromLocalStorageToIdb(); } catch (e) {
+}
 });
 } else {
 setTimeout(function() {
-try { migrateFromLocalStorageToIdb(); } catch (e) {}
+try { migrateFromLocalStorageToIdb(); } catch (e) {
+}
 }, 0);
 }
-} catch (e) {}
+} catch (e) {
+}
 }
 
 const $ = (s,r=document)=>r.querySelector(s);
@@ -1635,16 +1642,16 @@ return out;
 };
 const todayISO = ()=> new Date().toISOString().slice(0,10);
 const daysAgoISO = d => { const t=new Date(); t.setDate(t.getDate()-d); return t.toISOString().slice(0,10); };
-const DAYS=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه'];
-const DAYS_FULL=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه'];
+const DAYS=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه']; void DAYS;
+const DAYS_FULL=['شنبه','یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه']; void DAYS_FULL;
 const DEFAULT_WORK_DAYS=[0,1,2,3,4];
-const ROLE_FA={superadmin:'سوپر ادمین',manager:'مدیر مدرسه',teacher:'دبیر',student:'دانش‌آموز',parent:'ولی',edu_office:'اداره آموزش و پرورش',counselor:'مشاور',driver:'راننده سرویس'};
-const ROLE_BADGE={superadmin:'b-purple',manager:'b-blue',teacher:'b-green',student:'b-amber',parent:'b-gray',edu_office:'b-purple',counselor:'b-cyan'};
-const ATT_FA={present:'حاضر',absent:'غایب',late:'تأخیر',excused:'موجه',early_exit:'خروج از کلاس'};
-const ATT_BADGE={present:'b-green',absent:'b-red',late:'b-amber',excused:'b-purple',early_exit:'b-cyan'};
-const ATT_COLOR={present:'var(--green)',absent:'var(--red)',late:'var(--amber)',excused:'var(--purple)',early_exit:'#0b7fa8'};
-const TERMS=['نوبت اول','نوبت دوم'];
-const EXAM_TYPES=['کلاسی','میان‌ترم','پایان‌ترم','عملی','امتحان نهایی'];
+const ROLE_FA={superadmin:'سوپر ادمین',manager:'مدیر مدرسه',teacher:'دبیر',student:'دانش‌آموز',parent:'ولی',edu_office:'اداره آموزش و پرورش',counselor:'مشاور',driver:'راننده سرویس'}; void ROLE_FA;
+const ROLE_BADGE={superadmin:'b-purple',manager:'b-blue',teacher:'b-green',student:'b-amber',parent:'b-gray',edu_office:'b-purple',counselor:'b-cyan'}; void ROLE_BADGE;
+const ATT_FA={present:'حاضر',absent:'غایب',late:'تأخیر',excused:'موجه',early_exit:'خروج از کلاس'}; void ATT_FA;
+const ATT_BADGE={present:'b-green',absent:'b-red',late:'b-amber',excused:'b-purple',early_exit:'b-cyan'}; void ATT_BADGE;
+const ATT_COLOR={present:'var(--green)',absent:'var(--red)',late:'var(--amber)',excused:'var(--purple)',early_exit:'#0b7fa8'}; void ATT_COLOR;
+const TERMS=['نوبت اول','نوبت دوم']; void TERMS;
+const EXAM_TYPES=['کلاسی','میان‌ترم','پایان‌ترم','عملی','امتحان نهایی']; void EXAM_TYPES;
 function toast(msg,type=''){const w=$('#toasts');if(!w)return;const d=document.createElement('div');d.className='toast '+type;d.setAttribute('role','status');d.textContent=msg;w.appendChild(d);setTimeout(()=>d.remove(),3000);}
 function empty(emoji,title,desc,btn){return `<div class="empty"><span class="emoji">${emoji}</span><h4>${esc(title)}</h4><div class="small">${esc(desc||'')}</div>${btn?`<div style="margin-top:14px">${btn}</div>`:''}</div>`;}
 function bar(v,max,color){return `<div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,(v/(max||1))*100)}%;background:${color}"></div></div>`;}
@@ -1660,7 +1667,8 @@ if(!el.hasAttribute('aria-label')) el.setAttribute('aria-label','ناحیهٔ ج
 el.removeAttribute('tabindex');
 }
 });
-}catch(e){}
+}catch(e){
+}
 }
 
 let SEED=20260901;
@@ -1670,7 +1678,7 @@ const MALE=['امیرعلی','محمدحسین','آرش','سینا','پارسا'
 const FEMALE=['زهرا','فاطمه','نازنین','هستی','ریحانه','مریم','سارا','یلدا','باران','ترنم','مبینا','دیانا','آیدا','نگار','الهام','شقایق','پرنیان','سوگند','ملیکا','رها','آناهیتا','کیمیا','هلیا','سمانه','بهاره','نیایش','آتنا','رعنا','مهسا','غزل'];
 const LAST=['محمدی','حسینی','رضایی','کریمی','موسوی','جعفری','احمدی','صادقی','قاسمی','نوروزی','شریفی','عباسی','یوسفی','هاشمی','فرهادی','مرادی','اکبری','سلطانی','کاظمی','زارع','نجفی','رحیمی','بهرامی','امینی','طاهری','خسروی','دهقان','اسدی','فتحی','ملکی'];
 const CITIES=['تهران','مشهد','اصفهان','شیراز','تبریز','کرج'];
-const SUBJ=[['ریاضی','MATH',5],['علوم تجربی','SCI',4],['فیزیک','PHY',4],['شیمی','CHM',3],['ادبیات فارسی','LIT',4],['عربی','ARB',2],['زبان انگلیسی','ENG',3],['مطالعات اجتماعی','SOC',2],['دین و زندگی','REL',2],['هنر','ART',1],['تربیت بدنی','PE',2],['رایانه','CS',2]];
+const SUBJ=[['ریاضی','MATH',5],['علوم تجربی','SCI',4],['فیزیک','PHY',4],['شیمی','CHM',3],['ادبیات فارسی','LIT',4],['عربی','ARB',2],['زبان انگلیسی','ENG',3],['مطالعات اجتماعی','SOC',2],['دین و زندگی','REL',2],['هنر','ART',1],['تربیت بدنی','PE',2],['رایانه','CS',2]]; void SUBJ;
 const POS=[['مشارکت فعال در کلاس',5],['کمک به همکلاسی',4],['نظم و انضباط نمونه',5],['رتبه برتر مسابقات علمی',10],['حضور در فعالیت فرهنگی',6]];
 const NEG=[['تأخیر در ورود به کلاس',-3],['بی‌نظمی در کلاس',-5],['انجام‌ندادن تکالیف',-4],['استفاده از تلفن همراه',-6],['غیبت غیرموجه',-8]];
 const SCHOOL_DEFS=[
@@ -2090,8 +2098,8 @@ rows.push({ name:keys[i], size:IDX_CACHE[keys[i]].map.size, ver:IDX_CACHE[keys[i
 return { stats:IDX_STATS, indexes:rows };
 }
 
-const LOG_KEY='sms_log_v1', SESSION_KEY='sms_session_v1', BOSS_KEY='sms_boss_v1', PERSONA_KEY='sms_persona_v1';
-const _VERSIONED_C = { grades:1, attendance:1, discipline:1, schools:1, classes:1, subjects:1, users:1, enrollments:1, schedule:1 };
+const LOG_KEY='sms_log_v1', SESSION_KEY='sms_session_v1', BOSS_KEY='sms_boss_v1', PERSONA_KEY='sms_persona_v1'; void PERSONA_KEY; void BOSS_KEY; void SESSION_KEY;
+const _VERSIONED_C = { grades:1, attendance:1, discipline:1, schools:1, classes:1, subjects:1, users:1, enrollments:1, schedule:1 }; void _VERSIONED_C;
 let log=[];
 let SYNC_MUTED=false;
 function loadLog(){ log = Store.getJSON(LOG_KEY, []) || []; if(!Array.isArray(log)) log = []; }
@@ -2107,7 +2115,8 @@ if(_BATCH_DIRTY){ _BATCH_DIRTY = false; saveLog(); }
 if(_BATCH_QUEUE_DIRTY){
 _BATCH_QUEUE_DIRTY = false;
 if(typeof saveQueue === 'function') saveQueue();
-if(typeof refreshSyncUI === 'function'){ try{ refreshSyncUI(); }catch(e){} }
+if(typeof refreshSyncUI === 'function'){ try{ refreshSyncUI(); }catch(e){
+} }
 }
 }
 }
@@ -2118,7 +2127,8 @@ var payload = JSON.stringify(log);
 if(typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()){
 try{
 offlineStorage.setMetadata(LOG_KEY, log).catch(function(){});
-}catch(e){}
+}catch(e){
+}
 }
 if(Store.set(LOG_KEY, payload)){
 STORAGE_FULL=false;
@@ -2187,7 +2197,7 @@ _DB_BYTES = JSON.stringify(snapDb).length;
 _COMPACT_REJECT_BYTES = 0;
 return true;
 }
-var _GRADE_CACHE_VERSION=0;
+var _GRADE_CACHE_VERSION=0; void _GRADE_CACHE_VERSION;
 function applyOp(op,record=true){
 const arr=db[op.c];
 if(op.t==='ins'){
@@ -2207,9 +2217,10 @@ const it = im? im.get(Number(op.id)) : arr.find(x=>x.id===op.id);
 if(typeof idxInvalidate==='function') idxInvalidate(op.c);
 if(it){
 if (op.base_version == null) op.base_version = it.version || 1;
-const nextVersion = (it.version || 1) + 1;
+const changed = op.data && Object.keys(op.data).some(k => k !== 'version' && it[k] !== op.data[k]);
+const nextVersion = changed ? (it.version || 1) + 1 : (it.version || 1);
 Object.assign(it,op.data);
-it.version = nextVersion;
+it.version = (op.data && Number.isInteger(op.data.version) && op.data.version > nextVersion) ? op.data.version : nextVersion;
 }
 }
 else if(op.t==='del'){
@@ -2247,7 +2258,8 @@ if(op.id != null){
 offlineStorage.removeEntity(op.c, op.id).catch(function(){});
 }
 }
-}catch(e){}
+}catch(e){
+}
 }
 var _svrNoUser = (typeof DATA_MODE!=='undefined' && DATA_MODE==='server' && !(typeof S!=='undefined' && S.user));
 if(typeof enqueueOp==='function' && !SYNC_MUTED && !_svrNoUser) enqueueOp(op);
@@ -2261,7 +2273,8 @@ Store.remove(LOG_KEY);
 Store.remove(SYNC_QUEUE_KEY);
 Store.remove(SYNC_META_KEY);
 if(typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()){
-try{ offlineStorage.clearAll(); }catch(e){}
+try{ offlineStorage.clearAll(); }catch(e){
+}
 }
 location.reload();
 }
@@ -2451,7 +2464,8 @@ S.__routeChanged=true;
 if(!silent)pushHist(route);
 render();
 }
-function pushHist(route){ try{history.pushState({r:route,n:S.stack.length},'','#'+route);}catch(e){} }
+function pushHist(route){ try{history.pushState({r:route,n:S.stack.length},'','#'+route);}catch(e){
+} }
 function goBack(){
 if($('#modal')&&$('#modal').innerHTML){closeModal();return true;}
 if(S.sidebar){S.sidebar=false;render();return true;}
@@ -2521,7 +2535,7 @@ render();
 };
 
 const LEVELS = ['ابتدایی', 'متوسطه اول', 'متوسطه دوم'];
-const SCHOOL_TYPES = ['عادی', 'علوم تجربی', 'ریاضی', 'فنی و حرفه‌ای'];
+const SCHOOL_TYPES = ['عادی', 'علوم تجربی', 'ریاضی', 'فنی و حرفه‌ای']; void SCHOOL_TYPES;
 const GRADES_OF_LEVEL = {
 'ابتدایی'    : ['اول', 'دوم', 'سوم', 'چهارم', 'پنجم', 'ششم'],
 'متوسطه اول' : ['هفتم', 'هشتم', 'نهم'],
@@ -2531,7 +2545,7 @@ const FINAL_GRADES = ['نهم', 'دوازدهم'];
 function finalGradeOk(grade){
 return FINAL_GRADES.indexOf(grade) > -1;
 }
-const EXAM_SOURCES=[['internal','درسی'],['national_final','نهایی'],['makeup','جبرانی']];
+const EXAM_SOURCES=[['internal','درسی'],['national_final','نهایی'],['makeup','جبرانی']]; void EXAM_SOURCES;
 function examSource(e){
 if(!e) return 'internal';
 if(e.source) return e.source;
@@ -2543,8 +2557,8 @@ if(s==='national_final') return ' <span class="badge b-red">نهایی</span>';
 if(s==='makeup') return ' <span class="badge b-amber">جبرانی</span>';
 return '';
 }
-const GRADE_SOURCES=[['internal','داخلی'],['national','نهایی کشوری']];
-const NATIONAL_EXAM_TYPE='امتحان نهایی';
+const GRADE_SOURCES=[['internal','داخلی'],['national','نهایی کشوری']]; void GRADE_SOURCES;
+const NATIONAL_EXAM_TYPE='امتحان نهایی'; void NATIONAL_EXAM_TYPE;
 function examTypeOf(e){
 return examSource(e)==='national_final' ? 'national' : 'internal';
 }
@@ -2792,7 +2806,8 @@ catch(e){ SYNC.dlq = []; }
 try{
 const m = Store.getJSON(SYNC_META_KEY, {}) || {};
 SYNC.lastSync = m.lastSync || null;
-}catch(e){}
+}catch(e){
+}
 }
 function saveQueue(){
 if(typeof _BATCH_DEPTH !== 'undefined' && _BATCH_DEPTH > 0){ _BATCH_QUEUE_DIRTY = true; return true; }
@@ -2802,7 +2817,8 @@ var _disk = Store.getJSON(SYNC_QUEUE_KEY, []) || [];
 var _have = {};
 for(var _i = 0; _i < SYNC.queue.length; _i++){ if(SYNC.queue[_i]) _have[SYNC.queue[_i].uid] = 1; }
 for(var _j = 0; _j < _disk.length; _j++){ if(_disk[_j] && !_have[_disk[_j].uid]) SYNC.queue.push(_disk[_j]); }
-}catch(e){}
+}catch(e){
+}
 _QUEUE_LOADED = true;
 }
 return Store.setJSON(SYNC_QUEUE_KEY, SYNC.queue);
@@ -2935,10 +2951,10 @@ out += (bytes[i] % 36).toString(36);
 return out;
 }
 function enqueueOp(op){
-if(op && op.data && (op.data.id !== undefined || op.data.by !== undefined)){
+if(op && op.data && (op.data.id !== undefined || op.data.by !== undefined || op.data.version !== undefined)){
 const clean = {};
 for(const k in op.data){
-if(k === 'id' || k === 'by') continue;
+if(k === 'id' || k === 'by' || k === 'version') continue;
 clean[k] = op.data[k];
 }
 op = Object.assign({}, op, { data: clean });
@@ -3344,7 +3360,8 @@ ratio: quota > 0 ? usage / quota : 0, known: quota > 0 });
 }).catch(function(){ resolve({ usage:0, quota:0, ratio:0, known:false }); });
 return;
 }
-}catch(e){}
+}catch(e){
+}
 resolve({ usage:0, quota:0, ratio:0, known:false });
 });
 }
@@ -3600,7 +3617,8 @@ navigator.serviceWorker.ready.then(function(reg){
 if(reg && reg.sync && typeof reg.sync.register === 'function')
 return reg.sync.register(BGSYNC_TAG);
 }).catch(function(){  });
-}catch(e){}
+}catch(e){
+}
 }
 function bgApplyResult(msg){
 var syncedU = {}, rejU = {};
@@ -3631,7 +3649,8 @@ try{
 navigator.serviceWorker.addEventListener('message', function(e){
 if(e && e.data && e.data.type === 'payesh-bgsync-done') bgApplyResult(e.data);
 });
-}catch(e){}
+}catch(e){
+}
 }
 var PTR = {
 startY   : 0,
@@ -3705,11 +3724,13 @@ if(PTR.busy) return;
 PTR.busy = true;
 ptrRender();
 var jobs = [];
-try{ jobs.push(Promise.resolve(syncNow(true))); }catch(e){}
+try{ jobs.push(Promise.resolve(syncNow(true))); }catch(e){
+}
 try{
 if(typeof pullFromServer === 'function' && typeof isServerMode === 'function' && isServerMode())
 jobs.push(Promise.resolve(pullFromServer()).catch(function(){}));
-}catch(e){}
+}catch(e){
+}
 return Promise.all(jobs).catch(function(){}).then(function(){
 return new Promise(function(r){ setTimeout(r, 500); });
 }).then(function(){
@@ -3761,7 +3782,8 @@ db[c].sort(function(a, b){ return rptCacheRecency(b) - rptCacheRecency(a); });
 var dropped = db[c].splice(RPT_CACHE_MAX_ROWS);
 if (typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()) {
 for (var i = 0; i < dropped.length; i++) {
-try { offlineStorage.removeEntity(c, dropped[i].id).catch(function(){}); } catch (e) {}
+try { offlineStorage.removeEntity(c, dropped[i].id).catch(function(){}); } catch (e) {
+}
 }
 }
 return true;
@@ -3900,7 +3922,8 @@ offlineStorage.setMetadata(PULL_CURSOR_KEY, payload.next_cursor).catch(function(
 if (payload.server_version != null) {
 offlineStorage.setMetadata('server_version', payload.server_version).catch(function(){});
 }
-} catch (e) {}
+} catch (e) {
+}
 }
 var needFull = Array.isArray(payload.full_snapshot_required_collections)
 ? payload.full_snapshot_required_collections : [];
@@ -3987,7 +4010,8 @@ if (numId > (ids[c] || 0)) {
 ids[c] = numId;
 }
 if (typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()) {
-try { offlineStorage.putEntity(c, rec).catch(function(){}); } catch (e) {}
+try { offlineStorage.putEntity(c, rec).catch(function(){}); } catch (e) {
+}
 }
 }
 }
@@ -4007,7 +4031,8 @@ touchedCols[del.c] = true;
 }
 }
 if (typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()) {
-try { offlineStorage.removeEntity(del.c, del.id).catch(function(){}); } catch (e) {}
+try { offlineStorage.removeEntity(del.c, del.id).catch(function(){}); } catch (e) {
+}
 }
 }
 }
@@ -4027,7 +4052,8 @@ resuming: needResume.length > 0
 });
 for (var tc in touchedCols) {
 if (typeof idxInvalidate === 'function') {
-try { idxInvalidate(tc); } catch (e) {}
+try { idxInvalidate(tc); } catch (e) {
+}
 }
 }
 return true;
@@ -4220,7 +4246,8 @@ for(var i=0;i<groups.length;i++){
 var items = groups[i][1] || [];
 for(var j=0;j<items.length;j++) out.push(items[j][0]);
 }
-}catch(e){}
+}catch(e){
+}
 return out;
 }
 function allowedRoutes(role){
@@ -4242,19 +4269,22 @@ if(route === 'library' && role === 'teacher'){
 try{
 var me = (typeof S !== 'undefined') ? S.user : null;
 if(me && me.lib_staff === 1) return true;
-}catch(e){}
+}catch(e){
+}
 }
 if(role === 'edu_office' && (route === 'office-msg' || route === 'office-print' || route === 'office-dash')){
 try{
 var me = (typeof S !== 'undefined') ? S.user : null;
 if(me && me.is_head === 1) return true;
-}catch(e){}
+}catch(e){
+}
 }
 if(route === 'assets' && role === 'teacher'){
 try{
 var me = (typeof S !== 'undefined') ? S.user : null;
 if(me && me.asset_staff === 1) return true;
-}catch(e){}
+}catch(e){
+}
 }
 return !!allowedRoutes(role)[route];
 }
@@ -4546,7 +4576,8 @@ return '<div class="card"><div class="card-body">' +
 }
 
 function renderShell(){
-setTimeout(function(){ try{ if(typeof themeSegApply==='function') themeSegApply(); }catch(e){} }, 0);
+setTimeout(function(){ try{ if(typeof themeSegApply==='function') themeSegApply(); }catch(e){
+} }, 0);
 const u=Object.assign({},S.user,{role:activePersona()}), school=u.school_id?byId('schools',u.school_id):(u.office_id?{name:(byId('offices',u.office_id)||{}).name}:null);
 const t=TITLES[S.route]||['سامانه',''];
 return `<a href="#" class="skip-link" data-act="skip-to-main">پرش به محتوای اصلی</a>
@@ -4571,7 +4602,7 @@ return `<a href="#" class="skip-link" data-act="skip-to-main">پرش به محت
     <header class="topbar"><button class="burger" data-act="opennav" aria-label="باز کردن منوی ناوبری">☰</button>
       ${(S.stack.length||S.route!==(u.role==='edu_office'?'officedash':'dashboard'))?`<button class="icon-btn back-btn" data-act="back" title="بازگشت" aria-label="بازگشت">→</button>`:''}
       <div><h1>${t[0]}</h1><div class="sub">${t[1]}</div></div><div class="spacer"></div>
-      <button class="icon-btn" data-act="go" data-r="notifications" title="اعلان‌ها" aria-label="اعلان‌ها" style="position:relative;font-size:17px">🔔${(()=>{const n=unreadCount();return n?`<span style="position:absolute;top:-4px;inset-inline-end:-4px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px;border:2px solid #fff">${n>99?'۹۹+':fa(n)}</span>`:''})()}</button>
+      ${(()=>{const n=unreadCount(),b=n?(n>99?'۹۹+':fa(n)):'';return`<button class="icon-btn" data-act="go" data-r="notifications" title="اعلان‌ها" aria-label="${b?'اعلان‌ها '+b:'اعلان‌ها'}" style="position:relative;font-size:17px"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>${b?`<span style="position:absolute;top:-4px;inset-inline-end:-4px;background:var(--red);color:#fff;border-radius:999px;font-size:10px;font-weight:800;min-width:17px;height:17px;display:grid;place-items:center;padding:0 4px;border:2px solid #fff">${b}</span>`:''}</button>`;})()}
       ${typeof syncBadge==='function'?syncBadge():''}
       ${typeof themeSegHtml==='function'?themeSegHtml():''}
       ${(()=>{try{if(typeof activeYearOf!=='function')return '';var yc=activeYearOf(u.school_id||null);if(!yc)return '';var t=(typeof yearCodeTitle==='function')?yearCodeTitle(yc):yc;return `<span class="badge b-gray" title="سال تحصیلی عملیاتی">📅 ${esc(t)}</span>`;}catch(e){return '';}})()}
@@ -4643,7 +4674,8 @@ return `<button class="cs-btn${active===k.id?' on':''}" data-act="child" data-id
 + `</div>`;
 }
 function checkYearEnd(){
-if(typeof yearEndReminder === 'function'){ try{ yearEndReminder(); }catch(e){} }
+if(typeof yearEndReminder === 'function'){ try{ yearEndReminder(); }catch(e){
+} }
 }
 function renderRoute(){
 var _t0 = (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
@@ -4651,7 +4683,8 @@ try{ return _renderRouteInner(); }
 finally{
 if(typeof perfSample==='function'){
 var _t1=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
-try{ perfSample(S.route, _t1-_t0); }catch(e){}
+try{ perfSample(S.route, _t1-_t0); }catch(e){
+}
 }
 }
 }
@@ -4762,7 +4795,8 @@ return '<button type="button" data-tpick="' + eid + '" aria-pressed="' + (on ? '
 }
 function themeSegHtml(){
 var cur = 'theme-2';
-try{ if(typeof currentPayeshTheme === 'function') cur = currentPayeshTheme() || cur; }catch(e){}
+try{ if(typeof currentPayeshTheme === 'function') cur = currentPayeshTheme() || cur; }catch(e){
+}
 var list = themeSegList();
 var seg = '<div data-tseg role="group" aria-label="پوستهٔ برنامه" ' +
 'style="display:inline-flex;align-items:center;gap:2px;background:var(--surface-2);' +
@@ -4785,7 +4819,8 @@ var segs = document.querySelectorAll('[data-tseg]');
 for(var i = 0; i < segs.length; i++) segs[i].style.display = mobile ? 'none' : 'inline-flex';
 var pops = document.querySelectorAll('[data-tpopwrap]');
 for(var j = 0; j < pops.length; j++) pops[j].style.display = mobile ? '' : 'none';
-}catch(e){}
+}catch(e){
+}
 }
 function themeSegPaint(){
 try{
@@ -4798,13 +4833,15 @@ b.style.background = on ? 'var(--primary)' : 'transparent';
 b.style.color = on ? '#fff' : 'var(--muted)';
 b.style.boxShadow = on ? '0 1px 4px rgba(0,0,0,.18)' : 'none';
 }
-}catch(e){}
+}catch(e){
+}
 }
 function themeSegCloseMenus(){
 try{
 var ms = document.querySelectorAll('[data-tpopmenu]');
 for(var i = 0; i < ms.length; i++) ms[i].hidden = true;
-}catch(e){}
+}catch(e){
+}
 }
 (function themeSegBind(){
 if(typeof document === 'undefined' || typeof window === 'undefined') return;
@@ -4852,7 +4889,8 @@ ev.preventDefault(); ev.stopPropagation();
 themeSegCloseMenus();
 var wrapEl = menu.parentElement;
 var btn = wrapEl ? wrapEl.querySelector('[data-tpop]') : null;
-if(btn){ try{ btn.focus(); }catch(e){} }
+if(btn){ try{ btn.focus(); }catch(e){
+} }
 }
 }, true);
 if(typeof window.addEventListener === 'function') window.addEventListener('resize', themeSegApply);
@@ -5688,7 +5726,8 @@ return `<div class="card-foot row">
 function attPartialSync(sid){
 try{
 if(typeof attDraftGet!=='function'||typeof attDraftDiff!=='function') return false;
-if(typeof notifyAutoTick==='function'){ try{ notifyAutoTick(); }catch(e){} }
+if(typeof notifyAutoTick==='function'){ try{ notifyAutoTick(); }catch(e){
+} }
 const cls=visibleClasses();
 if(!cls.length) return false;
 const _now=(S.bellNow||null);
@@ -5741,7 +5780,7 @@ let studs=roster;
 if(q)studs=roster.filter(s=>s.full_name.includes(q));
 const ctx=attCtx(cid,date);
 const dev=ctx.dev, _timers=ctx._timers;
-const _nTimers=Object.keys(_timers).length;
+const _nTimers=Object.keys(_timers).length; void _nTimers;
 const nDraft=Object.keys(ctx.draft).length;
 const diff=(typeof attDraftDiff==='function')?attDraftDiff(cid,date):{changes:[]};
 const nChange=diff.changes.length;
@@ -5888,7 +5927,7 @@ var st = byId('users', sid) || {};
 var pr = internshipProgress(sid);
 var cert = internshipCert(sid);
 return '<tr><td><b>' + esc(st.full_name || '—') + '</b></td>'
-+ '<td class="muted">' + esc(((typeof classOf === 'function') ? classOf(sid) : null || {}).name || '—') + '</td>'
++ '<td class="muted">' + esc((((typeof classOf === 'function') ? classOf(sid) : null) || {}).name || '—') + '</td>'
 + '<td><b>' + fa(pr.approved) + '</b> <span class="muted">از ' + fa(pr.required) + '</span></td>'
 + '<td>' + bar(pr.approved, pr.required, pr.done ? 'var(--green)' : 'var(--primary)') + '</td>'
 + '<td>' + (cert
@@ -6364,7 +6403,8 @@ return `<div class="card-body" style="border-top:1px solid var(--border)">
 function noteKey(pid,sid){ return 'payesh_note_'+pid+'_'+sid; }
 function noteGet(pid,sid){
   try{ var o=JSON.parse(Store.get(noteKey(pid,sid),'null'));
-    if(o&&typeof o.t==='string')return {text:o.t,updated:o.u||null}; }catch(e){}
+    if(o&&typeof o.t==='string')return {text:o.t,updated:o.u||null}; }catch(e){ // noop
+}
   return null;
 }
 function noteLinkedParent(pid,sid){
@@ -6678,7 +6718,8 @@ $('#modal').innerHTML=`<div class="modal-back" data-act="modal-back"><div class=
 if(typeof a11yScrollablePass==='function')a11yScrollablePass($('#modal'));
 const list=_modalFocusables();
 const target=list.find(el=>/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName))||list[0];
-if(target){try{target.focus();}catch(e){}}
+if(target){try{target.focus();}catch(e){
+}}
 $('#modal').addEventListener('keydown',_modalTrap);
 }
 function closeModal(){
@@ -6686,12 +6727,14 @@ const el=$('#modal');
 const wasOpen=!!(el&&el.innerHTML.trim());
 if(el){el.removeEventListener('keydown',_modalTrap);el.innerHTML='';}
 if(!wasOpen){_modalOpener=null;return;}
-if(_modalOpener&&document.contains(_modalOpener)){try{_modalOpener.focus();}catch(e){}_modalOpener=null;return;}
+if(_modalOpener&&document.contains(_modalOpener)){try{_modalOpener.focus();}catch(e){
+}_modalOpener=null;return;}
 _modalOpener=null;
 const m=document.querySelector('.main');
 if(m){
 if(!m.hasAttribute('tabindex'))m.setAttribute('tabindex','-1');
-try{m.focus();}catch(e){}
+try{m.focus();}catch(e){
+}
 }
 }
 function modalTpl(title,body,saveAct,danger,okLabel){
@@ -7754,7 +7797,8 @@ var html = '<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"
 try{
 win.document.write(html);
 win.document.close();
-setTimeout(function(){ try{ win.print(); }catch(e){} }, 500);
+setTimeout(function(){ try{ win.print(); }catch(e){
+} }, 500);
 }catch(e){ return false; }
 return true;
 }
@@ -9537,7 +9581,7 @@ return '<tr><td class="small">' + esc(t.name) + '</td>'
 }
 
 var VISITS_KEY = 'sms_visits_v1';
-var PERF_KEY   = 'sms_perf_v1';
+var PERF_KEY   = 'sms_perf_v1'; void PERF_KEY;
 var COLL_FA = {
 users:'کاربر', schools:'مدرسه', classes:'کلاس', subjects:'درس',
 enrollments:'ثبت‌نام', attendance:'حضور و غیاب', grades:'نمره',
@@ -10599,8 +10643,10 @@ var el = document.getElementById(id);
 if(!el) return;
 try{
 if(el.scrollIntoView) el.scrollIntoView({ block:'center', behavior:'smooth' });
-setTimeout(function(){ try{ el.focus(); }catch(e){} }, 120);
-}catch(e){}
+setTimeout(function(){ try{ el.focus(); }catch(e){
+} }, 120);
+}catch(e){
+}
 }
 function need(id, msg){
 if(typeof document === 'undefined') return false;
@@ -10741,7 +10787,7 @@ var SLOT_ID=null;
 var attTimePending=null;
 var attExemptId=null;
 var RESTORE_PKG=null;
-var PARALLEL=null;
+var PARALLEL=null; void PARALLEL;
 function schoolInactiveMsg(u){
 const sch=(u&&u.school_id)?byId('schools',u.school_id):null;
 return (sch&&!sch.active)?'این مدرسه غیرفعال است؛ برای پیگیری با پشتیبانی سامانه تماس بگیرید':null;
@@ -10865,7 +10911,8 @@ finishLogin(u);
 },
 logout(){
 if(typeof serverDetected==='function'&&serverDetected()){
-try{ Api.post('/api/auth/logout'); }catch(e){}
+try{ Api.post('/api/auth/logout'); }catch(e){
+}
 }
 S.user=null;S.boss=null;S.stack=[];S.persona=null;S.showPicker=false;
 Store.remove(SESSION_KEY);Store.remove(BOSS_KEY);Store.remove(PERSONA_KEY);render();
@@ -10877,7 +10924,8 @@ reset(){askConfirm('همه تغییرات شما پاک و داده‌های ن�
 go(){go(el.dataset.r);},
 'skip-to-main'(){
 const m=document.querySelector('.main');
-if(m){ if(!m.hasAttribute('tabindex'))m.setAttribute('tabindex','-1'); try{m.focus();}catch(e){} }
+if(m){ if(!m.hasAttribute('tabindex'))m.setAttribute('tabindex','-1'); try{m.focus();}catch(e){
+} }
 },
 back(){ goBack(); },
 home(){ go(S.user.role==='edu_office'?'officedash':'dashboard'); },
@@ -11023,7 +11071,8 @@ render();
 'diag-clear-repairs'(){
 if(S.user.role!=='superadmin'){toast('دسترسی ندارید','err');return;}
 DIAG_REPAIRS.length=0;
-try{Store.setJSON('sms_diag_repairs_v1',[]);}catch(err){}
+try{Store.setJSON('sms_diag_repairs_v1',[]);}catch(err){
+}
 toast('تاریخچهٔ تعمیرات پاک شد','ok');
 render();
 },
@@ -13898,7 +13947,7 @@ if(paid>0) add('transactions',{school_id:school.id,kind:'income',category:'شه�
 }
 t.paid=paidSum; t.status = paidSum>=payable?'settled':paidSum>0?'partial':'open';
 });
-{
+if(!db.installments.some(i=>i.school_id===school.id&&i.status==='canceled')){
 const od=db.installments.filter(i=>i.school_id===school.id&&i.status!=='paid'&&i.status!=='canceled'&&i.due_date<todayISO());
 if(od.length){
 const w=od[0];
@@ -14469,93 +14518,88 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}td{padding:7px 4px;bo
 <tr><td>مبلغ دریافتی</td><td class="amount">${rial(i.paid_amount)} ریال</td></tr></table>
 <div class="sign"><span>مهر و امضای امور مالی مدرسه</span><span class="stamp">پرداخت شد</span></div></div>
 <div class="noprint" style="text-align:center;margin-top:14px"><button onclick="window.print()" style="padding:8px 22px;border-radius:9px;border:none;background:#1e40af;color:#fff;font-family:inherit;cursor:pointer">🖨️ چاپ رسید</button></div>
-<script>window.addEventListener('load',function(){setTimeout(function(){window.print();},400)});<\/script></body></html>`);
-  w.document.close();
+${'<'}script>window.addEventListener('load',function(){setTimeout(function(){window.print();},400)});${'<'}/script></body></html>`);
+w.document.close();
 }
-
-/* ---------------- عملیات فازهای جدید ---------------- */
 const F7_ACTIONS = {
-  /* ---- پیام گروهی اداره به مدیران محدوده (دور ۴۳) ---- */
-  'office-msg'(){
-    const o=(typeof officeOf==='function')?officeOf(S.user):null;
-    const n=o?officeManagers(o).length:0;
-    if(!n){ toast('مدیری در محدودهٔ شما یافت نشد','err'); return; }
-    openModal(modalTpl('پیام گروهی به مدیران منطقه',
-      f('عنوان',inp('om_title','','text'))
-      +f('متن پیام','<textarea class="input" id="om_body" rows="4" placeholder="بخشنامهٔ شمارهٔ … به اطلاع می‌رساند…"></textarea>')
-      +'<div class="small muted" style="line-height:2">این پیام به‌صورت اعلان درون‌سامانه‌ای برای <b>'
-      +fa(n)+' مدیر</b> ارسال می‌شود و اعتبار پیامک مدارس مصرف نمی‌گردد.</div>',
-      'office-msg-send'));
-  },
-  'office-msg-send'(){
-    const t=(V('om_title')||'').trim(), b=(V('om_body')||'').trim();
-    if(invalid('om_title',t.length<3,'عنوان باید دست‌کم سه نویسه باشد'))return;
-    if(invalid('om_body',b.length<5,'متن پیام باید دست‌کم پنج نویسه باشد'))return;
-    const o=(typeof officeOf==='function')?officeOf(S.user):null;
-    if(!o){ toast('ادارهٔ شما شناسایی نشد','err'); return; }
-    const r=officeBroadcast(o,t,b);
-    closeModal();
-    toast(r.sent?fa(r.sent)+' مدیر از '+fa(r.schools)+' مدرسه اعلان گرفتند':'پیامی ارسال نشد',r.sent?'ok':'err');
-    render();
-  },
-  'cal-new'(){ calModal(null); },
-  'cal-edit'(el,id){ calModal(byId('calendar',id)); },
-  'cal-save'(){
-    const c=window._calEdit||{};
-    const data={school_id:S.user.school_id||null,title:V('cl_title'),date:V('cl_date'),kind:V('cl_kind')};
-    if(!data.title){toast('عنوان الزامی است','err');return;}
-    if(c.id)update('calendar',c.id,data); else insert('calendar',data);
-    /* گام ۷: رویدادِ تازهٔ تقویم (نه ویرایش) برای اولیا پیامک می‌سازد.
-       فقط kind='event' — امتحان و تعطیلی الگوی دیگری دارند. */
-    let ev=0;
-    if(!c.id && data.kind==='event' && typeof notifyEvent==='function' && data.school_id){
-      ev=notifyEvent(data.school_id, data.title+' — '+jalali(data.date)).made;
-    }
-    closeModal(); toast('رویداد ذخیره شد'+(ev?' — '+fa(ev)+' پیامک ساخته شد':''),'ok'); render();
-  },
-  'ics-download'(){ icsDownloadAll(); }, /* E.4 فرناز: فقط خواندن + Blob — بدون سرور */
-  'cal-del'(el,id){ const c=byId('calendar',id);
-    askDelete(`رویداد «${c.title}» حذف شود؟`,()=>{remove('calendar',id);toast('حذف شد','');render();}); },
-  'notif-readall'(){ myNotifs().forEach(n=>{ if(!n.read) update('notifications',n.id,{read:1}); }); toast('همه اعلان‌ها خوانده شد','ok'); render(); },
-  'notif-open'(el,id){ const n=byId('notifications',id); if(!n)return; if(!n.read)update('notifications',id,{read:1});
-    const map={record:'record',children:'children',mytuition:'mytuition',announcements:'announcements'};
-    go(map[n.link]||'notifications'); },
-  'leave-new'(){
-    const kids=S.user.role==='student'?[S.user]:myChildren();
-    openModal(modalTpl('ثبت درخواست مرخصی',
-      `${f('دانش‌آموز',sel('lv_st',kids.map(k=>[k.id,k.full_name])))}
-<div class="grid g2">${f('از تاریخ',jdate('lv_from',todayISO()))}${f('تا تاریخ',jdate('lv_to',todayISO()))}</div>
-${f('دلیل مرخصی',`<textarea class="input" id="lv_reason" rows="3" placeholder="مثلاً مراجعه به پزشک"></textarea>`)}`,'leave-save'));
-  },
-  'leave-save'(){
-    const sid=Number(V('lv_st')); const st=byId('users',sid);
-    if(!V('lv_reason')){toast('دلیل مرخصی را بنویسید','err');return;}
-    insert('leaves',{school_id:st.school_id,student_id:sid,from_date:V('lv_from'),to_date:V('lv_to'),reason:V('lv_reason'),status:'pending',created_at:todayISO()});
-    const mgr=db.users.find(u=>u.school_id===st.school_id&&u.role==='manager');
-    if(mgr)insert('notifications',{user_id:mgr.id,school_id:st.school_id,type:'leave',title:'📨 درخواست مرخصی جدید',body:`برای ${st.full_name} درخواست مرخصی ثبت شد.`,link:'leaves',read:0,created_at:todayISO()});
-    closeModal(); toast('درخواست مرخصی ثبت شد','ok'); render();
-  },
-  'leave-del'(el,id){ const l=byId('leaves',id), st=byId('users',l.student_id)||{};
-    askDelete(`درخواست مرخصی «${st.full_name||''}» حذف شود؟`,()=>{remove('leaves',id);toast('حذف شد','');render();}); },
-  'leave-ok'(el,id){ decideLeave(id,'approved'); },
-  'leave-no'(el,id){ decideLeave(id,'rejected'); },
-  'chat-open'(el,id){ S.filters.chat=id; render(); },
-  'chat-send'(el,id){
-    const body=V('chat_body'); if(!body){toast('پیام خالی است','err');return;}
-    insert('messages',{school_id:S.user.school_id,from_id:S.user.id,to_id:id,body,created_at:todayISO()});
-    insert('notifications',{user_id:id,school_id:S.user.school_id,type:'chat',title:'💬 پیام جدید',body:`${S.user.full_name}: ${body.slice(0,60)}`,link:'chat',read:0,created_at:todayISO()});
-    S.filters.chat=id; render();
-  },
-  'tuition-detail'(el,id){ S.child=id; go('mytuition'); },
-  'tuition-new'(){
-    const stu=schoolScope('users').filter(x=>x.role==='student'&&x.active);
-    const plans=schoolScope('tuition_plans').filter(p=>p.active);
-    if(!stu.length||!plans.length){toast('برای صدور، دانش‌آموز و طرحِ فعال لازم است','err');return;}
-    openModal(modalTpl('صدور صورتحساب شهریه',
-      `${f('دانش‌آموز *',sel('tn_st',stu.map(x=>[x.id,x.full_name])))}
-${f('طرح *',sel('tn_pl',plans.map(p=>[p.id,`${p.title} — ${rial(p.amount)} ریال`])))}
-${f('تخفیف (ریال)',inp('tn_disc',0,'number'))}
-<div class="small muted" style="line-height:2">اقساط طبقِ زمان‌بندیِ طرح ساخته می‌شوند؛ اگر دانش‌آموز صورتحسابِ باز داشته باشد، صدور رد می‌شود.</div>`,
+'office-msg'(){
+const o=(typeof officeOf==='function')?officeOf(S.user):null;
+const n=o?officeManagers(o).length:0;
+if(!n){ toast('مدیری در محدودهٔ شما یافت نشد','err'); return; }
+openModal(modalTpl('پیام گروهی به مدیران منطقه',
+f('عنوان',inp('om_title','','text'))
++f('متن پیام','<textarea class="input" id="om_body" rows="4" placeholder="بخشنامهٔ شمارهٔ … به اطلاع می‌رساند…"></textarea>')
++'<div class="small muted" style="line-height:2">این پیام به‌صورت اعلان درون‌سامانه‌ای برای <b>'
++fa(n)+' مدیر</b> ارسال می‌شود و اعتبار پیامک مدارس مصرف نمی‌گردد.</div>',
+'office-msg-send'));
+},
+'office-msg-send'(){
+const t=(V('om_title')||'').trim(), b=(V('om_body')||'').trim();
+if(invalid('om_title',t.length<3,'عنوان باید دست‌کم سه نویسه باشد'))return;
+if(invalid('om_body',b.length<5,'متن پیام باید دست‌کم پنج نویسه باشد'))return;
+const o=(typeof officeOf==='function')?officeOf(S.user):null;
+if(!o){ toast('ادارهٔ شما شناسایی نشد','err'); return; }
+const r=officeBroadcast(o,t,b);
+closeModal();
+toast(r.sent?fa(r.sent)+' مدیر از '+fa(r.schools)+' مدرسه اعلان گرفتند':'پیامی ارسال نشد',r.sent?'ok':'err');
+render();
+},
+'cal-new'(){ calModal(null); },
+'cal-edit'(el,id){ calModal(byId('calendar',id)); },
+'cal-save'(){
+const c=window._calEdit||{};
+const data={school_id:S.user.school_id||null,title:V('cl_title'),date:V('cl_date'),kind:V('cl_kind')};
+if(!data.title){toast('عنوان الزامی است','err');return;}
+if(c.id)update('calendar',c.id,data); else insert('calendar',data);
+let ev=0;
+if(!c.id && data.kind==='event' && typeof notifyEvent==='function' && data.school_id){
+ev=notifyEvent(data.school_id, data.title+' — '+jalali(data.date)).made;
+}
+closeModal(); toast('رویداد ذخیره شد'+(ev?' — '+fa(ev)+' پیامک ساخته شد':''),'ok'); render();
+},
+'ics-download'(){ icsDownloadAll(); },
+'cal-del'(el,id){ const c=byId('calendar',id);
+askDelete(`رویداد «${c.title}» حذف شود؟`,()=>{remove('calendar',id);toast('حذف شد','');render();}); },
+'notif-readall'(){ myNotifs().forEach(n=>{ if(!n.read) update('notifications',n.id,{read:1}); }); toast('همه اعلان‌ها خوانده شد','ok'); render(); },
+'notif-open'(el,id){ const n=byId('notifications',id); if(!n)return; if(!n.read)update('notifications',id,{read:1});
+const map={record:'record',children:'children',mytuition:'mytuition',announcements:'announcements'};
+go(map[n.link]||'notifications'); },
+'leave-new'(){
+const kids=S.user.role==='student'?[S.user]:myChildren();
+openModal(modalTpl('ثبت درخواست مرخصی',
+`${f('دانش‌آموز',sel('lv_st',kids.map(k=>[k.id,k.full_name])))}
+       <div class="grid g2">${f('از تاریخ',jdate('lv_from',todayISO()))}${f('تا تاریخ',jdate('lv_to',todayISO()))}</div>
+       ${f('دلیل مرخصی',`<textarea class="input" id="lv_reason" rows="3" placeholder="مثلاً مراجعه به پزشک"></textarea>`)}`,'leave-save'));
+},
+'leave-save'(){
+const sid=Number(V('lv_st')); const st=byId('users',sid);
+if(!V('lv_reason')){toast('دلیل مرخصی را بنویسید','err');return;}
+insert('leaves',{school_id:st.school_id,student_id:sid,from_date:V('lv_from'),to_date:V('lv_to'),reason:V('lv_reason'),status:'pending',created_at:todayISO()});
+const mgr=db.users.find(u=>u.school_id===st.school_id&&u.role==='manager');
+if(mgr)insert('notifications',{user_id:mgr.id,school_id:st.school_id,type:'leave',title:'📨 درخواست مرخصی جدید',body:`برای ${st.full_name} درخواست مرخصی ثبت شد.`,link:'leaves',read:0,created_at:todayISO()});
+closeModal(); toast('درخواست مرخصی ثبت شد','ok'); render();
+},
+'leave-del'(el,id){ const l=byId('leaves',id), st=byId('users',l.student_id)||{};
+askDelete(`درخواست مرخصی «${st.full_name||''}» حذف شود؟`,()=>{remove('leaves',id);toast('حذف شد','');render();}); },
+'leave-ok'(el,id){ decideLeave(id,'approved'); },
+'leave-no'(el,id){ decideLeave(id,'rejected'); },
+'chat-open'(el,id){ S.filters.chat=id; render(); },
+'chat-send'(el,id){
+const body=V('chat_body'); if(!body){toast('پیام خالی است','err');return;}
+insert('messages',{school_id:S.user.school_id,from_id:S.user.id,to_id:id,body,created_at:todayISO()});
+insert('notifications',{user_id:id,school_id:S.user.school_id,type:'chat',title:'💬 پیام جدید',body:`${S.user.full_name}: ${body.slice(0,60)}`,link:'chat',read:0,created_at:todayISO()});
+S.filters.chat=id; render();
+},
+'tuition-detail'(el,id){ S.child=id; go('mytuition'); },
+'tuition-new'(){
+const stu=schoolScope('users').filter(x=>x.role==='student'&&x.active);
+const plans=schoolScope('tuition_plans').filter(p=>p.active);
+if(!stu.length||!plans.length){toast('برای صدور، دانش‌آموز و طرحِ فعال لازم است','err');return;}
+openModal(modalTpl('صدور صورتحساب شهریه',
+`${f('دانش‌آموز *',sel('tn_st',stu.map(x=>[x.id,x.full_name])))}
+       ${f('طرح *',sel('tn_pl',plans.map(p=>[p.id,`${p.title} — ${rial(p.amount)} ریال`])))}
+       ${f('تخفیف (ریال)',inp('tn_disc',0,'number'))}
+       <div class="small muted" style="line-height:2">اقساط طبقِ زمان‌بندیِ طرح ساخته می‌شوند؛ اگر دانش‌آموز صورتحسابِ باز داشته باشد، صدور رد می‌شود.</div>`,
 'tuition-new-save'));
 },
 'tuition-new-save'(){
@@ -14696,7 +14740,7 @@ window._edit=p;
 }
 
 const P8 = { colls: ['teacher_schools','exam_terms','exams','exam_duties','parent_verifications','corrections'] };
-const TIME_SLOTS = ['08:00','10:00','10:30','13:00'];
+const TIME_SLOTS = ['08:00','10:00','10:30','13:00']; void TIME_SLOTS;
 const toMinP = t => { const [h,m]=String(t||'0:0').split(':').map(Number); return (h||0)*60+(m||0); };
 const toHHMMP = m => `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
 const overlapP = (a,ad,b,bd) => toMinP(a) < toMinP(b)+bd && toMinP(b) < toMinP(a)+ad;
@@ -15196,7 +15240,7 @@ if(activePersona()!=='parent')return false;
 if(!subSettings().paywall_enabled)return false;
 return !effectiveParentAccess(S.user.id).active;
 };
-const PARENT_FREE_ROUTES=['dashboard','children','record','exams','calendar','family','mytuition','subscription','notifications','announcements'];
+const PARENT_FREE_ROUTES=['dashboard','children','record','exams','calendar','family','mytuition','subscription','notifications','announcements']; void PARENT_FREE_ROUTES;
 function generateP10(){
 db.parent_subscriptions=db.parent_subscriptions||[];
 db.subscription_payments=db.subscription_payments||[];
@@ -15590,7 +15634,8 @@ if(r.s.area_kind==='village') out.push('مدرسهٔ روستایی');
 if(r.avg>0&&r.avg<14) out.push('میانگین نمره پایین ('+fa(r.avg)+')');
 if(r.att>0&&r.att<85) out.push('حضور پایین ('+fa(r.att)+')٪');
 var hi=0;
-try{ hi=(typeof atRiskList==='function')?atRiskList(90,r.s.id).filter(function(i){return i.level==='high';}).length:0; }catch(e){}
+try{ hi=(typeof atRiskList==='function')?atRiskList(90,r.s.id).filter(function(i){return i.level==='high';}).length:0; }catch(e){
+}
 if(hi>=3) out.push('پیش‌آگهیِ افت بالا ('+fa(hi)+' دانش‌آموزِ پرخطر)');
 return out;
 }
@@ -16334,7 +16379,8 @@ function render(){
      چیزی رفت، شمارنده‌های همان رندر به‌روز باشند. محافظ ۳۰ ثانیه‌ای
      درون خودِ تابع است، پس فراخوانی مکرر بی‌ضرر است. */
   if(typeof notifyAutoTick === 'function'){
-    try{ notifyAutoTick(); }catch(e){}
+    try{ notifyAutoTick(); }catch(e){ // noop
+}
   }
 
   /* موقعیت اسکرول منو و ناحیهٔ محتوا پیش از بازسازی.
@@ -16350,7 +16396,8 @@ function render(){
   var mainTop = mainEl ? mainEl.scrollTop : 0;
   /* اسکرول پنجره هم برای نمای موبایل که محتوا اسکرول جدا ندارد */
   var winTop = 0;
-  try { winTop = window.pageYOffset || document.documentElement.scrollTop || 0; } catch(e) {}
+  try { winTop = window.pageYOffset || document.documentElement.scrollTop || 0; } catch(e) { // noop
+}
 
   const picker=(S.user&&S.showPicker&&isMultiRole())?panelPicker():'';
   const gate=(S.user&&activePersona()==='parent'&&!parentLocked()&&!S.gateSkipped&&!picker)?safeHTML(parentGate()):'';
@@ -16378,7 +16425,8 @@ function render(){
     if(sb){
       var aTop = act.offsetTop, aBot = aTop + act.offsetHeight;
       if(aTop < sb.scrollTop || aBot > sb.scrollTop + sb.clientHeight){
-        try{ act.scrollIntoView({ block:'nearest' }); }catch(e){}
+        try{ act.scrollIntoView({ block:'nearest' }); }catch(e){ // noop
+}
       }
     }
   }
@@ -16393,11 +16441,13 @@ function render(){
   var main = document.querySelector('.main');
   if(S.__routeChanged){
     if(main) main.scrollTop = 0;
-    try { window.scrollTo(0, 0); } catch(e) {}
+    try { window.scrollTo(0, 0); } catch(e) { // noop
+}
     S.__routeChanged = false;
   } else {
     if(main && mainTop) main.scrollTop = mainTop;
-    if(winTop) { try { window.scrollTo(0, winTop); } catch(e) {} }
+    if(winTop) { try { window.scrollTo(0, winTop); } catch(e) { // noop
+} }
   }
   /* پاسِ دسترس‌پذیری: ناحیه‌هایِ اسکرول‌شونده فوکوس‌پذیر شوند
      (axe: scrollable-region-focusable — رفعِ serious دورِ a11y-تعاملی) */
@@ -17256,7 +17306,8 @@ return { msg:'لایهٔ همگام‌سازی در دسترس نیست', before
 if(!SYNC.online)
 return { msg:'آنلاین نیستیم — اتصال شبکه بازگردد، صف خودکار ارسال می‌شود', before:[] };
 var n = SYNC.queue.filter(function(x){ return x.status==='pending'||x.status==='failed'; }).length;
-try{ syncNow(true); }catch(e){}
+try{ syncNow(true); }catch(e){
+}
 return { msg: n + ' عملیات به‌صورت دستی به سرور فرستاده شد؛ نتیجه در چند لحظه در همین آزمون می‌آید', before:[] };
 },
 fixDesc:'صف به‌صورت دستی ارسال می‌شود. اگر همچنان ماند: اتصال به سرور (سنجش سرور) را ببینید.',
@@ -17431,7 +17482,8 @@ var added = 0;
 bad.forEach(function(r){
 if(cur.indexOf(r) < 0){ cur.push(r); added++; }
 });
-try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){}
+try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){
+}
 if(!added) return { msg:'گزینه‌های معیوب قبلاً پنهان بودند', before:[] };
 return { msg: added + ' گزینهٔ معیوب تا زمان تعمیر از منو پنهان شد'
 + ' (دکمهٔ «بازگردانی گزینه‌های پنهان» در بالای صفحه)',
@@ -17480,7 +17532,8 @@ var cur = navDisabledRoutes();
 var before = [{ coll:'__nav', rec:cur.slice(), existed:true }];
 var added = 0;
 bad.forEach(function(r){ if(cur.indexOf(r) < 0){ cur.push(r); added++; } });
-try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){}
+try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){
+}
 if(!added) return { msg:'گزینه‌ها قبلاً پنهان بودند', before:[] };
 return { msg: added + ' مسیرِ بی‌عنوان تا زمان تعمیر از منو پنهان شد', before: before };
 },
@@ -17529,7 +17582,8 @@ var cur = navDisabledRoutes();
 var before = [{ coll:'__nav', rec:cur.slice(), existed:true }];
 var added = 0;
 bad.forEach(function(r){ if(cur.indexOf(r) < 0){ cur.push(r); added++; } });
-try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){}
+try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){
+}
 if(!added) return { msg:'گزینه‌ها قبلاً پنهان بودند', before:[] };
 return { msg: added + ' گزینهٔ بی‌مجوز تا زمان هماهنگ‌سازی منو پنهان شد', before: before };
 },
@@ -17701,7 +17755,8 @@ if(typeof SYNC === 'undefined' || !SYNC || typeof syncNow !== 'function')
 return { msg:'لایهٔ همگام‌سازی در دسترس نیست', before:[] };
 if(!SYNC.online)
 return { msg:'آنلاین نیستیم — اتصال شبکه بازگردد، صف خودکار ارسال می‌شود', before:[] };
-try{ syncNow(true); }catch(e){}
+try{ syncNow(true); }catch(e){
+}
 return { msg:'صف به‌صورت دستی ارسال شد؛ عملیات ناموفق دوباره امتحان می‌شوند. عملیات «متعارض» نیاز به تصمیم مدیر دارد (دو نسخه از یک رکورد).', before:[] };
 },
 fixDesc:'عملیات ناموفق دوباره ارسال می‌شوند. عملیات متعارض (دو نسخه از یک رکورد) دستی از صفحهٔ مالی/کاربرانه حل می‌شود.',
@@ -17720,7 +17775,8 @@ var slow = [], worst = 0, prev = S.route;
 ((NAV[role] || [])).forEach(function(grp){
 (grp[1] || []).forEach(function(it){
 var t = Date.now();
-try{ S.route = it[0]; renderRoute(); }catch(e){}
+try{ S.route = it[0]; renderRoute(); }catch(e){
+}
 var ms = Date.now() - t;
 if(ms > worst) worst = ms;
 if(ms > 250) slow.push({ صفحه: it[2] || it[0], 'میلی‌ثانیه': ms });
@@ -17775,7 +17831,8 @@ msg: miss.length + ' تابع حیاتی در دسترس نیست' }
 : { ok:true, extra: need.length + ' تابع پایه سالم' };
 },
 fix: function(){
-try{ window.location.reload(); }catch(e){}
+try{ window.location.reload(); }catch(e){
+}
 return { msg:'صفحه تازه‌بارگیری شد تا همهٔ ماژول‌ها دوباره بیایند', before:[] };
 },
 fixDesc:'صفحه تازه‌بارگیری می‌شود. اگر خطا باقی ماند، فایلِ باز‌شده قدیمی یا ناقص است — آخرین بیلد را باز کنید.',
@@ -17809,7 +17866,8 @@ msg: miss.length + ' جدول پایه بارگذاری نشده' }
 : { ok:true, extra: need.length + ' جدول پایه سالم' };
 },
 fix: function(){
-try{ window.location.reload(); }catch(e){}
+try{ window.location.reload(); }catch(e){
+}
 return { msg:'صفحه تازه‌بارگیری شد تا ترتیب ماژول‌ها دوباره اجرا شود', before:[] };
 },
 fixDesc:'صفحه تازه‌بارگیری می‌شود. اگر تکرار شد، ترتیب بارگذاری در بیلد خراب است — بیلد دوباره ساخته شود.',
@@ -17921,7 +17979,8 @@ msg: DIAG_SYSLOG.length + ' خطای برنامه در لاگ زمان‌اجر�
 fix: function(){
 var n = DIAG_SYSLOG.length;
 DIAG_SYSLOG.length = 0;
-try{ Store.setJSON(DIAG_SYSLOG_KEY, []); }catch(e){}
+try{ Store.setJSON(DIAG_SYSLOG_KEY, []); }catch(e){
+}
 return { msg: n + ' خطای قدیمی از لاگ پاک شد (خطاهای تازه دوباره ثبت می‌شوند)', before:[] };
 },
 fixDesc:'لاگ موقت پاک می‌شود تا بررسی بعدی تازه باشد. اگر خطا مکرر است، متن و شمارهٔ خط را برای توسعه‌دهنده بفرستید — این آزمون «مشکل کدنویسی» را از دایرهٔ بی‌خبری بیرون می‌آورد.',
@@ -17982,7 +18041,8 @@ msg:'نسخهٔ برنامه (' + APP_VERSION + ') با سرور (' + p.version 
 return { ok:true, extra:'نسخهٔ مشترک: ' + p.version };
 },
 fix: function(){
-try{ window.location.reload(); }catch(e){}
+try{ window.location.reload(); }catch(e){
+}
 return { msg:'صفحه تازه‌بارگیری شد تا بیلدِ هم‌نسخه بیاید', before:[] };
 },
 fixDesc:'صفحه تازه‌بارگیری می‌شود (کش را عبور می‌کند). اگر همچنان نمی‌خواند، بیلدِ سمت سرور به‌روز نشده است.',
@@ -18043,11 +18103,14 @@ msg:'حافظهٔ مرورگر ' + mb.toFixed(2) + ' مگابایت پر است 
 },
 fix: function(){
 var n = 0;
-if(typeof compactLog === 'function'){ try{ compactLog(); n++; }catch(e){} }
+if(typeof compactLog === 'function'){ try{ compactLog(); n++; }catch(e){
+} }
 DIAG_SYSLOG.length = 0;
-try{ Store.setJSON(DIAG_SYSLOG_KEY, []); }catch(e){}
+try{ Store.setJSON(DIAG_SYSLOG_KEY, []); }catch(e){
+}
 DIAG_PROBES = {};
-try{ Store.setJSON('sms_diag_probes_v1', {}); }catch(e){}
+try{ Store.setJSON('sms_diag_probes_v1', {}); }catch(e){
+}
 return { msg: (n ? 'دفترچهٔ عملیات فشرده و ' : '') + 'لاگ‌های دیاگ پاک شد', before:[] };
 },
 fixDesc:'دفترچهٔ عملیات فشرده و لاگ‌های دیاگ پاک می‌شود. اگر باز هم پر بود: پشتیبان کامل بگیرید، سپس داده‌های سال‌های قدیمی را از طریق توسعه‌دهنده بایگانی کنید.',
@@ -18115,7 +18178,8 @@ if(!chk) return Promise.resolve({ ok:false, msg:'آزمون یافت نشد', sh
 if(!chk.fix) return Promise.resolve({ ok:false, msg:'این عیب تعمیر خودکار ندارد',
 short:'تعمیر خودکار ندارد' });
 var snap = null;
-try{ snap = diagSnapshot(); }catch(e){}
+try{ snap = diagSnapshot(); }catch(e){
+}
 var before;
 try{ before = chk.check(); }catch(e){ before = { ok:false, count:0 }; }
 var finish = function(msg){
@@ -18124,13 +18188,15 @@ try{ after = chk.check(); }catch(e){ after = { ok:false, count:0 }; }
 var text  = (msg && typeof msg === 'object') ? msg.msg : String(msg);
 var beforeRec = (msg && typeof msg === 'object') ? msg.before : null;
 if(!after.ok){
-if(snap){ try{ diagRestore(snap); }catch(e2){} }
+if(snap){ try{ diagRestore(snap); }catch(e2){
+} }
 return { ok:false, msg:'تعمیر کامل نشد و تغییرات برگشت داده شد: ' + text,
 short:'تعمیر ناموفق — تغییرات برگشت داده شد' };
 }
 if(beforeRec && beforeRec.length) diagRecordRepair(chk, beforeRec, text);
 if(typeof recordAudit === 'function'){
-try{ recordAudit('diag-fix', chk.title + ' — ' + text); }catch(e){}
+try{ recordAudit('diag-fix', chk.title + ' — ' + text); }catch(e){
+}
 }
 var short = text.length > 60 ? text.slice(0, 60) + '…' : text;
 return { ok: !!after.ok, msg:text, short:short,
@@ -18139,7 +18205,8 @@ before: before.count || 0, after: after.count || 0 };
 var r;
 try{ r = chk.fix(before); }
 catch(e){
-if(snap){ try{ diagRestore(snap); }catch(e2){} }
+if(snap){ try{ diagRestore(snap); }catch(e2){
+} }
 return Promise.resolve({ ok:false,
 msg:'تعمیر خطا داد و تغییرات برگشت داده شد: ' + String(e && e.message),
 short:'تعمیر خطا داد' });
@@ -18148,7 +18215,8 @@ if(r && typeof r.then === 'function'){
 return r.then(
 function(msg){ return finish(msg); },
 function(err){
-if(snap){ try{ diagRestore(snap); }catch(e2){} }
+if(snap){ try{ diagRestore(snap); }catch(e2){
+} }
 return { ok:false, msg:'تعمیر ناموفق بود: ' + String(err && (err.message || err)),
 short:'تعمیر ناموفق' };
 }
@@ -18217,7 +18285,8 @@ title: 'تعمیر خودکار سامانه',
 body: res.done.length + ' عیب خودکار برطرف شد: ' + res.done.join(' · '),
 date: todayISO(), read: 0
 });
-}catch(e){}
+}catch(e){
+}
 }
 });
 }
@@ -18226,7 +18295,8 @@ date: todayISO(), read: 0
 try{
 diagSyslogLoad();
 diagRepairsLoad();
-}catch(e){}
+}catch(e){
+}
 var DIAG_SYSLOG = [];
 var DIAG_SYSLOG_KEY = 'sms_diag_syslog_v1';
 var DIAG_SYSLOG_MAX = 100;
@@ -18235,7 +18305,8 @@ if(DIAG_SYSLOG.length) return;
 try{
 var s = Store.getJSON(DIAG_SYSLOG_KEY, null);
 if(Array.isArray(s)) DIAG_SYSLOG = s.slice(-DIAG_SYSLOG_MAX);
-}catch(e){}
+}catch(e){
+}
 }
 function diagLogError(rec){
 rec = rec || {};
@@ -18247,7 +18318,8 @@ line: (rec.lineno != null) ? rec.lineno : null,
 user: (typeof S !== 'undefined' && S.user) ? S.user.role : 'guest'
 });
 if(DIAG_SYSLOG.length > DIAG_SYSLOG_MAX) DIAG_SYSLOG = DIAG_SYSLOG.slice(-DIAG_SYSLOG_MAX);
-try{ Store.setJSON(DIAG_SYSLOG_KEY, DIAG_SYSLOG); }catch(e){}
+try{ Store.setJSON(DIAG_SYSLOG_KEY, DIAG_SYSLOG); }catch(e){
+}
 }
 (function diagWireErrors(){
 try{
@@ -18259,7 +18331,8 @@ window.addEventListener('unhandledrejection', function(ev){
 var r = ev && ev.reason;
 diagLogError({ message: (r && r.message) ? r.message : String(r), reason: r });
 });
-}catch(e){}
+}catch(e){
+}
 })();
 var DIAG_REPAIRS = [];
 var DIAG_REPAIRS_KEY = 'sms_diag_repairs_v1';
@@ -18269,7 +18342,8 @@ if(DIAG_REPAIRS.length) return;
 try{
 var s = Store.getJSON(DIAG_REPAIRS_KEY, null);
 if(Array.isArray(s)) DIAG_REPAIRS = s.slice(0, DIAG_REPAIRS_MAX);
-}catch(e){}
+}catch(e){
+}
 }
 function diagRecordRepair(chk, beforeList, msg){
 DIAG_REPAIRS.unshift({
@@ -18278,7 +18352,8 @@ id: chk.id, title: chk.title, msg: String(msg || ''),
 before: beforeList || []
 });
 if(DIAG_REPAIRS.length > DIAG_REPAIRS_MAX) DIAG_REPAIRS.length = DIAG_REPAIRS_MAX;
-try{ Store.setJSON(DIAG_REPAIRS_KEY, DIAG_REPAIRS); }catch(e){}
+try{ Store.setJSON(DIAG_REPAIRS_KEY, DIAG_REPAIRS); }catch(e){
+}
 }
 function diagRollback(i){
 var rec = DIAG_REPAIRS[i];
@@ -18288,11 +18363,13 @@ try{
 batchWrites(function(){
 (rec.before || []).forEach(function(b){
 if(b.coll === '__nav'){
-try{ Store.setJSON('nav_disabled_v1', b.rec || []); }catch(e){}
+try{ Store.setJSON('nav_disabled_v1', b.rec || []); }catch(e){
+}
 n++; return;
 }
 if(b.coll === '__ids'){
-try{ ids[b.rec.c] = b.rec.from; }catch(e){}
+try{ ids[b.rec.c] = b.rec.from; }catch(e){
+}
 n++; return;
 }
 if(b.existed && b.rec){
@@ -18308,7 +18385,8 @@ n++;
 if(typeof idxReset === 'function') idxReset();
 }catch(e){ err = String(e && e.message); }
 if(!err){
-try{ DIAG_REPAIRS.splice(i, 1); Store.setJSON(DIAG_REPAIRS_KEY, DIAG_REPAIRS); }catch(e){}
+try{ DIAG_REPAIRS.splice(i, 1); Store.setJSON(DIAG_REPAIRS_KEY, DIAG_REPAIRS); }catch(e){
+}
 }
 return err
 ? { ok:false, msg:'بازگردانی خطا داد: ' + err }
@@ -18340,7 +18418,8 @@ if(!r.ok && r.error && (r.networkError || r.timedOut || String(r.error).indexOf(
 var recNet = { at:new Date().toISOString(), ok:false,
 err:String(r.error), ms:ms };
 DIAG_PROBES.health = recNet;
-try{ Store.setJSON('sms_diag_probes_v1', DIAG_PROBES); }catch(e){}
+try{ Store.setJSON('sms_diag_probes_v1', DIAG_PROBES); }catch(e){
+}
 return { ok:false, probed:true,
 msg:'وصل به سرور نشد: ' + String(r.error)
 + ' — دامنه، پورت، HTTPS و اجرای سرور را بررسی کنید' };
@@ -18352,7 +18431,8 @@ if(rec.serverTime){
 var drift = Math.abs(Date.parse(rec.serverTime) - Date.now());
 if(drift < 86400000) DIAG_PROBES.driftMs = drift;
 }
-try{ Store.setJSON('sms_diag_probes_v1', DIAG_PROBES); }catch(e){}
+try{ Store.setJSON('sms_diag_probes_v1', DIAG_PROBES); }catch(e){
+}
 var msg = r.ok
 ? 'سرور پاسخ داد (' + ms + ' میلی‌ثانیه)'
 + (rec.version ? ' · نسخهٔ سرور: ' + rec.version : '')
@@ -18362,7 +18442,8 @@ return { ok:r.ok, probed:true, msg:msg };
 var rec = { at:new Date().toISOString(), ok:false,
 err:String((err && err.message) || err), ms:Date.now() - t0 };
 DIAG_PROBES.health = rec;
-try{ Store.setJSON('sms_diag_probes_v1', DIAG_PROBES); }catch(e){}
+try{ Store.setJSON('sms_diag_probes_v1', DIAG_PROBES); }catch(e){
+}
 return { ok:false, probed:true,
 msg:'وصل به سرور نشد: ' + String((err && err.message) || err)
 + ' — دامنه، پورت، HTTPS و اجرای سرور را بررسی کنید' };
@@ -18377,11 +18458,13 @@ return Array.isArray(a) ? a : [];
 function navDisableAdd(route){
 var cur = navDisabledRoutes();
 if(cur.indexOf(route) < 0) cur.push(route);
-try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){}
+try{ Store.setJSON('nav_disabled_v1', cur); }catch(e){
+}
 return cur;
 }
 function navRestoreAll(){
-try{ Store.remove('nav_disabled_v1'); }catch(e){}
+try{ Store.remove('nav_disabled_v1'); }catch(e){
+}
 }
 var diagProbeRoutesSeen = 0;
 function diagProbeRoutes(){
@@ -20648,6 +20731,9 @@ if(typeof add !== 'function') return 0;
 var already = (db.grades || []).some(function(g){
 var y = yearOfDate(g.created_at);
 return y && typeof yearCode === 'function' && y !== yearCode();
+}) && (db.attendance || []).some(function(a){
+var y = yearOfDate(a.date);
+return y && typeof yearCode === 'function' && y !== yearCode();
 });
 if(already) return 0;
 var made = 0;
@@ -21013,7 +21099,8 @@ j.family.forEach(function(r){
 if(r && r.studentId != null) attMap[r.studentId] = (r.att == null ? null : r.att);
 });
 bellLiveCache = j;
-try{ (typeof Store !== 'undefined') && Store.set(SERVER_TIME_KEY, now.toISOString()); }catch(e){}
+try{ (typeof Store !== 'undefined') && Store.set(SERVER_TIME_KEY, now.toISOString()); }catch(e){
+}
 var roots = document.querySelectorAll('[data-bell-live]');
 if(!roots.length){ bellLiveStop(); return; }
 roots.forEach(function(root){
@@ -21045,10 +21132,12 @@ bellLiveRenderLocal();
 function bellLiveEnsure(){
 if(typeof S === 'undefined' || !S.user){ bellLiveStop(); return; }
 if(bellLiveTimer) return;
-try{ bellLiveTimer = setInterval(bellLiveTick, BELL_LIVE_INTERVAL); }catch(e){}
+try{ bellLiveTimer = setInterval(bellLiveTick, BELL_LIVE_INTERVAL); }catch(e){
+}
 }
 function bellLiveStop(){
-if(bellLiveTimer){ try{ clearInterval(bellLiveTimer); }catch(e){} bellLiveTimer = null; }
+if(bellLiveTimer){ try{ clearInterval(bellLiveTimer); }catch(e){
+} bellLiveTimer = null; }
 }
 
 var NUDGE_COOLDOWN_MIN = 10;
@@ -21105,7 +21194,7 @@ return n.created_at && minutesSince(n.created_at) < NUDGE_COOLDOWN_MIN;
 });
 if(pending) return {ok:false, msg:'یادآوریِ قبلی هنوز در انتظار است'};
 if(recent) return {ok:false, msg:'هنوز در مهلتِ ۱۰ دقیقهٔ ضداسپم است'};
-var t = byId('users', teacherId) || {};
+var t = byId('users', teacherId) || {}; void t;
 var nu = insert('nudges', {
 school_id: schoolId, class_id: classId, teacher_id: teacherId,
 period: period, date: dateISO, status: 'pending',
@@ -22374,7 +22463,7 @@ h += '</div>';
 return h + '</div>';
 }
 function busStudentTab(sid){
-var st = byId('users', sid) || {};
+var st = byId('users', sid) || {}; void st;
 var route = busRouteOfStudent(sid);
 var m = busMismatch(sid);
 var h = '<div class="card-body" style="display:grid;gap:12px">';
@@ -22419,7 +22508,7 @@ return '<div class="row" style="gap:8px"><span class="muted small" style="flex:n
 return h + '</div>';
 }
 function busParentTab(sid){
-var st = byId('users', sid) || {};
+var st = byId('users', sid) || {}; void st;
 var need = busNeedOf(sid);
 var route = busRouteOfStudent(sid);
 var m = busMismatch(sid);
@@ -22873,7 +22962,8 @@ req.onsuccess = function(e){
 var d = e.target.result;
 var missing = names.filter(function(n){ return !d.objectStoreNames.contains(n); });
 if(missing.length && allowBump && ver < 10){
-try{ d.close(); }catch(e){}
+try{ d.close(); }catch(e){
+}
 _IDB_DB = null;
 return openAt(ver + 1, allowBump);
 }
@@ -22949,7 +23039,8 @@ resolve({usage:0, quota:400*1048576, left:400*1048576, known:false});
 });
 return;
 }
-}catch(e){}
+}catch(e){
+}
 resolve({usage:0, quota:400*1048576, left:400*1048576, known:false});
 });
 }
@@ -23010,7 +23101,8 @@ return;
 if(ver > version){
 version = ver;
 if(req.onupgradeneeded){
-try{ req.onupgradeneeded({ target:{ result: db } }); }catch(err){}
+try{ req.onupgradeneeded({ target:{ result: db } }); }catch(err){
+}
 }
 }
 req.result = db;
@@ -23261,7 +23353,8 @@ shad_time: now.slice(0,16) + ':00', file_key:'', file_name:'', mime:'', size:0,
 description:'', created_at: now, created_by: t ? t.id : 0
 });
 var blob = null;
-try{ blob = new Blob([new Uint8Array(2048).fill(7)], {type:'video/mp4'}); }catch(e){}
+try{ blob = new Blob([new Uint8Array(2048).fill(7)], {type:'video/mp4'}); }catch(e){
+}
 var key = 'vclass:demo:' + s1.id;
 add('vclass_sessions', {
 school_id: sc.id, class_id: cls.id, type: 'video',
@@ -23822,7 +23915,8 @@ var bytes = new Uint8Array(bin.length);
 for(var bi=0; bi<bin.length; bi++) bytes[bi] = bin.charCodeAt(bi);
 var blob = new Blob([bytes], {type: 'image/png'});
 hwDemoPut(a.id, stud.id, blob, now, t);
-}catch(e){}
+}catch(e){
+}
 }
 function hwDemoPut(assignmentId, studentId, blob, now, t){
 if(!blob) return;
@@ -23876,7 +23970,7 @@ function hwViewModal(submissionId){
 var sub = byId('hw_submissions', submissionId);
 if(!sub || !sub.file_key) return;
 var a = byId('hw_assignments', sub.assignment_id);
-var cls = a ? byId('classes', a.class_id) : null;
+var cls = a ? byId('classes', a.class_id) : null; void cls;
 var u = S.user;
 var role = (typeof activePersona === 'function') ? activePersona() : u.role;
 if(role === 'student' && sub.student_id !== u.id) return;
@@ -25152,17 +25246,22 @@ doDeleteAccount();
 });
 }
 function clearDeviceData(){
-try{ (Store.keys() || []).forEach(function(k){ Store.remove(k); }); }catch(e){}
+try{ (Store.keys() || []).forEach(function(k){ Store.remove(k); }); }catch(e){
+}
 try{
 if(typeof indexedDB !== 'undefined' && indexedDB.databases){
 indexedDB.databases().then(function(list){
-list.forEach(function(db){ try{ indexedDB.deleteDatabase(db.name); }catch(e){} });
+list.forEach(function(db){ try{ indexedDB.deleteDatabase(db.name); }catch(e){
+} });
 }).catch(function(){});
 }
-}catch(e){}
-try{ if(typeof SYNC !== 'undefined'){ SYNC.queue = []; } }catch(e){}
+}catch(e){
+}
+try{ if(typeof SYNC !== 'undefined'){ SYNC.queue = []; } }catch(e){
+}
 S.user = null; S.persona = null; S.boss = null;
-try{ if(typeof refreshSyncBadge === 'function') refreshSyncBadge(); }catch(e){}
+try{ if(typeof refreshSyncBadge === 'function') refreshSyncBadge(); }catch(e){
+}
 }
 function doDeleteAccount(){
 var isSrv = (typeof DATA_MODE !== 'undefined' && DATA_MODE === 'server');
@@ -25171,7 +25270,8 @@ clearDeviceData();
 if(typeof toast === 'function')
 toast(isSrv ? 'حساب و داده‌های مرتبط از سرور حذف شد — صفحه تازه می‌شود'
 : 'داده‌های این دستگاه پاک شد — صفحه تازه می‌شود', 'ok');
-setTimeout(function(){ try{ location.reload(); }catch(e){} }, 900);
+setTimeout(function(){ try{ location.reload(); }catch(e){
+} }, 900);
 };
 if(!isSrv){ finish(); return; }
 if(typeof Api === 'undefined' || typeof Api.request !== 'function'){ finish(); return; }
@@ -25648,7 +25748,8 @@ try{
 if(typeof Store!=='undefined' && Store && typeof Store.get==='function'){
 return Store.get('payesh_ui_theme','theme-2');
 }
-}catch(e){}
+}catch(e){
+}
 return 'theme-2';
 }
 function themePickerHtml(){
@@ -27208,7 +27309,7 @@ return `${bar}<div class="card">${head}
 }
 function mgGradesMatrix(cls, rows, gradeCols, head, canEdit){
 const cid = cls.id;
-const u = S.user;
+const u = S.user; void u;
 const subs = visibleSubjects();
 const subId = Number(S.filters.mgsub || (subs[0] || {}).id || 0);
 const term = S.filters.mgterm || TERMS[0];
@@ -27310,7 +27411,8 @@ madeIds.push(r.id); n++;
 });
 };
 if(typeof batchWrites === 'function') batchWrites(write); else write();
-if(typeof notifyGradeSync === 'function') madeIds.forEach(gid => { try{ notifyGradeSync(gid); }catch(e){} });
+if(typeof notifyGradeSync === 'function') madeIds.forEach(gid => { try{ notifyGradeSync(gid); }catch(e){
+} });
 if(bad) toast('نمره باید بین ۰ تا ۲۰ باشد — ' + fa(bad) + ' خانه ثبت نشد', 'err');
 else if(!n){ toast('هیچ نمره‌ای وارد نشده است', 'err'); return; }
 if(n) toast(fa(n) + ' نمره ثبت شد', 'ok');
@@ -27325,7 +27427,7 @@ const RPT_KINDS = [
 ['teachers',   '👨‍🏫', 'عملکرد معلمان']
 ];
 const RPT_ATT_STS = ['present', 'absent', 'late', 'excused', 'early_exit'];
-const RPT_ATT_FA = { present: 'حاضر', absent: 'غایب', late: 'تأخیر', excused: 'موجه', early_exit: 'خروج زودتر' };
+const RPT_ATT_FA = { present: 'حاضر', absent: 'غایب', late: 'تأخیر', excused: 'موجه', early_exit: 'خروج زودتر' }; void RPT_ATT_FA;
 var RPT_STATE = null;
 function rptState(){
 if (!RPT_STATE){
@@ -27780,7 +27882,7 @@ var vtone = (v == null) ? '' : (v >= 75 ? 'green' : v >= 50 ? 'amber' : 'red');
 return '<div class="bar-row"><span>' + esc(intDimFa(k)) + '</span>'
 + '<span class="badge ' + vtone + '">' + vtxt + '</span></div>';
 }).join('');
-var dqStatus = (dq && dq.status) || 'NO_DATA';
+var dqStatus = (dq && dq.status) || 'NO_DATA'; void dqStatus;
 var dqText = intDataQualityText(dq);
 return '<div class="card" style="margin-bottom:14px">'
 + '<div class="card-head"><h3>🧠 شاخص سلامت مدرسه</h3>'
@@ -27857,7 +27959,7 @@ return '<div class="grid g4" style="margin-bottom:14px">'
 }
 function viewIntelligence(){
 var st = intState();
-var u = (typeof S !== 'undefined') ? S.user : null;
+var u = (typeof S !== 'undefined') ? S.user : null; void u;
 var head = '<div class="page-head">'
 + '<h2>🧠 مرکز هوشمندی مدرسه</h2>'
 + '<div class="small muted">شاخص سلامت، پرچم‌های بحرانی و اقدامات اولویت‌دار — '
@@ -27902,7 +28004,8 @@ if (typeof Store !== 'undefined' && Store && typeof Store.get === 'function') {
 var stored = Store.get('payesh_ui_theme', defaultTheme);
 return validThemes.indexOf(stored) !== -1 ? stored : defaultTheme;
 }
-} catch (e) {}
+} catch (e) {
+}
 return defaultTheme;
 }
 function saveTheme(themeId) {
@@ -27910,7 +28013,8 @@ try {
 if (typeof Store !== 'undefined' && Store && typeof Store.set === 'function') {
 return Store.set('payesh_ui_theme', themeId);
 }
-} catch (e) {}
+} catch (e) {
+}
 return false;
 }
 function applyTheme(themeId) {

@@ -415,7 +415,7 @@ function calculateGradeDistribution(records, options = {}) {
   const {
     targetScale = 20,
     expectedSchoolId = null
-  } = options;
+  } = options; void targetScale;
 
   if (!Array.isArray(records) || records.length === 0) {
     return {

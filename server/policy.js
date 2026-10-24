@@ -315,6 +315,15 @@ function inScope(session, store, coll, recId, data) {
       return teacherClassIds(store, u.id).has(Number(enr.class_id));
     }
     if (rec && rec.teacher_id != null) return rec.teacher_id === u.id;
+    if (coll === 'users') {
+      const targetUser = rec || data || {};
+      const uidTarget = Number(targetUser.id != null ? targetUser.id : recId);
+      if (uidTarget === Number(u.id)) return true;
+      const enrU = ((store && store.enrollments) || []).find((e) => Number(e.student_id) === uidTarget);
+      if (!enrU) return false;
+      if (targetUser.school_id != null && Number(targetUser.school_id) !== Number(u.school_id)) return false;
+      return teacherClassIds(store, u.id).has(Number(enrU.class_id));
+    }
     if (rec && rec.school_id != null) return rec.school_id === u.school_id;
     return false;
   }
@@ -416,8 +425,9 @@ function inScope(session, store, coll, recId, data) {
     if (cid2 != null && (!cls3 || cls3.school_id == null || Number(cls3.school_id) !== rowSch)) return false;
     return true;
   }
-  if ((coll === 'grades' || coll === 'attendance') && data && data.class_id != null) {
-    const cls4 = ((store && store.classes) || []).find((x) => Number(x.id) === num(data.class_id));
+  if ((coll === 'grades' || coll === 'attendance' || coll === 'enrollments') && (data && data.class_id != null || rec && rec.class_id != null)) {
+    const cid4 = num((data && data.class_id != null) ? data.class_id : (rec && rec.class_id));
+    const cls4 = ((store && store.classes) || []).find((x) => Number(x.id) === cid4);
     if (!cls4 || cls4.school_id == null) return false;
     const stu2 = st != null ? ((store && store.users) || []).find((x) => Number(x.id) === Number(st) && x.role === 'student') : null;
     const expectSch = (stu2 && stu2.school_id != null) ? num(stu2.school_id) : (s != null ? num(s) : num(u.school_id));

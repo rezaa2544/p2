@@ -42,29 +42,29 @@ const MUTS = [
   },
   {
     file: 'server/sync.js', suite: 'tests/server15.js', heap: 1500,
-    bad: 'if(VERSION_TRACKED[op.c]) rec.version = (rec.version || 1) + 1;',
-    mut: 'if(false && VERSION_TRACKED[op.c]) rec.version = (rec.version || 1) + 1;',
+    bad: 'if(VERSION_TRACKED[op.c] || strictBaseVersion || op.base_version != null) rec.version = (op.base_version != null ? op.base_version : (rec.version || 1)) + 1;',
+    mut: 'if(false && (VERSION_TRACKED[op.c] || strictBaseVersion || op.base_version != null)) rec.version = 1;',
     name: 'M2 نسخهِٔ رکورد چرخانده نمی‌شود',
     expectFail: 'C2b'
   },
   {
     file: 'server/conflicts.js', suite: 'tests/server15.js', heap: 1500,
-    bad: 'Object.assign(rec, c.incoming.data, { id: rec.id, updated_at: nowIso });',
-    mut: 'if(false) Object.assign(rec, c.incoming.data, { id: rec.id, updated_at: nowIso });',
+    bad: 'if (target) {\n        Object.assign(target, patch);\n      } else {',
+    mut: 'if (target) {\n        /* M3: incoming omitted */\n      } else {',
     name: 'M3 داوریِ incoming دادهٔ کلاینت را اعمال نمی‌کند',
     expectFail: 'C15b'
   },
   {
     file: 'server/conflicts.js', suite: 'tests/server15.js', heap: 1500,
-    bad: "if(s.role !== 'manager' && s.role !== 'superadmin')\n      return sendJson(res, 403, { ok: false, code: 'role_denied' });\n    /* لایهٔ مقدار",
-    mut: "if(false && s.role !== 'manager' && s.role !== 'superadmin')\n      return sendJson(res, 403, { ok: false, code: 'role_denied' });\n    /* لایهٔ مقدار",
+    bad: "if (s.role !== 'manager' && s.role !== 'superadmin')\n      return sendJson(res, 403, { ok: false, code: 'role_denied' });\n\n    if (!body",
+    mut: "if (false && s.role !== 'manager' && s.role !== 'superadmin')\n      return sendJson(res, 403, { ok: false, code: 'role_denied' });\n\n    if (!body",
     name: 'M4 گاردِ نقشِ resolve حذف شد (دبیر داوری می‌کند)',
     expectFail: 'C14'
   },
   {
     file: 'server/conflicts.js', suite: 'tests/server15.js', heap: 1500,
-    bad: "if(s.role === 'manager' && c.school_id != null && Number(c.school_id) !== Number(s.school_id))",
-    mut: "if(false && s.role === 'manager' && c.school_id != null && Number(c.school_id) !== Number(s.school_id))",
+    bad: "if (s.role === 'manager' && (c.school_id == null || Number(c.school_id) !== Number(s.school_id)))",
+    mut: "if (false && s.role === 'manager' && (c.school_id == null || Number(c.school_id) !== Number(s.school_id)))",
     name: 'M5 دامنهِٔ مدرسهِٔ resolve حذف شد (بین‌مدرسه‌ای داوری می‌کند)',
     expectFail: 'C13'
   },

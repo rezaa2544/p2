@@ -25,13 +25,13 @@ const SUITE = path.join(ROOT, 'tests', 'server11-sms.js');
 const MUTS = [
   {
     file: 'server/sms.js',
-    bad: 'w.balance = Number(w.balance || 0) - cost;',
-    mut: 'w.balance = Number(w.balance || 0);',
+    bad: 'w.balance = prevBalance - cost;',
+    mut: 'w.balance = prevBalance;',
     name: 'M1 حذفِ کسرِ کیف (wallet)', expect: 'S2'
   },
   {
     file: 'server/sms.js',
-    bad: 'const dup = store.sms_log.some(l => l.status === \'sent\' && l.queue_id === qid && l.user_id === r.parent.id);',
+    bad: "const dup = sentIndex.has(qid + '|' + r.parent.id);",
     mut: 'const dup = true;',
     name: 'M2 ایدمپوتانسِ کلِ وقت «دوباره»', expect: 'S2/S3'
   },

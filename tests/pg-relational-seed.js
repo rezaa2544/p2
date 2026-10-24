@@ -58,7 +58,7 @@ function runSeeder(fresh) {
   const probe = new pg.Pool({ connectionString: PGURL, max: 2, connectionTimeoutMillis: 5000 });
   try { await probe.query('SELECT 1'); }
   catch (e) { console.log(NAME + ': ❌ FAIL — PostgreSQL not reachable: ' + e.message + ' — skip/NOT-RUN ممنوع (P1-GAP-01)'); process.exit(1); }
-  finally { try { await probe.end(); } catch (e) {} }
+  finally { try { await probe.end(); } catch (e) {/* intentional no-op */} }
 
   /* ── 1. the seeder itself ── */
   const run1 = runSeeder(true);
@@ -147,7 +147,7 @@ function runSeeder(fresh) {
     await c.query('ROLLBACK');
   } catch (e) {
     fkRejected = true; fkMsg = String(e.message || e);
-    try { await c.query('ROLLBACK'); } catch (e2) {}
+    try { await c.query('ROLLBACK'); } catch (e2) {/* intentional no-op */}
   }
   chk('3a an orphan grades.student_id is rejected by a real FK',
     fkRejected && /foreign key|fk_grades_student/i.test(fkMsg), fkMsg);
@@ -160,7 +160,7 @@ function runSeeder(fresh) {
     await c.query('ROLLBACK');
   } catch (e) {
     fkClass = true; fkClassMsg = String(e.message || e);
-    try { await c.query('ROLLBACK'); } catch (e2) {}
+    try { await c.query('ROLLBACK'); } catch (e2) {/* intentional no-op */}
   }
   chk('3b an orphan classes.school_id is rejected by a real FK',
     fkClass && /foreign key|fk_classes_school/i.test(fkClassMsg), fkClassMsg);

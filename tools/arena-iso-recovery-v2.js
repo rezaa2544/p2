@@ -19,7 +19,7 @@ function sink(port) {
     srv.listen(port, () => resolve({
       connCount: () => sockets.size,
       destroy: () => new Promise((res) => {
-        for (const s of sockets) { try { s.destroy(); } catch (e) {} }
+        for (const s of sockets) { try { s.destroy(); } catch (e) {/* intentional no-op */} }
         srv.close(() => res());
         setTimeout(res, 500);
       })
@@ -37,7 +37,7 @@ function pgChildren(ppid) {
       const stat = fs.readFileSync('/proc/' + d + '/stat', 'utf8');
       const rest = stat.slice(stat.lastIndexOf(')') + 2).split(' ');
       if (Number(rest[1]) === ppid) out.push(Number(d));
-    } catch (e) {}
+    } catch (e) {/* intentional no-op */}
   }
   return out;
 }
@@ -83,7 +83,7 @@ async function untilReady(port, ms) {
   /* ── FULL PostgreSQL freeze ── */
   const pp = postmasterPid(infra);
   const kids = pgChildren(pp);
-  for (const p of [pp, ...kids]) { try { process.kill(p, 'SIGSTOP'); } catch (e) {} }
+  for (const p of [pp, ...kids]) { try { process.kill(p, 'SIGSTOP'); } catch (e) {/* intentional no-op */} }
   console.log('G. SIGSTOP postmaster ' + pp + ' + ' + kids.length + ' children (full freeze)');
   await sleep(300);
   const fr = await L.readiness(rd, 3000);
@@ -92,7 +92,7 @@ async function untilReady(port, ms) {
   // a login (needs PG) — sessionFrom reads users via pool → should hang
   const lg = await L.httpReq(rd, 'POST', '/api/auth/send-code', { phone: '09992630039' }, { timeoutMs: 3000 });
   console.log('I. send-code during full freeze (rate-limit needs redis; userByPhone needs PG):', lg.status, 'err=' + lg.error);
-  for (const p of [pp, ...kids]) { try { process.kill(p, 'SIGCONT'); } catch (e) {} }
+  for (const p of [pp, ...kids]) { try { process.kill(p, 'SIGCONT'); } catch (e) {/* intentional no-op */} }
   const r2 = await untilReady(rd, 40000);
   console.log('J. DB-freeze recovery (readiness 200):', r2.status === 200 ? r2.ms + 'ms' : 'NEVER (' + r2.ms + 'ms)');
 

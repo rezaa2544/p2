@@ -62,7 +62,7 @@ function spawnNode(args, env, tag) {
   return child;
 }
 function killAll() {
-  children.forEach((c) => { try { if (!c.killed) c.kill('SIGKILL'); } catch (e) {} });
+  children.forEach((c) => { try { if (!c.killed) c.kill('SIGKILL'); } catch (e) {/* intentional no-op */} });
 }
 
 function apiRequest(port, method, urlPath, headers, body) {
@@ -84,7 +84,7 @@ async function waitForHealth(port, ms) {
     try {
       const r = await apiRequest(port, 'GET', '/api/health', {});
       if (r.status === 200) return true;
-    } catch (e) {}
+    } catch (e) {/* intentional no-op */}
     await new Promise((r) => setTimeout(r, 250));
   }
   return false;
@@ -109,7 +109,7 @@ async function bootServer(tmp, names, extraEnv, basePort, tag) {
       return { child: child, port: port, audit: path.join(tmp, names.audit) };
     }
     console.log('  … ' + tag + ' تلاشِ ' + attempt + ' ناموفق: ' + (child.stderrText || '(بی‌صدا)').slice(-200));
-    try { child.kill('SIGKILL'); } catch (e) {}
+    try { child.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
     await new Promise((r) => setTimeout(r, 1000));
   }
   return null;
@@ -166,7 +166,7 @@ async function partA() {
     'status=' + r4.status + ' hdr=' + r4.headers['x-trace-id']);
   chk('A4b ممیزی همان trace_id را دارد (همبستگی)', !!btl && btl.trace_id === tid4,
     btl ? JSON.stringify(btl).slice(0, 160) : 'خطِ body_too_large یافت نشد (' + lines.length + ' خط)');
-  try { srvE.kill('SIGKILL'); } catch (e) {}
+  try { srvE.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
 
   /* بوتِ D: ردیابی خاموش */
   const bD = await bootServer(tmp, { store: 'store-D.json', audit: 'audit-D.log', key: 'jwt-D.key' },
@@ -182,8 +182,8 @@ async function partA() {
   const btlD = linesD.find((l) => l.event === 'body_too_large' || l.type === 'body_too_large');
   chk('A5b ممیزیِ خاموش کلیدِ trace_id ندارد', !!btlD && !('trace_id' in btlD),
     btlD ? JSON.stringify(btlD).slice(0, 160) : 'خط یافت نشد');
-  try { srvD.kill('SIGKILL'); } catch (e) {}
-  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+  try { srvD.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
+  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   return true;
 }
 
@@ -209,9 +209,9 @@ function ensureJaegerBinary() {
     const tgz = path.join(dir, 'dl.tar.gz');
     cp.execFileSync('curl', ['-fsSL', '--max-time', '120', '-o', tgz, url], { timeout: 130000 });
     cp.execFileSync('tar', ['-xzf', tgz, '-C', dir, '--strip-components=1'], { timeout: 60000 });
-    try { fs.unlinkSync(tgz); } catch (e) {}
+    try { fs.unlinkSync(tgz); } catch (e) {/* intentional no-op */}
     if (!fs.existsSync(bin)) return { bin: null, why: 'استخراج ناموفق' };
-    try { fs.chmodSync(bin, 0o755); } catch (e) {}
+    try { fs.chmodSync(bin, 0o755); } catch (e) {/* intentional no-op */}
     return { bin };
   } catch (e) {
     return { bin: null, why: 'دانلود/استخراج ناموفق: ' + String((e && e.message) || e).slice(0, 120) };
@@ -313,9 +313,9 @@ async function partB() {
   }
   if (!uiOk) {
     let tail = '';
-    try { tail = fs.readFileSync(jlog, 'utf8').slice(-400); } catch (e) {}
+    try { tail = fs.readFileSync(jlog, 'utf8').slice(-400); } catch (e) {/* intentional no-op */}
     ['B1', 'B2', 'B3', 'B4', 'B5'].forEach((b) => skp(b, 'Jaeger بالا نیامد: ' + tail.slice(-120)));
-    try { jg.kill('SIGKILL'); } catch (e) {}
+    try { jg.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
     return;
   }
   console.log('  … Jaeger بالا است (ui :16686، otlp :4318)');
@@ -329,7 +329,7 @@ async function partB() {
       OTEL_BSP_EXPORT_TIMEOUT: '30000' }, 18791, 'app-B');
   if (!bB) {
     chk('B0 بوتِ اپ با OTLP زنده', false, 'دو تلاش ناموفق');
-    try { jg.kill('SIGKILL'); } catch (e) {}
+    try { jg.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
     killAll(); return;
   }
   const portB = bB.port;
@@ -372,7 +372,7 @@ async function partB() {
     'status=' + r401.status + (tr4 ? '' : ' رد یافت نشد'));
 
   /* B5: سیم‌کشیِ نمونه‌بردار (احتمالِ صفر = هیچ ردی) */
-  try { srv.kill('SIGKILL'); } catch (e) {}
+  try { srv.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
   await new Promise((r) => setTimeout(r, 800));
   const bB5 = await bootServer(tmp, { store: 'store-B.json', audit: 'audit-B.log', key: 'jwt-B.key' },
     { TRACING_ENABLED: 'true', OTEL_EXPORTER_OTLP_ENDPOINT: 'http://127.0.0.1:4318',
@@ -388,9 +388,9 @@ async function partB() {
   }
   if (!b5done) chk('B5 نمونه‌برداریِ صفر = رد صادر نشد', false, 'بوتِ دوم ناموفق');
 
-  try { jg.kill('SIGKILL'); } catch (e) {}
+  try { jg.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
   killAll();
-  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
 }
 
 /* ── main ───────────────────────────────────────────────── */
@@ -407,7 +407,7 @@ async function partB() {
       if (bErr || fail > failB) {
         if (bErr) { fail++; failures.push('crash: ' + String((bErr && bErr.message) || bErr)); }
         console.log('  … بخشِ B زیرِ بار شکست خورد؛ تلاشِ دوم با بوتِ تازه');
-        try { killAll(); } catch (e) {}
+        try { killAll(); } catch (e) {/* intentional no-op */}
         await new Promise((r) => setTimeout(r, 3000));
         pass = passB; fail = failB; failures.length = nfB;
         await partB();
@@ -419,7 +419,7 @@ async function partB() {
     failures.push('crash: ' + String((e && e.message) || e));
     console.log('  ❌ کرش: ' + String((e && e.stack) || e).slice(0, 400));
   }
-  try { killAll(); } catch (e) {}
+  try { killAll(); } catch (e) {/* intentional no-op */}
   console.log('\n' + '─'.repeat(52));
   console.log('جمع: ' + pass + ' موفق، ' + fail + ' ناموفق از ' + (pass + fail) +
     (skip ? ' (' + skip + ' پرش)' : ''));

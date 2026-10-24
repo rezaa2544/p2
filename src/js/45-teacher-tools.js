@@ -343,6 +343,9 @@ function generatePriorYear(){  /* دور ۱۰۰/نقص ۶: نامِ پیشین g
   var already = (db.grades || []).some(function(g){
     var y = yearOfDate(g.created_at);
     return y && typeof yearCode === 'function' && y !== yearCode();
+  }) && (db.attendance || []).some(function(a){
+    var y = yearOfDate(a.date);
+    return y && typeof yearCode === 'function' && y !== yearCode();
   });
   if(already) return 0;
 

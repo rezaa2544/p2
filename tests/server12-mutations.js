@@ -57,7 +57,7 @@ for (const m of MUTS) {
     while (out.trim() === '' && att < 3) {
       att++;
       const w0 = Date.now() + 2500 * att;
-      while (Date.now() < w0) {}
+      while (Date.now() < w0) {/* intentional no-op */}
       try { execFileSync('node', __r89args, { stdio: 'pipe', env: kit.env(), cwd: ROOT }); out = 'PASSED (no failure)'; }
       catch (e2) { out = String(e2.stdout || '') + String(e2.stderr || ''); }
     }

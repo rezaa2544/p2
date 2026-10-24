@@ -41,6 +41,8 @@ function projectUserByRole(userRecord, requesterRole, isSelfOrOwner = false) {
   if (requesterRole === 'superadmin' || requesterRole === 'manager' || requesterRole === 'edu_office' || isSelfOrOwner) {
     const clone = Object.assign({}, userRecord);
     delete clone.password; // Never expose password hash
+    delete clone.password_hash;
+    delete clone.token;
     return clone;
   }
 

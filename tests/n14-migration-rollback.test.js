@@ -165,12 +165,12 @@ async function main() {
 
         await c.query('RESET search_path');
       } finally {
-        try { await c.query('RESET search_path'); } catch (_) {}
-        try { await c.query('DROP SCHEMA IF EXISTS n14 CASCADE'); } catch (_) {}
+        try { await c.query('RESET search_path'); } catch (_) {/* intentional no-op */}
+        try { await c.query('DROP SCHEMA IF EXISTS n14 CASCADE'); } catch (_) {/* intentional no-op */}
         c.release();
       }
     });
-    try { await pool.end(); } catch (_) {}
+    try { await pool.end(); } catch (_) {/* intentional no-op */}
   }
 
   console.log('\nN-14 regression tests: ' + pass + '/' + (pass + fail) + ' passed' + (skipped ? ' (' + skipped + ' skipped)' : ''));

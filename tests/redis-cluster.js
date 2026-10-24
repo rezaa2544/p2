@@ -153,7 +153,7 @@ async function main() {
       await redis.close();
     } catch (e) {
       chk('L1/L2 بدون خطا', false, e.message);
-      try { await require('../server/redis.js').close(); } catch (e2) {}
+      try { await require('../server/redis.js').close(); } catch (e2) {/* intentional no-op */}
     }
   }
 

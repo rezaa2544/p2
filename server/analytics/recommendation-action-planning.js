@@ -92,7 +92,7 @@ function deepFreeze(obj) {
  * @param {Object} [options]
  * @returns {boolean}
  */
-function enforceRecommendationAccessGuard(requester, targetEntity, options = {}) {
+function enforceRecommendationAccessGuard(requester, targetEntity, options = {}) { void options;
   if (!requester || typeof requester !== 'object') {
     throw new Error('RECOMMENDATION_ACCESS_FORBIDDEN: requester session is missing');
   }
@@ -175,7 +175,7 @@ function enforceRecommendationAccessGuard(requester, targetEntity, options = {})
  * @param {Object} [context]
  * @returns {string}
  */
-function assignActionOwner(recommendation = {}, context = {}) {
+function assignActionOwner(recommendation = {}, context = {}) { void context;
   const type = recommendation.action_type || recommendation.type || '';
 
   switch (type) {
@@ -201,7 +201,7 @@ function assignActionOwner(recommendation = {}, context = {}) {
  * @param {Object} [options]
  * @returns {Array<Object>}
  */
-function prioritizeActions(recommendations = [], options = {}) {
+function prioritizeActions(recommendations = [], options = {}) { void options;
   if (!Array.isArray(recommendations)) return deepFreeze([]);
 
   const scored = recommendations.map(rec => {
@@ -274,8 +274,8 @@ function generateActionRecommendations(params = {}, options = {}) {
 
   const sch = params.schoolSnapshot || {};
   const reg = params.regionalSnapshot || {};
-  const lng = params.longitudinalInsights || {};
-  const cases = Array.isArray(params.interventionCases) ? params.interventionCases : [];
+  const lng = params.longitudinalInsights || {}; void lng;
+  const cases = Array.isArray(params.interventionCases) ? params.interventionCases : []; void cases;
 
   // ۱. ارزیابی سیگنال‌های غیبت و حضور
   // D1 (بازمانده): نرخ‌ها فقط وقتی موجودند که واقعاً در شات مدرسه باشند؛

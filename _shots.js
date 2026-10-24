@@ -57,17 +57,17 @@ const SHOTS = [
         await sleep(900);
         if (user) {
           await page.evaluate((u) => {
-            const x = db.users.find(y => y.username === u);
+            const x = window.db.users.find(y => y.username === u);
             document.getElementById('lpn').value = x.phone;
             document.getElementById('lnid').value = x.national_id;
-            document.getElementById('lcode').value = SmsPanel.sendCode(x.phone);
+            document.getElementById('lcode').value = window.SmsPanel.sendCode(x.phone);
             document.querySelector('[data-act="login"]').click();
           }, user);
           await sleep(1200);
           // پنلِ چندنقشی اگر خودکار باز شده، ببندیم تا صفحهٔ اصلی دیده شود
           await page.evaluate(() => {
-            if (document.getElementById('modal') && document.getElementById('modal').innerHTML) closeModal();
-            render();
+            if (document.getElementById('modal') && document.getElementById('modal').innerHTML) window.closeModal();
+            window.render();
           });
           await sleep(500);
         }
@@ -75,9 +75,9 @@ const SHOTS = [
         // پس از ورود، اگر مسیرِ هدف خانه نبود، از منو به آن برو
         if (user && route) {
           await page.evaluate((r) => {
-            if (S.route !== r) {
+            if (window.S.route !== r) {
               const it = document.querySelector('.nav-item[data-r="' + r + '"]');
-              if (it) it.click(); else { S.route = r; render(); }
+              if (it) it.click(); else { window.S.route = r; window.render(); }
             }
           }, route);
           await sleep(900);
@@ -88,14 +88,14 @@ const SHOTS = [
           await page.evaluate((r) => {
             const it = document.querySelector('.nav-item[data-r="' + r + '"]');
             if (it) it.click();
-            else { S.route = r; render(); }
+            else { window.S.route = r; window.render(); }
           }, route);
           await sleep(900);
         }
       }
       // دیگ: بررسی را واقعاً اجرا کنیم تا گیج و نتایج دیده شود
       if (route === 'diag') {
-        await page.evaluate(() => { S.diag = runDiagnostics(); render(); });
+        await page.evaluate(() => { window.S.diag = window.runDiagnostics(); window.render(); });
         await sleep(700);
       }
       const f = path.join(OUT, key + '.jpg');

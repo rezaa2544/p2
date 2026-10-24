@@ -29,7 +29,7 @@ function httpReq(port, method, p, body, cookie) {
     const req = http.request({ hostname: '127.0.0.1', port, path: p, method, headers }, (res) => {
       let b = '';
       res.on('data', (d) => (b += d));
-      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {} resolve({ status: res.statusCode, json: j, text: b, setCookie: res.headers['set-cookie'] }); });
+      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */} resolve({ status: res.statusCode, json: j, text: b, setCookie: res.headers['set-cookie'] }); });
     });
     req.on('error', () => resolve({ status: 0, json: null, text: '' }));
     if (data) req.write(data);
@@ -48,8 +48,8 @@ function cookieFrom(r) {
 
 let tmp = null, srv = null;
 process.on('exit', () => {
-  try { if (srv) srv.kill('SIGKILL'); } catch (e) {}
-  try { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+  try { if (srv) srv.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
+  try { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
 });
 
 async function main() {
@@ -175,8 +175,8 @@ async function main() {
 
   console.log('entry-gpa: ' + okc + ' pass / ' + failc + ' fail');
   if (failc) { console.log('FAILURES:'); fails.forEach(f => console.log(' - ' + f)); }
-  try { if (srv) srv.kill('SIGKILL'); } catch (e) {}
-  try { dom.window.close(); } catch (e) {}
+  try { if (srv) srv.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
+  try { dom.window.close(); } catch (e) {/* intentional no-op */}
   process.exit(failc ? 1 : 0);
 }
 main().catch(e => { console.error('FATAL', e); process.exit(1); });

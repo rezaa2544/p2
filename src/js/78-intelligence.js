@@ -118,7 +118,7 @@ function intHealthPanel(hi, dq){
       + '<span class="badge ' + vtone + '">' + vtxt + '</span></div>';
   }).join('');
 
-  var dqStatus = (dq && dq.status) || 'NO_DATA';
+  var dqStatus = (dq && dq.status) || 'NO_DATA'; void dqStatus;
   var dqText = intDataQualityText(dq);
 
   return '<div class="card" style="margin-bottom:14px">'
@@ -206,7 +206,7 @@ function intSummaryCards(sn){
 /** نمایشِ اصلیِ صفحهٔ هوشمندی مدرسه */
 function viewIntelligence(){
   var st = intState();
-  var u = (typeof S !== 'undefined') ? S.user : null;
+  var u = (typeof S !== 'undefined') ? S.user : null; void u;
 
   var head = '<div class="page-head">'
     + '<h2>🧠 مرکز هوشمندی مدرسه</h2>'

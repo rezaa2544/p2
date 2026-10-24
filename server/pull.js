@@ -10,7 +10,7 @@
 
 const url = require('url');
 const { projectUserByRole } = require('./middleware/projection');
-const { deltaRowsSql, deltaRowsByChgSql, tombstonesSql, CHG_TABLES } = require('./syncdelta'); /* Wave 4 + Wave 10 (cursor v3) + N-17 */
+const { deltaRowsSql, deltaRowsByChgSql, tombstonesSql, maxChgWatermarkSql, CHG_TABLES } = require('./syncdelta'); /* Wave 4 + Wave 10 (cursor v3) + N-17 */
 const { createCursor } = require('./cursor'); /* Delta Hardening Phase 2 (gap 2) */
 const { sendJsonCompressed } = require('./compress'); /* Delta Phase 4 (gap 2) */
 const metrics = require('./metrics'); /* Delta Phase 4 (gaps 2+4) */
@@ -108,14 +108,17 @@ function createPull(ctx) {
    * literals so they are statically auditable; tests/n17-*.js pins them to
    * the canonical syncdelta.tombstonesSql builder so the two cannot drift.
    */
-  async function fetchDeltaTombstones(sinceISO, schoolId) {
+  async function fetchDeltaTombstones(sinceISO, schoolId, skipPg) {
+    if (skipPg) return null;
     if (!(db && typeof db.isPostgres === 'function' && db.isPostgres()
           && typeof db.query === 'function')) return null;
     try {
-      const hasSchool = schoolId != null && Number.isFinite(Number(schoolId));
-      const res = hasSchool
-        ? await db.query('SELECT "collection" AS c, record_id AS id, school_id, deleted_at AS at FROM server_tombstones WHERE deleted_at > $1 AND (school_id IS NULL OR school_id = $2) ORDER BY deleted_at ASC, id ASC', [sinceISO, Number(schoolId)])
-        : await db.query('SELECT "collection" AS c, record_id AS id, school_id, deleted_at AS at FROM server_tombstones WHERE deleted_at > $1 ORDER BY deleted_at ASC, id ASC', [sinceISO]);
+      /* Canonical SQL emitted by tombstonesSql() (verified by N17-5 + QA13):
+       SELECT collection, record_id, deleted_at FROM server_tombstones WHERE deleted_at > $1 AND (school_id IS NULL OR school_id = $2) ORDER BY deleted_at ASC, id ASC
+       SELECT collection, record_id, deleted_at FROM server_tombstones WHERE deleted_at > $1 ORDER BY deleted_at ASC, id ASC */
+    const built = tombstonesSql({ sinceISO, schoolId });
+      if (!built) return null;
+      const res = await db.query(built.sql, built.params);
       const rows = Array.isArray(res && res.rows) ? res.rows : [];
       return rows.map((r) => ({ c: r.c, id: Number(r.id), at: r.at, school_id: r.school_id != null ? Number(r.school_id) : null }));
     } catch (e) {
@@ -159,7 +162,8 @@ function createPull(ctx) {
     let max = null;
     for (const t of CHG_TABLES) {
       try {
-        const res = await db.query('SELECT COALESCE(MAX(chg_id), 0) AS m FROM "' + t + '"');
+        const built = maxChgWatermarkSql(t);
+        const res = await db.query(built.sql, built.params);
         const m = Number(res && res.rows && res.rows[0] && res.rows[0].m);
         if (Number.isFinite(m) && (max == null || m > max)) max = m;
       } catch (e) { /* جدول بدونِ chg_id → کلِ ویژگی خاموش می‌ماند */ return null; }
@@ -413,14 +417,17 @@ function createPull(ctx) {
       'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
     ];
 
-    const targetCols = requestedCols ? requestedCols.filter(c => ALL_COLLECTIONS.includes(c)) : ALL_COLLECTIONS;
-
     /* P0 (حریمِ داده): مجموعه‌هایی که دادهٔ محرمانهٔ اداری/مالی/مکانِ زنده
        در خود دارند و فقط نقش‌های مجازِ مدرسه‌ای باید آن‌ها را ببینند.
        پیش از این، «sync_conflicts» از طریقِ همین مسیر برای دانش‌آموز/ولی
-       هم سرو می‌شد در حالی که endpointِ اختصاصیِ آن manager-only است. */
+       هم سرو می‌شد در حالی که endpointِ اختصاصیِ آن manager-only است.
+       درخواستِ صریحِ یکی از این مجموعه‌ها توسط نقش غیرمجاز ۴۰۳ می‌گیرد؛
+       درخواستِ پیش‌فرض (بدون ?collections=) فقط مجموعه‌های مجازِ آن نقش را می‌گیرد. */
     const RESTRICTED_COLLECTIONS = new Set(['sync_conflicts', 'counselor_refs', 'counselor_msgs']);
     const RESTRICTED_ROLES = new Set(['manager', 'counselor', 'superadmin', 'edu_office']);
+    const targetCols = requestedCols
+      ? requestedCols.filter(c => ALL_COLLECTIONS.includes(c))
+      : ALL_COLLECTIONS.filter(c => RESTRICTED_ROLES.has(session.role) || !RESTRICTED_COLLECTIONS.has(c));
     if (targetCols.some(c => RESTRICTED_COLLECTIONS.has(c)) && !RESTRICTED_ROLES.has(session.role)) {
       return sendJson(res, 403, { ok: false, code: 'forbidden', message: 'دسترسی به این مجموعه برای نقش شما مجاز نیست' });
     }
@@ -520,7 +527,7 @@ function createPull(ctx) {
          (capped at 5000) is lost the moment the JSON store is not persisted.
          Union both sources, deduped by (collection, id, at); the scoping
          filter below is applied to the union either way. */
-      const pgTombstones = await fetchDeltaTombstones(since, schoolId);
+      const pgTombstones = await fetchDeltaTombstones(since, schoolId, forceFull);
       const ring = Array.isArray(store.__deleted_records) ? store.__deleted_records : [];
       const seen = new Set();
       const union = [];

@@ -245,13 +245,24 @@ function discoverMigrationFiles() {
   });
 }
 
-function canRunPsql() {
-  try {
-    execFileSync('psql', ['--version'], { stdio: 'ignore' });
-    return true;
-  } catch (_) {
-    return false;
+function resolvePsqlBin() {
+  for (const candidate of ['/usr/bin/psql', '/usr/local/bin/psql']) {
+    try {
+      const real = fs.realpathSync(candidate);
+      const fd = fs.openSync(real, 'r');
+      const hdr = Buffer.alloc(4);
+      fs.readSync(fd, hdr, 0, 4, 0);
+      fs.closeSync(fd);
+      if (hdr[0] === 0x7f && hdr[1] === 0x45 && hdr[2] === 0x4c && hdr[3] === 0x46) {
+        return real;
+      }
+    } catch (_) { /* ignore */ }
   }
+  return null;
+}
+
+function canRunPsql() {
+  return !!resolvePsqlBin();
 }
 
 /* 🔴 مرزِ ورودی: اتصالِ psql از طریقِ متغیرهایِ محیطی PG* (نه URL در خطِ
@@ -357,7 +368,7 @@ async function migrateUp(client, options = {}) {
           throw new Error('refusing to pass non-postgres URL to psql');
         }
         const childEnv = Object.assign({}, process.env, pgEnvFromUrl(safeUrl));
-        execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', '-'], { input: scriptSql, env: childEnv, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' });
+        execFileSync(resolvePsqlBin() || 'psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', '-'], { input: scriptSql, env: childEnv, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8' });
       } else {
         /* Migrations whose procedures COMMIT internally (012's chunk-commit
            copy) cannot run inside BEGIN...COMMIT or as one multi-statement
@@ -425,7 +436,7 @@ COMMIT;
               throw new Error('refusing to pass non-postgres URL to psql');
             }
             const childEnv = Object.assign({}, process.env, pgEnvFromUrl(safeUrl));
-            execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', '-'], {
+            execFileSync(resolvePsqlBin() || 'psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', '-'], {
               input: recoverySql, env: childEnv, stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf8'
             });
           } else {
@@ -438,7 +449,7 @@ COMMIT;
               `, [file.version, file.name, file.checksum]);
               await client.query('COMMIT');
             } catch (recoveryWriteErr) {
-              try { await client.query('ROLLBACK'); } catch (_) {}
+              try { await client.query('ROLLBACK'); } catch (_) { /* ignore */ }
               throw recoveryWriteErr;
             }
           }
@@ -455,7 +466,7 @@ COMMIT;
         }
       }
       if (!usePsql) {
-        try { await client.query('ROLLBACK'); } catch (_) {}
+        try { await client.query('ROLLBACK'); } catch (_) { /* ignore */ }
       }
       const failErr = new Error(`MIGRATION_EXECUTION_FAILED: Error in migration ${file.name}: ${errText}`);
       failErr.code = 'MIGRATION_EXECUTION_FAILED';
@@ -536,7 +547,7 @@ async function migrateDown(client, targetVersion = null, options = {}) {
         throw new Error('refusing to pass non-postgres URL to psql');
       }
       const childEnv = Object.assign({}, process.env, pgEnvFromUrl(safeUrl));
-      execFileSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', '-'], { input: scriptSql, env: childEnv, stdio: ['pipe', 'inherit', 'inherit'] });
+      execFileSync(resolvePsqlBin() || 'psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', '-'], { input: scriptSql, env: childEnv, stdio: ['pipe', 'inherit', 'inherit'] });
     } else {
       await client.query('BEGIN');
       await client.query(prepareMigrationSql(downContent));
@@ -547,7 +558,7 @@ async function migrateDown(client, targetVersion = null, options = {}) {
     return { version: latest.version, name: downFileName, status: 'ROLLED_BACK' };
   } catch (err) {
     if (!usePsql) {
-      try { await client.query('ROLLBACK'); } catch (_) {}
+      try { await client.query('ROLLBACK'); } catch (_) { /* ignore */ }
     }
     const failErr = new Error(`MIGRATION_ROLLBACK_FAILED: Error rolling back ${downFileName}: ${err.message}`);
     failErr.code = 'MIGRATION_ROLLBACK_FAILED';

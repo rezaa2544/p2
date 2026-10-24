@@ -31,7 +31,8 @@ function go(route,silent){
   if(!silent)pushHist(route);
   render();
 }
-function pushHist(route){ try{history.pushState({r:route,n:S.stack.length},'','#'+route);}catch(e){} }
+function pushHist(route){ try{history.pushState({r:route,n:S.stack.length},'','#'+route);}catch(e){ // noop
+} }
 /** بازگشت یک مرحله: اول مودال، بعد منوی کناری، بعد صفحه قبل */
 function goBack(){
   if($('#modal')&&$('#modal').innerHTML){closeModal();return true;}

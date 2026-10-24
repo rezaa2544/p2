@@ -41,7 +41,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
-const ROOT = path.join(__dirname, '..');
+const ROOT = path.join(__dirname, '..'); void ROOT;
 
 if (!process.env.DATABASE_URL) { console.error('BLOCKED: DATABASE_URL required (PG-only gate)'); process.exit(2); }
 if (!process.env.REDIS_URL)   { console.error('BLOCKED: REDIS_URL required (OTP state)');   process.exit(2); }
@@ -50,7 +50,7 @@ if (!process.env.REDIS_URL)   { console.error('BLOCKED: REDIS_URL required (OTP 
 delete process.env.NODE_ENV;      // dev → demo_code echo (repo convention)
 delete process.env.PAYESH_ENV;
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-idor-rt-'));
-process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 process.env.PAYESH_KEY = path.join(TMP, 'jwt.key');
 process.env.PAYESH_AUDIT = path.join(TMP, 'audit.log');
 process.env.PAYESH_DEMO_CODE = '1';
@@ -72,11 +72,11 @@ function log(id, desc, status, expect, extra) {
 async function req(method, p, { body, cookie } = {}) {
   const res = await fetch(BASE + p, {
     method,
-    headers: Object.assign(body ? { 'Content-Type': 'application/json' } : {}, cookie ? { Cookie: cookie } : {}),
+    headers: Object.assign({ Origin: BASE }, body ? { 'Content-Type': 'application/json' } : {}, cookie ? { Cookie: cookie } : {}),
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
-  let json = null; try { json = JSON.parse(text); } catch (e) {}
+  let json = null; try { json = JSON.parse(text); } catch (e) {/* intentional no-op */}
   return { status: res.status, json, text, headers: res.headers };
 }
 
@@ -103,7 +103,7 @@ async function loginAs(key) {
 async function waitReady(ms) {
   const t0 = Date.now();
   while (Date.now() - t0 < ms) {
-    try { const r = await fetch(BASE + '/api/health'); if (r.status === 200) return true; } catch (e) {}
+    try { const r = await fetch(BASE + '/api/health'); if (r.status === 200) return true; } catch (e) {/* intentional no-op */}
     await new Promise(r => setTimeout(r, 250));
   }
   return false;

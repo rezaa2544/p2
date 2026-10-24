@@ -288,7 +288,8 @@ function generateVclassDemo(){
   });
   /* فایل دمو: چند کیلوبایت بایت (پخش واقعی ندارد ولی مکانیزم کامل است) */
   var blob = null;
-  try{ blob = new Blob([new Uint8Array(2048).fill(7)], {type:'video/mp4'}); }catch(e){}
+  try{ blob = new Blob([new Uint8Array(2048).fill(7)], {type:'video/mp4'}); }catch(e){ // noop
+}
   var key = 'vclass:demo:' + s1.id;
   add('vclass_sessions', {
     school_id: sc.id, class_id: cls.id, type: 'video',

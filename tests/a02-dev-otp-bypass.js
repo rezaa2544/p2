@@ -45,7 +45,7 @@ if (MUT) {
   if (live.split(M[MUT][0]).length - 1 !== 1) { console.error('الگوی جهش مچ نشد:', MUT); process.exit(2); }
   fs.writeFileSync(p, live.replace(M[MUT][0], M[MUT][1]));
   console.log('[mutated]', MUT, '→', 'auth.a02-mutated.js');
-  process.on('exit', () => { try { fs.unlinkSync(p); } catch (_) {} });
+  process.on('exit', () => { try { fs.unlinkSync(p); } catch (_) {/* intentional no-op */} });
   AUTH_PATH = require.resolve('../server/auth.a02-mutated.js');
 } else {
   AUTH_PATH = require.resolve('../server/auth.js');

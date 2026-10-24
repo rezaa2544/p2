@@ -35,7 +35,7 @@ function atomicWrite(file, str, mode){
   const tmp = file + '.tmp';
   fs.writeFileSync(tmp, str, { encoding: 'utf8', mode: mode });
   fs.renameSync(tmp, file);
-  try{ fs.chmodSync(file, mode); }catch(e){}
+  try{ fs.chmodSync(file, mode); }catch(e){/* intentional no-op */}
 }
 
 /* اسنپ‌شاتِ فقط‌داده — کلیدهای __* (حالتِ داخلی) واردِ بکاپ نمی‌شوند */
@@ -51,7 +51,7 @@ function listBackups(dir){
 }
 
 function opBackup(dir, retention){
-  try{ fs.mkdirSync(dir, { recursive: true }); }catch(e){}
+  try{ fs.mkdirSync(dir, { recursive: true }); }catch(e){/* intentional no-op */}
   const now = new Date();
   const p = n => String(n).padStart(2, '0');
   const name = 'payesh-' + now.getFullYear() + p(now.getMonth() + 1) + p(now.getDate())
@@ -61,10 +61,10 @@ function opBackup(dir, retention){
   atomicWrite(final, JSON.stringify(dataOnly(snapshot)), 0o600); /* S-73-3: PII — owner-only */
   const all = listBackups(dir);
   for(const f of all.slice(0, Math.max(0, all.length - retention))){
-    try{ fs.unlinkSync(path.join(dir, f)); }catch(e){}
+    try{ fs.unlinkSync(path.join(dir, f)); }catch(e){/* intentional no-op */}
   }
   let size = 0;
-  try{ size = fs.statSync(final).size; }catch(e){}
+  try{ size = fs.statSync(final).size; }catch(e){/* intentional no-op */}
   return { ok: true, name: name, size: size, count: listBackups(dir).length };
 }
 
@@ -101,6 +101,6 @@ parentPort.on('message', (m) => {
     }
     throw new Error('unknown_op:' + m.op);
   }catch(e){
-    try{ parentPort.postMessage({ id: m.id, ok: false, op: m.op, error: String((e && e.message) || e) }); }catch(_){}
+    try{ parentPort.postMessage({ id: m.id, ok: false, op: m.op, error: String((e && e.message) || e) }); }catch(_){/* intentional no-op */}
   }
 });

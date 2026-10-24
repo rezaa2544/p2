@@ -54,7 +54,7 @@ export default function () {
   try {
     const parsed = JSON.parse(sendRes.body);
     if (parsed.demo_code) demoCode = parsed.demo_code;
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
 
   // ۲. ارسال درخواست لاگین با کد و کد ملی
   const loginPayload = JSON.stringify({

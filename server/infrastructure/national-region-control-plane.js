@@ -19,7 +19,7 @@ const {
   assertNoZeroRanking,
   assertHumanApproval,
   deepFreeze
-} = require('./phase5-region-federation');
+} = require('./phase5-region-federation'); void assertHumanApproval;
 const authority = require('./authority');
 
 /**

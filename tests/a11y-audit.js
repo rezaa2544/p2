@@ -39,9 +39,9 @@ const login = js('06-login.js');
 const homework = js('51-homework.js');
 const audit = js('36-audit-activity.js');
 const core = js('19-actions-core.js');
-const subs = js('23-subscription.js');
-const office = js('24-edu-office.js');
-const sync = js('27-sync.js');
+const subs = js('23-subscription.js'); void subs;
+const office = js('24-edu-office.js'); void office;
+const sync = js('27-sync.js'); void sync;
 
 // ── A: skip link و landmarkها (۶) ──────────────────────────────
 group('A — skip link و landmarkها');

@@ -32,7 +32,7 @@ function chk(name, cond, extra) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let tmp = null, server = null;
-process.on('exit', () => { try { if (server) server.kill('SIGKILL'); } catch (e) {} try { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { if (server) server.kill('SIGKILL'); } catch (e) {/* intentional no-op */} try { if (tmp) fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 
 function httpReq(method, p, body, cookie) {
   return new Promise((resolve) => {
@@ -47,7 +47,7 @@ function httpReq(method, p, body, cookie) {
       let b = '';
       res.on('data', (d) => (b += d));
       res.on('end', () => {
-        let j = null; try { j = JSON.parse(b); } catch (e) {}
+        let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, json: j, headers: res.headers });
       });
     });
@@ -74,7 +74,7 @@ async function main() {
     const h = await httpReq('GET', '/api/health');
     if (h.status === 200 && h.json && h.json.ok) {
       if (h.json.pid === server.pid) { booted = true; break; }
-      try { process.kill(h.json.pid); } catch (e) {} /* سرورِ ماندهٔ اجرایِ پیشین — کُشته شود */
+      try { process.kill(h.json.pid); } catch (e) {/* intentional no-op */} /* سرورِ ماندهٔ اجرایِ پیشین — کُشته شود */
     }
     if (server.exitCode !== null) break;
     await sleep(300);
@@ -252,7 +252,7 @@ async function main() {
   r = await syncOps(C.st, [{ t: 'upd', c: 'meeting_slots', id: 1, by: CAST.st.id, data: { status: 'booked', parent_id: CAST.p.id } }]);
   chk('M3i student: meeting_slots.status → رد', r.status === 403 || ['role_denied', 'field_denied', 'out_of_scope'].includes(res0(r).code), r.status + ' ' + JSON.stringify(res0(r)));
   /* والد: رزرو نوبت — transitionِ مجاز */
-  const msRec = (seed.meeting_slots || [])[0] || {};
+  const msRec = (seed.meeting_slots || [])[0] || {}; void msRec;
   /* نوبتِ تازهٔ M2e (دبیرِ T1، بدونِ رزرو) */
   const msRec2 = { id: null };
   {

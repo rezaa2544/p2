@@ -57,7 +57,7 @@ const quiet = (fn) => { const e0 = console.error; console.error = () => {}; retu
   /* ── B2: شکلِ SQL ── */
   const c2 = fakeClient(null, false);
   await db.persistOpWithClient(c2, { uid: 'u-1', c: 'grades', t: 'ins', data: { id: 7, score: 19, meta: { a: 1 } } });
-  const upsert = c2.queries[0] || '', uparams = c2.queries.length;
+  const upsert = c2.queries[0] || '', uparams = c2.queries.length; void uparams;
   chk('B2a upsert با ON CONFLICT(id)', upsert.indexOf('INSERT INTO "grades"') === 0 && upsert.indexOf('ON CONFLICT (id) DO UPDATE SET') > 0, upsert.slice(0, 80));
   const c2d = fakeClient(null, false);
   await db.persistOpWithClient(c2d, { uid: 'u-2', c: 'grades', t: 'del', id: 9 });

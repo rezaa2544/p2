@@ -45,6 +45,7 @@ SOURCE_SHA="$(git rev-parse HEAD 2>/dev/null || true)"
 SOURCE_TREE_CLEAN="NOT_RUN"
 PG_PASSWORD=""
 PG_REPLICATION_PASSWORD=""
+PG_PGBOUNCER_PASSWORD=""
 MINIO_USER=""
 MINIO_PASSWORD=""
 REDIS_PASSWORD=""
@@ -58,6 +59,8 @@ PITR_VERIFY_EXIT="NOT_RUN"
 PG_PROMOTION_STATE="NOT_RUN"
 PG_POST_PROMOTION_WRITE="NOT_RUN"
 PG_FAILOVER_RTO_MS="NOT_RUN"
+PG_PGBOUNCER_REROUTE_TESTED="false"
+PG_PGBOUNCER_REROUTE_RTO_MS="NOT_RUN"
 REDIS_ORIGINAL_MASTER="NOT_RUN"
 REDIS_PROMOTED_MASTER="NOT_RUN"
 REDIS_FAILOVER_TOOL_EXIT="NOT_RUN"
@@ -106,6 +109,7 @@ assert_compose_project_unused() {
 redact_file() {
   local file="$1"
   PG_PASSWORD="$PG_PASSWORD" PG_REPLICATION_PASSWORD="$PG_REPLICATION_PASSWORD" \
+    PG_PGBOUNCER_PASSWORD="$PG_PGBOUNCER_PASSWORD" \
     MINIO_PASSWORD="$MINIO_PASSWORD" REDIS_PASSWORD="$REDIS_PASSWORD" \
     MINIO_USER="$MINIO_USER" node tools/m15-01-log-redactor.js redact-file "$file"
 }
@@ -199,13 +203,14 @@ run_logged() {
 }
 
 wait_pg_ha_ready() {
-  local i primary standby streaming
+  local i primary standby bouncer streaming
   for i in $(seq 1 180); do
     primary="$(compose_pg exec -T -u postgres pg-primary pg_isready -h 127.0.0.1 -p 5432 -d payesh 2>/dev/null || true)"
     standby="$(compose_pg exec -T -u postgres pg-standby pg_isready -h 127.0.0.1 -p 5432 -d payesh 2>/dev/null || true)"
+    bouncer="$(compose_pg exec -T pgbouncer pg_isready -h 127.0.0.1 -p 6432 -U pgbouncer 2>/dev/null || true)"
     streaming="$(compose_pg exec -T -u postgres pg-standby psql -XAt -d payesh -c "SELECT count(*) FROM pg_stat_wal_receiver WHERE status = 'streaming';" 2>/dev/null || true)"
-    if [[ "$primary" == *"accepting connections"* && "$standby" == *"accepting connections"* && "$streaming" == "1" ]]; then
-      printf 'primary=%s\nstandby=%s\nstandby_streaming=%s\n' "$primary" "$standby" "$streaming"
+    if [[ "$primary" == *"accepting connections"* && "$standby" == *"accepting connections"* && "$bouncer" == *"accepting connections"* && "$streaming" == "1" ]]; then
+      printf 'primary=%s\nstandby=%s\npgbouncer=%s\nstandby_streaming=%s\n' "$primary" "$standby" "$bouncer" "$streaming"
       PG_STANDBY_STREAMING="true"
       return 0
     fi
@@ -213,8 +218,89 @@ wait_pg_ha_ready() {
   done
   compose_pg ps || true
   compose_pg logs --no-color --timestamps --tail=40 pg-primary pg-standby pgbouncer || true
-  echo "PostgreSQL primary/standby readiness or streaming replication timed out" >&2
+  echo "PostgreSQL primary/standby/pgbouncer readiness or streaming replication timed out" >&2
   return 1
+}
+
+verify_pgbouncer_pre_failover() {
+  local marker="$1"
+  node - "$marker" <<'NODE'
+'use strict';
+const assert = require('assert');
+const { Pool } = require('pg');
+const marker = process.argv[2];
+(async () => {
+  const rwPool = new Pool({ connectionString: process.env.DATABASE_URL, max: 2, connectionTimeoutMillis: 10000 });
+  const roPool = new Pool({ connectionString: process.env.READ_DATABASE_URL, max: 2, connectionTimeoutMillis: 10000 });
+  try {
+    const rw = await rwPool.query(
+      "SELECT pg_is_in_recovery() AS in_recovery, (SELECT count(*)::int FROM server_outbox WHERE type = 'm15.dr.failover' AND payload->>'origin' = $1) AS marker_rows",
+      [marker]
+    );
+    const ro = await roPool.query(
+      "SELECT pg_is_in_recovery() AS in_recovery, (SELECT count(*)::int FROM server_outbox WHERE type = 'm15.dr.failover' AND payload->>'origin' = $1) AS marker_rows",
+      [marker]
+    );
+    assert.strictEqual(rw.rows[0].in_recovery, false, 'pgbouncer payesh pool did not route to primary');
+    assert.strictEqual(rw.rows[0].marker_rows, 1, 'pgbouncer payesh pool did not observe pre-failover marker');
+    assert.strictEqual(ro.rows[0].in_recovery, true, 'pgbouncer payesh-readonly pool did not route to streaming standby');
+    assert.strictEqual(ro.rows[0].marker_rows, 1, 'pgbouncer payesh-readonly pool did not observe replicated marker');
+    console.log('PGBOUNCER_PRE_FAILOVER_OK rw_recovery=false ro_recovery=true marker_rows=1');
+  } finally {
+    await rwPool.end().catch(() => {});
+    await roPool.end().catch(() => {});
+  }
+})().catch((err) => {
+  console.error(err && err.stack ? err.stack : String(err));
+  process.exit(1);
+});
+NODE
+}
+
+reroute_and_verify_pgbouncer() {
+  local marker="$1"
+  COMPOSE_F="$PG_COMPOSE" \
+    COMPOSE_PROJECT="$PG_PROJECT" \
+    COMPOSE_ENV_FILE="$COMPOSE_ENV" \
+    PGBOUNCER_TARGET_HOST=pg-standby \
+    PGBOUNCER_TARGET_PORT=5432 \
+    PGBOUNCER_DB=payesh \
+    bash "$ROOT/tools/failover-postgres.sh" --reroute-pgbouncer-only
+  node - "$marker" <<'NODE'
+'use strict';
+const assert = require('assert');
+const { Pool } = require('pg');
+const marker = process.argv[2];
+(async () => {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 4, connectionTimeoutMillis: 10000 });
+  try {
+    const pre = await pool.query(
+      "SELECT pg_is_in_recovery() AS in_recovery, " +
+      "(SELECT count(*)::int FROM server_outbox WHERE type = 'm15.dr.failover' AND payload->>'origin' = $1) AS pre_marker, " +
+      "(SELECT count(*)::int FROM server_outbox WHERE type = 'm15.dr.post_promote' AND payload->>'origin' = $1) AS promote_marker",
+      [marker]
+    );
+    assert.strictEqual(pre.rows[0].in_recovery, false, 'rerouted pgbouncer payesh pool is in recovery');
+    assert.strictEqual(pre.rows[0].pre_marker, 1, 'rerouted pgbouncer pool missing pre-failover marker');
+    assert.strictEqual(pre.rows[0].promote_marker, 1, 'rerouted pgbouncer pool missing post-promote marker');
+    await pool.query(
+      "INSERT INTO server_outbox (type, collection, payload, status) VALUES ('m15.dr.post_pgbouncer_reroute', 'm15_dr', jsonb_build_object('origin', $1::text), 'processed')",
+      [marker]
+    );
+    const readback = await pool.query(
+      "SELECT count(*)::int AS reroute_rows FROM server_outbox WHERE type = 'm15.dr.post_pgbouncer_reroute' AND payload->>'origin' = $1",
+      [marker]
+    );
+    assert.strictEqual(readback.rows[0].reroute_rows, 1, 'rerouted pgbouncer post-promotion write was not persisted');
+    console.log('PGBOUNCER_POST_REROUTE_OK in_recovery=false pre_marker=1 promote_marker=1 reroute_write=1');
+  } finally {
+    await pool.end().catch(() => {});
+  }
+})().catch((err) => {
+  console.error(err && err.stack ? err.stack : String(err));
+  process.exit(1);
+});
+NODE
 }
 
 wait_archive_ready() {
@@ -318,6 +404,8 @@ write_report() {
   export M15_DR_PITR_AFTER_ABSENT="$PITR_AFTER_ABSENT" M15_DR_PITR_VERIFY_EXIT="$PITR_VERIFY_EXIT"
   export M15_DR_PG_PROMOTION_STATE="$PG_PROMOTION_STATE" M15_DR_PG_POST_PROMOTION_WRITE="$PG_POST_PROMOTION_WRITE"
   export M15_DR_PG_FAILOVER_RTO_MS="$PG_FAILOVER_RTO_MS" M15_DR_PG_VERSION="$PG_VERSION_TEXT"
+  export M15_DR_PG_PGBOUNCER_REROUTE_TESTED="$PG_PGBOUNCER_REROUTE_TESTED"
+  export M15_DR_PG_PGBOUNCER_REROUTE_RTO_MS="$PG_PGBOUNCER_REROUTE_RTO_MS"
   export M15_DR_PG_SCHEMA_MIGRATION_COUNT="$PG_SCHEMA_MIGRATION_COUNT" M15_DR_PG_SCHEMA_LATEST_MIGRATION="$PG_SCHEMA_LATEST_MIGRATION"
   export M15_DR_PG_SCHEMA_EXPECTED_CATALOG="$PG_SCHEMA_EXPECTED_CATALOG" M15_DR_PG_SCHEMA_EXPECTED_CATALOG_SHA="$PG_SCHEMA_EXPECTED_CATALOG_SHA"
   export M15_DR_PG_SCHEMA_CATALOG_MATCH="$PG_SCHEMA_CATALOG_MATCH"
@@ -423,8 +511,9 @@ const evidence = {
       primary_stopped_before_promotion: val('M15_DR_PG_PROMOTION_STATE'),
       promoted_standby_writable_after_promotion: val('M15_DR_PG_POST_PROMOTION_WRITE'),
       promotion_to_verified_direct_write_ms: val('M15_DR_PG_FAILOVER_RTO_MS'),
-      measurement_scope: 'single-host stop to direct standby write/readback; no PgBouncer or application endpoint reroute',
-      pgbouncer_endpoint_reroute_tested: false
+      promotion_to_verified_pgbouncer_write_ms: val('M15_DR_PG_PGBOUNCER_REROUTE_RTO_MS'),
+      measurement_scope: 'single-host stop, standby promotion, and scripted PgBouncer RELOAD/RECONNECT pool reroute to promoted standby on 127.0.0.1:6432; not multi-host E4 orchestration',
+      pgbouncer_endpoint_reroute_tested: val('M15_DR_PG_PGBOUNCER_REROUTE_TESTED') === 'true'
     }
   },
   redis_sentinel: {
@@ -445,7 +534,7 @@ const evidence = {
   },
   limitations: [
     'The PostgreSQL Compose stack uses a local MinIO service on the same GitHub runner; this is not offsite backup evidence or an independent failure-domain test.',
-    'Promotion interrupts one container on a single host; it is not multi-host or production failover, and no application/PgBouncer endpoint reroute is claimed.',
+    'Promotion and scripted PgBouncer RELOAD/RECONNECT run on containers within a single host; multi-host failure domains, fencing, and automated E4 failover orchestration are not proven here.',
     'Redis Sentinel services run within one Compose network and one runner; no cross-zone, regional, or production RTO/SLO claim is made.',
     'The synthetic relational fixture and marker rows are disposable test data; no real user records are involved.',
     'A successful restore/failover drill does not establish national-scale capacity or E4 readiness.'
@@ -502,6 +591,7 @@ SOURCE_TREE_CLEAN="true"
 
 PG_PASSWORD="$(node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))")"
 PG_REPLICATION_PASSWORD="$(node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))")"
+PG_PGBOUNCER_PASSWORD="$(node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))")"
 MINIO_USER="m15$(node -e "process.stdout.write(require('crypto').randomBytes(8).toString('hex'))")"
 MINIO_PASSWORD="$(node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))")"
 REDIS_PASSWORD="$(node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))")"
@@ -509,6 +599,7 @@ cat > "$COMPOSE_ENV" <<EOF
 PGHA_SUPERUSER=postgres
 PGHA_PASSWORD=$PG_PASSWORD
 PGHA_REPLICATION_PASSWORD=$PG_REPLICATION_PASSWORD
+PGHA_PGBOUNCER_PASSWORD=$PG_PGBOUNCER_PASSWORD
 MINIO_ROOT_USER=$MINIO_USER
 MINIO_ROOT_PASSWORD=$MINIO_PASSWORD
 PGHA_S3_KEY=$MINIO_USER
@@ -533,6 +624,8 @@ PG_PROJECT_OWNED=1
 run_logged pg-ha-start compose_pg up -d --build
 run_logged pg-ha-readiness wait_pg_ha_ready
 PG_STANDBY_STREAMING="true"
+run_logged pg-standby-secret-hygiene compose_pg exec -T -u postgres pg-standby sh -ec \
+  'stat -c "owner=%U:%G mode=%a" /var/lib/postgresql/.pgpass | grep -Fx "owner=postgres:postgres mode=600" && grep -q "passfile=/var/lib/postgresql/.pgpass" /var/lib/postgresql/data/postgresql.auto.conf && ! grep -q "password=" /var/lib/postgresql/data/postgresql.auto.conf'
 run_logged pgbackrest-config-permissions compose_pg exec -T -u postgres pg-primary sh -ec \
   'test -r /etc/pgbackrest/pgbackrest.conf && stat -c "owner=%U:%G mode=%a" /etc/pgbackrest/pgbackrest.conf | grep -Fx "owner=postgres:postgres mode=600"'
 PG_CONFIG_ACCESS="verified_readable_by_postgres_owner_mode_0600"
@@ -621,7 +714,9 @@ if [[ ! "$PITR_DIR" =~ ^/tmp/m15-pitr/pitr-[A-Za-z0-9-]+$ ]]; then
   exit 1
 fi
 run_logged pitr-restore-verify compose_pg exec -T -u postgres pg-backup bash /tmp/pitr-verify.sh \
-  --host-dir "$PITR_DIR/run" --port 54329 --stanza payesh --target-spec "--type=time --target=$PITR_TARGET --target-action=promote"
+  --host-dir "$PITR_DIR/run" --port 54329 --stanza payesh \
+  --expect-before "$PITR_TARGET" \
+  --target-spec "--type=time --target=$PITR_TARGET --target-action=promote"
 PITR_VERIFY_EXIT="0"
 run_logged pitr-restored-marker-check compose_pg exec -T -u postgres pg-backup psql -XAt -h "$PITR_DIR/run" -p 54329 -d payesh -c \
   "SELECT (SELECT count(*) FROM server_outbox WHERE type = 'm15.dr.before' AND payload->>'origin' = '${PITR_BEFORE_MARKER}') || '|' || (SELECT count(*) FROM server_outbox WHERE type = 'm15.dr.after' AND payload->>'origin' = '${PITR_AFTER_MARKER}');"
@@ -645,6 +740,7 @@ fi
 PITR_SCHEMA_CATALOG_MATCH="true"
 run_logged pitr-stop-restored-instance compose_pg exec -T -u postgres pg-backup pg_ctl \
   -D "$PITR_DIR/data" -m fast -w stop
+run_logged pitr-cleanup-restored-dir compose_pg exec -T -u postgres pg-backup rm -rf -- "$PITR_DIR"
 
 FAILOVER_MARKER="m15-dr-failover-${RUN_KEY}"
 PG_BACKUP_CONTAINER="$(compose_pg ps -q pg-backup)"
@@ -653,11 +749,15 @@ run_logged pre-failover-marker-insert compose_pg exec -T -u postgres pg-primary 
   "INSERT INTO server_outbox (type, collection, payload, status) VALUES ('m15.dr.failover', 'm15_dr', jsonb_build_object('origin', '${FAILOVER_MARKER}'), 'processed');"
 PRIMARY_REQUIRED_LSN="$(compose_pg exec -T -u postgres pg-primary psql -XAt -d payesh -c 'SELECT pg_current_wal_lsn();' | tr -d '\r\n')"
 run_logged standby-replay-barrier wait_standby_caught_up "$PRIMARY_REQUIRED_LSN"
+export DATABASE_URL="postgres://postgres:${PG_PASSWORD}@127.0.0.1:6432/payesh"
+export READ_DATABASE_URL="postgres://postgres:${PG_PASSWORD}@127.0.0.1:6432/payesh-readonly"
+run_logged pgbouncer-pre-failover-check verify_pgbouncer_pre_failover "$FAILOVER_MARKER"
+unset DATABASE_URL READ_DATABASE_URL
 FAILOVER_START_MS="$(date +%s%3N)"
 run_logged stop-primary compose_pg stop pg-primary
 if run_logged promote-standby compose_pg exec -T -u postgres \
   -e PGHOST=pg-standby -e PGPORT=5432 -e PGDATABASE=payesh -e PGUSER=postgres \
-  -e OLD_PGHOST=pg-primary -e OLD_PGPORT=5432 pg-backup bash /tmp/failover-postgres.sh; then
+  -e OLD_PGHOST=pg-primary -e OLD_PGPORT=5432 pg-backup bash /tmp/failover-postgres.sh --live; then
   PG_PROMOTION_STATE="primary_stopped_standby_promoted_by_failover_tool"
 else
   echo "PostgreSQL failover tool rejected or failed the isolated promotion" >&2
@@ -676,6 +776,11 @@ if [[ "$(tr -d '\r\n' < "$EVIDENCE_DIR/promoted-standby-readback.log")" != "1" ]
 fi
 PG_POST_PROMOTION_WRITE="true"
 PG_FAILOVER_RTO_MS="$(( $(date +%s%3N) - FAILOVER_START_MS ))"
+export DATABASE_URL="postgres://postgres:${PG_PASSWORD}@127.0.0.1:6432/payesh"
+run_logged pgbouncer-reroute-and-pool-verify reroute_and_verify_pgbouncer "$FAILOVER_MARKER"
+unset DATABASE_URL
+PG_PGBOUNCER_REROUTE_RTO_MS="$(( $(date +%s%3N) - FAILOVER_START_MS ))"
+PG_PGBOUNCER_REROUTE_TESTED="true"
 
 run_logged redis-compose-version docker compose version
 if ! assert_compose_project_unused "$REDIS_PROJECT"; then
@@ -745,6 +850,24 @@ if [[ "$(tr -d '\r\n' < "$EVIDENCE_DIR/redis-promoted-write-readback.log")" != "
   exit 1
 fi
 REDIS_POST_PROMOTION_WRITE="true"
+wait_sentinel_post_restart_master() {
+  local i addr
+  for i in $(seq 1 30); do
+    addr="$(redis_master_addr 2>/dev/null || true)"
+    if [[ -n "$addr" ]]; then
+      printf '%s\n' "$addr"
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+run_logged redis-sentinel-restart-persistence compose_redis restart sentinel-1
+run_logged redis-sentinel-post-restart-master wait_sentinel_post_restart_master
+if [[ "$(paste -sd, "$EVIDENCE_DIR/redis-sentinel-post-restart-master.log")" != "$REDIS_PROMOTED_MASTER" ]]; then
+  echo "restarted sentinel-1 reverted or lost promoted master state" >&2
+  exit 1
+fi
 
 # A synthetic-only human-readable end summary is duplicated in command log.
 printf '\nM15 DR PRE-CLEANUP COMPONENTS: postgres_pitr=PASS postgres_promote=PASS redis_sentinel=PASS sha=%s\n' "$SOURCE_SHA" | tee -a "$COMMAND_LOG"

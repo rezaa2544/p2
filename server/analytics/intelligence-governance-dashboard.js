@@ -82,7 +82,7 @@ function deepFreeze(obj) {
  * @param {Object} [options]
  * @returns {boolean}
  */
-function enforceGovernanceDashboardAccessGuard(requester, targetEntity, options = {}) {
+function enforceGovernanceDashboardAccessGuard(requester, targetEntity, options = {}) { void options;
   if (!requester || typeof requester !== 'object') {
     throw new Error('GOVERNANCE_ACCESS_FORBIDDEN: requester session is missing');
   }
@@ -214,7 +214,7 @@ function calculateAITransparencyScore(metrics = {}, options = {}) {
  * @param {Object} [options]
  * @returns {Object}
  */
-function auditHumanApprovalCompliance(actions = [], options = {}) {
+function auditHumanApprovalCompliance(actions = [], options = {}) { void options;
   const records = Array.isArray(actions) ? actions : [];
   const total = records.length;
 
@@ -360,7 +360,7 @@ function recordGovernanceAuditEvent(eventData = {}, options = {}) {
  * @param {Object} [options]
  * @returns {Object}
  */
-function analyzeInsightLifecycle(insights = [], options = {}) {
+function analyzeInsightLifecycle(insights = [], options = {}) { void options;
   const records = Array.isArray(insights) ? insights : [];
   const total = records.length;
 

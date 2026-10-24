@@ -81,7 +81,7 @@ const kit = session('kit-selftest-');
 {
   const src = path.join(box, 'a.txt');
   const dst = path.join(box, 'b.txt');
-  const srcCopy = kit.mutant(src, 'mutated-a-v2\n');
+  const srcCopy = kit.mutant(src, 'mutated-a-v2\n'); void srcCopy;
   kit.passthrough(dst); /* مقصد هم سایه می‌شود — الگوی خروجی build */
   const dstBefore = md5(dst);
   const r = child("require('fs').copyFileSync(" + JSON.stringify(src) + ", " + JSON.stringify(dst) + "); console.log('copied')", kit.env());
@@ -126,7 +126,7 @@ const kit = session('kit-selftest-');
   const engaged = fs.existsSync(marker);
   childProc.kill('SIGKILL'); /* همان timeout قاتلِ runner حادثهٔ P1-2 */
   const gitAfter = cp.spawnSync('git', ['status', '--porcelain'], { cwd: ROOT, encoding: 'utf8' }).stdout;
-  const strays = cp.spawnSync('bash', ['-c', "find . -path ./node_modules -prune -o -type f \\( -name '*-mutated.js' -o -name '*MUTATION*' \\) -print"], { cwd: ROOT, encoding: 'utf8' }).stdout.trim();
+  const strays = cp.spawnSync('bash', ['-c', "find . -path ./node_modules -prune -o -type f \\( -name '*-mutated.js' -o -name '*MUTATION*' \\) -print"], { cwd: ROOT, encoding: 'utf8' }).stdout.trim(); void strays;
   const tracked = (t) => t.split('\n').filter((l) => l && !l.startsWith('?? ')).sort().join('\n');
   check('T8a فرزند پیش از قتل به کپی دست یافت (marker)', engaged);
   check('T8b سورس اصلی پس از SIGKILL تغییرناپذیر (md5)', md5(real) === before);
@@ -148,7 +148,7 @@ const kit = session('kit-selftest-');
 }
 
 kit.cleanup();
-try { fs.rmSync(box, { recursive: true, force: true }); } catch (_) {}
+try { fs.rmSync(box, { recursive: true, force: true }); } catch (_) {/* intentional no-op */}
 
 console.log('\\nmutant-kit-test: ' + pass + '/' + total + ' موفق' + (fail ? ' — ' + fail + ' شکست ❌' : ' — بدون خطا ✅'));
 process.exit(fail ? 1 : 0);

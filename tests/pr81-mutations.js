@@ -36,7 +36,7 @@ function mutate(file, from, to, execute, killed, label) {
   if (bad === original) { check(false, label + ' — لنگر پیدا نشد'); return; }
   try {
     const mcopy = kit.mutant(file, bad); /* کپیِ هم‌جوار: __dirname و requireهای نسبی سالم می‌مانند */
-    try { fs.chmodSync(mcopy, fs.statSync(file).mode); } catch (_) {}
+    try { fs.chmodSync(mcopy, fs.statSync(file).mode); } catch (_) {/* intentional no-op */}
     const result = execute();
     const output = String(result.stdout || '') + String(result.stderr || '');
     check(killed(result, output), label);

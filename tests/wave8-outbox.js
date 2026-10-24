@@ -16,7 +16,7 @@
 'use strict';
 const path = require('path');
 
-const ROOT = path.join(__dirname, '..');
+const ROOT = path.join(__dirname, '..'); void ROOT;
 const { createOutbox } = require('../server/outbox.js');
 const { createWorker } = require('../server/worker.js');
 const { createDeleteService } = require('../server/delete-service.js');

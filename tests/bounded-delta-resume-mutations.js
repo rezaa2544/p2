@@ -136,7 +136,7 @@ for (const m of mutations) {
   if (!applied) { console.log('  ❌ ' + m.name + ' — الگوی جهش پیدا نشد'); survived++; continue; }
   for (const k of Object.keys(FILES)) {
     const mcopy = kit.mutant(FILES[k], texts[k]); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-    try { fs.chmodSync(mcopy, fs.statSync(FILES[k]).mode); } catch (_) {}
+    try { fs.chmodSync(mcopy, fs.statSync(FILES[k]).mode); } catch (_) {/* intentional no-op */}
   }
   cp.execFileSync(process.execPath, [path.join(ROOT, 'build.js')], { stdio: 'ignore', env: kit.env() });
 

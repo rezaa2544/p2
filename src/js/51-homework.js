@@ -416,7 +416,8 @@ function generateHomeworkDemo(){
     for(var bi=0; bi<bin.length; bi++) bytes[bi] = bin.charCodeAt(bi);
     var blob = new Blob([bytes], {type: 'image/png'});
     hwDemoPut(a.id, stud.id, blob, now, t);
-  }catch(e){}
+  }catch(e){ // noop
+}
 }
 function hwDemoPut(assignmentId, studentId, blob, now, t){
   if(!blob) return;
@@ -493,7 +494,7 @@ function hwViewModal(submissionId){
   var sub = byId('hw_submissions', submissionId);
   if(!sub || !sub.file_key) return;
   var a = byId('hw_assignments', sub.assignment_id);
-  var cls = a ? byId('classes', a.class_id) : null;
+  var cls = a ? byId('classes', a.class_id) : null; void cls;
   var u = S.user;
   var role = (typeof activePersona === 'function') ? activePersona() : u.role;
   /* دانش‌آموز فقط بارگذاریِ خودش */

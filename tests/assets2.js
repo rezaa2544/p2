@@ -175,7 +175,7 @@ function mkAsset(name, status, extra) {
       assets: [{ id: 50, school_id: 7, name: 'X', status: 'available' }],
     };
     attach(store);
-    const d7 = { school_id: 7, status: 'repair' };
+    const d7 = { school_id: 7, status: 'repair' }; void d7;
     const mgr = { id: 1, role: 'manager', school_id: 7 };
     const cus = { id: 2, role: 'teacher', school_id: 7 };
     const plain = { id: 3, role: 'teacher', school_id: 7 };

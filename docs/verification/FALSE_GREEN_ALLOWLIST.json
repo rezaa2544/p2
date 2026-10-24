@@ -33,6 +33,1374 @@
       "reason": "A-30 V-11 fixture describes vacuous 0/0 evidence claims as literal adversarial test data",
       "expires": "2027-09-25",
       "replacement_test": "tests/strict-verification-gate.negative.test.js"
+    },
+    {
+      "pattern": "assert(true",
+      "path": "docs/arena-evidence/2026-09-25/arena8-a37/ast-scan.cjs",
+      "owner": "arena-evidence-archive",
+      "reason": "Immutable SHA256SUMS-pinned historical evidence artifact (docs/arena-evidence/2026-09-25/arena8-a37/ast-scan.cjs) recording prior scanner/cleanup audit output",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/strict-verification-gate-a30.test.js"
+    },
+    {
+      "pattern": "assert(true",
+      "path": "docs/arena-evidence/2026-09-25/arena8-a37/evidence/gate-probe-manifest.json",
+      "owner": "arena-evidence-archive",
+      "reason": "Immutable SHA256SUMS-pinned historical evidence artifact (docs/arena-evidence/2026-09-25/arena8-a37/evidence/gate-probe-manifest.json) recording prior scanner/cleanup audit output",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/strict-verification-gate-a30.test.js"
+    },
+    {
+      "pattern": "assert(true",
+      "path": "docs/arena-evidence/2026-09-25/arena8-a37/summary.json",
+      "owner": "arena-evidence-archive",
+      "reason": "Immutable SHA256SUMS-pinned historical evidence artifact (docs/arena-evidence/2026-09-25/arena8-a37/summary.json) recording prior scanner/cleanup audit output",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/strict-verification-gate-a30.test.js"
+    },
+    {
+      "pattern": "assert(true",
+      "path": "tests/false-green-defense.test.js",
+      "owner": "arena-a30",
+      "reason": "False-green gate definition / adversarial exploit self-test in tests/false-green-defense.test.js verifying scanner enforcement of assert(true",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "assert(true",
+      "path": "tests/strict-verification-gate-a30.test.js",
+      "owner": "arena-a30",
+      "reason": "False-green gate definition / adversarial exploit self-test in tests/strict-verification-gate-a30.test.js verifying scanner enforcement of assert(true",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "assert(true",
+      "path": "tools/experience-benchmark-cases.js",
+      "owner": "arena-peb",
+      "reason": "PEB-01 benchmark case specification listing forbidden shortcut token (assert(true) in tools/experience-benchmark-cases.js",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "assert(true",
+      "path": "tools/experience-benchmark.js",
+      "owner": "arena-peb",
+      "reason": "PEB-01 benchmark case specification listing forbidden shortcut token (assert(true) in tools/experience-benchmark.js",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "assert(true",
+      "path": "tools/strict-verification-gate.js",
+      "owner": "arena-a30",
+      "reason": "False-green gate definition / adversarial exploit self-test in tools/strict-verification-gate.js verifying scanner enforcement of assert(true",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "_shots.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in _shots.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "build.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in build.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "docs/arena-evidence/2026-09-25/arena8-a37/ast-scan.cjs",
+      "owner": "arena-evidence-archive",
+      "reason": "Immutable SHA256SUMS-pinned historical evidence artifact (docs/arena-evidence/2026-09-25/arena8-a37/ast-scan.cjs) recording prior scanner/cleanup audit output",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/strict-verification-gate-a30.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "docs/arena-evidence/2026-09-25/arena8-a37/evidence/gate-probe-manifest.json",
+      "owner": "arena-evidence-archive",
+      "reason": "Immutable SHA256SUMS-pinned historical evidence artifact (docs/arena-evidence/2026-09-25/arena8-a37/evidence/gate-probe-manifest.json) recording prior scanner/cleanup audit output",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/strict-verification-gate-a30.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "docs/arena-evidence/2026-09-25/arena8-a37/summary.json",
+      "owner": "arena-evidence-archive",
+      "reason": "Immutable SHA256SUMS-pinned historical evidence artifact (docs/arena-evidence/2026-09-25/arena8-a37/summary.json) recording prior scanner/cleanup audit output",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/strict-verification-gate-a30.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "docs/arena-evidence/2026-09-25/arena8-dr-closure/evidence/source-review.json",
+      "owner": "arena-evidence-archive",
+      "reason": "Immutable SHA256SUMS-pinned historical evidence artifact (docs/arena-evidence/2026-09-25/arena8-dr-closure/evidence/source-review.json) recording prior scanner/cleanup audit output",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/strict-verification-gate-a30.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "docs/audit/a35-idor/harnesses/HARNESS_MAIN.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in docs/audit/a35-idor/harnesses/HARNESS_MAIN.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "docs/audit/a35-idor/harnesses/HARNESS_ROUND2.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in docs/audit/a35-idor/harnesses/HARNESS_ROUND2.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "docs/audit/a35-idor/harnesses/HARNESS_ROUND3.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in docs/audit/a35-idor/harnesses/HARNESS_ROUND3.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "server/index.js",
+      "owner": "platform-runtime",
+      "reason": "Explicit graceful drain / CLI seed exit path (process.exit(0)) after closing DB/Redis resources in server/index.js; non-zero exit enforced on drain timeout or error",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/f1-boot-syntax-five-pass.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "server/seed.js",
+      "owner": "platform-runtime",
+      "reason": "Explicit graceful drain / CLI seed exit path (process.exit(0)) after closing DB/Redis resources in server/seed.js; non-zero exit enforced on drain timeout or error",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/f1-boot-syntax-five-pass.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/a11y-interactive.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/a11y-interactive.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/a11y-interactive.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/a11y-keyboard.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/a11y-keyboard.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/a11y-keyboard.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/a11y-runtime.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/a11y-runtime.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/a11y-runtime.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/arena5-demo-guard.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/arena5-demo-guard.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/arena5-demo-guard.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/assocmin2.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/assocmin2.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/assocmin2.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/b-pg-canary-sot-bounds.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/b-pg-canary-sot-bounds.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/b-pg-canary-sot-bounds.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/bgsync.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/bgsync.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/bgsync.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/cache-l2-epoch.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/cache-l2-epoch.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/cache-l2-epoch.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/canary-atomic-postgres-live-runtime.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/canary-atomic-postgres-live-runtime.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/canary-atomic-postgres-live-runtime.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/chaos-drill-lib.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/chaos-drill-lib.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/chaos-drill-lib.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/chat9-behavior-regression.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/chat9-behavior-regression.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/chat9-behavior-regression.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/check-authz.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/check-authz.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/check-authz.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/client-features.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/client-features.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/client-features.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/clsctx.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/clsctx.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/clsctx.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/collision-detector.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/collision-detector.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/collision-detector.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/contract-layers.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/contract-layers.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/contract-layers.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/db-replica-recovery.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/db-replica-recovery.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/db-replica-recovery.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/delta-sync-hardening.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/delta-sync-hardening.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/delta-sync-hardening.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/demo-thursday.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/demo-thursday.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/demo-thursday.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/env-flags.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/env-flags.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/env-flags.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/f1-boot-syntax-five-pass.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/f1-boot-syntax-five-pass.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/f1-boot-syntax-five-pass.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/false-green-defense.test.js",
+      "owner": "arena-a30",
+      "reason": "False-green gate definition / adversarial exploit self-test in tests/false-green-defense.test.js verifying scanner enforcement of process.exit(0)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/form-validation-ux.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/form-validation-ux.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/form-validation-ux.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/gdpr-tombstones.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/gdpr-tombstones.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/gdpr-tombstones.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/gradeavg2.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/gradeavg2.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/gradeavg2.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/idb-migration-queue.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/idb-migration-queue.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/idb-migration-queue.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/idor-runtime.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/idor-runtime.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/idor-runtime.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/iep2.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/iep2.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/iep2.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/libserial2.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/libserial2.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/libserial2.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/m14-b01-stale-cache.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/m14-b01-stale-cache.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m14-b01-stale-cache.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/m15-03-aggregate-pg.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/m15-03-aggregate-pg.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-03-aggregate-pg.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/m15-03-aggregate-sql.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/m15-03-aggregate-sql.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-03-aggregate-sql.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/offline-indicator.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/offline-indicator.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/offline-indicator.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/performance/baseline.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/performance/baseline.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/performance/baseline.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/pg-prod-client-error.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/pg-prod-client-error.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/pg-prod-client-error.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/pg-prod-fallback-probe.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/pg-prod-fallback-probe.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/pg-prod-fallback-probe.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/phase2-outbox-failover.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/phase2-outbox-failover.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/phase2-outbox-failover.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/phase65-runtime-truth.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/phase65-runtime-truth.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/phase65-runtime-truth.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/preapp2.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/preapp2.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/preapp2.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/pubrep.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/pubrep.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/pubrep.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/pull-rest-delete.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/pull-rest-delete.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/pull-rest-delete.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/pull-to-refresh.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/pull-to-refresh.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/pull-to-refresh.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/redis-fallback.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/redis-fallback.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/redis-fallback.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/redis-mem-ttl.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/redis-mem-ttl.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/redis-mem-ttl.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/redis-sentinel-failover.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/redis-sentinel-failover.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/redis-sentinel-failover.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/reexam2.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/reexam2.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/reexam2.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/reports-bounded-cache.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/reports-bounded-cache.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/reports-bounded-cache.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/schedconf2.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/schedconf2.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/schedconf2.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/scholarship2.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/scholarship2.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/scholarship2.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/semantic-layer/runner.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/semantic-layer/runner.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/semantic-layer/runner.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/server11-child.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/server11-child.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/server11-child.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/server2.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/server2.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/server2.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/server3.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/server3.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/server3.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/session8-gc.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/session8-gc.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/session8-gc.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/storage-full-honest.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/storage-full-honest.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/storage-full-honest.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/storage-quota.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/storage-quota.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/storage-quota.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/strict-verification-gate-a30.test.js",
+      "owner": "arena-a30",
+      "reason": "False-green gate definition / adversarial exploit self-test in tests/strict-verification-gate-a30.test.js verifying scanner enforcement of process.exit(0)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/summer2.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/summer2.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/summer2.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/sync-atomic-batch.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/sync-atomic-batch.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/sync-atomic-batch.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/sync-cache-errors.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/sync-cache-errors.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/sync-cache-errors.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/sync-conflict-ui.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/sync-conflict-ui.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/sync-conflict-ui.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/sync-dlq-retry.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/sync-dlq-retry.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/sync-dlq-retry.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/sync-dup-claim.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/sync-dup-claim.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/sync-dup-claim.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/sync-lastsync.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/sync-lastsync.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/sync-lastsync.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/sync-mirror-visible.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/sync-mirror-visible.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/sync-mirror-visible.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/sync-queue-caps.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/sync-queue-caps.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/sync-queue-caps.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/sync-sending-revive.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/sync-sending-revive.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/sync-sending-revive.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/sync-virtualday-audit.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/sync-virtualday-audit.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/sync-virtualday-audit.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/tracing-performance.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/tracing-performance.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/tracing-performance.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/tracing-sampling.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/tracing-sampling.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/tracing-sampling.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/truncation-telemetry-mutations.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/truncation-telemetry-mutations.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/truncation-telemetry-mutations.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/visitors2.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/visitors2.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/visitors2.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/vocational-grades.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/vocational-grades.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/vocational-grades.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/wave1-gate.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/wave1-gate.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/wave1-gate.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/wave1-multi-instance.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/wave1-multi-instance.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/wave1-multi-instance.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/wave1-mutations.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/wave1-mutations.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/wave1-mutations.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/wave1-regression-gate.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/wave1-regression-gate.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/wave1-regression-gate.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/wave1-writes.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/wave1-writes.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/wave1-writes.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/wave10-query-audit.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/wave10-query-audit.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/wave10-query-audit.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/wave11-cache.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/wave11-cache.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/wave11-cache.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/wave15-health.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/wave15-health.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/wave15-health.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/wave18-hydration-probe.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/wave18-hydration-probe.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/wave18-hydration-probe.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/wave18w19-multinode-live.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/wave18w19-multinode-live.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/wave18w19-multinode-live.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/wave3-keyset.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/wave3-keyset.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/wave3-keyset.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/wave4-sync-all-collections.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/wave4-sync-all-collections.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/wave4-sync-all-collections.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/wave6-redis.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/wave6-redis.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/wave6-redis.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/wave7-offline-queue.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/wave7-offline-queue.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/wave7-offline-queue.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/workshop2.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/workshop2.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/workshop2.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/arena6-outbox-probe.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in tools/arena6-outbox-probe.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/baseline-check.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in tools/baseline-check.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/bench-reports-scale.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in tools/bench-reports-scale.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/capacity-saturation-probe.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in tools/capacity-saturation-probe.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/delta-load-test.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in tools/delta-load-test.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/generate-national-dataset.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in tools/generate-national-dataset.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/migrate-helper.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in tools/migrate-helper.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/mutate-reports-check.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (process.exit(0)) in tools/mutate-reports-check.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/openapi-drift.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in tools/openapi-drift.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/peb-runner-v2.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in tools/peb-runner-v2.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/peb-runner-v3.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in tools/peb-runner-v3.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/production-truth-gate.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in tools/production-truth-gate.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/psql-min.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in tools/psql-min.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/redis-audit.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in tools/redis-audit.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/redis-metrics.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in tools/redis-metrics.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/strict-verification-gate.js",
+      "owner": "arena-a30",
+      "reason": "False-green gate definition / adversarial exploit self-test in tools/strict-verification-gate.js verifying scanner enforcement of process.exit(0)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/test-discovery-verifier.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (process.exit(0)) in tools/test-discovery-verifier.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/verify-agent-skills.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in tools/verify-agent-skills.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/wave1-gate.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in tools/wave1-gate.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tools/wave18-load-to-pg.js",
+      "owner": "platform-tooling",
+      "reason": "Standalone CLI utility / audit harness entrypoint (process.exit(0)) in tools/wave18-load-to-pg.js after completing validation",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": ".agent/skills/systematic-debugging/find-polluter.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in .agent/skills/systematic-debugging/find-polluter.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": ".claude/skills/systematic-debugging/find-polluter.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in .claude/skills/systematic-debugging/find-polluter.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": ".github/workflows/fortify.yml",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in .github/workflows/fortify.yml; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": ".github/workflows/node.js.yml",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in .github/workflows/node.js.yml; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": ".github/workflows/observability-regression.yml",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in .github/workflows/observability-regression.yml; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": ".github/workflows/runtime-reliability.yml",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in .github/workflows/runtime-reliability.yml; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": ".github/workflows/security.yml",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in .github/workflows/security.yml; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "docs/arena-evidence/2026-09-25/arena8-a37/ast-scan.cjs",
+      "owner": "arena-evidence-archive",
+      "reason": "Immutable SHA256SUMS-pinned historical evidence artifact (docs/arena-evidence/2026-09-25/arena8-a37/ast-scan.cjs) recording prior scanner/cleanup audit output",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/strict-verification-gate-a30.test.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "docs/arena-evidence/2026-09-25/arena8-a37/evidence/gate-probe-manifest.json",
+      "owner": "arena-evidence-archive",
+      "reason": "Immutable SHA256SUMS-pinned historical evidence artifact (docs/arena-evidence/2026-09-25/arena8-a37/evidence/gate-probe-manifest.json) recording prior scanner/cleanup audit output",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/strict-verification-gate-a30.test.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "docs/arena-evidence/2026-09-25/arena8-a37/summary.json",
+      "owner": "arena-evidence-archive",
+      "reason": "Immutable SHA256SUMS-pinned historical evidence artifact (docs/arena-evidence/2026-09-25/arena8-a37/summary.json) recording prior scanner/cleanup audit output",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/strict-verification-gate-a30.test.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "docs/arena-evidence/2026-09-25/arena8-dr/evidence/FINAL_HEAD_AND_CLEANUP.json",
+      "owner": "arena-evidence-archive",
+      "reason": "Immutable SHA256SUMS-pinned historical evidence artifact (docs/arena-evidence/2026-09-25/arena8-dr/evidence/FINAL_HEAD_AND_CLEANUP.json) recording prior scanner/cleanup audit output",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/strict-verification-gate-a30.test.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "docs/arena-evidence/2026-09-25/arena8-dr/evidence/final-reconciliation.json",
+      "owner": "arena-evidence-archive",
+      "reason": "Immutable SHA256SUMS-pinned historical evidence artifact (docs/arena-evidence/2026-09-25/arena8-dr/evidence/final-reconciliation.json) recording prior scanner/cleanup audit output",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/strict-verification-gate-a30.test.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "infra/postgres/docker-compose.ha.yml",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in infra/postgres/docker-compose.ha.yml; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "infra/redis/redis-checks.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in infra/redis/redis-checks.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "infra/wal-drill/bootstrap.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in infra/wal-drill/bootstrap.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "infra/wave18-loadtest/staging-bootstrap.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in infra/wave18-loadtest/staging-bootstrap.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "scripts/run-all-tests.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in scripts/run-all-tests.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "skills/systematic-debugging/find-polluter.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in skills/systematic-debugging/find-polluter.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/a31-intelligence-semantic-integrity.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/a31-intelligence-semantic-integrity.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/a31-intelligence-semantic-integrity.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/chaos-drill-lib.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/chaos-drill-lib.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/chaos-drill-lib.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/config-reference-coverage.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/config-reference-coverage.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/config-reference-coverage.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/false-green-defense.test.js",
+      "owner": "arena-a30",
+      "reason": "False-green gate definition / adversarial exploit self-test in tests/false-green-defense.test.js verifying scanner enforcement of || true",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/helpers/mutant-kit.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/helpers/mutant-kit.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/helpers/mutant-kit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/m15-01-dr-runtime-unit.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/m15-01-dr-runtime-unit.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/m15-durable-invalidation.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/m15-durable-invalidation.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-durable-invalidation.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/n09-n10-seed-and-backpressure.test.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/n09-n10-seed-and-backpressure.test.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/n09-n10-seed-and-backpressure.test.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/performance/run-benchmarks.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in tests/performance/run-benchmarks.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/semantic-layer/a31-semantic-certification-integrity.test.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/semantic-layer/a31-semantic-certification-integrity.test.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/semantic-layer/a31-semantic-certification-integrity.test.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/sim_full3-mutations.js",
+      "owner": "qa-harness",
+      "reason": "Standalone Node CLI test runner / assertion contract in tests/sim_full3-mutations.js exiting 0 only after all assertions pass (exits non-zero on failure)",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/sim_full3-mutations.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/strict-verification-gate-a30.test.js",
+      "owner": "arena-a30",
+      "reason": "False-green gate definition / adversarial exploit self-test in tests/strict-verification-gate-a30.test.js verifying scanner enforcement of || true",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tools/chaos-test.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in tools/chaos-test.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tools/failover-postgres.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in tools/failover-postgres.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tools/failover-redis.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in tools/failover-redis.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tools/m15-01-ci-runtime.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in tools/m15-01-ci-runtime.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tools/m15-01-dr-runtime.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in tools/m15-01-dr-runtime.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tools/pitr-restore.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in tools/pitr-restore.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tools/pitr-verify.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in tools/pitr-verify.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tools/production-verifier.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in tools/production-verifier.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tools/strict-verification-gate.js",
+      "owner": "arena-a30",
+      "reason": "False-green gate definition / adversarial exploit self-test in tools/strict-verification-gate.js verifying scanner enforcement of || true",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tools/test-discovery-verifier.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in tools/test-discovery-verifier.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tools/wal-drill/setup-pg.sh",
+      "owner": "platform-sre",
+      "reason": "Bounded diagnostic/teardown probe (|| true) in tools/wal-drill/setup-pg.sh; authoritative gate verdicts use set -euo pipefail and explicit exit-code assertions",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/m15-01-dr-runtime-unit.js"
+    },
+    {
+      "pattern": "0/0 checks",
+      "path": "docs/arena-evidence/2026-09-25/arena8-a37/evidence/gate-probe-manifest.json",
+      "owner": "arena-evidence-archive",
+      "reason": "Immutable SHA256SUMS-pinned historical evidence artifact (docs/arena-evidence/2026-09-25/arena8-a37/evidence/gate-probe-manifest.json) recording prior scanner/cleanup audit output",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/strict-verification-gate-a30.test.js"
+    },
+    {
+      "pattern": "0/0 checks",
+      "path": "tests/strict-verification-gate-a30.test.js",
+      "owner": "arena-a30",
+      "reason": "False-green gate definition / adversarial exploit self-test in tests/strict-verification-gate-a30.test.js verifying scanner enforcement of 0/0 checks",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "0/0 checks",
+      "path": "tools/strict-verification-gate.js",
+      "owner": "arena-a30",
+      "reason": "False-green gate definition / adversarial exploit self-test in tools/strict-verification-gate.js verifying scanner enforcement of 0/0 checks",
+      "expires": "2027-10-23",
+      "replacement_test": "tests/false-green-defense.test.js"
     }
   ]
 }

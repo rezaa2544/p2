@@ -97,11 +97,11 @@ function group(title) {
       { id: 2, school_id: 1, class_id: 2, student_id: 31 }
     ],
     grades: [
-      { id: 101, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 20, version: 1, updated_at: '2026-09-08T10:00:00.000Z' },
-      { id: 102, school_id: 1, class_id: 2, student_id: 31, subject_id: 2, teacher_id: 99, score: 18, version: 1, updated_at: '2026-09-08T09:00:00.000Z' }
+      { id: 101, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 20, version: 1, updated_at: '2026-10-21T10:00:00.000Z' },
+      { id: 102, school_id: 1, class_id: 2, student_id: 31, subject_id: 2, teacher_id: 99, score: 18, version: 1, updated_at: '2026-10-21T09:00:00.000Z' }
     ],
     attendance: [
-      { id: 201, school_id: 1, class_id: 1, student_id: 30, date: '2026-09-08', status: 'present', version: 1, updated_at: '2026-09-08T10:00:00.000Z' }
+      { id: 201, school_id: 1, class_id: 1, student_id: 30, date: '2026-10-21', status: 'present', version: 1, updated_at: '2026-10-21T10:00:00.000Z' }
     ],
     notifications: [
       { id: 1, user_id: 10, school_id: 1, title: 'اعلان مدیر' },
@@ -169,7 +169,7 @@ function group(title) {
 
   await test('۶. دلتای تغییرات با پارامتر since فیلتر می‌شود', async () => {
     currentSession = { id: 10, school_id: 1, role: 'manager' };
-    const since = '2026-09-08T09:30:00.000Z';
+    const since = '2026-10-21T09:30:00.000Z';
     const res = await pullController.apiPull({ url: `/api/v1/pull?since=${encodeURIComponent(since)}` }, {});
     assert(res.body.full_snapshot === false, 'درخواست دلتا نباید اسنپ‌شات کامل باشد');
     const cols = res.body.collections;
@@ -182,10 +182,10 @@ function group(title) {
       c: 'grades',
       id: 999,
       school_id: 1,
-      at: '2026-09-08T11:00:00.000Z'
+      at: '2026-10-21T11:00:00.000Z'
     });
     currentSession = { id: 10, school_id: 1, role: 'manager' };
-    const since = '2026-09-08T10:30:00.000Z';
+    const since = '2026-10-21T10:30:00.000Z';
     const res = await pullController.apiPull({ url: `/api/v1/pull?since=${encodeURIComponent(since)}` }, {});
     assert(Array.isArray(res.body.deleted) && res.body.deleted.length === 1, 'رکورد حذف‌شده بازگردانده نشد');
     assert(res.body.deleted[0].c === 'grades' && res.body.deleted[0].id === 999, 'شناسه یا کالکشن رکورد حذفی نادرست است');
@@ -201,7 +201,7 @@ function group(title) {
   await test('۸. mergeServerDelta داده‌های جدید را در db کلاینت ادغام می‌کند', async () => {
     const payload = {
       ok: true,
-      server_time: '2026-09-08T12:00:00.000Z',
+      server_time: '2026-10-21T12:00:00.000Z',
       full_snapshot: false,
       collections: {
         announcements: [
@@ -255,7 +255,7 @@ function group(title) {
       get: function() {
         return Promise.resolve({
           ok: true,
-          server_time: '2026-09-08T12:30:00.000Z',
+          server_time: '2026-10-21T12:30:00.000Z',
           collections: { subjects: [{ id: 99, name: 'آزمایشی' }] }
         });
       }
@@ -265,7 +265,7 @@ function group(title) {
     const flag = W('Store.get("payesh_pull_migrated")');
     assert(flag === 'true', 'پرچم payesh_pull_migrated تنظیم نشد');
     const lastPullTime = W('Store.get("payesh_last_pull_time")');
-    assert(lastPullTime === '2026-09-08T12:30:00.000Z', 'زمان last_pull_time نادرست است');
+    assert(lastPullTime === '2026-10-21T12:30:00.000Z', 'زمان last_pull_time نادرست است');
   });
 
   await test('۱۲. رفتار امن Fallback در صورت خطای شبکه یا نبود سرور', async () => {

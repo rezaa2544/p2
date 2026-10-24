@@ -80,6 +80,7 @@ async function main() {
   assert(ctx.teacher, 'دبیر پیدا نشد');
   assert(ctx.manager, 'مدیر پیدا نشد');
   assert(ctx.students.length >= 6, 'دانش‌آموزِ کافی نیست');
+  W(`(db.makeup_classes = db.makeup_classes || []).push({ id: 999991, school_id: ${ctx.sid}, date: todayISO() });`);
 
   const teacherOn = (extra) => W(`(function(){
     S.user=byId('users',${ctx.teacher});S.persona=null;S.boss=null;

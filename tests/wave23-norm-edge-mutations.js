@@ -106,7 +106,7 @@ async function seed() {
   for (const m of fs.readdirSync(path.join(ROOT, 'migrations'))
       .filter((x) => x.endsWith('.sql') && !x.endsWith('.down.sql')).sort()) {
     const sql = fs.readFileSync(path.join(ROOT, 'migrations', m), 'utf8');
-    if (/^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql)) {
+    if (/^[^\n]*\\gset\s*$/m.test(sql) || /^\\[a-z]/m.test(sql) || /\bCALL\s+/i.test(sql)) {
       /* متاکامنددار ⇒ psql (الگوی #163؛ رگرسیونِ پس از #82 روی مسیرِ live این سوئیت).
          🔴 argv کاملاً literal است: SQL از stdin خوانده می‌شود (-f -) و
          اتصال از env (PG*) برقرار می‌شود — هیچ URL یا مسیرِ پویایی در argv

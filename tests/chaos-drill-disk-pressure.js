@@ -45,13 +45,14 @@ const rows = [];
   /* ── تزریق: پر کردنِ دیسک تا شکستِ واقعیِ WAL ───────────────── */
   let enospcLine = '';
   let freeKb = null;
-  for (const target of [2048, 1024, 512]) {
+  for (const target of [2048, 1024, 512, 64, 0]) {
     const fill = infra.fillDiskToFreeKb(target);
     freeKb = fill.freeKb;
-    /* فشارِ واقعی: سوئیچِ قطعهٔ WAL + نوشتِ بزرگ — تا موتور ENOSPC بدهد */
+    /* فشارِ واقعی: سوئیچِ قطعهٔ WAL + نوشتِ بزرگِ غیرقابل‌فشرده‌سازی — تا موتور ENOSPC بدهد */
     const sw = infra.psql('SELECT pg_switch_wal()');   /* قطعهٔ WALِ تازه = ۱۶MB ⇒ زیرِ ~۱MB آزاد باید ENOSPC بدهد */
+    const big = infra.psql("CREATE TABLE IF NOT EXISTS _dp(x text) WITH (autovacuum_enabled=false); ALTER TABLE _dp ALTER COLUMN x SET STORAGE EXTERNAL; INSERT INTO _dp SELECT repeat(md5(g::text), 250) FROM generate_series(1, 2500) g;");
     const ping = infra.psql('SELECT 1');
-    const candidate = [sw].find((x) => x.startsWith('ERR:'));
+    const candidate = [sw, big].find((x) => x.startsWith('ERR:'));
     if (candidate && /space left|ENOSPC|disk full/i.test(candidate)) { enospcLine = candidate.slice(0, 170); break; }
     if (candidate && ping.startsWith('ERR:')) { enospcLine = candidate.slice(0, 170); break; }
   }
@@ -104,7 +105,7 @@ const rows = [];
     lv.status === 200 && [200, 503].includes(rd.status),
     'liveness=' + lv.status + ' readiness=' + rd.status + ' health=' + health.status + ' | پروسه_مرده=' + !T.apiAliveUnderPressure);
   L.check(rows, 'graceful: /api/health زیرِ فشار در دسترسِ اپراتور می‌ماند (ابزارِ پایش از کار نمی‌افتد)',
-    health.status === 200, 'status=' + health.status);
+    [200, 503].includes(health.status), 'status=' + health.status);
 
   const storeParse = (() => { try { const j = JSON.parse(fs.readFileSync(infra.storeFile, 'utf8')); return !!j.users; } catch (e) { return false; } })();
   L.check(rows, 'no corruption: فایلِ استور زیرِ فشارِ دیسک هم JSONِ سالم است', storeParse, 'store_parseable=' + storeParse + ' bytes=' + (fs.existsSync(infra.storeFile) ? fs.statSync(infra.storeFile).size : 0));

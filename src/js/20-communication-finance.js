@@ -62,8 +62,8 @@ function generateExtras(){
       t.paid=paidSum; t.status = paidSum>=payable?'settled':paidSum>0?'partial':'open';
     });
 
-    // یک قسطِ معوق بخشیده می‌شود (نمایشِ وضعیتِ canceled + کاهشِ بدهی)
-    {
+    // یک قسطِ معوق بخشیده می‌شود (نمایشِ وضعیتِ canceled + کاهشِ بدهی — یک‌بار به ازای مدرسه)
+    if(!db.installments.some(i=>i.school_id===school.id&&i.status==='canceled')){
       const od=db.installments.filter(i=>i.school_id===school.id&&i.status!=='paid'&&i.status!=='canceled'&&i.due_date<todayISO());
       if(od.length){
         const w=od[0];
@@ -702,7 +702,7 @@ function printReceipt(instId){
     <tr><td>مبلغ دریافتی</td><td class="amount">${rial(i.paid_amount)} ریال</td></tr></table>
    <div class="sign"><span>مهر و امضای امور مالی مدرسه</span><span class="stamp">پرداخت شد</span></div></div>
   <div class="noprint" style="text-align:center;margin-top:14px"><button onclick="window.print()" style="padding:8px 22px;border-radius:9px;border:none;background:#1e40af;color:#fff;font-family:inherit;cursor:pointer">🖨️ چاپ رسید</button></div>
-  <script>window.addEventListener('load',function(){setTimeout(function(){window.print();},400)});<\/script></body></html>`);
+  ${'<'}script>window.addEventListener('load',function(){setTimeout(function(){window.print();},400)});${'<'}/script></body></html>`);
   w.document.close();
 }
 

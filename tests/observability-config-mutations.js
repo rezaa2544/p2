@@ -59,7 +59,7 @@ MUTS.forEach((m) => {
         const abs = path.join(ROOT, m.file);
     if (prevAbs && prevAbs !== abs) kit.clear(prevAbs);
     const mcopy = kit.mutant(abs, m.replaceAll ? src.split(m.bad).join(m.mut) : src.replace(m.bad, m.mut)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-    try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {} /* حفظِ مود (بیتِ اجرایی) */
+    try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {/* intentional no-op */} /* حفظِ مود (بیتِ اجرایی) */
     prevAbs = abs;
     let out = '', code = 0;
     try { out = execFileSync('node', SUITES[m.suite], { stdio: 'pipe', timeout: 60000, cwd: ROOT, env: kit.env() }).toString(); }

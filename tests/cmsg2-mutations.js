@@ -20,7 +20,7 @@ kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سای
 
 
 const ROOT = path.join(__dirname, '..');
-let pass = 0, fail = 0, envFails = 0;
+let pass = 0, fail = 0, envFails = 0; void envFails;
 function chk(c, m) { if (c) { pass++; console.log('  ✅ ' + m); } else { fail++; console.log('  ❌ ' + m); } }
 
 let lastFile = null;

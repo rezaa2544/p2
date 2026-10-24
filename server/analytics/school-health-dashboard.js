@@ -21,18 +21,18 @@ const {
   calculateLearningProgressTrend,
   evaluateCompletionSemantics,
   evaluateCourseEngagement
-} = require('./semantic');
+} = require('./semantic'); void evaluateCourseEngagement; void evaluateCompletionSemantics; void calculateAttendanceRate; void enforceTenantIsolation;
 
 const {
   analyzeAttendanceQuality,
   detectAttendanceRisk
-} = require('./attendance-intelligence');
+} = require('./attendance-intelligence'); void detectAttendanceRisk; void analyzeAttendanceQuality;
 
 const {
   analyzeAssessmentQuality,
   detectGradeAnomalies,
   calculateAssessmentFairness
-} = require('./assessment-intelligence');
+} = require('./assessment-intelligence'); void calculateAssessmentFairness; void detectGradeAnomalies; void analyzeAssessmentQuality;
 
 /**
  * گارد اختصاصی چندمستأجری داشبورد سلامت مدرسه (Fail-Closed)
@@ -205,7 +205,7 @@ function detectSchoolCriticalIssues(params = {}, options = {}) {
     assessments = params.assessments || [],
     grades = params.grades || [],
     timeline = params.timeline || []
-  } = params;
+  } = params; void timeline;
 
   const expectedSchoolId = options.expectedSchoolId != null ? options.expectedSchoolId : null;
   if (expectedSchoolId != null) {
@@ -329,7 +329,7 @@ function detectSchoolCriticalIssues(params = {}, options = {}) {
  */
 function generateDailyActionCenter(params = {}, options = {}) {
   const issues = Array.isArray(params) ? params : (params.issues || []);
-  const schoolContext = params.schoolContext || options.schoolContext || {};
+  const schoolContext = params.schoolContext || options.schoolContext || {}; void schoolContext;
 
   const actions = [];
 
@@ -528,13 +528,13 @@ function aggregateSchoolEducationalMetrics(params = {}, options = {}) {
 /**
  * ۵) تولید خلاصه مدیریتی راهبردی (generateExecutiveSummary)
  */
-function generateExecutiveSummary(params = {}, options = {}) {
+function generateExecutiveSummary(params = {}, options = {}) { void options;
   const {
     schoolHealth = params.schoolHealth || { health_score: 80, health_level: 'GOOD', dimensions: {} },
     issues = params.issues || [],
     actions = params.actions || [],
     metrics = params.metrics || {}
-  } = params;
+  } = params; void metrics;
 
   const strengths = [];
   const risks = [];

@@ -136,7 +136,7 @@ const RECENT = new Date(NOW - 30 * 60 * 1000).toISOString();          /* نیم 
 
   await test('DB delta fetch transparently falls back on missing timestamp columns', async () => {
     const store = seedStore();
-    const { fakeDb, queries } = makePullDb({ ok: false }); // db.query throws
+    const { fakeDb, queries } = makePullDb({ ok: false }); void queries;
     const ctl = build(store, fakeDb);
     const r = await ctl.apiPull({ url: '/api/v1/pull?since=' + encodeURIComponent(SINCE) + '&collections=users' }, {});
     // delta SQL was attempted, then fell back to readCollection (full) → JS time filter → empty (no matching rows)

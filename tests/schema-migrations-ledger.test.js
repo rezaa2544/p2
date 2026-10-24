@@ -12,7 +12,7 @@
  */
 'use strict';
 
-const assert = require('assert');
+const assert = require('assert'); void assert;
 const {
   computeChecksum,
   ensureLedgerTable,

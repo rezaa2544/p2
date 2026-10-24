@@ -210,7 +210,7 @@ async function main() {
         assert.strictEqual(Number((await c.query('SELECT COUNT(*) AS n FROM n16_scratch WHERE id = $1', [afterId])).rows[0].n), 0,
           'after the fix the allocated id must be free');
       } finally {
-        try { await c.query('DROP TABLE IF EXISTS n16_scratch'); } catch (_) {}
+        try { await c.query('DROP TABLE IF EXISTS n16_scratch'); } catch (_) {/* intentional no-op */}
         c.release();
       }
     });
@@ -259,12 +259,12 @@ async function main() {
   }
 
   console.log('\nN-16 regression tests: ' + pass + '/' + (pass + fail) + ' passed' + (skipped ? ' (' + skipped + ' skipped)' : ''));
-  if (pool) try { await pool.end(); } catch (_) {}
+  if (pool) try { await pool.end(); } catch (_) {/* intentional no-op */}
   process.exit(fail === 0 ? 0 : 1);
 }
 
 main().catch((e) => {
   console.error('suite crashed:', e);
-  if (pool) { try { pool.end(); } catch (_) {} }
+  if (pool) { try { pool.end(); } catch (_) {/* intentional no-op */} }
   process.exit(2);
 });

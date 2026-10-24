@@ -155,6 +155,7 @@ function createDigest(kind, directory) {
         promotion_state: safeId(failover.primary_stopped_before_promotion),
         post_promotion_write: safeId(failover.promoted_standby_writable_after_promotion),
         rto_ms: safeId(failover.promotion_to_verified_direct_write_ms),
+        pgbouncer_reroute_rto_ms: safeId(failover.promotion_to_verified_pgbouncer_write_ms),
         pgbouncer_reroute_tested: safeBool(failover.pgbouncer_endpoint_reroute_tested)
       }
     },
@@ -218,6 +219,7 @@ function createSummary(kind, directory) {
     const short = (value) => safeEnum(value, ['true', 'false', 'NOT_RUN', 'PASS', 'FAIL', '0', '1']);
     lines.push(`- PITR before-marker restored / after-marker excluded: ${pitr ? `${short(pitr.before_marker_restored)} / ${short(pitr.after_marker_excluded)}` : 'not recorded'}`);
     lines.push(`- PostgreSQL promotion write verified: ${pgFailover ? short(pgFailover.promoted_standby_writable_after_promotion) : 'not recorded'}`);
+    lines.push(`- PgBouncer endpoint reroute verified: ${pgFailover ? String(safeBool(pgFailover.pgbouncer_endpoint_reroute_tested)) : 'not recorded'}`);
     lines.push(`- Redis Sentinel post-promotion write verified: ${redis ? short(redis.post_promotion_write_verified) : 'not recorded'}`);
   }
   lines.push('', '> Single GitHub-runner CI summary only; not independent review, production readiness, or E4 evidence.');

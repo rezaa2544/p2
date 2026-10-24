@@ -21,7 +21,7 @@ const kit = session('uann-mut-');
 kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سایه */
 const SUITE = path.join(ROOT, 'tests', 'urgent-ann.js');
 const QF = path.join(ROOT, 'src', 'js', '04-queries.js');
-const SF = path.join(ROOT, 'server', 'sync.js');
+const SF = path.join(ROOT, 'server', 'sync.js'); void SF;
 const PF = path.join(ROOT, 'server', 'policy.js'); /* ترمیم لنگر: دروازهٔ د.۳ اینجاست */
 const AF = path.join(ROOT, 'src', 'js', '19-actions-core.js');
 
@@ -42,7 +42,7 @@ function mutate(file, find, replace, killRe, tag, rebuild) {
   try {
     if (!orig.includes(find)) { chk(tag + ' (جهش پیدا نشد)', false); return; }
     const mcopy = kit.mutant(file, orig.replace(find, replace)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-    try { fs.chmodSync(mcopy, fs.statSync(file).mode); } catch (_) {}
+    try { fs.chmodSync(mcopy, fs.statSync(file).mode); } catch (_) {/* intentional no-op */}
     if (rebuild) execFileSync('node', ['build.js'], { cwd: ROOT, stdio: 'ignore', env: kit.env() }); /* build در سایه */
     const r = spawnSync('node', [SUITE], { cwd: ROOT, encoding: 'utf8', timeout: 240000, env: kit.env() });
     const out = (r.stdout || '') + (r.stderr || '');

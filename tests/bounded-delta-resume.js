@@ -32,7 +32,7 @@ const REAL_STORE = path.join(ROOT, 'server', 'data', 'payesh.json');
 delete process.env.DATABASE_URL; /* pin حالت حافظه — قرارداد reports-basic */
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-resume-'));
-process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 
 const ROW_CAP = 300;
 process.env.PAYESH_PULL_MAX_ROWS = String(ROW_CAP);
@@ -81,7 +81,7 @@ async function main() {
 
   /* دلتای عظیم مصنوعی: همهٔ حضورهای مدرسهٔ ۱ را «به‌تازگی تغییر کرده» جا بزن */
   const NOW = Date.now();
-  const RECENT = new Date(NOW - 30 * 1000).toISOString();
+  const RECENT = new Date(NOW - 30 * 1000).toISOString(); void RECENT;
   let touched = 0;
   for (const a of store.attendance) {
     if (a.school_id === 1) { a.updated_at = new Date(NOW - 40 * 1000 + (touched % 1000)).toISOString(); touched++; }

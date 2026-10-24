@@ -37,7 +37,7 @@ function req(port, method, p, body, cookie, extraHeaders) {
       res.on('data', (d) => (b += d));
       res.on('end', () => {
         let j = null;
-        try { j = JSON.parse(b); } catch (e) {}
+        try { j = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, json: j, body: b, headers: res.headers });
       });
     });
@@ -71,7 +71,7 @@ function boot(port, env) {
     })();
   });
 }
-function kill9(proc) { try { if (proc) proc.kill('SIGKILL'); } catch (e) {} }
+function kill9(proc) { try { if (proc) proc.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
 
 async function pgOne(url, sql, params) {
   const c = new Client({ connectionString: url });
@@ -251,10 +251,10 @@ async function flood(port, n, pth, headers) {
 
   /* ── RT-09 NOC metrics vs real samples ──────────────────────────── */
   console.log('\n── RT-09 NOC metric comparison');
-  const clientLat = [];
+  const clientLat = []; void clientLat;
   const M = 5000;
   const t1 = Date.now();
-  const nocSamples = await flood(PORTA, M, '/api/health', { 'x-province-code': '07' });
+  const nocSamples = await flood(PORTA, M, '/api/health', { 'x-province-code': '07' }); void nocSamples;
   const wall = Date.now() - t1;
   const avgClient = wall / M;
   const noc = await req(PORTA, 'GET', '/api/v1/system/national/health', null, cookie);
@@ -336,6 +336,7 @@ async function flood(port, n, pth, headers) {
     });
     delete envC.NODE_ENV;
     delete envC.DATABASE_URL;
+    delete envC.PGURL;
     const procC = await boot(PORTC, envC);
     chk('RT-05 سرور با Redis بوت شد', !!procC);
     if (procC) {
@@ -353,7 +354,7 @@ async function flood(port, n, pth, headers) {
         dead.body.slice(0, 80));
       kill9(procC);
     }
-    try { rp.kill('SIGKILL'); } catch (e) {}
+    try { rp.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
   }
 
   /* ── RT-06 Postgres outage ──────────────────────────────────────── */
@@ -425,14 +426,14 @@ async function flood(port, n, pth, headers) {
   process.exit(fail.length ? 1 : 0);
 })().catch((e) => {
   console.error('FATAL', e && e.stack || e);
-  try { execFileSync('sudo', ['pg_ctlcluster', '17', 'main', 'start'], { stdio: 'pipe' }); } catch (e2) {}
-  try { execFileSync('sudo', ['pg_ctlcluster', '16', 'main', 'start'], { stdio: 'pipe' }); } catch (e2) {}
+  try { execFileSync('sudo', ['pg_ctlcluster', '17', 'main', 'start'], { stdio: 'pipe' }); } catch (e2) {/* intentional no-op */}
+  try { execFileSync('sudo', ['pg_ctlcluster', '16', 'main', 'start'], { stdio: 'pipe' }); } catch (e2) {/* intentional no-op */}
   try {
     const ps = spawnSync('docker', ['ps', '-aq', '--filter', 'ancestor=postgres:17'], { encoding: 'utf8', stdio: 'pipe' });
     if (ps.status === 0) {
       const ids = String(ps.stdout).split('\n').map((s) => s.trim()).filter(Boolean);
-      for (const id of ids) { try { spawnSync('docker', ['start', id], { stdio: 'pipe' }); } catch (e3) {} }
+      for (const id of ids) { try { spawnSync('docker', ['start', id], { stdio: 'pipe' }); } catch (e3) {/* intentional no-op */} }
     }
-  } catch (e2) {}
+  } catch (e2) {/* intentional no-op */}
   process.exit(1);
 });

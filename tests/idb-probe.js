@@ -13,7 +13,7 @@
 'use strict';
 const { JSDOM } = require('jsdom');
 
-let pass = 0, fail = 0;
+let pass = 0, fail = 0; void pass;
 const check = (name, ok, extra) => {
   if (ok) { pass++; console.log('  ✅ ' + name); }
   else { fail++; console.log('  ❌ ' + name + (extra ? ' — ' + extra : '')); }
@@ -27,7 +27,7 @@ const win = dom.window;
 console.log('  ⚠️  وضعیت jsdom: ' + (typeof win.indexedDB === 'undefined'
   ? 'indexedDB تعریف‌نشده است — در تست با fake کوچک جبران می‌شود (نتیجهٔ مورد انتظار)'
   : 'indexedDB در دسترس است'));
-const hasIDB = typeof win.indexedDB !== 'undefined';
+const hasIDB = typeof win.indexedDB !== 'undefined'; void hasIDB;
 
 /* ── ۲) سطح API مورد نیاز ── */
 console.log('\n▸ ۲. سطح API مورد نیاز برای پوشهٔ فایل کلاس');

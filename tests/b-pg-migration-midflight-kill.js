@@ -72,7 +72,7 @@ function makeCrashClient(real) {
     query: async (sql, params) => {
       const text = String(typeof sql === 'string' ? sql : (sql && sql.text) || sql);
       if (/INSERT\s+INTO\s+schema_migrations/i.test(text) && Array.isArray(params) && params[0] === KILL_VERSION) {
-        try { real.end(); } catch (_) {}
+        try { real.end(); } catch (_) {/* intentional no-op */}
         const err = new Error('SIMULATED_KILL: backend terminated after migration ' + KILL_VERSION
           + ' DDL committed, before its ledger row was written');
         err.simulatedKill = true;
@@ -154,7 +154,7 @@ async function recreateDb() {
     check('control: full migration chain applies cleanly to a fresh database (' + files.length + ' migrations)', ctlOk, ctlErr);
     await ctl.end();
     if (!ctlOk) {
-      try { const a = new Client(Object.assign({}, clientOpts, { database: 'postgres' })); await a.connect(); await dropDb(a); await a.end(); } catch (_) {}
+      try { const a = new Client(Object.assign({}, clientOpts, { database: 'postgres' })); await a.connect(); await dropDb(a); await a.end(); } catch (_) {/* intentional no-op */}
       console.log('\n  ' + results.filter((r) => r.ok).length + '/' + results.length + ' checks passed');
       console.log('B-PG-PROBE VERDICT: FAIL mode=' + (LEGACY ? 'LEGACY' : 'FIXED')
         + ' reason=control migration chain failed on a fresh database (' + ctlErr + ')');
@@ -179,7 +179,7 @@ async function recreateDb() {
     }
     check('crash injected: migrateUp aborted exactly at the ' + KILL_VERSION + ' ledger INSERT',
       killHit, errCode + ' ' + errMsg);
-    try { await real.end(); } catch (_) {}
+    try { await real.end(); } catch (_) {/* intentional no-op */}
   }
 
   /* حالتِ میانیِ جزئی را قبل از rerun تأیید می‌کنیم — این همان stateای است که
@@ -265,7 +265,7 @@ async function recreateDb() {
         !!(legacyErr && /ALREADY_APPLIED/.test(String(legacyErr.message || '') + String(legacyErr.cause && legacyErr.cause.message || ''))),
         legacyErr ? legacyErr.code + ': ' + String(legacyErr.message).slice(0, 120) : 'rerun unexpectedly SUCCEEDED — the broken tree went green, probe is not load-bearing');
       await rerun.end();
-      try { fs.unlinkSync(tmpPath); } catch (_) {}
+      try { fs.unlinkSync(tmpPath); } catch (_) {/* intentional no-op */}
       if (!rootPatched) {
         check('LEGACY harness: repointed ROOT_DIR at the real repo root in the temp copy', false,
           'ROOT_DIR replacement did not apply');

@@ -48,7 +48,7 @@ const P = (v) => String(v).replace(/\D/g, '');
 async function until(fn, ms, label) {
   const t0 = Date.now();
   for (;;) {
-    try { const r = await fn(); if (r) return { ok: true, ms: Date.now() - t0, value: r }; } catch (e) {}
+    try { const r = await fn(); if (r) return { ok: true, ms: Date.now() - t0, value: r }; } catch (e) {/* intentional no-op */}
     if (Date.now() - t0 > ms) return { ok: false, ms: Date.now() - t0, value: null, label };
     await sleep(80);
   }
@@ -61,7 +61,7 @@ async function recoverCode(infra, phone) {
         const d = JSON.parse(raw);
         const r = d.codes && d.codes[phone];
         if (r && r.h) { for (let n = 100000; n < 1000000; n++) if (codeHash(String(n), phone) === r.h) return String(n); }
-      } catch (e) {}
+      } catch (e) {/* intentional no-op */}
     }
     await sleep(120);
   }
@@ -85,7 +85,7 @@ function blackholeSink(port) {
     srv.on('error', (e) => console.log('  [sink] listen error:', e.message));
     srv.listen(port, () => resolve({
       connCount: () => socks.size,
-      destroy: () => new Promise((res) => { for (const x of socks) { try { x.destroy(); } catch (e) {} } srv.close(() => res()); setTimeout(res, 400); })
+      destroy: () => new Promise((res) => { for (const x of socks) { try { x.destroy(); } catch (e) {/* intentional no-op */} } srv.close(() => res()); setTimeout(res, 400); })
     }));
   });
 }
@@ -100,7 +100,7 @@ function pgTree(infra) {
       const stat = fs.readFileSync('/proc/' + d + '/stat', 'utf8');
       const rest = stat.slice(stat.lastIndexOf(')') + 2).split(' ');
       if (Number(rest[1]) === pp) kids.push(Number(d));
-    } catch (e) {}
+    } catch (e) {/* intentional no-op */}
   }
   return [pp, ...kids];
 }
@@ -304,7 +304,7 @@ function auditGrep(infra, needle) {
 
   /* ── FI-4: DB timeout / blackhole (FREEZE full postgres tree — queries never return) ── */
   const pgPids = pgTree(infra);
-  for (const p of pgPids) { try { process.kill(p, 'SIGSTOP'); } catch (e) {} }
+  for (const p of pgPids) { try { process.kill(p, 'SIGSTOP'); } catch (e) {/* intentional no-op */} }
   await sleep(300);
   ev('FI-4 DB timeout: SIGSTOP postmaster + ' + (pgPids.length - 1) + ' backends (established pool; in-flight queries frozen) — no statement_timeout in server/db.js');
   const dtReady = await L.readiness(api.port, 3000);
@@ -312,7 +312,7 @@ function auditGrep(infra, needle) {
     'status=' + dtReady.status + ' err=' + dtReady.error + ' ← no query-level timeout → unbounded hang, not bounded 5xx');
   const dtWrite = await L.httpReq(api.port, 'POST', '/api/v1/classes', { name: 'کلاس فریز', grade: 5 }, { jar: wjar, timeoutMs: 3000 });
   ev('FI-4 DB timeout: write during freeze = ' + dtWrite.status + ' err=' + dtWrite.error + ' (sessionFrom PG read hangs)');
-  for (const p of pgPids) { try { process.kill(p, 'SIGCONT'); } catch (e) {} }
+  for (const p of pgPids) { try { process.kill(p, 'SIGCONT'); } catch (e) {/* intentional no-op */} }
   const dtRec = await until(async () => (await L.readiness(api.port, 2500)).status === 200, 30000, 'pg-cont');
   rec('FI-4 DB timeout: SIGCONT → readiness recovers 200, pool uncorrupted (RTO)', dtRec.ok ? 'PASS' : 'FAIL', 'RTO=' + dtRec.ms + 'ms');
   rto('db-freeze', dtRec.ms);
@@ -415,14 +415,14 @@ function auditGrep(infra, needle) {
   const h3 = await L.health(api3.port);
   ev('FI-10 observability: /api/health = ' + h3.status + ' ' + JSON.stringify(h3.json && h3.json.db).slice(0, 140));
 
-  try { proxy.stop(); } catch (e) {}
+  try { proxy.stop(); } catch (e) {/* intentional no-op */}
   api3.stop();
   infra.stop();
   finish();
 })().catch((e) => {
   console.error('HARNESS ERROR: ' + (e && e.stack || e));
   rows.push({ name: 'harness-crash', status: 'FAIL', detail: String(e).slice(0, 300) });
-  try { finish(); } catch (_) {}
+  try { finish(); } catch (_) {/* intentional no-op */}
 });
 
 function finish() {

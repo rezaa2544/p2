@@ -44,6 +44,8 @@
 
 | نام | نوع | پیش‌فرض | الزامی | محیط | توضیح | مثال |
 |---|---|---|---|---|---|---|
+| `IDOR_DB_NAME` | رشته | `payesh_db_idor` | نه | نام دیتابیس ایزولهٔ فیکسچر تست رگرسیون IDOR (`tools/seed-idor-fixture.js`) |
+| `CHROMIUM_PATH` | رشته | خودکار | نه | مسیر باینری Chromium سیستمی برای آزمون‌های دسترسی‌پذیری و PDF در Playwright |
 | `DATABASE_URL` | رشته | (خالی = حالت جی‌سان) | در تولید با بک‌اند مشترک | همه | اتصال نوشتاری پستگرس؛ باید با `postgres(ql)://` شروع شود | `postgresql://u:p@host:5432/db` |
 | `READ_DATABASE_URL` | رشته | = نوشتاری | — | تولید | کپی فقط‌خواندن برای `loadForRead` | `postgresql://u:p@replica:5432/db` |
 | `PG_POOL_MIN` | عدد | `2` | — | همه | کف پول اتصال (`.env.example` پیشنهاد: ۵) | `5` |
@@ -169,8 +171,11 @@
 | `OLD_PGHOST` · `OLD_PGPORT` | `127.0.0.1`/`5432` | `tools/failover-postgres.sh` | اصلی قدیم هنگام فیلاور |
 | `MAX_LAG_BYTES` | `67108864` | `tools/failover-postgres.sh` | سقف تأخیر کپی پیش از برش (۶۴ مگابایت) |
 | `COMPOSE_F` | (خالی) | `tools/failover-postgres.sh` | مسیر کامپوز سفارشی |
+| `PGBOUNCER_SERVICE` · `PGBOUNCER_INI` · `PGBOUNCER_HOST` · `PGBOUNCER_PORT` · `PGBOUNCER_ADMIN_USER` · `PGBOUNCER_ADMIN_PASSWORD` | `pgbouncer`/`/etc/pgbouncer/pgbouncer.ini`/`127.0.0.1`/`6432` | `tools/failover-postgres.sh` | بازمسیردهی و بارگذاری مجدد پی‌جی‌بونسر پس از فیلاور |
 | `PGHOST` · `PGPORT` · `PGUSER` · `PGDATABASE` | کتابخانهٔ پی‌جی | اسکریپت‌های دیتابیس | اتصال استاندارد پستگرس |
-| `PBR_BIN` · `PBR_EXEC` · `PBR_STANZA` · `PBR_PORT` · `PBR_DEST_ROOT` | پیش‌فرض اسکریپت | `tools/pitr-restore.sh` | پارامترهای بازیابی نقطه‌ای پی‌جی‌بک‌رست |
+| `PBR_BIN` · `PBR_EXEC` · `PBR_STANZA` · `PBR_PORT` · `PBR_DEST_ROOT` · `PBR_READY_ATTEMPTS` | پیش‌فرض اسکریپت | `tools/pitr-restore.sh` | پارامترهای بازیابی نقطه‌ای پی‌جی‌بک‌رست |
+| `S13_PG_WAIT_MS` · `S13_PG_INTERVAL_MS` | `90000`/`1000` | `tests/server13.js` · `tests/helpers/live-db-readiness.js` | بودجه و گامِ دروازهٔ آمادگیِ PostgreSQL پیش ازِ اسناریوهای production سوئیتِ TLS (کرانه‌دار و fail-closed — `CI-FLAKE-01`؛ صفر = یک تلاش) |
+| `S13_BASE_TIMEOUT_MS` · `S13_CHILD_TIMEOUT_MS` | `300000` | `tests/server13-mutations.js` | مهلتِ اجرایِ خطِ پایه و فرزندِ جهش‌دیده در هارنسِ جهش (قرمزی ⇒ سوئیت قرمز، بدونِ کرشِ بی‌حکم) |
 | `DAST_ENV` · `DAST_PORT` · `DAST_REDIS_URL` | `development`/پیش‌فرض | `tools/dast-live.sh` | هدف تست نفوذ زنده (پی۰ #۶) |
 | `OUT_DIR` | `out/dast-live` | `tools/dast-live.sh` | خروجی اسکن دی‌ای‌اس‌تی (گیت‌ایگنورد) |
 | `ZAP_BIN` · `ZAP_IMAGE` | (خالی = جست‌وجوی خودکار) | `tools/dast-live.sh` | مکان یاب زپ |
@@ -185,7 +190,7 @@
 | `POSTGRES_USER` · `POSTGRES_PASSWORD` | رشته | — | در اچ‌ای | تولید | حساب اصلی پستگرس (`infra/postgres/env.ha.example`) | — |
 | `PGPASSWORD` | رشته | — | در اچ‌ای | تولید | گذرواژهٔ اتصال اسکریپت‌های پستگرس | — |
 | `PGHA_PASSWORD` · `PGHA_SUPERUSER` | رشته | — | در اچ‌ای | تولید | حساب سوپریوزر اچ‌ای | — |
-| `PGHA_REPLICATION_PASSWORD` · `REPLICATION_PASSWORD` | رشته | — | در اچ‌ای | تولید | گذرواژهٔ کپی‌برداری | — |
+| `PGHA_REPLICATION_PASSWORD` · `REPLICATION_PASSWORD` · `PGHA_PGBOUNCER_PASSWORD` · `PGBOUNCER_PASSWORD` | رشته | — | در اچ‌ای | تولید | گذرواژهٔ کپی‌برداری و نقش احراز پی‌جی‌بونسر | — |
 | `PGHA_S3_KEY` · `PGHA_S3_SECRET` | رشته | — | با اس۳ | تولید | اعتبار اس۳ برای پشتیبان پی‌جی | — |
 | `PB_REPO_S3_BUCKET` · `PB_REPO_S3_ENDPOINT` · `PB_REPO_S3_REGION` · `PB_REPO_S3_VERIFY_TLS` | رشته | — | با پی‌جی‌بک‌رست | تولید | مخزن اس۳ پشتیبان | — |
 | `PGBACKREST_REPO1_S3_KEY` · `PGBACKREST_REPO1_S3_KEY_SECRET` | رشته | — | با پی‌جی‌بک‌رست | تولید | کلیدهای مخزن پشتیبان | — |
@@ -254,6 +259,103 @@
 | `WAVE23_GRADES` | تست/بار | `tools/bench-reports-concurrency.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
 | `WAVE23_ROWS` | تست/بار | `tools/bench-reports-academic.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
 | `ALLOW_MEMORY_FALLBACK` | سایر | `server/db.js` | متغیرِ محیطی خوانده‌شده از کد؛ معنا توسط مالکِ دسته تکمیل شود |
+
+| `A04_N` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `B01_MUTATE` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `CACHE_DURABLE_VULN` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `COUCOU_API_KEY` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `E4_ALERTMANAGER_URL` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | نشانی سرویس Alertmanager در دامنهٔ شکست مستقل E4 |
+| `E4_BACKUP_REPO_REGION` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | ناحیهٔ جغرافیایی مخزن پشتیبان خارج‌ازسایت pgBackRest در ممیزی E4 |
+| `E4_CONFIRM_ISOLATED_STAGING` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | قفل ایمنی اجباری (`1`) برای تأیید اجرای آزمون عملیاتی E4 صرفاً روی محیط ایزولهٔ غیرتولیدی |
+| `E4_EXPECTED_CATALOG_SHA256` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | هش SHA-256 مورد انتظار دفترچهٔ ۲۶ مهاجرت پس از بازیابی PITR در E4 |
+| `E4_MAX_REPL_LAG_BYTES` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | سقف مجاز تأخیر replication بایت در ممیزی PostgreSQL چندمیزبانهٔ E4 |
+| `E4_MTTA_MAX_MS` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | سقف مجاز MTTA تأیید انسانی کشیک در ممیزی زنجیرهٔ هشدار E4 (میلی‌ثانیه) |
+| `E4_MTTR_MAX_MS` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | سقف مجاز MTTR بازیابی سرویس در ممیزی زنجیرهٔ هشدار E4 (میلی‌ثانیه) |
+| `E4_OBSERVABILITY_BEARER_TOKEN` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | توکن احراز هویت خواندنی Prometheus/Alertmanager در ممیزی E4 |
+| `E4_ONCALL_INCIDENT_JSON` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | مسیر رکورد JSON زمان‌بندی‌شدهٔ تمرین هشدار، تأیید انسانی کشیک، ران‌بوک و بازیابی در E4 |
+| `E4_PGBACKREST_MAX_BACKUP_AGE_SEC` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | حداکثر سن مجاز آخرین پشتیبان کامل pgBackRest در ممیزی E4 (ثانیه) |
+| `E4_PGBACKREST_STANZA` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | نام stanza در ممیزی پشتیبان خارج‌ازسایت pgBackRest برای E4 |
+| `E4_PGBOUNCER_ADMIN_DSN` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | رشتهٔ اتصال مدیریتی PgBouncer برای بررسی وضعیت استخرها در E4 |
+| `E4_PGBOUNCER_DSN` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | رشتهٔ اتصال کلاینت PgBouncer برای راستی‌آزمایی مسیر نوشتن در E4 |
+| `E4_PGBOUNCER_EVIDENCE_JSON` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | مسیر خروجی JSON زمان‌سنجی بازمسیردهی PgBouncer در تمرین فیلاور چندمیزبانهٔ E4 |
+| `E4_PGBOUNCER_RTO_MAX_MS` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | سقف مجاز RTO بازمسیردهی PgBouncer پس از فیلاور در E4 (میلی‌ثانیه) |
+| `E4_PG_PRIMARY_DSN` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | رشتهٔ اتصال خواندنی نود Primary پستگرس چندمیزبانه در ممیزی E4 |
+| `E4_PG_STANDBY_DSN` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | رشتهٔ اتصال خواندنی نود Standby پستگرس چندمیزبانه در ممیزی E4 |
+| `E4_PITR_RESTORED_DSN` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | رشتهٔ اتصال نمونهٔ ایزولهٔ بازیابی‌شدهٔ PITR در میزبان مجزا برای E4 |
+| `E4_PITR_TARGET_UTC` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | برچسب زمانی هدف PITR (UTC ISO-8601) در ممیزی E4 |
+| `E4_PRIMARY_REGION` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | ناحیهٔ جغرافیایی میزبان Primary پستگرس برای کنترل جداسازی ناحیه با پشتیبان E4 |
+| `E4_PROMETHEUS_URL` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | نشانی سرویس Prometheus در دامنهٔ شکست مستقل E4 |
+| `E4_REDIS_MASTER_NAME` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | نام کلاستر Master در Redis Sentinel چندمیزبانه برای ممیزی E4 |
+| `E4_REDIS_PASSWORD` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | گذرواژهٔ احراز هویت Redis Master در ممیزی E4 (حذف‌شده در خروجی) |
+| `E4_REDIS_SENTINEL_ENDPOINTS` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | فهرست جداشده با ویرگول از حداقل ۳ نقطهٔ اتصال Redis Sentinel روی میزبان‌های مجزا در E4 |
+| `E4_REQUIRE_PASS` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | در صورت مقدار `1` وضعیت BLOCKED نیز با کد خروج غیرصفر (۱) مردود می‌شود |
+| `E4_SENTINEL_PASSWORD` | ابزار/تست/اجرا | `tools/m15-01-e4-verify.js` | گذرواژهٔ احراز هویت نودهای Redis Sentinel در ممیزی E4 (حذف‌شده در خروجی) |
+| `FT_METRIC_V2_PATH` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `GATE_REQUIRE_CLEAN` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `GATE_REQUIRE_REMOTE_MATCH` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `GH_TOKEN` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `GITHUB_ACTIONS` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `GITHUB_API_URL` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `GITHUB_EVENT_NAME` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `GITHUB_OUTPUT` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `GITHUB_REF` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `GITHUB_REPOSITORY` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `GITHUB_RUN_ATTEMPT` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `GITHUB_RUN_ID` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `GITHUB_SHA` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `GITHUB_STEP_SUMMARY` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `GITHUB_TOKEN` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `HERMES_AGENT_LABEL` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `HERMES_CUSTOM_ATRIA_DAWN_PREVIEW_API_KEY` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `HISTORICAL_ATTEMPT1_IDS` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `HISTORICAL_EXPECTED_SHA` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `HISTORICAL_RUN_ID` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `I` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `M15_ALERT_EVENTS_FILE` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `M15_ARTIFACT_PATH` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `M15_CI_SEED_PROFILE` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `M15_CLEANUP_STATUS` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `M15_DR_CLEANUP_STATUS` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `M15_DR_COMMAND_LOG` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `M15_DR_EXIT_STATUS` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `M15_DR_SOURCE_SHA` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `M15_EVIDENCE_RUN` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `M15_LOAD_RESULT_FILE` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `M15_LOAD_SPEC_FILE` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `M15_REDIS_CONTAINER` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `M15_ROUTE_CONCURRENCY` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `M15_ROUTE_SECONDS` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `M15_RUNTIME_ALLOW_CI` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `M15_RUN_KEY` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `M15_SOURCE_SHA` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `N36_CAP_BURST` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `N36_CAP_N` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `N36_TEST_DATABASE_URL` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `NODE_PATH` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `PAYESH_ALLOW_DEV_MEMORY_AUTHORITY` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `PAYESH_ANALYTICS_FIXED_NOW` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `PAYESH_CACHE_REPLICATE_BATCH` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `PAYESH_FORCE_HYDRATION` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `PAYESH_OUTBOX_LEASE_SECONDS` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `PAYESH_OUTBOX_RETENTION_SECONDS` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `PAYESH_PG_KEEPALIVE` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `PAYESH_PROBE_HOST_ALLOWLIST` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `PAYESH_REDIS_COMMAND_TIMEOUT_MS` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `PAYESH_SEED_OUT_ROOT` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `PAYESH_SIMULATION_HEADERS` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `PAYESH_STRICT_BASE_VERSION` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `PAYESH_STRICT_CSRF` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `PAYESH_STRICT_OCC` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `PEES_STORE_DIR` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `PGURL` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `REPL` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `RUNNER_ARCH` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `RUNNER_OS` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `RUNNER_TEMP` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `TMPDIR` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `TRUSTED_PROXIES` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `USER` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
+| `X` | ابزار/تست/اجرا | `server/* · tools/*` | متغیر محیطی خوانده‌شده در کد یا ابزارهای CI/ممیزی |
 
 ## ۳) فایل‌های پیکربندی
 

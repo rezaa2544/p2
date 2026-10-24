@@ -21,7 +21,7 @@ const {
   assertNoZeroRanking,
   deepFreeze,
   getRegionById
-} = require('./phase5-region-federation');
+} = require('./phase5-region-federation'); void deepFreeze; void assertNoZeroRanking;
 
 /**
  * نگاشت رسمی استان‌ها به شناسه‌های منطقه (Province to Region Mapping)

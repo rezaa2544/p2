@@ -34,6 +34,9 @@ const secondary = fs.existsSync(secondaryPath) ? fs.readFileSync(secondaryPath, 
 chk('secondary monitoring catalogue is absent or retired', secondary === null || !/^\s*-\s*alert:/m.test(secondary));
 chk('canonical P0 alert count is 11', (rules.match(/- alert:/g) || []).length === 11);
 chk('قانون SyncQueueDepth با آستانهٔ درست', /alert:\s*SyncQueueDepth[\s\S]*?expr:\s*payesh_sync_queue_depth\s*>\s*1000/.test(rules));
+chk('قانون AnomalyDetected با آستانهٔ درست', /alert:\s*AnomalyDetected[\s\S]*?expr:\s*sum\(increase\(payesh_runtime_anomalies_total\[5m\]\)\)\s*>\s*0/.test(rules));
+chk('قانون AttackPatternSignature با آستانهٔ درست', /alert:\s*AttackPatternSignature[\s\S]*?expr:\s*sum by \(pattern, severity\) \(increase\(payesh_attack_patterns_detected_total\[5m\]\)\)\s*>\s*0/.test(rules));
+chk('قانون SuspiciousSession با آستانهٔ درست', /alert:\s*SuspiciousSession[\s\S]*?expr:\s*payesh_suspicious_sessions\s*>\s*0/.test(rules));
 chk('HTTP error alert uses emitted code label', /payesh_http_requests_total\{code=~"5\.\."\}/.test(rules));
 chk('event-loop alert uses canonical seconds gauge', /payesh_node_eventloop_lag_seconds\s*>\s*0\.1/.test(rules) && !/payesh_eventloop_lag_ms\{/.test(rules));
 chk('memory alert uses canonical Node heap gauges', /payesh_node_heap_used_bytes/.test(rules) && /payesh_node_heap_total_bytes/.test(rules));

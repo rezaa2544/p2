@@ -47,7 +47,7 @@ if (!fs.existsSync(REAL_STORE)) {
 
 /* ── فایل‌های ایزولهٔ این اجرا (پیش از requireِ سرور) ─────────────── */
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-w9-'));
-process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 const T_STORE = path.join(TMP, 'store.json');
 const T_AUDIT = path.join(TMP, 'audit.log');
 const T_KEY   = path.join(TMP, 'jwt.key');
@@ -199,7 +199,7 @@ function probeStop() {
       body: body ? JSON.stringify(body) : undefined,
     });
     let json = null;
-    try { json = await res.json(); } catch (e) {}
+    try { json = await res.json(); } catch (e) {/* intentional no-op */}
     return { status: res.status, json, headers: res.headers, text: async () => res.text() };
   }
   function cookieOf(res) {
@@ -238,7 +238,7 @@ function probeStop() {
     let onDisk = false;
     for (let i = 0; i < 40 && !onDisk; i++) {
       await sleep(150);
-      try { onDisk = fs.readFileSync(T_STORE, 'utf8').indexOf(MARK) > -1; } catch (e) {}
+      try { onDisk = fs.readFileSync(T_STORE, 'utf8').indexOf(MARK) > -1; } catch (e) {/* intentional no-op */}
     }
     chk('W9-2b persistِ ورکر روی disk نشست (≤۶ ثانیه)', onDisk);
   }
@@ -286,7 +286,7 @@ function probeStop() {
     chk('W9-4b فایلِ هر پاسخ همان لحظه روی disk است', results.every((r) => fs.existsSync(path.join(backupsDir, r.json.file))));
     const last = results[results.length - 1].json;
     let parsed = null;
-    try { parsed = JSON.parse(fs.readFileSync(path.join(backupsDir, last.file), 'utf8')); } catch (e) {}
+    try { parsed = JSON.parse(fs.readFileSync(path.join(backupsDir, last.file), 'utf8')); } catch (e) {/* intentional no-op */}
     chk('W9-4c اسنپ‌شاتِ فقط‌داده (بدونِ __*) و users کامل',
       !!parsed && !Object.keys(parsed).some((k) => k.indexOf('__') === 0) && Array.isArray(parsed.users) && parsed.users.length === store.users.length);
     chk('W9-4d تأخیرِ event-loop ناچیز (بدونِ stringify در مسیرِ درخواست)', p.max < 30, p.max.toFixed(1));
@@ -301,7 +301,7 @@ function probeStop() {
     });
     const bk = await req('POST', '/api/admin/backup', { cookie: suCookie });
     let body = '';
-    try { body = fs.readFileSync(path.join(backupsDir, bk.json.file), 'utf8'); } catch (e) {}
+    try { body = fs.readFileSync(path.join(backupsDir, bk.json.file), 'utf8'); } catch (e) {/* intentional no-op */}
     chk('W9-5 نوشتنِ تازه در بکاپِ فوری هست (تازگیِ اسنپ‌شات)',
       r1.status === 200 && bk.status === 200 && body.indexOf(MARK + '-fresh') > -1);
   }
@@ -351,7 +351,7 @@ function probeStop() {
   }
 
   /* ── جمع‌بندی ─────────────────────────────────────────────────── */
-  try { workers.terminate(); } catch (e) {}
+  try { workers.terminate(); } catch (e) {/* intentional no-op */}
   await new Promise((r) => server.close(r));
   console.log('\n────────────────────────────────────────────────────');
   console.log('wave9-performance: ' + (okc + failc) + ' بررسی — ✅ ' + okc + ' · ❌ ' + failc);

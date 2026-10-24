@@ -33,7 +33,7 @@ const OUT = path.join(ROOT, 'server', 'data', 'payesh.json');
   const h = await db.hydrateStoreFromPg(store);
   if (!Array.isArray(store.users) || store.users.length === 0) {
     console.error('refusing: PG answered but users table came back empty — not overwriting');
-    try { await db.close(); } catch (e) {}
+    try { await db.close(); } catch (e) {/* intentional no-op */}
     process.exit(2);
   }
   const tmp = OUT + '.tmp';
@@ -41,5 +41,5 @@ const OUT = path.join(ROOT, 'server', 'data', 'payesh.json');
   fs.writeFileSync(tmp, JSON.stringify(store), { encoding: 'utf8', mode: 0o600 });
   fs.renameSync(tmp, OUT);
   console.log('reseeded ' + OUT + ' from PostgreSQL (' + h.hydrated + ' collections)');
-  try { await db.close(); } catch (e) {}
+  try { await db.close(); } catch (e) {/* intentional no-op */}
 })().catch((e) => { console.error('reseed failed:', e.message); process.exit(1); });

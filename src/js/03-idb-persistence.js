@@ -533,10 +533,10 @@ OfflineStorage.prototype.clearAll = function() {
         var c3 = tx.objectStore('metadata').clear();
 
         var completed = 0;
-        function checkDone() {
+        var checkDone = function() {
           completed++;
           if (completed >= 3) resolve(true);
-        }
+        };
         if (c1) c1.onsuccess = checkDone; else checkDone();
         if (c2) c2.onsuccess = checkDone; else checkDone();
         if (c3) c3.onsuccess = checkDone; else checkDone();
@@ -709,4 +709,4 @@ function makeOfflineIdbFake() {
 }
 
 // ایجاد نمونه پیش‌فرض سراسری
-var offlineStorage = new OfflineStorage();
+var offlineStorage = new OfflineStorage(); void offlineStorage;

@@ -16,7 +16,7 @@
     "truth-gate": "node tools/production-truth-gate.js",
     "strict-verification": "node tools/strict-verification-gate.js",
     "test:all": "bash scripts/run-all-tests.sh",
-    "lint": "eslint server/ tools/ tests/ --max-warnings 1379",
+    "lint": "eslint server/ tools/ tests/ --max-warnings 411",
     "lint:fix": "eslint server/ tools/ tests/ --fix"
   },
   "keywords": [
@@ -53,5 +53,17 @@
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"
-  }
+  },
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rezaa2544/p2.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rezaa2544/p2/issues"
+  },
+  "homepage": "https://github.com/rezaa2544/p2#readme"
 }

@@ -1392,7 +1392,7 @@ async function run() {
       'DR restore/failover is not proven by this harness; it is an independent M15-01 acceptance gate.'
     ]
   };
-  try { report.source_sha = currentSha(); } catch (_) {}
+  try { report.source_sha = currentSha(); } catch (_) {/* intentional no-op */}
   let pool = null;
   let queueRuntimeDb = null;
   let queueOutbox = null;

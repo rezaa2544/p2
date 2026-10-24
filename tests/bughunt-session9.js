@@ -43,7 +43,7 @@
 const path = require('path');
 const zlib = require('zlib');
 const crypto = require('crypto');
-const ROOT = path.join(__dirname, '..');
+const ROOT = path.join(__dirname, '..'); void ROOT;
 const { createCursor, resolveSecret } = require('../server/cursor');
 const { sendJsonCompressed, negotiateEncoding } = require('../server/compress');
 const { createPull } = require('../server/pull');
@@ -387,14 +387,14 @@ await test('D3 دروازهٔ وزن‌دارِ واقعی: عبورِ اول م
   assert(ok2.allowed === false, '۶+۶ > ۱۰ ⇒ رد: ' + JSON.stringify(ok2));
 });
 
-await test('D4 خطای موتورِ نرخ = fail-open (۲۰۰) و اعمالِ opها', async () => {
+await test('D4 خطای موتورِ نرخ = fail-closed (۵۰۳) و عدم اعمالِ opها', async () => {
   const boom = async () => { throw new Error('limiter down'); };
   const { ctx, store } = makeSyncCtx({ rateLimit: boom, syncOpsPerMin: 100 });
   const s = createSync(ctx);
   const res = mkHttpRes();
   await s.apiSync({}, res, { ops: mkOps(2, 'd4') });
-  assert(res._cap && res._cap.code === 200, 'خطای موتور نباید سرویس را ببندد: ' + JSON.stringify(res._cap && res._cap.code));
-  assert(store.visitors.length === 2, 'opها اعمال شوند: ' + store.visitors.length);
+  assert(res._cap && res._cap.code === 503, 'خطای موتور باید fail-closed ۵۰۳ بدهد: ' + JSON.stringify(res._cap && res._cap.code));
+  assert(store.visitors.length === 0, 'هیچ op نباید اعمال شود: ' + store.visitors.length);
 });
 
 await sleep(50);

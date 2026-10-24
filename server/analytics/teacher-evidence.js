@@ -96,7 +96,7 @@ function enforceTeacherAccessGuard(requester, teacherId, options = {}) {
  * @param {Object} [options]
  * @returns {Object} TeacherWorkloadProfile
  */
-function buildTeacherWorkloadProfile(params = {}, options = {}) {
+function buildTeacherWorkloadProfile(params = {}, options = {}) { void options;
   const teacherId = Number(params.teacherId || params.teacher_id);
   const schoolId = Number(params.schoolId || params.school_id);
 
@@ -219,7 +219,7 @@ function buildTeacherWorkloadProfile(params = {}, options = {}) {
  * @param {Object} [options]
  * @returns {Object} TeacherEvidencePortfolio
  */
-function buildTeacherEvidencePortfolio(params = {}, options = {}) {
+function buildTeacherEvidencePortfolio(params = {}, options = {}) { void options;
   const teacherId = Number(params.teacherId || params.teacher_id);
   const schoolId = Number(params.schoolId || params.school_id);
 
@@ -326,7 +326,7 @@ function buildTeacherEvidencePortfolio(params = {}, options = {}) {
  * @param {Object} [options]
  * @returns {Object} LessonObservationReview
  */
-function evaluateLessonObservation(params = {}, options = {}) {
+function evaluateLessonObservation(params = {}, options = {}) { void options;
   const teacherId = Number(params.teacherId || params.teacher_id);
   const schoolId = Number(params.schoolId || params.school_id);
 
@@ -400,7 +400,7 @@ function evaluateLessonObservation(params = {}, options = {}) {
  * @param {Object} [options]
  * @returns {Object} ProfessionalDevelopmentTracker
  */
-function trackProfessionalDevelopment(params = {}, options = {}) {
+function trackProfessionalDevelopment(params = {}, options = {}) { void options;
   const teacherId = Number(params.teacherId || params.teacher_id);
   const schoolId = Number(params.schoolId || params.school_id);
 

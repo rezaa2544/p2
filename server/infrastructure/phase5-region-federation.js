@@ -13,7 +13,7 @@
 
 'use strict';
 
-const crypto = require('crypto');
+const crypto = require('crypto'); void crypto;
 
 /**
  * وضعیت‌های رسمی کلاسترها و مناطق در فاز ۵

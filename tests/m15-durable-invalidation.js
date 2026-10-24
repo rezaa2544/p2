@@ -16,8 +16,8 @@
    ═════════════════════════════════════════════════════════════════ */
 'use strict';
 const path = require('path');
-const fs = require('fs');
-const { spawn, spawnSync } = require('child_process');
+const fs = require('fs'); void fs;
+const { spawn, spawnSync } = require('child_process'); void spawnSync; void spawn;
 
 const ROOT = path.join(__dirname, '..');
 process.chdir(ROOT);
@@ -203,7 +203,7 @@ async function main() {
   {
     const store = {};
     const outbox = createOutbox({ store });
-    const cache = fakeCache();
+    const cache = fakeCache(); void cache;
     const order = [];
     const w = createWorker({
       store, outbox,
@@ -308,7 +308,7 @@ async function main() {
           (await outA.readWatermark()) > 0 && (await outB.readWatermark()) > 0);
         await pool.query('delete from server_outbox where type like $1', ['cache.%']);
         await pool.query('delete from server_outbox_watermark where instance_id like $1 or instance_id like $2', ['A-' + TAG + '%', 'B-' + TAG + '%']);
-      } finally { try { await pool.end(); } catch (e) {} }
+      } finally { try { await pool.end(); } catch (e) {/* intentional no-op */} }
     }
   }
 
@@ -612,7 +612,7 @@ async function runRealTwoInstance(DSN, REDIS, chk, notrun, cacheEvents) {
     await pool.query('delete from server_outbox where type like $1', ['cache.%']);
     await pool.query('delete from server_outbox_watermark where instance_id like $1 or instance_id like $2', ['A-' + TAG + '%', 'B-' + TAG + '%']);
   } finally {
-    try { await pool.end(); } catch (e) {}
+    try { await pool.end(); } catch (e) {/* intentional no-op */}
   }
 }
 

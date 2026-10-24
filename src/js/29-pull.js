@@ -40,7 +40,8 @@ function rptCacheBound(c){
   /* ردیف‌های بریده از IndexedDB هم پاک می‌شوند تا بوتِ بعدی برنگردند */
   if (typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()) {
     for (var i = 0; i < dropped.length; i++) {
-      try { offlineStorage.removeEntity(c, dropped[i].id).catch(function(){}); } catch (e) {}
+      try { offlineStorage.removeEntity(c, dropped[i].id).catch(function(){}); } catch (e) { // noop
+}
     }
   }
   return true;
@@ -238,7 +239,8 @@ function pullFromServer(options) {
         if (payload.server_version != null) {
           offlineStorage.setMetadata('server_version', payload.server_version).catch(function(){});
         }
-      } catch (e) {}
+      } catch (e) { // noop
+}
     }
 
     /* پ۳ — resume دلتای بریده: سرور اعلام کرده این مجموعه‌ها snapshot
@@ -360,7 +362,8 @@ function mergeServerDelta(payload) {
 
       // همگام‌سازی پس‌زمینه با IndexedDB
       if (typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()) {
-        try { offlineStorage.putEntity(c, rec).catch(function(){}); } catch (e) {}
+        try { offlineStorage.putEntity(c, rec).catch(function(){}); } catch (e) { // noop
+}
       }
     }
   }
@@ -385,7 +388,8 @@ function mergeServerDelta(payload) {
       }
 
       if (typeof offlineStorage !== 'undefined' && offlineStorage.isSupported()) {
-        try { offlineStorage.removeEntity(del.c, del.id).catch(function(){}); } catch (e) {}
+        try { offlineStorage.removeEntity(del.c, del.id).catch(function(){}); } catch (e) { // noop
+}
       }
     }
   }
@@ -413,7 +417,8 @@ function mergeServerDelta(payload) {
   // باطل‌سازی ایندکس‌های کش‌شده برای رندرهای بعدی
   for (var tc in touchedCols) {
     if (typeof idxInvalidate === 'function') {
-      try { idxInvalidate(tc); } catch (e) {}
+      try { idxInvalidate(tc); } catch (e) { // noop
+}
     }
   }
 

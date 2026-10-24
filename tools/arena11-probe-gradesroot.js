@@ -15,7 +15,7 @@ const CHILD_NODE_PATH = '/tmp/repo-node_modules';
   const g0 = st.grades[0];
   console.log('grade g0:', JSON.stringify(g0));
   // per-row ON CONFLICT (id) DO UPDATE path (non-partitioned form)
-  const fields2 = ['school_id','student_id','class_id','subject_id','teacher_id','term','exam_type','score','created_at','id'];
+  const fields2 = ['school_id','student_id','class_id','subject_id','teacher_id','term','exam_type','score','created_at','id']; void fields2;
   const r = ps("INSERT INTO grades (\"school_id\",\"student_id\",\"class_id\",\"subject_id\",\"teacher_id\",\"term\",\"exam_type\",\"score\",\"created_at\",\"id\") VALUES (1,16,1,1,4,'نوبت اول','کلاسی',13.25,'2026-07-04',1) ON CONFLICT (id) DO UPDATE SET school_id=EXCLUDED.school_id");
   console.log('grades per-row upsert:', r.replace(/\n/g,' | ').slice(0,200));
   console.log('grades count:', ps('SELECT COUNT(*) FROM grades'));

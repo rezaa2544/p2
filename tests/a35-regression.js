@@ -7,13 +7,15 @@
    No fake green: SKIP is counted and printed, never as PASS. */
 'use strict';
 const crypto = require('crypto');
-const { execFileSync } = require('child_process');
-const Redis = require('/home/user/p2/node_modules/ioredis');
-const redis = new Redis('redis://127.0.0.1:6379');
-const BASE = 'http://127.0.0.1:3000';
+const path = require('path');
+const { execFileSync, spawn } = require('child_process');
+const Redis = require('ioredis');
+const redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
+const BASE = process.env.A35_BASE_URL || 'http://127.0.0.1:3000';
+const IDOR_DB_URL = process.env.IDOR_DATABASE_URL || 'postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor';
 const CODE = '424242';
-const PGQ = (s) => execFileSync('psql', ['postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor', '-t', '-A', '-c', s]).toString().trim();
-const PGC = (s) => execFileSync('psql', ['postgres://payesh:payesh@127.0.0.1:5432/payesh_db_idor', '-c', s]);
+const PGQ = (s) => execFileSync('psql', [IDOR_DB_URL, '-t', '-A', '-c', s]).toString().trim();
+const PGC = (s) => execFileSync('psql', [IDOR_DB_URL, '-c', s]);
 let nPass = 0, nFail = 0, nSkip = 0;
 const results = [];
 function report(id, status, detail) {
@@ -23,9 +25,9 @@ function report(id, status, detail) {
   if (status === 'PASS') nPass++; else if (status === 'FAIL') nFail++; else nSkip++;
 }
 async function api(p, { method = 'GET', cookie, body } = {}) {
-  const h = {}; if (body) h['content-type'] = 'application/json'; if (cookie) h.cookie = cookie;
+  const h = { origin: BASE }; if (body) h['content-type'] = 'application/json'; if (cookie) h.cookie = cookie;
   const r = await fetch(BASE + p, { method, headers: h, body: body ? JSON.stringify(body) : undefined });
-  const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {}
+  const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {/* intentional no-op */}
   return { status: r.status, json: j, text: t, setCookie: r.headers.get('set-cookie') };
 }
 async function login(phone, nid) {
@@ -60,8 +62,38 @@ function assertAllowed(id, label, r) {
   report(id, opOk(r) ? 'PASS' : 'FAIL', label + ' → actual: ' + r.status + ' op=' + opCode(r));
 }
 
+let spawnedSrv = null;
 (async () => {
-  // ── preflight: app + PG + fixture ─────────────────────────────────────────
+  // ── preflight: app + PG + fixture (auto-provision & boot :3000 if not up) ──
+  let up = false;
+  try { up = (await api('/api/health')).status === 200; } catch (_e) { up = false; }
+  if (!up) {
+    const rootDir = path.join(__dirname, '..');
+    execFileSync(process.execPath, [path.join(rootDir, 'tools', 'seed-idor-fixture.js')], {
+      cwd: rootDir,
+      env: Object.assign({}, process.env, { DATABASE_URL: IDOR_DB_URL }),
+      stdio: 'inherit'
+    });
+    const env = Object.assign({}, process.env, {
+      PORT: '3000', HOST: '127.0.0.1',
+      DATABASE_URL: IDOR_DB_URL,
+      REDIS_URL: process.env.REDIS_URL || 'redis://127.0.0.1:6379',
+      PAYESH_DEMO_CODE: '1',
+      PAYESH_SMS_PHONE_LIMIT: '5',
+      PAYESH_SMS_IP_LIMIT: '1000',
+      PAYESH_SMS_COOLDOWN_S: '0',
+      PAYESH_JWT_SECRET: 'a35-live-regression-secret-0123456789abcdef'
+    });
+    delete env.NODE_ENV;
+    delete env.PAYESH_ENV;
+    spawnedSrv = spawn(process.execPath, [path.join(rootDir, 'server', 'index.js')], {
+      cwd: rootDir, env, stdio: ['ignore', 'pipe', 'pipe']
+    });
+    for (let i = 0; i < 80; i++) {
+      try { if ((await api('/api/health')).status === 200) { up = true; break; } } catch (_e) { /* wait for boot */ }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  }
   const h = await api('/api/health');
   if (h.status !== 200) throw new Error('app not healthy');
   if (PGQ('SELECT count(*) FROM users') !== '20') throw new Error('fixture users != 20 (run a35-overlay.js)');
@@ -170,6 +202,11 @@ function assertAllowed(id, label, r) {
   const links = PGQ('SELECT parent_id||chr(45)||student_id FROM parent_links ORDER BY id');
   console.log('\nfinal parent_links: ' + links.split('\n').join(' '));
   console.log('\nA-35 REGRESSION: ' + nPass + ' PASS, ' + nFail + ' FAIL, ' + nSkip + ' SKIP');
+  if (spawnedSrv) { try { spawnedSrv.kill('SIGKILL'); } catch (_e) { /* ignore */ } }
   await redis.quit();
   process.exit(nFail > 0 ? 1 : 0);
-})().catch(e => { console.error('ABORT: ' + e.message); process.exit(2); });
+})().catch(e => {
+  if (spawnedSrv) { try { spawnedSrv.kill('SIGKILL'); } catch (_ex) { /* ignore */ } }
+  console.error('ABORT: ' + e.message);
+  process.exit(2);
+});

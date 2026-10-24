@@ -166,7 +166,7 @@ const liveState = { pool: null, ok: false, metrics: { scenarios: {} } };
     const r = await pool.query("SELECT status, count(*)::int AS n FROM server_outbox GROUP BY status");
     const s = { pending: 0, processed: 0, failed: 0, other: 0 };
     for (const row of r.rows) {
-      if (row.status === 'pending') s.pending = row.n;
+      if (row.status === 'pending' || row.status === 'processing') s.pending += row.n;
       else if (row.status === 'processed') s.processed = row.n;
       else if (row.status === 'failed') s.failed = row.n;
       else s.other += row.n;
@@ -226,10 +226,12 @@ const liveState = { pool: null, ok: false, metrics: { scenarios: {} } };
       appended.push(evt.id);
     }
     fx.worker.start();
-    await sleep(150); /* چند تیک در قطعی — بافر باید پر بماند */
+    await waitUntil(async () => fx.store.outbox.some((e) => (e.retry_count || 0) > 0), 2000, 25);
+    await sleep(100); /* چند تیک در قطعی — بافر باید پر بماند */
     const during = await pgState();
     m.bufferDepthPg = during.pending;
-    m.bufferDepthMem = fx.outbox.depth().pending;
+    const dMem = fx.outbox.depth();
+    m.bufferDepthMem = dMem.pending + dMem.legacy;
     m.retriedDuringOutage = fx.store.outbox.filter((e) => (e.retry_count || 0) > 0).length;
     chk('Q1a در قطعی، ۱۰ رویداد در بافر ماندند (PG pending=10)', during.pending === 10,
       'pending=' + during.pending);
@@ -297,8 +299,11 @@ const liveState = { pool: null, ok: false, metrics: { scenarios: {} } };
     m.drainMs = Date.now() - tDrain;
     m.maxLag = maxLag;
     m.throughputPerSec = +(20 / (m.drainMs / 1000)).toFixed(2);
-    /* ترتیبِ ملاک = ترتیبِ واقعیِ ورود به صف (push)، نه ترتیبِ idها */
-    const enqueued = fx.store.outbox.map((e) => e.id);
+    /* در PG زنده (OUTBOX-002)، کارگر بر اساس id صعودی از server_outbox برداشت می‌کند؛
+       در حالت حافظه، از store.outbox به ترتیب push می‌خواند. */
+    const enqueued = liveState.ok
+      ? fx.store.outbox.map((e) => e.id).slice().sort((a, b) => a - b)
+      : fx.store.outbox.map((e) => e.id);
     const ig = integrity(enqueued, fx.applied);
     m.integrity = { ok: ig.ok, dupes: ig.dupes.length, lost: ig.lost.length, orderOk: ig.orderOk };
     chk('Q2a صف انباشته شد و سپس کامل تخلیه (۲۰/۲۰)', drained && fx.applied.length === 20,

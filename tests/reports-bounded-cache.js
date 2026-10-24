@@ -32,7 +32,7 @@ const REAL_STORE = path.join(ROOT, 'server', 'data', 'payesh.json');
 delete process.env.DATABASE_URL;
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-rpt-cache-'));
-process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 
 /* سقفِ کوچک برای آزمون تا با استورِ دمو (attendance=10537) قطعاً فعال شود.
    بودجهٔ بایت عمداً کوچک‌تر از خروجیِ «فقط-کرانِ-ردیف» است (۴۰۰ ردیف × ۴
@@ -63,7 +63,7 @@ async function req(method, p, { body, cookie } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
   let json = null;
-  try { json = await res.json(); } catch (e) {}
+  try { json = await res.json(); } catch (e) {/* intentional no-op */}
   return { status: res.status, json };
 }
 

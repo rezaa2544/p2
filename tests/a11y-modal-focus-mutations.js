@@ -58,7 +58,7 @@ mutate('src/js/18-modals.js',
 
 /* AM2: fallbackِ .main حذف شود */
 mutate('src/js/18-modals.js',
-  "  const m=document.querySelector('.main');\n  if(m){\n    if(!m.hasAttribute('tabindex'))m.setAttribute('tabindex','-1');\n    try{m.focus();}catch(e){}\n  }",
+  "  const m=document.querySelector('.main');\n  if(m){\n    if(!m.hasAttribute('tabindex'))m.setAttribute('tabindex','-1');\n    try{m.focus();}catch(e){ // noop\n}\n  }",
   "  /* AM2: fallback حذف شد */",
   /❌ AF6/, 'AM2 حذفِ fallbackِ محتوای اصلی ⇒ AF6 کشته شد');
 

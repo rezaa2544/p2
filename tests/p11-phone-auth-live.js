@@ -78,6 +78,10 @@ function chk(name, cond, extra){
     (9002, 1, 'parent',  'tie-a',     '09121112222',   '0022222222', true, now(), now()),
     (9003, 1, 'parent',  'tie-b',     '00 98 912-111-2222', '0033333333', true, now(), now()),
     (9004, 1, 'student', 'نرمال',     '09350000111',   '0044444444', true, now(), now())`);
+  await pool.query(`INSERT INTO users (id, school_id, role, full_name, phone, national_id, active, created_at, updated_at)
+    SELECT g, 1, 'student', 'u' || g, '0939' || lpad((g % 1000000)::text, 6, '0'), lpad(g::text, 10, '0'), true, now(), now()
+    FROM generate_series(10000, 11500) g ON CONFLICT (id) DO NOTHING`);
+  await pool.query('ANALYZE users');
   const AUTH_SQL = 'SELECT id, role, school_id, national_id, active, full_name, phone ' +
     'FROM users WHERE right(regexp_replace(phone, $2, \'\', \'g\'), 10) = $1 ORDER BY id LIMIT 1';
   const AUTH_ARGS = (tail) => [tail, '[\\s\\-()]'];

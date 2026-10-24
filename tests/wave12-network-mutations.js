@@ -81,7 +81,7 @@ MUTS.forEach((m) => {
         const abs = path.join(ROOT, m.file);
     if (prevAbs && prevAbs !== abs) kit.clear(prevAbs);
     const mcopy = kit.mutant(abs, next); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-    try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {} /* حفظِ مود (بیتِ اجرایی) */
+    try { fs.chmodSync(mcopy, fs.statSync(abs).mode); } catch (_) {/* intentional no-op */} /* حفظِ مود (بیتِ اجرایی) */
     prevAbs = abs;
     let out = '', code = 0;
     try { out = execFileSync('node', SUITE, { stdio: 'pipe', timeout: 120000, cwd: ROOT, env: kit.env() }).toString(); }

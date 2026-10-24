@@ -381,7 +381,7 @@ function filterFields(op, collection, role){
    ۳۸٬۳۳۶ ترکیبی روی فروشگاه واقعی + سوئیت‌های T5b/server16).
    EO_SCOPE_GATED: نشانهٔ سازگاری — منبع حقیقت در policy است؛ این نام
    فقط re-export است تا مصرف‌کنندگانِ داخلیِ همین فایل یکسان بخوانند. */
-const EO_SCOPE_GATED = policy.EO_SCOPE_GATED;
+const EO_SCOPE_GATED = policy.EO_SCOPE_GATED; void EO_SCOPE_GATED;
 
 function inScope(session, coll, recId, data){
   return policy.inScope(session, get_store(), coll, recId, data);
@@ -688,8 +688,8 @@ function createSync(ctx){
            too. Answer 503 so the client keeps the batch untouched in its local
            queue and retries (the same data-preserving contract as the 429). */
         const limiterCode = (rlE && rlE.code) || 'UNKNOWN';
-        try { audit('sync_backpressure_unavailable', { user_id: s.id, limiter_code: limiterCode }); } catch (_) {}
-        try { metrics.inc('payesh_sync_backpressure_unavailable_total', []); } catch (_) {}
+        try { audit('sync_backpressure_unavailable', { user_id: s.id, limiter_code: limiterCode }); } catch (_) {/* intentional no-op */}
+        try { metrics.inc('payesh_sync_backpressure_unavailable_total', []); } catch (_) {/* intentional no-op */}
         return sendJson(res, 503, {
           ok: false,
           code: 'sync_backpressure_unavailable',
@@ -701,7 +701,7 @@ function createSync(ctx){
         metrics.inc('payesh_sync_backpressure_rejections_total', []);
         const retryAfterS = Math.max(1, Math.min(60, Math.round(Number(r.reset) || 60)));
         if (res && typeof res.setHeader === 'function') {
-          try { res.setHeader('Retry-After', String(retryAfterS)); } catch (_) {}
+          try { res.setHeader('Retry-After', String(retryAfterS)); } catch (_) {/* intentional no-op */}
         }
         return sendJson(res, 429, {
           ok: false,
@@ -908,7 +908,7 @@ function createSync(ctx){
          مشروعیتِ آفلاین حفظ شده. (خطِ vd بالا لنگرِ جهشِ M13 است — نخورد.) */
       const vdb = virtualDayOfflineBasis(op, store);
       if(vdb){
-        try { audit('sync_virtual_day_offline_allow', { user_id: s.id, uid: op.uid, collection: op.c, school_id: vdb.schoolId, date: vdb.date }); } catch(_) {}
+        try { audit('sync_virtual_day_offline_allow', { user_id: s.id, uid: op.uid, collection: op.c, school_id: vdb.schoolId, date: vdb.date }); } catch(_) {/* intentional no-op */}
       }
       /* §3.3 — idempotency: a repeated uid is already applied.
          F2 (chaos-drill #185): dedupe سه‌لایه است (کشِ Redis → db → store).
@@ -919,7 +919,7 @@ function createSync(ctx){
       let cacheProcessed = false;
       try { cacheProcessed = await cache.isProcessedUid(op.uid); }
       catch (cacheErr) {
-        try { audit('sync_idempotency_cache_unavailable', { user_id: s.id, uid: op.uid, error: String((cacheErr && cacheErr.message) || cacheErr).slice(0, 120) }); } catch (_) {}
+        try { audit('sync_idempotency_cache_unavailable', { user_id: s.id, uid: op.uid, error: String((cacheErr && cacheErr.message) || cacheErr).slice(0, 120) }); } catch (_) {/* intentional no-op */}
       }
       const isProcessed = cacheProcessed ||
         ((db && typeof db.isUidProcessed === 'function') ? await db.isUidProcessed(op.uid) : false) ||
@@ -954,7 +954,7 @@ function createSync(ctx){
           const occSec = Number(process.hrtime.bigint() - occT0) / 1e9;
           metrics.observe('payesh_sync_conflict_detection_seconds',
             { outcome: versionedMismatch ? 'conflict' : (structuralMismatch ? 'stale' : 'clean') }, occSec);
-        } catch(_) {}
+        } catch(_) {/* intentional no-op */}
         if(versionedMismatch){
           const nowIso = new Date().toISOString();
           if(!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
@@ -1076,7 +1076,7 @@ function createSync(ctx){
             break;
           }
         }
-        try { audit('sync_duplicate_ignored', { user_id: s.id, uid: op.uid }); } catch(_) {}
+        try { audit('sync_duplicate_ignored', { user_id: s.id, uid: op.uid }); } catch(_) {/* intentional no-op */}
         continue;
       }
       store.__processed_uids[op.uid] = Date.now();
@@ -1183,7 +1183,7 @@ function createSync(ctx){
        3) corrections open (non-manager)-> school manager   (R89)
        Manager/superadmin actions keep the client-created notification (applied),
        so the hook skips them — no duplicates. */
-    const notifBefore = Array.isArray(store.notifications) ? store.notifications.length : 0;
+    const notifBefore = Array.isArray(store.notifications) ? store.notifications.length : 0; void notifBefore;
     for(const op of apply){
       if(!Array.isArray(store.notifications)) store.notifications = [];
       const todayD = new Date().toISOString().slice(0, 10);
@@ -1379,7 +1379,7 @@ function createSync(ctx){
        breaks the response. */
     for (const invq of invQueue) {
       cache.invalidateCollection(invq[0], invq[1]).catch((invErr) => {
-        try { audit('sync_invalidate_failed', { user_id: s.id, collection: invq[0], error: String((invErr && invErr.message) || invErr) }); } catch (_) {}
+        try { audit('sync_invalidate_failed', { user_id: s.id, collection: invq[0], error: String((invErr && invErr.message) || invErr) }); } catch (_) {/* intentional no-op */}
       });
     }
     /* M14-B02: ابطالِ هدفمندِ هر کاربرِ تغییریافته، بعد از commit (همان
@@ -1391,7 +1391,7 @@ function createSync(ctx){
        یا انقضایِ TTL خودترمیم می‌شود. */
     for (const uid of userInvQueue) {
       cache.invalidateUser(uid).catch((invErr) => {
-        try { audit('sync_invalidate_failed', { user_id: s.id, collection: 'users', target_user_id: uid, error: String((invErr && invErr.message) || invErr) }); } catch (_) {}
+        try { audit('sync_invalidate_failed', { user_id: s.id, collection: 'users', target_user_id: uid, error: String((invErr && invErr.message) || invErr) }); } catch (_) {/* intentional no-op */}
       });
     }
     /* Wave 1: uids are marked only after the authority committed (store AND cache),
@@ -1401,8 +1401,8 @@ function createSync(ctx){
       store.__processed_uids[op.uid] = Date.now();
       /* SUSPECT-C (باگ‌هانت چت ۵، نشست ۲): علامتِ idempotency در کش هم audit می‌شود. */
       try{ cache.markProcessedUid(op.uid).catch((markErr) => {
-        try { audit('sync_idempotency_mark_failed', { user_id: s.id, uid: op.uid, error: String((markErr && markErr.message) || markErr) }); } catch (_) {}
-      }); }catch(e){}
+        try { audit('sync_idempotency_mark_failed', { user_id: s.id, uid: op.uid, error: String((markErr && markErr.message) || markErr) }); } catch (_) {/* intentional no-op */}
+      }); }catch(e){/* intentional no-op */}
     }
     /* P1-2 (Wave 18 §۵-۳): قطعِ آینه از مسیرِ نوشتن در PG-live — مجموعه‌های
        خارجِ لیستِ سفیدِ هرس (PAYESH_PG_MIRROR_PRUNE_SAFE) پس از commitِ موفق

@@ -22,7 +22,7 @@ const check = (name, fn) => {
   // A-18: conflict resolution must be fenced by the version captured in the conflict.
   {
     const { createConflicts } = require('../server/conflicts');
-    const calls = [];
+    const calls = []; void calls;
     const store = {
       sync_conflicts: [{
         id: 10, collection: 'grades', record_id: 7, school_id: 1,
@@ -170,6 +170,132 @@ const check = (name, fn) => {
     } finally {
       redis.__setClientForTests(null);
     }
+
+    // A-22 concurrent race: overlapping logouts where one Redis write fails slowly
+    // while another succeeds concurrently must still journal the failed JTI.
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    const { createAuth } = require('../server/auth');
+    const revocationFallback = require('../server/revocation-fallback');
+    const tmpJournalDir = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-a22-race-'));
+    const raceClient = {
+      async get() { return null; },
+      async incr() { return 1; },
+      async set(key) {
+        if (String(key).includes('jti-race-fail')) {
+          await new Promise(r => setTimeout(r, 30));
+          throw new Error('transient-redis-write-error');
+        }
+        await new Promise(r => setTimeout(r, 5));
+        return 'OK';
+      },
+      disconnect() {}
+    };
+    redis.__setClientForTests(raceClient);
+    try {
+      const store = {
+        users: [{ id: 11, full_name: 'Race User', role: 'teacher', school_id: 1, active: true }],
+        schools: [{ id: 1, active: true }],
+        __revoked_jti: {}
+      };
+      const crypto = require('crypto');
+      const auth = createAuth({
+        store,
+        JWT_SECRET: crypto.randomBytes(32).toString('hex'),
+        SESSION_NAME: 'payesh_sid',
+        SESSION_TTL_S: 3600,
+        CODE_TTL_MS: 120000,
+        DEMO_CODE_ECHO: false,
+        audit: () => {},
+        isHttps: () => false,
+        revocationDataDir: tmpJournalDir
+      });
+      const now = Math.floor(Date.now() / 1000);
+      const tokFail = auth.jwtSign({ sub: 11, role: 'teacher', school_id: 1, iat: now, exp: now + 3600, jti: 'jti-race-fail', sv: 0 });
+      const tokOk = auth.jwtSign({ sub: 11, role: 'teacher', school_id: 1, iat: now, exp: now + 3600, jti: 'jti-race-ok', sv: 0 });
+      const mkRes = () => ({ setHeader() {}, writeHead() {}, end() {} });
+      await Promise.all([
+        auth.apiLogout({ headers: { cookie: 'payesh_sid=' + tokFail }, socket: {} }, mkRes()),
+        auth.apiLogout({ headers: { cookie: 'payesh_sid=' + tokOk }, socket: {} }, mkRes())
+      ]);
+      check('A-22 concurrent race: failed overlapping logout is durably journalled even when sibling logout succeeds', () => {
+        assert.strictEqual(revocationFallback.journalContains(tmpJournalDir, 'jti-race-fail'), true);
+        assert.strictEqual(revocationFallback.journalContains(tmpJournalDir, 'jti-race-ok'), false);
+      });
+
+      const { spawn } = require('child_process');
+      const mpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-a22-mp-'));
+      try {
+        const expFuture = Math.floor(Date.now() / 1000) + 3600;
+        const workerCode = [
+          "const rf = require('./server/revocation-fallback');",
+          'const [dir, procIdx, exp] = process.argv.slice(1);',
+          'for (let i = 0; i < 15; i++) {',
+          '  if (!rf.appendJournal(dir, { jti: `mp-${procIdx}-${i}`, exp: Number(exp) })) process.exit(2);',
+          '}'
+        ].join('\n');
+        await Promise.all(Array.from({ length: 8 }, (_, procIdx) => new Promise((resolve, reject) => {
+          const child = spawn(process.execPath, ['-e', workerCode, mpDir, String(procIdx), String(expFuture)], {
+            cwd: path.resolve(__dirname, '..'),
+            stdio: 'inherit'
+          });
+          child.on('exit', (code) => (code === 0 ? resolve() : reject(new Error('worker exit ' + code))));
+          child.on('error', reject);
+        })));
+        check('A-22 multi-process journal lock: 8 parallel processes preserve all 120 appended JTIs', () => {
+          const recorded = revocationFallback.readJournal(mpDir);
+          assert.strictEqual(recorded.length, 120);
+        });
+        await revocationFallback.replayJournal(mpDir, async (jti) => {
+          if (jti === 'mp-0-0') {
+            revocationFallback.appendJournal(mpDir, { jti: 'mid-replay-arrival', exp: expFuture });
+          }
+        });
+        check('A-22 replay + concurrent append: replayJournal preserves JTIs appended during async replay', () => {
+          assert.strictEqual(revocationFallback.journalContains(mpDir, 'mid-replay-arrival'), true);
+          assert.strictEqual(revocationFallback.journalContains(mpDir, 'mp-0-0'), false);
+        });
+      } finally {
+        fs.rmSync(mpDir, { recursive: true, force: true });
+      }
+    } finally {
+      redis.__setClientForTests(null);
+      fs.rmSync(tmpJournalDir, { recursive: true, force: true });
+    }
+  }
+
+  /* ── A-20 / B4: multi-instance sync_conflicts ID namespace & xact advisory lock ─ */
+  {
+    const { createIds } = require('../server/ids');
+    const seenQueries = [];
+    let seqCursor = 0;
+    const fakeDb = {
+      isPostgres: () => true,
+      query: async (sql, params) => {
+        seenQueries.push({ sql, params });
+        if (/pg_get_serial_sequence/.test(sql)) {
+          return { rows: [{ seq: 'public.' + params[0] + '_id_seq' }] };
+        }
+        if (/pg_advisory_xact_lock\(\$2\)/.test(sql)) {
+          seqCursor = Math.max(seqCursor + 1, 1);
+          return { rows: [{ next_id: seqCursor }] };
+        }
+        throw new Error('unexpected ids SQL: ' + sql);
+      }
+    };
+    const idsInstanceA = createIds({ db: fakeDb, cache: null });
+    const idsInstanceB = createIds({ db: fakeDb, cache: null });
+    const issued = await Promise.all(
+      Array.from({ length: 10 }, (_, idx) =>
+        (idx % 2 === 0 ? idsInstanceA : idsInstanceB).nextId('sync_conflicts', [])
+      )
+    );
+    check('A-20/B4 multi-instance sync_conflicts IDs use dedicated namespace and pg_advisory_xact_lock', () => {
+      assert.strictEqual(new Set(issued).size, 10);
+      assert(seenQueries.some((q) => q.params && q.params[0] === 'sync_conflicts'));
+      assert(seenQueries.some((q) => /pg_advisory_xact_lock\(\$2\)/.test(q.sql)));
+    });
   }
 
   console.log('\nA-18..A-22 security battery: ' + pass + ' checks passed');

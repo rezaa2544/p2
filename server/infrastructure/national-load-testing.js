@@ -181,7 +181,7 @@ function executeLiveLoadHarness(scenarioId, options = {}) {
 
   const latenciesNs = [];
   const startCpu = process.cpuUsage();
-  const startMem = process.memoryUsage();
+  const startMem = process.memoryUsage(); void startMem;
   const tStart = process.hrtime.bigint();
 
   let errorCount = 0;

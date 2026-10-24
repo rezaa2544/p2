@@ -69,7 +69,7 @@ function deepFreeze(obj) {
  * @param {Object} [options]
  * @returns {boolean}
  */
-function enforcePolicySimulationAccessGuard(requester, context, options = {}) {
+function enforcePolicySimulationAccessGuard(requester, context, options = {}) { void options;
   if (!requester || typeof requester !== 'object') {
     throw new Error('POLICY_SIMULATION_ACCESS_FORBIDDEN: requester session is missing');
   }
@@ -131,7 +131,7 @@ function enforcePolicySimulationAccessGuard(requester, context, options = {}) {
  * @param {Object} [options]
  * @returns {Object}
  */
-function simulateEducationalPolicy(params = {}, options = {}) {
+function simulateEducationalPolicy(params = {}, options = {}) { void options;
   const scenarioType = params.scenarioType || SCENARIO_TYPE.POLICY_INTERVENTION;
   const policyFocus = params.policyFocus || POLICY_FOCUS.ATTENDANCE_BOOST;
   const durationWeeks = Number(params.durationWeeks) || 8;
@@ -231,7 +231,7 @@ function simulateEducationalPolicy(params = {}, options = {}) {
  * @param {Object} [options]
  * @returns {Object}
  */
-function comparePolicyScenarios({ baseline, intervention, alternative }, options = {}) {
+function comparePolicyScenarios({ baseline, intervention, alternative }, options = {}) { void options;
   const scenarios = [baseline, intervention, alternative].filter(Boolean);
 
   let bestScenario = intervention ? intervention.scenario.scenario_id : 'NONE';
@@ -261,7 +261,7 @@ function comparePolicyScenarios({ baseline, intervention, alternative }, options
  * @param {Object} [options]
  * @returns {Object}
  */
-function evaluatePolicyImpact(scenarioEvaluation, baselineMetrics = {}, options = {}) {
+function evaluatePolicyImpact(scenarioEvaluation, baselineMetrics = {}, options = {}) { void options;
   const curAtt = Number(baselineMetrics.current_attendance_rate) || 88.0;
   const curGpa = Number(baselineMetrics.current_gpa) || 15.5;
   const effects = scenarioEvaluation.predicted_effects || {};
@@ -288,7 +288,7 @@ function evaluatePolicyImpact(scenarioEvaluation, baselineMetrics = {}, options 
  * @param {Object} [options]
  * @returns {Array<string>}
  */
-function generatePolicyInsights(scenarios = [], baselineMetrics = {}, options = {}) {
+function generatePolicyInsights(scenarios = [], baselineMetrics = {}, options = {}) { void options; void baselineMetrics;
   const insights = [];
 
   const intervention = scenarios.find(s => s.scenario && s.scenario.scenario_type === SCENARIO_TYPE.POLICY_INTERVENTION);
@@ -438,7 +438,7 @@ function getScenarioTitle(type, focus) {
   return 'سناریوی جایگزین متمرکز بر مشارکت اولیا و بهینه‌سازی منابع';
 }
 
-function getScenarioDescription(type, focus) {
+function getScenarioDescription(type, focus) { void focus;
   if (type === SCENARIO_TYPE.BASELINE) return 'عدم تخصیص منابع جدید و پذیرش ریسک ادامه روندهای گذشته.';
   if (type === SCENARIO_TYPE.POLICY_INTERVENTION) return 'تخصیص ساعات مشاوره و آموزش ویژه برای معکوس‌سازی افت شاخص‌ها.';
   return 'رویکرد منعطف با تکیه بر ظرفیت خانواده‌ها و بازتوزیع هوشمند ساعات موجود.';

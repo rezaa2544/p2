@@ -13,6 +13,7 @@
    Run: DATABASE_URL=postgres://… node tests/chaos-suite.js
    ═══════════════════════════════════════════════════════════════════════ */
 'use strict';
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -30,9 +31,9 @@ function req(port, method, p, body, cookie) {
   return new Promise((resolve) => {
     const data = body ? JSON.stringify(body) : null;
     const r = http.request({ host: '127.0.0.1', port, path: p, method,
-      headers: Object.assign({ 'content-type': 'application/json' },
+      headers: Object.assign({ 'content-type': 'application/json', origin: 'http://127.0.0.1:' + port },
         data ? { 'content-length': Buffer.byteLength(data) } : {}, cookie ? { cookie } : {}) },
-      (res) => { let b = ''; res.on('data', (d) => (b += d)); res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {} resolve({ status: res.statusCode, json: j, body: b, headers: res.headers }); }); });
+      (res) => { let b = ''; res.on('data', (d) => (b += d)); res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (_e) { /* non-json */ } resolve({ status: res.statusCode, json: j, body: b, headers: res.headers }); }); });
     r.on('error', () => resolve({ status: 0, json: null, body: '', headers: {} }));
     if (data) r.write(data); r.end();
   });
@@ -49,8 +50,7 @@ function boot(port, env) {
     })();
   });
 }
-function stop(proc) { return new Promise((r) => { if (!proc) return r(); proc.on('exit', r); proc.kill('SIGTERM'); setTimeout(r, 5000); }); }
-function kill9(proc) { try { proc.kill('SIGKILL'); } catch (e) {} }
+function kill9(proc) { try { proc.kill('SIGKILL'); } catch (_e) { /* ignore */ } }
 async function pgOne(url, sql, params) { const c = new Client({ connectionString: url }); await c.connect(); const r = await c.query(sql, params || []); await c.end(); return r.rows; }
 function freshDb(base, name) {
   return (async () => {
@@ -67,16 +67,35 @@ const envFor = (port, url, store, key, extra) => {
   const e = Object.assign({}, process.env, {
     PORT: String(port), HOST: '127.0.0.1', DATABASE_URL: url,
     PAYESH_STORE: store, PAYESH_DEMO_CODE: '1', PAYESH_KEY: key,
+    PAYESH_JWT_SECRET: 'chaos-suite-test-jwt-secret-0123456789abcdef',
+    PAYESH_SMS_PHONE_LIMIT: '1000', PAYESH_SMS_IP_LIMIT: '1000', PAYESH_SMS_COOLDOWN_S: '0',
     PAYESH_OTP_FILE: path.join(os.tmpdir(), 'chaos-otp-' + port + '-' + Date.now() + '.json')
   }, extra || {});
-  delete e.NODE_ENV;
+  if (!extra || !extra.NODE_ENV) delete e.NODE_ENV;
   return e;
 };
 async function login(port, store) {
   const st = JSON.parse(fs.readFileSync(store, 'utf8'));
   const su = (st.users || []).find((u) => u.role === 'superadmin');
   const sc = await req(port, 'POST', '/api/auth/send-code', { phone: su.phone });
-  const lg = await req(port, 'POST', '/api/auth/login', { phone: su.phone, code: sc.json && sc.json.demo_code, national_id: su.national_id });
+  let code = sc.json && sc.json.demo_code;
+  if (!code && process.env.REDIS_URL) {
+    const Redis = require('ioredis');
+    const rc = new Redis(process.env.REDIS_URL, { maxRetriesPerRequest: 1, lazyConnect: true });
+    await rc.connect();
+    const raw = await rc.get('payesh:otp:state');
+    await rc.quit().catch(() => {});
+    const doc = raw && JSON.parse(raw);
+    const ckey = String(su.phone).replace(/\D/g, '').slice(-10);
+    const targetH = doc && doc.codes && doc.codes[ckey] && doc.codes[ckey].h;
+    if (targetH) {
+      for (let n = 100000; n <= 999999; n++) {
+        const s = String(n);
+        if (crypto.createHmac('sha256', 'chaos-suite-test-jwt-secret-0123456789abcdef').update(s + '|' + ckey).digest('hex') === targetH) { code = s; break; }
+      }
+    }
+  }
+  const lg = await req(port, 'POST', '/api/auth/login', { phone: su.phone, code, national_id: su.national_id });
   return { cookie: (lg.headers['set-cookie'] || []).map((c) => c.split(';')[0]).join('; '), ok: lg.status === 200 };
 }
 
@@ -90,7 +109,7 @@ async function login(port, store) {
   {
     const RPORT = 17000 + (process.pid % 1500);
     const rlog = fs.openSync(path.join(os.tmpdir(), 'chaos-redis.log'), 'w');
-    const rp = spawn('/usr/bin/redis-server', ['--port', String(RPORT), '--save', '', '--appendonly', 'no', '--dir', os.tmpdir()], { stdio: ['ignore', rlog, rlog] });
+    const rp = spawn('redis-server', ['--port', String(RPORT), '--save', '', '--appendonly', 'no', '--dir', os.tmpdir()], { stdio: ['ignore', rlog, rlog] });
     await sleep(900);
     if (rp.exitCode != null) { chk('S1 redis-server runnable', false, 'exit ' + rp.exitCode); }
     else {
@@ -98,6 +117,7 @@ async function login(port, store) {
       const adm = new Client({ connectionString: BASE_URL }); await adm.connect();
       await adm.query('DROP DATABASE IF EXISTS payesh_chaos1').catch(() => {}); await adm.query('CREATE DATABASE payesh_chaos1'); await adm.end();
       spawnSync('psql', [url, '-v', 'ON_ERROR_STOP=1', '-q', '-f', 'migrations/001_initial.sql'], { stdio: 'pipe' });
+      spawnSync(NODE, ['tools/migrate-ledger.js', 'up'], { cwd: ROOT, env: Object.assign({}, process.env, { DATABASE_URL: url }), stdio: 'pipe' });
       const STORE = path.join(os.tmpdir(), 'chaos-s1-store.json');
       fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), STORE);
       const proc = await boot(3201, envFor(3201, url, STORE, path.join(os.tmpdir(), 'chaos-s1.key'), { REDIS_URL: `redis://127.0.0.1:${RPORT}` }));
@@ -115,7 +135,7 @@ async function login(port, store) {
         kill9(proc);
       }
     }
-    try { rp.kill('SIGKILL'); } catch (e) {}
+    try { rp.kill('SIGKILL'); } catch (_e) { /* ignore */ }
   }
 
   /* ── S2: PostgreSQL failure ⇒ write 503, no RAM ack; recovery after restart ── */
@@ -123,6 +143,7 @@ async function login(port, store) {
   {
     const url = await freshDb(BASE_URL, 'payesh_chaos2');
     spawnSync(NODE, ['tools/migrate-to-pg.js', '--execute'], { cwd: ROOT, env: Object.assign({}, process.env, { DATABASE_URL: url, PAYESH_STORE: path.join(ROOT, 'server', 'data', 'payesh.json') }), stdio: 'pipe' });
+    spawnSync(NODE, ['tools/migrate-ledger.js', 'up'], { cwd: ROOT, env: Object.assign({}, process.env, { DATABASE_URL: url }), stdio: 'pipe' });
     await pgOne(url, "SELECT setval('payesh_outbox_id_seq', (SELECT COALESCE(MAX(id), 1) FROM server_outbox))").catch(() => {});
     const STORE = path.join(os.tmpdir(), 'chaos-s2-store.json');
     fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), STORE);
@@ -134,8 +155,40 @@ async function login(port, store) {
       const mk1 = await req(3202, 'POST', '/api/v1/classes', { name: 'PRE', grade: 10, school_id: 1 }, cookie);
       chk('S2 نوشتِ پیش از قطعی: 201', mk1.status === 201, mk1.status);
       /* stop the whole PostgreSQL cluster (real outage, not a mock) */
-      let stopped = true;
-      try { spawnSync('sudo', ['pg_ctlcluster', '17', 'main', 'stop', '--mode', 'fast'], { stdio: 'pipe' }); } catch (e) { stopped = false; }
+      let stopped = false;
+      let stoppedViaSudo = false;
+      const localPgData = process.env.PGDATA || '/var/tmp/local-services/pgdata';
+      const resolvePgCtl = (dataDir) => {
+        try {
+          const ver = fs.readFileSync(path.join(dataDir, 'PG_VERSION'), 'utf8').trim();
+          const cand = '/usr/lib/postgresql/' + ver + '/bin/pg_ctl';
+          if (fs.existsSync(cand)) return cand;
+        } catch (e) { /* ignore */ }
+        for (const ver of ['18', '17', '16', '15']) {
+          const cand = '/usr/lib/postgresql/' + ver + '/bin/pg_ctl';
+          if (fs.existsSync(cand)) return cand;
+        }
+        return 'pg_ctl';
+      };
+      if (fs.existsSync(localPgData)) {
+        const pgCtlBin = resolvePgCtl(localPgData);
+        stopped = spawnSync(pgCtlBin, ['-D', localPgData, 'stop', '-m', 'fast'], { stdio: 'pipe' }).status === 0;
+        if (!stopped) {
+          stopped = spawnSync('sudo', ['-n', '-u', 'postgres', pgCtlBin, '-D', localPgData, 'stop', '-m', 'fast'], { stdio: 'pipe' }).status === 0;
+          if (stopped) stoppedViaSudo = true;
+        }
+      } else {
+        const cid = String(spawnSync('docker', ['ps', '-q', '--filter', 'publish=5432'], { encoding: 'utf8', stdio: 'pipe' }).stdout || '').trim();
+        if (cid) {
+          stopped = spawnSync('docker', ['stop', cid], { stdio: 'pipe' }).status === 0;
+          process.env.__CHAOS_PG_CID = cid;
+        }
+        if (!stopped) {
+          for (const ver of ['18', '17', '16']) {
+            if (spawnSync('sudo', ['pg_ctlcluster', ver, 'main', 'stop', '--mode', 'fast'], { stdio: 'pipe' }).status === 0) { stopped = true; break; }
+          }
+        }
+      }
       chk('S2 PostgreSQL واقعاً متوقف شد', stopped);
       if (stopped) {
         await sleep(500);
@@ -146,8 +199,24 @@ async function login(port, store) {
            way: NEVER a 2xx ack for a write that never reached PG. */
         chk('S2 نوشتن در قطعی ⇒ fail-closed (401/503، هرگز 2xx/RAM-ack)',
           (w.status === 401 || w.status === 503), w.status + ' ' + w.body.slice(0, 60));
-        try { spawnSync('sudo', ['pg_ctlcluster', '17', 'main', 'start'], { stdio: 'pipe' }); } catch (e) {}
-        await sleep(1500);
+        if (fs.existsSync(localPgData)) {
+          const pgCtlBin = resolvePgCtl(localPgData);
+          if (stoppedViaSudo) {
+            spawnSync('sudo', ['-n', '-u', 'postgres', pgCtlBin, '-D', localPgData, '-l', '/var/tmp/local-services/pg.log', '-w', 'start'], { stdio: 'pipe' });
+          } else {
+            spawnSync(pgCtlBin, ['-D', localPgData, '-l', '/var/tmp/local-services/pg.log', '-w', 'start'], { stdio: 'pipe' });
+          }
+        } else if (process.env.__CHAOS_PG_CID) {
+          spawnSync('docker', ['start', process.env.__CHAOS_PG_CID], { stdio: 'pipe' });
+        } else {
+          for (const ver of ['18', '17', '16']) {
+            if (spawnSync('sudo', ['pg_ctlcluster', ver, 'main', 'start'], { stdio: 'pipe' }).status === 0) break;
+          }
+        }
+        for (let i = 0; i < 60; i++) {
+          try { await pgOne(url, 'SELECT 1'); break; } catch (e) { await sleep(250); }
+        }
+        await sleep(500);
         const rec = await req(3202, 'POST', '/api/v1/classes', { name: 'AFTER_RECOVERY', grade: 10, school_id: 1 }, cookie);
         chk('S2 بازگشت PG ⇒ نوشتن دوباره کار می‌کند (recovery)', rec.status === 201, rec.status);
         const rows = await pgOne(url, "SELECT COUNT(*)::int n FROM classes WHERE name IN ('PRE','AFTER_RECOVERY','DURING_OUTAGE')");
@@ -175,6 +244,7 @@ async function login(port, store) {
   {
     const url = await freshDb(BASE_URL, 'payesh_chaos4');
     spawnSync(NODE, ['tools/migrate-to-pg.js', '--execute'], { cwd: ROOT, env: Object.assign({}, process.env, { DATABASE_URL: url, PAYESH_STORE: path.join(ROOT, 'server', 'data', 'payesh.json') }), stdio: 'pipe' });
+    spawnSync(NODE, ['tools/migrate-ledger.js', 'up'], { cwd: ROOT, env: Object.assign({}, process.env, { DATABASE_URL: url }), stdio: 'pipe' });
     await pgOne(url, "SELECT setval('payesh_outbox_id_seq', (SELECT COALESCE(MAX(id), 1) FROM server_outbox))").catch(() => {});
     const STORE = path.join(os.tmpdir(), 'chaos-s4-store.json');
     fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), STORE);

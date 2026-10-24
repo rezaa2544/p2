@@ -57,7 +57,7 @@ T(html.includes('data:font/woff2;base64,'), 'A2 فونتِ جاسازی‌شده
 const storeFile = path.join(ROOT, 'server', 'data', 'payesh.json');
 const asUtf8 = fs.readFileSync(storeFile, 'utf8'); /* مسیرِ قدیمیِ loadStore */
 let oldPathOk = false, o1 = null;
-try { o1 = JSON.parse(asUtf8); oldPathOk = Array.isArray(o1.users) && o1.users.length > 0; } catch (e) {}
+try { o1 = JSON.parse(asUtf8); oldPathOk = Array.isArray(o1.users) && o1.users.length > 0; } catch (e) {/* intentional no-op */}
 T(oldPathOk, 'C1 استورِ ASCII با مسیرِ قدیمی (utf8 string) هم پارس می‌شود');
 const sample = { fa: 'دبستان شمارهٔ ۳', emo: '🎓', n: [1, null, 'آذر'] };
 T(JSON.stringify(JSON.parse(stringifyAscii(sample))) === JSON.stringify(sample), 'C2 رفت‌وبرگشتِ persist ورکر هم‌ارز');

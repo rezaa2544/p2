@@ -23,7 +23,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const fs = require('fs');
+const fs = require('fs'); void fs;
 const path = require('path');
 const { execFileSync } = require('child_process');
 

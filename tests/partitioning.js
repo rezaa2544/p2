@@ -162,7 +162,7 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
   /* U8 — یافته‌هایِ مانورِ ۲۵M سطر (۲۰۲۶-۰۹-۱۲) */
   chk('U8a FKها با ALTER رویِ جدولِ خالی قبل از کپی (قفلِ والد میلی‌ثانیه‌ای؛ نه داخلِ CREATE تا پایانِ کپی؛ NOT VALID رویِ partitioned ممنوعِ PG 17 است)', (up9.match(/ADD CONSTRAINT fk_/g) || []).length === 6 && !/ADD CONSTRAINT[^;]*NOT VALID/s.test(up9) && !/VALIDATE CONSTRAINT/.test(up9) && !/PRIMARY KEY \(id, created_at\),/.test(up9) && up9.indexOf('ADD CONSTRAINT fk_') < up9.indexOf('CALL payesh_copy_attendance_009'));
   chk('U8b کپیِ chunk-commitِ قابلِ ازسرگیری (PROCEDURE + COMMIT پریودیک + ازسرگیری از MAX(id))', /CREATE OR REPLACE PROCEDURE payesh_copy_grades_009\(\)/.test(up9) && /CREATE OR REPLACE PROCEDURE payesh_copy_attendance_009\(\)/.test(up9) && (up9.match(/^\s+COMMIT;$/gm) || []).length >= 4 && /GREATEST\(minid, COALESCE\(\(SELECT MAX\(id\) FROM grades_p\), 0\) \+ 1\)/.test(up9));
-  chk('U7g کچ‌آپِ فازِ C با پیشیکیتِ chg به‌صورتِ ثابتِ زمانِ پلان — \\gset + لیترالِ :w0 (زیرپلانِ مجهول‌مقدار ⇒ overestimate ⇒ Hash Anti-Joinِ کلِ جدولِ نو زیرِ قفل؛ رانِ چهارمِ ۲۵M: ۳۸.۸s)', /CREATE TABLE IF NOT EXISTS mig009_w0/.test(up9) && /ON CONFLICT \(id\) DO NOTHING/.test(up9) && /^SELECT w0 FROM mig009_w0 WHERE id = 1 \\gset$/m.test(up9) && (up9.match(/o\.chg_id > :w0\b/g) || []).length === 2 && !/o\.chg_id > \(SELECT w0/.test(up9) && !/DROP TABLE/.test(up9) && up9.indexOf('INSERT INTO mig009_w0') < up9.indexOf('CALL payesh_copy_attendance_009') && /DROP TABLE IF EXISTS mig009_w0;/.test(down9));
+  chk('U7g کچ‌آپِ فازِ C با پیشیکیتِ chg به‌صورتِ ثابتِ زمانِ پلان — DO + EXECUTE format لیترالِ w0 (زیرپلانِ مجهول‌مقدار ⇒ overestimate ⇒ Hash Anti-Joinِ کلِ جدولِ نو زیرِ قفل؛ رانِ چهارمِ ۲۵M: ۳۸.۸s)', /CREATE TABLE IF NOT EXISTS mig009_w0/.test(up9) && /ON CONFLICT \(id\) DO NOTHING/.test(up9) && (up9.match(/SELECT v\.w0 INTO w0 FROM mig009_w0 v WHERE v\.id = 1;/g) || []).length === 2 && (up9.match(/EXECUTE format\(\$ins\$/g) || []).length === 2 && (up9.match(/o\.chg_id > %s\b/g) || []).length === 2 && !/o\.chg_id > \(SELECT w0/.test(up9) && !/DROP TABLE/.test(up9) && up9.indexOf('INSERT INTO mig009_w0') < up9.indexOf('CALL payesh_copy_attendance_009') && /DROP TABLE IF EXISTS mig009_w0;/.test(down9));
 
   /* ═══════════ بخشِ زنده ═══════════ */
   const LIVE_URL = process.env.PAYESH_W10_PG_URL || 'postgres://w10:w10@127.0.0.1:5432/payesh_w10';
@@ -385,6 +385,7 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
 
   /* L5: persistOp از طریقِ db.js روی جدولِ پارتیشن‌شده */
   try {
+    await q('DROP TABLE IF EXISTS server_processed_uids');
     process.env.PAYESH_PARTITIONED_TABLES = 'grades,attendance';
     process.env.DATABASE_URL = LIVE_URL;
     delete require.cache[require.resolve(path.join(ROOT, 'server', 'db'))];
@@ -542,12 +543,12 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
                CALL تا آخر می‌رود. pg_terminate_backend همان «کرشِ جلسه» است:
                چانکِ در حالِ اجرا بک‌رول می‌شود، چانک‌های کامیت‌شده می‌مانند. */
             q("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE query LIKE '%payesh_copy_grades_009%' AND pid <> pg_backend_pid()")
-              .then(() => { try { ps.kill('SIGKILL'); } catch (e) {} }).catch(() => { try { ps.kill('SIGKILL'); } catch (e) {} });
+              .then(() => { try { ps.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }).catch(() => { try { ps.kill('SIGKILL'); } catch (e) {/* intentional no-op */} });
           }
         }).catch(() => {});
       }, 150);
       ps.on('close', () => finish('closed'));
-      setTimeout(() => { try { ps.kill('SIGKILL'); } catch (e) {} finish('timeout'); }, 180000);
+      setTimeout(() => { try { ps.kill('SIGKILL'); } catch (e) {/* intentional no-op */} finish('timeout'); }, 180000);
     });
     /* بعد از kill: بک‌اندِ سرور ممکن است همچنان چانک را تمام کند/بک‌رول کند؛
        تا رفتنِ بک‌اند و پایداریِ شمار صبر کن (کامیتِ ۱۵۰k سطری زیرِ I/O ثانیه‌ها
@@ -573,7 +574,7 @@ const opIns = { t: 'ins', c: 'grades', data: { id: 7, school_id: 1, score: 18, c
     await q('DROP TABLE IF EXISTS grades, attendance, grades_old, attendance_old, schools, users, classes, subjects CASCADE');
   } catch (e) { chk('L11 ازسرگیری', false, String(e.message || e).slice(0, 160)); }
 
-  try { await live.end(); } catch (e) {}
+  try { await live.end(); } catch (e) {/* intentional no-op */}
 
   console.log('\n────────────────────────────────────────────');
   if (failc === 0) console.log(`partitioning: ${okc}/${okc} — بدون خطا ✅`);

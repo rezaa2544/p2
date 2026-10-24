@@ -96,7 +96,7 @@ test('L2 سریالِ تکراری در همان مدرسه رد می‌شود',
 
 test('L3 همان سریال در مدرسهٔ دیگر آزاد است', () => {
   asUser(ctx.m2);
-  const before = W(`db.lib_books.length`);
+  const before = W(`db.lib_books.length`); void before;
   const r = W(`libAddBook('مدرسهٔ دیگر','تست','TT-03','SN-LIT-114')`);
   assert(r.ok === true, 'مدرسهٔ دیگر مجاز نیست: ' + (r.msg || ''));
   const nb = W(`db.lib_books[db.lib_books.length-1]`);

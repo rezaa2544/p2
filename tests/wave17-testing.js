@@ -78,7 +78,7 @@ function req(port, method, p, body, cookie) {
       let b = '';
       res.on('data', (d) => (b += d));
       res.on('end', () => {
-        let j = null; try { j = JSON.parse(b); } catch (e) {}
+        let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({
           status: res.statusCode, json: j, raw: b,
           setCookie: res.headers['set-cookie'],
@@ -275,7 +275,7 @@ const uid = (tag) => 'w17-' + tag + '-' + (++uidSeq) + '-' + Date.now().toString
     let onDisk = 0;
     for (let i = 0; i < 25 && onDisk === 0; i++) {
       await sleep(400);
-      try { onDisk = withMarker().length; } catch (e) {}
+      try { onDisk = withMarker().length; } catch (e) {/* intentional no-op */}
     }
     chk('IN4 the sync write reached the store (cross-module persistence)', onDisk === 1, 'records=' + onDisk);
 
@@ -420,7 +420,7 @@ const uid = (tag) => 'w17-' + tag + '-' + (++uidSeq) + '-' + Date.now().toString
     const countMarks = () => ((JSON.parse(fs.readFileSync(storeFile, 'utf8')).teacher_notes) || [])
       .filter((n) => marks.indexOf(n.body) !== -1).length;
     let landed = 0;
-    for (let i = 0; i < 25 && landed < 3; i++) { await sleep(400); try { landed = countMarks(); } catch (e) {} }
+    for (let i = 0; i < 25 && landed < 3; i++) { await sleep(400); try { landed = countMarks(); } catch (e) {/* intentional no-op */} }
     chk('E2E5 all three reached the store', landed === 3, 'landed=' + landed);
 
     const syncAfter = await metricSum('payesh_sync_requests_total');
@@ -474,7 +474,7 @@ const uid = (tag) => 'w17-' + tag + '-' + (++uidSeq) + '-' + Date.now().toString
     let onDiskDup = -1;
     for (let i = 0; i < 25 && onDiskDup < 1; i++) {
       await sleep(400);
-      try { onDiskDup = (JSON.parse(fs.readFileSync(storeFile, 'utf8')).teacher_notes || []).filter((n) => n.body === dupMarker).length; } catch (e) {}
+      try { onDiskDup = (JSON.parse(fs.readFileSync(storeFile, 'utf8')).teacher_notes || []).filter((n) => n.body === dupMarker).length; } catch (e) {/* intentional no-op */}
     }
     chk('CC4 ' + D + ' parallel copies of one uid create exactly one record',
       created === 1 && dupes === D - 1 && onDiskDup === 1,
@@ -696,9 +696,9 @@ const uid = (tag) => 'w17-' + tag + '-' + (++uidSeq) + '-' + Date.now().toString
   }
 
   /* ── teardown ───────────────────────────────────────────────────── */
-  try { S.srv.kill('SIGKILL'); } catch (e) {}
+  try { S.srv.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
   await sleep(200);
-  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
 
   console.log('\n  جمع: ' + okc + ' موفق، ' + failc + ' ناموفق از ' + (okc + failc));
   if (fails.length) { console.log('  شکست‌ها:'); fails.forEach((f) => console.log('   - ' + f)); }

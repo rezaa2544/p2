@@ -20,7 +20,7 @@ async function recover(infra, phone) {
   for (let i = 0; i < 20; i++) {
     const raw = infra.redis(['get', 'payesh:otp:state']);
     if (raw && !raw.startsWith('ERR') && raw !== '(nil)') {
-      try { const d = JSON.parse(raw); const r = d.codes && d.codes[phone]; if (r && r.h) { for (let n = 100000; n < 1000000; n++) if (codeHash(String(n), phone) === r.h) return String(n); } } catch (e) {}
+      try { const d = JSON.parse(raw); const r = d.codes && d.codes[phone]; if (r && r.h) { for (let n = 100000; n < 1000000; n++) if (codeHash(String(n), phone) === r.h) return String(n); } } catch (e) {/* intentional no-op */}
     }
     await sleep(120);
   }
@@ -67,7 +67,7 @@ async function login(port, infra, phone, nid) {
 
   // TARGET: preapps upd (no version col)
   const uidP = 'probe-preapps-' + Date.now();
-  const rP1 = await L.syncWrite(api.port, jar, { uid: uidP, by: mgr.id, collection: 'preapps', type: 'ins', data: { name: 'probe-app', stage: 'contact', school_id: 1 } }, 12000);
+  const rP1 = await L.syncWrite(api.port, jar, { uid: uidP, by: mgr.id, collection: 'preapps', type: 'ins', data: { name: 'probe-app', stage: 'contact', school_id: 1 } }, 12000); void rP1;
   const pid = infra.psql("SELECT id FROM preapps WHERE name='probe-app' LIMIT 1");
   const rP2 = await L.syncWrite(api.port, jar, { uid: 'probe-preapps-upd-' + Date.now(), by: mgr.id, collection: 'preapps', type: 'upd', id: Number(pid), data: { note: 'updated-note' } }, 12000);
   out.push(['preapps upd (no version col)', rP2.status, JSON.stringify(rP2.json).slice(0, 160) + ' raw=' + rP2.raw.slice(0, 120)]);

@@ -42,7 +42,7 @@ function httpReq(port, method, p, body, cookie) {
     const req = http.request({ hostname: '127.0.0.1', port, path: p, method, headers }, (res) => {
       let b = '';
       res.on('data', (d) => (b += d));
-      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {} resolve({ status: res.statusCode, json: j, raw: b, setCookie: res.headers['set-cookie'] }); });
+      res.on('end', () => { let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */} resolve({ status: res.statusCode, json: j, raw: b, setCookie: res.headers['set-cookie'] }); });
     });
     req.on('error', () => resolve({ status: 0, json: null, raw: '' }));
     if (data) req.write(data);
@@ -127,7 +127,7 @@ async function main() {
   /* ── I1: کلاینت خودش سرور را تشخیص داده است ── */
   let detected = false;
   for (let i = 0; i < 120; i++) {
-    try { if (w.eval('typeof DATA_MODE !== "undefined" && DATA_MODE === "server"')) { detected = true; break; } } catch (e) {}
+    try { if (w.eval('typeof DATA_MODE !== "undefined" && DATA_MODE === "server"')) { detected = true; break; } } catch (e) {/* intentional no-op */}
     await sleep(500);
   }
   chk('I1 کلاینتِ واقعی سرور را تشخیص داد (DATA_MODE=server)', detected, 'DATA_MODE=' + (() => { try { return w.eval('DATA_MODE'); } catch (e) { return 'n/a'; } })());
@@ -158,7 +158,7 @@ async function main() {
     /* ── I4/I5: نوشتنِ واقعی از Data لایهٔ کلاینت → /api/sync → disk ── */
     const noteId = await w.eval(`(function(){ var rec = Data.create('teacher_notes', { school_id: 1, teacher_id: 2, body: 'یادداشتِ یکپارچه‌سازیِ ' + Date.now(), created_at: new Date().toISOString(), by: ${SA.id} }); return rec && rec.id; })()`);
     let synced = false;
-    for (let i = 0; i < 40; i++) { await sleep(500); try { if (w.eval('typeof SYNC !== "undefined" && pendingCount() === 0')) { synced = true; break; } } catch (e) {} }
+    for (let i = 0; i < 40; i++) { await sleep(500); try { if (w.eval('typeof SYNC !== "undefined" && pendingCount() === 0')) { synced = true; break; } } catch (e) {/* intentional no-op */} }
     chk('I4 عملیات از Data لایهٔ کلاینت همگام شد (صف خالی)', synced === true, (() => { try { return 'pending=' + w.eval('pendingCount()'); } catch (e) { return 'n/a'; } })());
     let onDisk = false;
     /* R96: پُلِ ۳۰ ثانیه‌ای — تحتِ بارِ موازیِ رجیسیون (دو لِین) persist ممکن
@@ -168,7 +168,7 @@ async function main() {
       try {
         const disk = JSON.parse(fs.readFileSync(storeFile, 'utf8'));
         if ((disk.teacher_notes || []).some(x => x.id === noteId)) { onDisk = true; break; }
-      } catch (e) {}
+      } catch (e) {/* intentional no-op */}
     }
     chk('I5 رکورد روی diskِ سرور نشست (flush + rename اتمی)', onDisk && noteId != null, 'id=' + noteId);
 

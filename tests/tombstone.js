@@ -131,7 +131,7 @@ async function main() {
       /* ورود با حساب سوپرادمینِ دمو: ارسال کد (بازپس‌دهی در حالت تست) سپس ورود */
       const PHONE = '09999838444', NID = '9993235245';
       const sc = await req('POST', '/api/auth/send-code', { phone: PHONE });
-      let code = null; try { code = JSON.parse(sc.body).demo_code; } catch (e) {}
+      let code = null; try { code = JSON.parse(sc.body).demo_code; } catch (e) {/* intentional no-op */}
       let cookie = null;
       if (code) {
         const lg = await req('POST', '/api/auth/login', { phone: PHONE, code, national_id: NID });
@@ -142,7 +142,7 @@ async function main() {
       } else {
         chk('نشست سوپرادمین گرفته شد', true);
         const mk = await req('POST', '/api/v1/classes', { name: 'کلاس حذفی', grade: 10, school_id: 1 }, cookie);
-        let cls = null; try { cls = JSON.parse(mk.body).data; } catch (e) {}
+        let cls = null; try { cls = JSON.parse(mk.body).data; } catch (e) {/* intentional no-op */}
         if (mk.status !== 201 || !cls) {
           chk('کلاس تستی ساخته شد', false, mk.status + ' ' + mk.body.slice(0, 200));
         } else {
@@ -163,12 +163,12 @@ async function main() {
     await sleep(100);
     /* تأیید سنگ‌قبر و رویداد در اسنپ‌شاتِ فروشگاهِ ایزوله */
     let snap = null;
-    try { snap = JSON.parse(fs.readFileSync(tmpStore, 'utf8')); } catch (e) {}
+    try { snap = JSON.parse(fs.readFileSync(tmpStore, 'utf8')); } catch (e) {/* intentional no-op */}
     const tombOk = !!(snap && Array.isArray(snap.tombstones) && snap.tombstones.some(t => t.collection === 'classes' && t.record && t.record.name === 'کلاس حذفی'));
     const outboxOk = !!(snap && Array.isArray(snap.outbox) && snap.outbox.some(e => e.type === 'classes.deleted'));
     chk('سنگ‌قبر در اسنپ‌شات ذخیره شده', tombOk);
     chk('رویداد حذف در اسنپ‌شات ذخیره شده', outboxOk);
-    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {}
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   }
 
   console.log(`\ntombstone (P0-17): ${pass}/${pass + fail} ${fail === 0 ? 'موفق' : 'شکست'}  ${fail === 0 ? '—  بدون خطا ✅' : ''}`);

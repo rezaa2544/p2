@@ -78,18 +78,18 @@ function runChild(script, extraEnv) {
     let out = '';
     p.stdout.on('data', (d) => (out += d));
     p.stderr.on('data', (d) => (out += d));
-    const timer = setTimeout(() => { try { p.kill('SIGKILL'); } catch (e) {} resolve('TIMEOUT'); }, 25000);
+    const timer = setTimeout(() => { try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */} resolve('TIMEOUT'); }, 25000);
     p.on('exit', (code) => { clearTimeout(timer); resolve(out.trim() + '\nEXIT:' + code); });
   });
 }
 
 function findRedisBinaries() {
   const cands = ['/usr/bin/redis-server', '/usr/local/bin/redis-server', '/opt/redis/bin/redis-server'];
-  for (const c of cands) { try { if (fs.existsSync(c)) return { server: c, sentinel: c.replace('redis-server', 'redis-sentinel') }; } catch (e) {} }
+  for (const c of cands) { try { if (fs.existsSync(c)) return { server: c, sentinel: c.replace('redis-server', 'redis-sentinel') }; } catch (e) {/* intentional no-op */} }
   try {
     const w = cp.execSync('which redis-server', { stdio: 'pipe' }).toString().trim().split('\n')[0];
     if (w && fs.existsSync(w)) return { server: w, sentinel: w.replace('redis-server', 'redis-sentinel') };
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   return null;
 }
 
@@ -149,7 +149,7 @@ async function main() {
     let ok = false, detail = '';
     try {
       let Redis = null;
-      try { Redis = require('ioredis'); } catch (e) {}
+      try { Redis = require('ioredis'); } catch (e) {/* intentional no-op */}
       if (!Redis) {
         skip('آیورِدیس کانفیگ سنتینل ما را می‌پذیرد', 'ماژول ioredis نصب نشده است');
       } else {
@@ -157,7 +157,7 @@ async function main() {
         const c = Object.assign({ sentinels: cc.sentinels, name: cc.name }, cc.options || {});
         const probe = new Redis(Object.assign({}, c, { lazyConnect: true, connectTimeout: 500 }));
         ok = !!(probe.options && Array.isArray(probe.options.sentinels) && probe.options.sentinels.length === 1 && probe.options.name === 'mymaster');
-        try { probe.disconnect(); } catch (e) {}
+        try { probe.disconnect(); } catch (e) {/* intentional no-op */}
         chk('آیورِدیس کانفیگ سنتینل ما را می‌پذیرد', ok, detail);
       }
     } catch (e) { detail = e.message; chk('آیورِدیس کانفیگ سنتینل ما را می‌پذیرد', false, detail); }
@@ -179,30 +179,39 @@ async function main() {
         procs.push(p); return p;
       };
       try {
-        spawnR(['--port', '6400', '--daemonize', 'no', '--save', '', '--dir', dir]);
-        spawnR(['--port', '6401', '--daemonize', 'no', '--save', '', '--dir', dir, '--replicaof', '127.0.0.1', '6400']);
+        fs.mkdirSync(path.join(dir, 'm'), { recursive: true });
+        fs.mkdirSync(path.join(dir, 'r'), { recursive: true });
+        spawnR(['--bind', '127.0.0.1', '--protected-mode', 'no', '--repl-diskless-sync-delay', '0', '--port', '6400', '--daemonize', 'no', '--save', '', '--dir', path.join(dir, 'm')]);
+        spawnR(['--bind', '127.0.0.1', '--protected-mode', 'no', '--port', '6401', '--daemonize', 'no', '--save', '', '--dir', path.join(dir, 'r'), '--replicaof', '127.0.0.1', '6400']);
         const sleep = (ms) => new Promise(r => setTimeout(r, ms));
         await sleep(800);
-        const sentinelConf = (port) => {
-          const f = path.join(dir, 'sentinel-' + port + '.conf');
+        const sentinelConf = (port, idx) => {
+          const sdir = path.join(dir, 's' + idx);
+          fs.mkdirSync(sdir, { recursive: true });
+          const f = path.join(sdir, 'sentinel.conf');
           fs.writeFileSync(f, [
+            'bind 127.0.0.1',
+            'protected-mode no',
             'port ' + port,
+            'dir ' + sdir,
             'sentinel monitor mymaster 127.0.0.1 6400 2',
-            'sentinel down-after-milliseconds mymaster 2000',
-            'sentinel failover-timeout mymaster 10000',
+            'sentinel down-after-milliseconds mymaster 1500',
+            'sentinel failover-timeout mymaster 8000',
             'sentinel parallel-syncs mymaster 1'
           ].join('\n'));
           const p = cp.spawn(bins.server, [f, '--sentinel'], { stdio: 'ignore' });
           procs.push(p); return p;
         };
-        sentinelConf(26400); sentinelConf(26401); sentinelConf(26402);
-        await sleep(1200);
+        sentinelConf(26400, 0); sentinelConf(26401, 1); sentinelConf(26402, 2);
+        await sleep(3200);
 
         const Redis = require('../node_modules/ioredis');
         const cc = redis.buildRedisConfig({ REDIS_SENTINELS: '127.0.0.1:26400,127.0.0.1:26401,127.0.0.1:26402', REDIS_SENTINEL_NAME: 'mymaster' });
-        const c = Object.assign({ sentinels: cc.sentinels, name: cc.name }, cc.options || {});
-        const app = new Redis(Object.assign({}, c, { connectTimeout: 2000, maxRetriesPerRequest: 3 }));
+        const c = Object.assign({ sentinels: cc.sentinels, name: cc.name, sentinelRetryStrategy: cc.sentinelOptions.retryStrategy }, cc.options || {});
+        const app = new Redis(Object.assign({}, c, { lazyConnect: false, connectTimeout: 2000, maxRetriesPerRequest: 3, enableOfflineQueue: true }));
+        app.on('error', () => {});
         await app.set('ha:probe', 'alive');
+        await app.wait(1, 5000);
         chk('نوشت روی مستر از مسیر نگهبان', (await app.get('ha:probe')) === 'alive');
 
         /* کشتنِ مستر */
@@ -216,12 +225,12 @@ async function main() {
           } catch (e) { /* هنوز فیل‌اُوور تمام نشده */ }
         }
         chk('پس از مرگ مستر، کلاینت مستر تازه را پیدا می‌کند', ok);
-        try { app.disconnect(); } catch (e) {}
+        try { app.disconnect(); } catch (e) {/* intentional no-op */}
       } catch (e) {
         chk('شبیه‌سازی واقعی فیل‌اُوور', false, e.message);
       } finally {
-        for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} }
-        try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {}
+        for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
+        try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
       }
     }
   }

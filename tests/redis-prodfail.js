@@ -68,7 +68,7 @@ async function roleA() {
   await mustThrow('A12 subscribe می‌پراند', () => redis.subscribe('ch', () => {}));
   /* مشاهده/بستن باید جواب بدهند (نه پرتاب). */
   const p = await redis.ping();
-  chk('A13 ping جواب می‌دهد', p && p.driver === 'memory');
+  chk('A13 ping جواب می‌دهد', p && p.ok === false && (p.driver === 'none' || p.driver === 'memory'));
   chk('A14 ready نادرست است', redis.ready() === false);
   await redis.close();
   chk('A15 close بی‌خطا', true);

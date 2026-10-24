@@ -47,12 +47,12 @@ function spawnServer(env) {
   return p;
 }
 process.on('exit', () => {
-  for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {} }
-  for (const d of tmpdirs) { try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {} }
+  for (const p of procs) { try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
+  for (const d of tmpdirs) { try { fs.rmSync(d, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} }
 });
 function close(p) {
   serverLogs.push(p.log || '');
-  try { p.kill('SIGKILL'); } catch (e) {}
+  try { p.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
 }
 
 function req(method, port, p, body, headers) {
@@ -68,7 +68,7 @@ function req(method, port, p, body, headers) {
       let b = '';
       res.on('data', (d) => (b += d));
       res.on('end', () => {
-        let j = null; try { j = JSON.parse(b); } catch (e) {}
+        let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, json: j, headers: res.headers, text: b });
       });
     });
@@ -106,7 +106,7 @@ async function boot(port, extraEnv, dir, storeName) {
     const h = await req('GET', port, '/api/health');
     if (h.status === 200 && h.json && h.json.ok) {
       if (h.json.pid === p.pid) return { proc: p, dir: d, env };
-      try { process.kill(h.json.pid); } catch (e) {} /* سرورِ ماندهٔ اجرایِ پیشین */
+      try { process.kill(h.json.pid); } catch (e) {/* intentional no-op */} /* سرورِ ماندهٔ اجرایِ پیشین */
     }
     if (p.exitCode !== null) return null;
     await sleep(300);

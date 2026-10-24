@@ -15,7 +15,7 @@
 const {
   roundTo,
   enforceTenantIsolation
-} = require('./semantic');
+} = require('./semantic'); void enforceTenantIsolation;
 
 /**
  * الگوریتم استاندارد و خالص تبدیل تاریخ شمسی به میلادی

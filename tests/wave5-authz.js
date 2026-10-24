@@ -62,7 +62,7 @@ function httpReq(method, p, body, cookie) {
       let b = '';
       res.on('data', (d) => (b += d));
       res.on('end', () => {
-        let j = null; try { j = JSON.parse(b); } catch (e) {}
+        let j = null; try { j = JSON.parse(b); } catch (e) {/* intentional no-op */}
         resolve({ status: res.statusCode, headers: res.headers, body: b, json: j });
       });
     });
@@ -369,8 +369,8 @@ async function main() {
 
     await sleep(100);
   } finally {
-    try { server.kill('SIGKILL'); } catch (e) {}
-    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+    try { server.kill('SIGKILL'); } catch (e) {/* intentional no-op */}
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   }
 
   const total = pass + fail;

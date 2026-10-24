@@ -21,7 +21,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
-const path = require('path');
+const path = require('path'); void path;
 
 let okc = 0, failc = 0, skipped = 0;
 const fails = [];
@@ -193,10 +193,10 @@ async function main() {
       'set sizes js=' + idsA.length + ' sql=' + idsB.length);
   }
 
-  await walkParity('walk: attendance / مدیر (کرسر مرکب date|id)', 'attendance', manager, { limit: '200' }, 100);
-  await walkParity('walk: grades / مدیر (id DESC)', 'grades', manager, { limit: '200' }, 100);
-  await walkParity('walk: students / مدیر (id ASC)', 'students', manager, { limit: '100' }, 50);
-  await walkParity('walk: users / مدیر', 'users', manager, { limit: '200' }, 100);
+  await walkParity('walk: attendance / مدیر (کرسر مرکب date|id)', 'attendance', manager, { limit: '5' }, 100);
+  await walkParity('walk: grades / مدیر (id DESC)', 'grades', manager, { limit: '5' }, 100);
+  await walkParity('walk: students / مدیر (id ASC)', 'students', manager, { limit: '5' }, 50);
+  await walkParity('walk: users / مدیر', 'users', manager, { limit: '5' }, 100);
 
   await client.end();
   finish();

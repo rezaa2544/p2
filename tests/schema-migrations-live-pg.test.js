@@ -12,7 +12,7 @@
  */
 'use strict';
 
-const assert = require('assert');
+const assert = require('assert'); void assert;
 const { Client } = require('pg');
 const {
   computeChecksum,
@@ -193,7 +193,7 @@ async function run() {
       );
       await client.query('COMMIT');
     } catch (_) {
-      try { await client.query('ROLLBACK'); } catch (__) {}
+      try { await client.query('ROLLBACK'); } catch (__) {/* intentional no-op */}
     }
 
     const checkFailedRes = await client.query('SELECT COUNT(*) FROM schema_migrations WHERE version = $1;', [testVersion]);

@@ -66,6 +66,7 @@ This index makes top-level audit and reconciliation reports discoverable. Unless
 - [F-QA-01 tag integrity dossier](F-QA-01_TAG_INTEGRITY_DOSSIER.md)
 - [F-QA-04 scanner governance dossier](F-QA-04_SCANNER_GOVERNANCE_DOSSIER.md)
 - [Intelligence-layer remediation report](INTELLIGENCE_LAYER_REMEDIATION_REPORT.md)
+- [M15-02 capacity baseline blocked — 2026-10-16](M15-02_CAPACITY_BASELINE_BLOCKED_2026-10-16.md)
 - [Multi-AI report reconciliation — 2026-09-24](MULTI_AI_REPORT_RECONCILIATION_2026-09-24.md)
 - [Multi-AI report reconciliation — 2026-09-25](MULTI_AI_REPORT_RECONCILIATION_2026-09-25.md)
 - [Muse Spark deep scan — 2026-09-25](MUSE_SPARK_DEEP_SCAN_2026-09-25.md)

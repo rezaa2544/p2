@@ -645,12 +645,12 @@ async function publishRuntimeProbes() {
               b.oldest ? Math.max(0, (Date.now() - new Date(b.oldest).getTime()) / 1000) : 0);
           }
         }
-      } catch (e) {}
+      } catch (e) {/* intentional no-op */}
     } else {
       registry.set('payesh_db_up', [], 1); /* memory mode: process-local, inline flush */
       registry.set('payesh_sync_queue_depth', [], 0);
     }
-  } catch (e) { try { registry.set('payesh_db_up', [], 0); } catch (e2) {} }
+  } catch (e) { try { registry.set('payesh_db_up', [], 0); } catch (e2) {/* intentional no-op */} }
   /* Cache L1 (compat aliases) */
   try {
     const cacheMod = await _safe(() => require('./cache'), null);
@@ -659,7 +659,7 @@ async function publishRuntimeProbes() {
       registry.set('payesh_cache_hits_total', [], s.hits | 0);
       registry.set('payesh_cache_misses_total', [], s.misses | 0);
     }
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   /* Process compat aliases */
   try {
     const mu = process.memoryUsage();
@@ -669,7 +669,7 @@ async function publishRuntimeProbes() {
     const lagS = Number(registry.value('payesh_node_eventloop_lag_seconds', []) || 0);
     registry.set('payesh_eventloop_lag_ms', [], lagS * 1000);
     if (typeof gcCounter === 'number') registry.set('payesh_process_gc_total', [], gcCounter);
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   /* Disk (F5) — statfs on the filesystem holding the data directory.
      Native fs.promises.statfs (Node >=19.6; fs.statfs since >=18.15) — no new dependency.
      Fail-soft by design: any error leaves the series unset instead of breaking the scrape,
@@ -704,7 +704,7 @@ async function publishRuntimeProbes() {
         registry.set('payesh_disk_used_ratio', [], denom > 0 ? used / denom : 0);
       }
     }
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
 }
 
 /* شمارشِ GC فقط با اجرایِ کلکتور (بدون side-effect در require) */
@@ -716,7 +716,7 @@ function installGcObserver() {
   try {
     const { PerformanceObserver } = require('perf_hooks');
     new PerformanceObserver((list) => { gcCounter += list.getEntries().length; }).observe({ entryTypes: ['gc'] });
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
 }
 function startRuntimeCollector(intervalMs) {
   installGcObserver();
@@ -759,7 +759,7 @@ function startRuntimeCollector(intervalMs) {
     registry.set('payesh_node_heap_used_bytes', null, mu.heapUsed);
     registry.set('payesh_node_rss_bytes', null, mu.rss);
     registry.set('payesh_node_uptime_seconds', null, process.uptime());
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
   return runtimeTimers;
 }
 

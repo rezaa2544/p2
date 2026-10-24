@@ -313,7 +313,7 @@ function createOutbox({ store, db }) {
            RETURNING o.id, o.type, o.collection, o.record_id, o.actor_id, o.version, o.payload, o.retry_count, o.last_error, o.processing_token;`,
           [limit, leaseSeconds, claimToken]
         );
-        return (res && res.rows) || [];
+        return ((res && res.rows) || []).map((r) => Object.assign({}, r, { id: Number(r.id) })).sort((a, b) => a.id - b.id);
       }
       // Single-statement atomic claim using CTE + UPDATE ... RETURNING
       const q = db;
@@ -335,7 +335,7 @@ function createOutbox({ store, db }) {
          RETURNING o.id, o.type, o.collection, o.record_id, o.actor_id, o.version, o.payload, o.retry_count, o.last_error, o.processing_token;`,
         [limit, Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) > 0 ? Number(process.env.PAYESH_OUTBOX_LEASE_SECONDS) : 60, claimToken]
       );
-      return (res && res.rows) || [];
+      return ((res && res.rows) || []).map((r) => Object.assign({}, r, { id: Number(r.id) })).sort((a, b) => a.id - b.id);
     }
     // Memory mode: reclaim only stale processing claims; fresh claims remain owned.
     // N-36: cache.* events are excluded — they follow the replicate-to-all path.

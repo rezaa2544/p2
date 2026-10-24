@@ -109,7 +109,7 @@ console.log('🔍 PUB-01 regression: no universal credential in the dataset');
     assert.strictEqual(left.length, 0, 'load must strip every residual password field (' + injected + ' were injected)');
     assert.ok(injected > 0, 'sanity: the fixture actually carried passwords');
     server.close();
-    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
   });
 
   await test('PUB01-5: the users table has no password column and no auth path reads it', () => {

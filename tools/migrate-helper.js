@@ -128,7 +128,7 @@ function scaffold(rawName) {
   const dwn = migJoin(base + '.down.sql');
   if (fs.existsSync(fwd) || fs.existsSync(dwn)) { console.error('فایل از پیش وجود دارد: ' + base); return 2; }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10); void today;
   fs.writeFileSync(fwd, `-- ═══════════════════════════════════════════════════════════════
 -- ${base}.sql — <یک جمله: این مهاجرت چه می‌کند>
 -- ───────────────────────────────────────────────────────────────

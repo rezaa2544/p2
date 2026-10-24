@@ -109,7 +109,7 @@ function runChild(envName) {
   const probe = new pg.Pool({ connectionString: PGURL, max: 2, connectionTimeoutMillis: 5000 });
   try { await probe.query('SELECT 1'); }
   catch (e) { console.log(NAME + ': NOT-RUN — PostgreSQL not reachable: ' + e.message); process.exit(2); }
-  finally { try { await probe.end(); } catch (e) {} }
+  finally { try { await probe.end(); } catch (e) {/* intentional no-op */} }
 
   /* ── production ── */
   const prod = runChild('production');
@@ -136,7 +136,7 @@ function runChild(envName) {
     rows = r.rows[0].n;
     await probe2.query('DROP TABLE IF EXISTS chat1_pkg1_kill');
   } catch (e) { rows = -1; }
-  finally { try { await probe2.end(); } catch (e) {} }
+  finally { try { await probe2.end(); } catch (e) {/* intentional no-op */} }
   chk('1h the killed write did not persist (0 rows)', rows === 0, 'rows=' + rows);
 
   /* ── development: same scenario, must also survive ── */

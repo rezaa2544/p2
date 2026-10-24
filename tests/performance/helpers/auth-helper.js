@@ -105,7 +105,7 @@ export function loginUser(baseUrl, user) {
   try {
     const json = JSON.parse(sendRes.body);
     if (json.demo_code) demoCode = json.demo_code;
-  } catch (e) {}
+  } catch (e) {/* intentional no-op */}
 
   // ۲. تکمیل فرآیند ورود با کد اعتبارسنجی
   const loginRes = http.post(

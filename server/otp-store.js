@@ -229,9 +229,23 @@ function createOtpStore(opts){
   if(!useRedis()){
     if(!loadFile() && store && store.__auth){
       const a = store.__auth;
+      const canon = (p) => {
+        const d = String(p || '').replace(/\D/g, '');
+        return d ? (d.length > 10 ? d.slice(-10) : d) : String(p || '');
+      };
       const mv = (dst, src) => {
         if(a[src] && typeof a[src] === 'object' && Object.keys(a[src]).length){
-          data[dst] = a[src]; moved = true;
+          const out = {};
+          for(const rawKey of Object.keys(a[src])){
+            const ck = canon(rawKey);
+            const val = a[src][rawKey];
+            if(dst === 'codes' && val && typeof val === 'object'){
+              out[ck] = Object.assign({}, val, { legacy: true, legacy_phone: rawKey });
+            } else {
+              out[ck] = val;
+            }
+          }
+          data[dst] = out; moved = true;
         }
         delete a[src];
       };

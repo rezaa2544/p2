@@ -49,7 +49,7 @@ let killed = 0, envFails = 0;
 for (const m of MUTS) {
   if (tool0.indexOf(m.bad) < 0) { console.log('  NO-PATTERN ' + m.name); continue; }
   const mcopy = kit.mutant(TOOL_ABS, tool0.replace(m.bad, 'void 0; /* MUTANT */')); /* کپیِ جدا */
-  try { fs.chmodSync(mcopy, fs.statSync(TOOL_ABS).mode); } catch (_) {}
+  try { fs.chmodSync(mcopy, fs.statSync(TOOL_ABS).mode); } catch (_) {/* intentional no-op */}
   let out = '', crashed = false;
   try {
     /* F-A4: without --write-schema the tool never rewrites server/schema.sql

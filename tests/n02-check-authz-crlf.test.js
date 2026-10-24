@@ -27,7 +27,7 @@ const os = require('os');
 const path = require('path');
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-n02-'));
-process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} });
+process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
 
 /* Fixture sources. The CRLF ones are what a Windows checkout actually looks
    like; `crlf()` converts at write time so the bytes on disk are real CRLF. */

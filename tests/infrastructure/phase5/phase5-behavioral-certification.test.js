@@ -184,7 +184,7 @@ async function testPersistentConflictStorageAndMultiPod() {
 
   const mockRes = {
     writeHead: () => {},
-    end: (str) => { if (str) try { podA_response = JSON.parse(str); } catch (_) {} }
+    end: (str) => { if (str) try { podA_response = JSON.parse(str); } catch (_) {/* intentional no-op */} }
   };
   const mockReq = {
     headers: {},

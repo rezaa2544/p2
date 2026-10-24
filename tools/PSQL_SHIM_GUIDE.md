@@ -158,7 +158,7 @@ doing less would be a lie.
 
 | claim | value | provenance |
 |---|---|---|
-| `node tools/psql-min.js --selftest` | **29/29**, exit 0 | **re-measured in round 6** |
+| `node tools/psql-min.js --selftest` | **33/33**, exit 0 | **re-measured for M15-01 (2026-10-23): +P20/P21 +N11/N12 for the `-c`/`-f` SQL-source guard** |
 | migrations 001..012 on a fresh schema | **12 applied · 102 tables** | measured round 5 @ `7db609f` |
 | partition artifacts created | `attendance_y2025/2026/2027`, `attendance_default`, `grades_y2025/2026/2027`, `grades_default` | measured round 5 |
 | `tests/wave23-reports-pg.js` with shim on `PATH` | **76/76**, exit 0 | measured round 5 |

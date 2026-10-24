@@ -148,7 +148,7 @@ setTimeout(async () => {
 
   /* ── بخش ۲: PDF واقعی با playwright (در صورت نصب) ─────────────── */
   let chromium = null;
-  try { ({ chromium } = require('playwright')); } catch (e) {}
+  try { ({ chromium } = require('playwright')); } catch (e) {/* intentional no-op */}
 
   if (!chromium) {
     skipped++;
@@ -168,7 +168,7 @@ setTimeout(async () => {
           + 'table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:4px}</style>'
           + '</head><body><h1>گزارش حضور و غیاب ماهانه</h1>' + body + '</body></html>';
       })()`);
-      const browser = await chromium.launch();
+      const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || (fs.existsSync('/usr/local/bin/chromium-headless') ? '/usr/local/bin/chromium-headless' : undefined), args: ['--no-sandbox', '--disable-dev-shm-usage'] });
       try {
         const page = await browser.newPage();
         await page.setContent(docHtml, { waitUntil: 'load' });

@@ -19,7 +19,7 @@ if(!fs.existsSync(REAL_STORE)){
 
 /* ── isolated data files for this run ─────────────────────────────── */
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-srv-'));
-process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {} }); /* پاک‌سازیِ tmp تا /tmp پر نشود */
+process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} }); /* پاک‌سازیِ tmp تا /tmp پر نشود */
 const T_STORE = path.join(TMP, 'store.json');
 const T_AUDIT = path.join(TMP, 'audit.log');
 const T_KEY   = path.join(TMP, 'jwt.key');
@@ -67,7 +67,7 @@ async function req(method, p, { body, cookie } = {}){
     body: body ? JSON.stringify(body) : undefined,
   });
   let json = null;
-  try{ json = await res.json(); }catch(e){}
+  try{ json = await res.json(); }catch(e){/* intentional no-op */}
   return { status: res.status, json, headers: res.headers };
 }
 function cookieOf(res){
@@ -197,7 +197,7 @@ async function main(){
         last = { status: res.status, json: await res.json() };
       }
       assert(last.status === 429 && last.json.code === 'rate_limited', 'got ' + last.status);
-      try { fs.rmSync(cTMP, { recursive: true, force: true }); } catch (e) {}
+      try { fs.rmSync(cTMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
     } finally {
       proc.kill('SIGKILL');
     }
@@ -455,7 +455,7 @@ async function main(){
   test('S31 child server without PAYESH_DEMO_CODE → send-code has no demo_code', async () => {
     const { spawn } = require('child_process');
     const cTMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-s31-'));
-    process.on('exit', () => { try { fs.rmSync(cTMP, { recursive: true, force: true }); } catch (e) {} });
+    process.on('exit', () => { try { fs.rmSync(cTMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
     const cStore = path.join(cTMP, 'store.json');
     fs.copyFileSync(REAL_STORE, cStore);
     let port = null, proc = null;

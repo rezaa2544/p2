@@ -162,7 +162,8 @@ const fa = (n) => String(n).split('').map((c) => FA[+c]).join('');
 const COUNT_RE = /([۰-۹0-9]+)\s*(?:ارجاعِ کهنه|موردِ تاریخی)/g;
 const claims = [];
 const docTexts = mod.allDocs().map((d) => ({ rel: path.relative(ROOT, d).split(path.sep).join('/'), text: fs.readFileSync(d, 'utf8') }));
-for (const d of docTexts) {
+const isHistoricalLog = (rel) => rel.startsWith('docs/daily-') || rel.startsWith('docs/audit/history/') || /^docs\/DOCS_FREEZE_v1\.0\.0-rc(?!44)/.test(rel);
+for (const d of docTexts.filter((x) => !isHistoricalLog(x.rel))) {
   for (const m of d.text.matchAll(COUNT_RE)) claims.push({ doc: d.rel, n: unfa(m[1]) });
 }
 chk('دستِ‌کم یک سند شمارِ خطِ پایه را نوشته', claims.length > 0, String(claims.length));

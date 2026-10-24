@@ -72,7 +72,7 @@ function createDR(ctx) {
     ? options.isProduction
     : process.env.PAYESH_ENV === 'production');
 
-  function ensureDir() { try { fs.mkdirSync(dir, { recursive: true }); } catch (e) {} }
+  function ensureDir() { try { fs.mkdirSync(dir, { recursive: true }); } catch (e) {/* intentional no-op */} }
 
   /* ── containment guard (hardening) ────────────────────────────────
      This module hashes, encrypts and decrypts PII archives, so every path
@@ -556,7 +556,7 @@ function createDR(ctx) {
       });
       return report;
     } finally {
-      if (!opts.keep) { try { fs.rmSync(work, { recursive: true, force: true }); } catch (e) {} }
+      if (!opts.keep) { try { fs.rmSync(work, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} }
     }
   }
 

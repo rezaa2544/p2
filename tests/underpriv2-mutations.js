@@ -18,7 +18,7 @@ const ROOT = path.join(__dirname, '..');
 const { session } = require('./helpers/mutant-kit');
 const kit = session('upv2-mut-');
 kit.remapBuildOutputs(); /* index.html/USER_GUIDE.html/.build-cache.* → سایه */
-let ok = 0, bad = 0, envFails = 0;
+let ok = 0, bad = 0, envFails = 0; void envFails;
 function chk(cond, msg) {
   if (cond) { ok++; console.log('  ✅ ' + msg); }
   else { bad++; console.log('  ❌ ' + msg); }
@@ -30,7 +30,7 @@ function mutate(file, from, to, killRe, tag) {
   const badSrc = orig.replace(from, to);
   if (badSrc === orig) { chk(false, tag + ': جهش اعمال نشد (نماد پیدا نشد)'); return; }
   const mcopy = kit.mutant(f, badSrc); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
-  try { fs.chmodSync(mcopy, fs.statSync(f).mode); } catch (_) {}
+  try { fs.chmodSync(mcopy, fs.statSync(f).mode); } catch (_) {/* intentional no-op */}
   try {
   const runOnce = () => spawnSync('node', [path.join(ROOT, 'tests/underpriv2.js')], { cwd: ROOT, encoding: 'utf8', env: kit.env() });
   /* R92: مرگِ زودهنگامِ کشف‌کننده (پورت اشغال/حافظه — قبل از چاپِ چکِ موردِ انتظار و خطِ خلاصه) → retry یک‌بار، بعد env-failِ صریح. هرگز «زنده ماند»ِ کاذب. */

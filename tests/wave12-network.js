@@ -74,7 +74,7 @@ async function bootServer(envExtra, tmp) {
   let ok = false;
   const t0 = Date.now();
   while (Date.now() - t0 < 20000) {
-    try { const r = await apiRequest(port, 'GET', '/api/health', {}); if (r.status === 200) { ok = true; break; } } catch (e) {}
+    try { const r = await apiRequest(port, 'GET', '/api/health', {}); if (r.status === 200) { ok = true; break; } } catch (e) {/* intentional no-op */}
     await new Promise((r) => setTimeout(r, 250));
   }
   return { port, child, ok };
@@ -108,8 +108,8 @@ async function hdrGroup() {
       const n2 = ((h2.headers['content-security-policy'] || '').match(/'nonce-([^']+)'/) || [])[1];
       chk('HDR-4 ننسِ یک‌بارمصرف (دو پاسخ، دو ننسِ متفاوت)', !!(n1 && n1[1]) && !!n2 && n1[1] !== n2,
         (n1 && n1[1]) + ' vs ' + n2);
-    } finally { try { a.child.kill('SIGKILL'); } catch (e) {} }
-  } else { try { a.child.kill('SIGKILL'); } catch (e) {} }
+    } finally { try { a.child.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
+  } else { try { a.child.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
   /* حالتِ بدونِ اعلامِ پروکسی: نباید بی‌جهت HSTS بدهد (fail-closed) */
   const b = await bootServer({}, tmp);
   chk('HDR-5 بوتِ ساده', b.ok);
@@ -120,9 +120,9 @@ async function hdrGroup() {
         h.headers['strict-transport-security']);
       chk('HDR-6b بقیهٔ سرآیندها سرِ جایِ خود',
         !!h.headers['content-security-policy'] && h.headers['x-content-type-options'] === 'nosniff');
-    } finally { try { b.child.kill('SIGKILL'); } catch (e) {} }
-  } else { try { b.child.kill('SIGKILL'); } catch (e) {} }
-  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {}
+    } finally { try { b.child.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
+  } else { try { b.child.kill('SIGKILL'); } catch (e) {/* intentional no-op */} }
+  try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
 }
 
 /* ── EDGE: رگکس‌هایِ بلاکِ لبه، استخراج از خودِ پرونده ─────────── */
@@ -142,7 +142,7 @@ function edgeRegexes() {
 function edgeGroup() {
   grp('EDGE — قوانینِ بلاکِ لبه (از خودِ nginx.conf)');
   let rx = null;
-  try { rx = edgeRegexes(); } catch (e) {}
+  try { rx = edgeRegexes(); } catch (e) {/* intentional no-op */}
   chk('EDGE-0 نشانگرها و رگکس‌ها استخراج شدند', !!rx && rx.length >= 10, rx ? ('n=' + rx.length) : 'نشانگر نیست');
   if (!rx) return;
   const bad = rx.filter((r) => r && r.bad);
@@ -186,8 +186,8 @@ function edgeGroup() {
 function cinGroup() {
   grp('CIN — گردشِ کارِ امنیتی (security.yml + پچِ در انتظار)');
   let y = '', patch = '';
-  try { y = fs.readFileSync(SECURITY_YML, 'utf8'); } catch (e) {}
-  try { patch = fs.readFileSync(PENDING_PATCH, 'utf8'); } catch (e) {}
+  try { y = fs.readFileSync(SECURITY_YML, 'utf8'); } catch (e) {/* intentional no-op */}
+  try { patch = fs.readFileSync(PENDING_PATCH, 'utf8'); } catch (e) {/* intentional no-op */}
   const any = (t) => (typeof t === 'string') ? (y.indexOf(t) >= 0 || patch.indexOf(t) >= 0) : (t.test(y) || t.test(patch));
   chk('CIN-0 پروندهٔ گردشِ کار هست', y.length > 200);
   if (!y) return;
@@ -204,8 +204,8 @@ function cinGroup() {
 function docGroup() {
   grp('DOC — اسنادِ شبکه/لبه');
   let cdn = '', waf = '';
-  try { cdn = fs.readFileSync(CDN_DOC, 'utf8'); } catch (e) {}
-  try { waf = fs.readFileSync(WAF_DOC, 'utf8'); } catch (e) {}
+  try { cdn = fs.readFileSync(CDN_DOC, 'utf8'); } catch (e) {/* intentional no-op */}
+  try { waf = fs.readFileSync(WAF_DOC, 'utf8'); } catch (e) {/* intentional no-op */}
   chk('DOC-0 هر دو سند هست', cdn.length > 1000 && waf.length > 1000, 'cdn=' + cdn.length + ' waf=' + waf.length);
   chk('DOC-1 قیدِ حیاتی: لبه نباید HTML را کش کند (ننسِ یک‌بارمصرف)',
     /هرگز کش نمی‌شود|کش نکن|خاموش/.test(cdn) && cdn.indexOf('ننس') >= 0 && /Bypass cache/.test(cdn));

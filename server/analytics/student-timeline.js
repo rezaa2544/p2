@@ -436,7 +436,7 @@ function buildStudentTimeline(studentData = {}, options = {}) {
 /**
  * تشخیص هوشمند نقاط عطف آموزشی (detectEducationalMilestones)
  */
-function detectEducationalMilestones(timelineInput, options = {}) {
+function detectEducationalMilestones(timelineInput, options = {}) { void options;
   const events = Array.isArray(timelineInput)
     ? timelineInput
     : (timelineInput && Array.isArray(timelineInput.events) ? timelineInput.events : []);
@@ -612,7 +612,7 @@ function detectEducationalMilestones(timelineInput, options = {}) {
 /**
  * ارزیابی دوره‌های ریسک دانش‌آموز بر پایه لایه معنایی (calculateRiskPeriods)
  */
-function calculateRiskPeriods(timelineInput, semanticContext = {}) {
+function calculateRiskPeriods(timelineInput, semanticContext = {}) { void semanticContext;
   const events = Array.isArray(timelineInput)
     ? timelineInput
     : (timelineInput && Array.isArray(timelineInput.events) ? timelineInput.events : []);

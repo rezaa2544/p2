@@ -143,7 +143,7 @@ const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-w19-'));
   chk('C7c متریک‌هایِ آشوب (circuit-breaker/latency) تعریف شده', /circuitBreakerTrips/.test(k) && /redisLatency/.test(k));
 }
 
-try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {}
+try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
 console.log('────────────────────────────────────────────');
 console.log('Wave 19 — Chaos: ' + pass + '/' + (pass + fail) + ' موفق' + (fail ? ' — ' + fail + ' خطا ❌' : '  —  بدون خطا ✅'));
 process.exit(fail ? 1 : 0);

@@ -72,7 +72,7 @@ const EXPECTED = [
   'announcements', 'hw_assignments', 'hw_submissions', 'vclass_sessions',
   'bell_schedules', 'sync_conflicts', 'counselor_refs', 'counselor_msgs'
 ];
-const DEAD = ['homework', 'vclass_rooms'];
+const DEAD = ['homework', 'vclass_rooms']; void DEAD;
 
 function makeStore() {
   const store = { __deleted_records: [], __server_version: 42 };
@@ -239,8 +239,12 @@ await test('SG9 مهاجرتِ 006: ستون + backfill + NOT NULL + ایندک�
 
 await test('SG10 ردیفِ تعارضِ تازه (sync.js) updated_at هم‌ارزِ created_at دارد', async () => {
   const store = {
+    schools: [{ id: 1, name: 'S1', active: true }],
+    classes: [{ id: 1, school_id: 1, name: 'C1' }],
+    subjects: [{ id: 1, school_id: 1, name: 'Sub1' }],
+    enrollments: [{ id: 1, school_id: 1, class_id: 1, student_id: 30 }],
     grades: [{ id: 55, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 19, version: 3, updated_at: iso(Date.now()) }],
-    users: [{ id: 5, role: 'manager', school_id: 1 }, { id: 7, role: 'manager', school_id: 1 }],
+    users: [{ id: 5, role: 'manager', school_id: 1 }, { id: 7, role: 'manager', school_id: 1 }, { id: 30, role: 'student', school_id: 1, active: true }, { id: 20, role: 'teacher', school_id: 1, active: true }],
     __processed_uids: {}, __server_version: 0
   };
   const ctx = {
