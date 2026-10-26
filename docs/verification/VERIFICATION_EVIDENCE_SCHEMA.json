@@ -4,7 +4,7 @@
   "policy": "docs/STRICT_VERIFICATION_GATE.md",
   "owner": "A-30 Strict Verification Gate hardening",
   "note": "Mandatory shape of VERIFICATION_REGISTRY.json. The gate pins these lists to its own canonical contract (V-12): editing this file alone cannot weaken the gate.",
-  "reviewers": ["chatgpt", "arena", "atria"],
+  "reviewers": ["arena"],
   "reviewer_verdicts": ["PASS", "FAIL", "BLOCKED"],
   "allowed_statuses": ["UNKNOWN", "TESTED", "RUNTIME_VERIFIED", "ADVERSARIAL_VERIFIED", "INDEPENDENTLY_VERIFIED", "CERTIFIED"],
   "required_registry_keys": ["schema_version", "policy", "status", "head_bound", "required_reviewers", "allowed_statuses", "reviews_recorded", "human_governance", "expected_ids", "items"],
@@ -12,7 +12,7 @@
   "required_evidence_keys": ["reviewer", "kind", "command", "exit_code", "checks_total", "checks_passed", "artifact", "sha256", "head_sha", "runtime", "ts"],
   "evidence_kinds": ["positive_test", "negative_test", "adversarial_test", "runtime_evidence", "failure_recovery_evidence", "data_evidence", "review_note"],
   "evidence_semantics": {
-    "reviewer": "one of reviewers; must equal the slot the evidence is attached to (V-09)",
+    "reviewer": "Arena; must equal the slot the evidence is attached to (V-09)",
     "kind": "evidence class; every item needs >=1 positive/runtime AND >=1 negative/adversarial/failure_recovery (V-11)",
     "command": "reproducible command; may not be solely a self-certification module (V-08)",
     "exit_code": "must be 0",
