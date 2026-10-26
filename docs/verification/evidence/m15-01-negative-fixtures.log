@@ -1,4 +1,4 @@
-# M15-01-EVIDENCE name=negative ts=2026-10-26T16:10:28.993Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command=node tests/strict-verification-gate.negative.test.js
+# M15-01-EVIDENCE name=negative ts=2026-10-26T20:51:06.498Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tests/strict-verification-gate.negative.test.js"
 ==== A-30 V-01..V-12 NEGATIVE GATE FIXTURES ====
   OK   V-01 rejected (registry with zero items) — exit=1
   OK   V-01b rejected (registry without items key) — exit=1
@@ -46,10 +46,16 @@
   OK   GOOD control accepted (exit 0) — exit=0
   OK   CONTROL contract-only registry conforms but stays NOT VERIFIED — exit=1
   OK   V-06-PR-DIVERGENT rejected (PR HEAD does not descend from origin/main) — exit=1
+  OK   V-17 rejected (identical evidence record certifies a second item with no scope) — exit=1
+  OK   V-17b rejected (two items share one witness under the same scope text) — exit=1
+  OK   V-17c rejected (scopes differ but cite check ids no cited log contains) — exit=1
+  OK   V-02h rejected (evidence timestamp lies ahead of the run that recorded it) — exit=1
+  OK   V-18 rejected (item claims INDEPENDENTLY_VERIFIED under a one-slot reviewer contract) — exit=1
+  OK   GOOD control accepted (exit 0) — exit=0
   OK   Issue #472 single-parent registry-only commit binds immutable parent — exit=0
   OK   Issue #472 merge commit rejected for metadata binding — exit=1
   OK   Issue #472 extra-path commit fails closed for metadata binding — exit=1
   OK   Issue #472 rename-into-registry commit fails closed for metadata binding — exit=1
   OK   Issue #472 empty-metadata commit fails closed for metadata binding — exit=1
   OK   Issue #472 root-no-parent commit fails closed for metadata binding — exit=1
-==== A-30 NEGATIVE RESULT 52 pass / 0 fail ====
+==== A-30 NEGATIVE RESULT 58 pass / 0 fail ====
