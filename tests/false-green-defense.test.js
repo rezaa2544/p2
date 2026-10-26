@@ -349,6 +349,45 @@ function tmpDir(name) {
     chk('C16 CONTROL an honest suite with matching evidence is ACCEPTED',
       runSuites(['honest.test.js'], { dir: d, timeoutMs: 3000, quiet: true }) === 0);
 
+    /* C17..C21 — the shared / copied / corrupt witness classes (M15-01 owner round).
+       The registry-level gate rejects a witness reused across items (V-17); at THIS
+       layer the equivalent exploits are: one suite declaring twice, one suite pasting
+       another suite's marker, two suites re-using one evidence name, and a truncated
+       declaration. Each must be a hard RED, and C21 keeps the battery honest by
+       proving two distinct honest witnesses are still accepted. */
+    fixture('duplicate-marker.test.js',
+      "console.log('  ✅ T1');\n"
+      + "reportSuiteResult({ name: 'dup', pass: 1, fail: 0 });\n"
+      + "reportSuiteResult({ name: 'dup', pass: 1, fail: 0 });");
+    chk('C17 one suite declaring two markers is REJECTED (DUPLICATE_EVIDENCE)',
+      runSuites(['duplicate-marker.test.js'], { dir: d, timeoutMs: 3000, quiet: true }) === 1);
+
+    fs.writeFileSync(path.join(d, 'stolen-witness.test.js'),
+      "console.log('  ✅ T1');\n"
+      + "process.stdout.write('PAYESH_SUITE_RESULT ' + JSON.stringify({ name: 'other', file: 'honest.test.js', pass: 2, fail: 0, skip: 0 }) + '\\n');");
+    chk('C18 a witness copied from another suite is REJECTED (EVIDENCE_FILE_MISMATCH)',
+      runSuites(['stolen-witness.test.js'], { dir: d, timeoutMs: 3000, quiet: true }) === 1);
+
+    fixture('twin-a.test.js',
+      "console.log('  ✅ T1');\nreportSuiteResult({ name: 'twin', pass: 1, fail: 0 });");
+    fixture('twin-b.test.js',
+      "console.log('  ✅ T1');\nreportSuiteResult({ name: 'twin', pass: 1, fail: 0 });");
+    chk('C19 a second suite re-declaring the same witness name is REJECTED (DUPLICATE_WITNESS_NAME)',
+      runSuites(['twin-a.test.js', 'twin-b.test.js'], { dir: d, timeoutMs: 3000, quiet: true }) === 1);
+
+    fs.writeFileSync(path.join(d, 'corrupt-marker.test.js'),
+      "console.log('  ✅ T1');\n"
+      + "process.stdout.write('PAYESH_SUITE_RESULT {\"name\": \"corrupt\",\n');");
+    chk('C20 a truncated declaration is REJECTED (MALFORMED_EVIDENCE, never skipped)',
+      runSuites(['corrupt-marker.test.js'], { dir: d, timeoutMs: 3000, quiet: true }) === 1);
+
+    fixture('distinct-a.test.js',
+      "console.log('  ✅ T1');\nreportSuiteResult({ name: 'distinct-a', pass: 1, fail: 0 });");
+    fixture('distinct-b.test.js',
+      "console.log('  ✅ T1');\nreportSuiteResult({ name: 'distinct-b', pass: 1, fail: 0 });");
+    chk('C21 CONTROL two honest suites with distinct witnesses are ACCEPTED',
+      runSuites(['distinct-a.test.js', 'distinct-b.test.js'], { dir: d, timeoutMs: 3000, quiet: true }) === 0);
+
     /* Every registered API suite must declare evidence — a new suite cannot
        join the registry without the contract, or it would be red at runtime
        only in the full run (cheaper to fail here, statically). */

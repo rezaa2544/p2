@@ -155,6 +155,10 @@ function runSuites(suites, options) {
   const timeoutMs = resolveTimeoutMs(opts);
   const quiet = opts.quiet === true;
   const results = [];
+  /* One witness cannot stand for two suites. A suite may not satisfy the contract by
+     re-declaring another suite's evidence name — the marker is bound to the file that
+     produced it (EVIDENCE_FILE_MISMATCH) and now also to a unique name across the run. */
+  const seenWitnessNames = new Map();
   for (const testFile of suites) {
     const fullPath = path.join(dir, testFile);
     const startedAt = Date.now();
@@ -178,6 +182,19 @@ function runSuites(suites, options) {
         expectedFile: path.basename(testFile)
       });
       if (timedOut) verdict.detail = 'exceeded ' + timeoutMs + 'ms per-suite timeout';
+    }
+    if (verdict.ok && verdict.marker) {
+      const claimant = seenWitnessNames.get(verdict.marker.name);
+      if (claimant) {
+        verdict = {
+          ok: false,
+          reason: 'DUPLICATE_WITNESS_NAME',
+          detail: 'name="' + verdict.marker.name + '" was already declared by ' + claimant +
+            ' — a witness declared once cannot certify two suites'
+        };
+      } else {
+        seenWitnessNames.set(verdict.marker.name, testFile);
+      }
     }
     results.push({ file: testFile, ok: verdict.ok, reason: verdict.reason, detail: verdict.detail, ms: Date.now() - startedAt });
     if (!quiet) {
