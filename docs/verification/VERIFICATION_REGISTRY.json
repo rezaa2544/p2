@@ -1,15 +1,17 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "policy": "docs/STRICT_VERIFICATION_GATE.md",
-  "status": "BLOCKED_UNTIL_ARENA_EVIDENCE_AND_HUMAN_APPROVAL",
-  "note": "Arena is the sole required AI reviewer. Legacy item records below are historical Atria notes and are NOT valid Arena attestations or certification. Do not infer PASS/CERTIFIED; rebuild current-head evidence under the Arena-only schema. Human governance remains mandatory.",
-  "head_bound": "e4584806c1af2a1e5db648c8452580a8fa8cbcec",
-  "head_basis": "re-audit started at 67b6683a58031f2399d249db372ca853cc8d815f (origin/main); two fixes landed during the audit (02c14742 A-20, e4584806 A-22); all evidence in this registry is bound to the final HEAD e4584806.",
+  "status": "UNKNOWN",
+  "note": "Arena is the sole required AI reviewer. Legacy A-01..A-29 records are preserved as BLOCKED/UNKNOWN with their Atria-era status quoted verbatim; they are NOT Arena attestations and MUST NOT be read as PASS/CERTIFIED. Only M15-01-A..C carry Arena evidence on this HEAD. The registry headline is UNKNOWN because the weakest recorded item is UNKNOWN, and human approval has not been granted.",
+  "head_bound": "26846d67c8c93a2636f7364c435be8bda28162a2",
+  "head_basis": "Evidence for M15-01-A..C and the legacy inventory was produced on 26846d67c8c93a2636f7364c435be8bda28162a2, the source commit that this registry-only metadata commit follows. Any code/test change after that SHA invalidates the binding and the tests must be re-run before the registry is rebound.",
   "required_reviewers": [
     "arena"
   ],
   "reviews_recorded": {
-    "arena": []
+    "arena": [
+      "M15-01 Chat 1 self-review on 26846d67c8c93a2636f7364c435be8bda28162a2: focused acceptance suite, A-30 fixtures (mutation-verified) and the legacy inventory were executed and their output committed under docs/verification/evidence/. This record is Arena reviewing Arena; it is not independent verification."
+    ]
   },
   "allowed_statuses": [
     "UNKNOWN",
@@ -19,354 +21,2218 @@
     "INDEPENDENTLY_VERIFIED",
     "CERTIFIED"
   ],
+  "human_governance": {
+    "requires_human_approval": true,
+    "human_approved": false,
+    "approver": null,
+    "decided_at": null,
+    "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+    "note": "No human decision has been recorded for this HEAD. This field is deliberately false and the gate is expected to fail V-10 until the project owner records an approval (approver must be a human, not the AI reviewer)."
+  },
+  "expected_ids": [
+    "A-01",
+    "A-02",
+    "A-03",
+    "A-04",
+    "A-05",
+    "A-06",
+    "A-07",
+    "A-08",
+    "A-09",
+    "A-10",
+    "A-11",
+    "A-12",
+    "A-13",
+    "A-14",
+    "A-15",
+    "A-16",
+    "A-17",
+    "A-18",
+    "A-19",
+    "A-20",
+    "A-21",
+    "A-22",
+    "A-23",
+    "A-24",
+    "A-25",
+    "A-26",
+    "A-27",
+    "A-28",
+    "A-29",
+    "M15-01-A",
+    "M15-01-B",
+    "M15-01-C"
+  ],
+  "open_owner_decisions": [
+    {
+      "id": "OD-1",
+      "item": "Human approval of the verification registry",
+      "state": "NOT DECIDED",
+      "why_it_blocks": "V-10 is mandatory and unconditional; no amount of automated evidence satisfies it."
+    },
+    {
+      "id": "OD-2",
+      "item": "strict-verification.yml runs on push to arena/** while V-06 push mode requires HEAD to be an ancestor of origin/main",
+      "state": "NOT DECIDED",
+      "why_it_blocks": "A branch push can never satisfy V-06. Changing the trigger drops CI coverage; changing V-06 alters a security contract. Both are owner decisions."
+    },
+    {
+      "id": "OD-3",
+      "item": "Landing strategy for the registry-only metadata commit",
+      "state": "NOT DECIDED",
+      "why_it_blocks": "Only a single-parent landing (fast-forward) preserves the two-phase binding; a merge commit or a squash invalidates V-02/G9/V-10 by construction and the registry must be rebuilt after landing."
+    }
+  ],
   "false_green_blockers_on_head": [
     {
       "id": "FG-1",
-      "item": "tests/api/*.test.js layer (30 suites, incl. classes/attendance/grades/students/users)",
-      "classification": "REAL (red, not false-green) but UNEXECUTED BY ANY GATE",
-      "evidence": "npm test is locked to tests/run.js + tests/smoke.js (package.json:12, parity contract P3); ci-test-parity-contract sees only top-level tests/*.js (A-13). 5/5 sampled suites return 0/N with HTTP 503 on every endpoint on HEAD e4584806. Proven pre-existing by reverting all local changes.",
-      "why_it_blocks": "A whole API test layer is invisible to every gate; its red state is not surfaced anywhere. Until these are either wired in or explicitly retired with an owner, the parity/orphan budget is not trustworthy.",
-      "owner_needed": true
+      "item": "tests/api/* suites are outside npm test and outside the strict gate inventory",
+      "classification": "REAL but UNEXECUTED BY ANY GATE (A-13/FG-1 carry-over)",
+      "owner_needed": true,
+      "state": "NOT RE-VERIFIED in M15-01; no evidence was produced for it and no status is claimed"
     },
     {
       "id": "FG-2",
-      "item": "npm test 34/35 — index.html build bit-identity",
-      "classification": "LEGITIMATE-SKIP-ADJACENT / KNOWN PRE-EXISTING",
-      "evidence": "The single failing check is 'build output is byte-identical to index.html'. Proven pre-existing at 67b6683a (Phase C stashed ALL changes and reproduced the same 34/35). Not introduced or worsened by this audit.",
-      "why_it_blocks": "The committed index.html is stale relative to build.js output. Not a false-green (it is honestly red), but it means the canonical gate never reaches 35/35 on any current HEAD.",
-      "owner_needed": true
+      "item": "npm test index.html build bit-identity check never reaches 35/35 on current HEAD",
+      "classification": "LEGITIMATE RED (honestly failing), known pre-existing",
+      "owner_needed": true,
+      "state": "NOT RE-VERIFIED in M15-01; no status is claimed"
     }
   ],
   "items": [
     {
       "id": "A-01",
-      "previous_verdict": "FIXED (Phase C, 107c08da)",
-      "current_head": "routes/analytics.js schools query uses WHERE district_id = $1; six collections via db.readCollection with per-collection console.warn fallback",
-      "atria_status": "ATRIA_PASS",
-      "evidence": "tests/phase-c-regional-pg-reads.js 11/11 re-run on 67b6683a; code inspection on e4584806 confirms fix intact",
-      "known_limitations": [
-        "Proven at E2 (fake PG), not E3 (live PG) — pg not installed in this sandbox",
-        "readCollection is full-table per collection"
-      ],
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-01: routes/analytics.js schools query uses WHERE district_id = $1; six collections via db.readCollection with per-collection console.warn fallback",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (ATRIA_PASS). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "ATRIA_PASS",
+        "previous_verdict": "FIXED (Phase C, 107c08da)"
+      }
     },
     {
       "id": "A-02",
-      "previous_verdict": "DEFERRED (Phase C)",
-      "current_head": "server/analytics/health-index.js still has no db access (grep for db./isPostgres/readCollection returns zero hits)",
-      "atria_status": "STILL OPEN (deferred, unchanged)",
-      "evidence": "source-level confirmation on e4584806; no PG path added",
-      "known_limitations": [
-        "perf-only; superadmin-only; unverifiable without pg"
-      ],
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-02: server/analytics/health-index.js still has no db access (grep for db./isPostgres/readCollection returns zero hits)",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (STILL OPEN (deferred, unchanged)). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "STILL OPEN (deferred, unchanged)",
+        "previous_verdict": "DEFERRED (Phase C)"
+      }
     },
     {
       "id": "A-03",
-      "previous_verdict": "FIXED (Phase C, a640e92b)",
-      "current_head": "routes/analytics.js + semantic-analytics.js fallback paths now console.warn",
-      "atria_status": "ATRIA_PASS",
-      "evidence": "source confirmation on e4584806",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-03: routes/analytics.js + semantic-analytics.js fallback paths now console.warn",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (ATRIA_PASS). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "ATRIA_PASS",
+        "previous_verdict": "FIXED (Phase C, a640e92b)"
+      }
     },
     {
       "id": "A-04",
-      "previous_verdict": "FIXED single-instance; multi-instance residual DEFERRED",
-      "current_head": "ids.js lastIssued monotonic counter present (ids.js:28,93-95)",
-      "atria_status": "ATRIA_PASS (single-instance)",
-      "evidence": "tests/phase-c-id-race.js 3/3 re-run on 67b6683a",
-      "known_limitations": [
-        "JSON multi-instance mode still races (lastIssued is in-process); PG immune via nextval"
-      ],
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-04: ids.js lastIssued monotonic counter present (ids.js:28,93-95)",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (ATRIA_PASS (single-instance)). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "ATRIA_PASS (single-instance)",
+        "previous_verdict": "FIXED single-instance; multi-instance residual DEFERRED"
+      }
     },
     {
       "id": "A-05",
-      "previous_verdict": "FIXED (Phase B) + A-05b FIXED (Phase C, 6ef3dffb)",
-      "current_head": "admin.js startAutoBackup returns null with warning in PG-live; index.js banner is honest",
-      "atria_status": "ATRIA_PASS",
-      "evidence": "tests/phase-c-backup-pg-noop.js 8/8 re-run on 67b6683a",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-05: admin.js startAutoBackup returns null with warning in PG-live; index.js banner is honest",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (ATRIA_PASS). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "ATRIA_PASS",
+        "previous_verdict": "FIXED (Phase B) + A-05b FIXED (Phase C, 6ef3dffb)"
+      }
     },
     {
       "id": "A-06",
-      "previous_verdict": "FIXED (Phase C, 33a32f84)",
-      "current_head": "sms.js per-request memoization, queueById Map, monotonic nextId, idempotency index",
-      "atria_status": "ATRIA_PASS",
-      "evidence": "tests/phase-c-sms-quota-complexity.js 18/18 re-run on 67b6683a",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-06: sms.js per-request memoization, queueById Map, monotonic nextId, idempotency index",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (ATRIA_PASS). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "ATRIA_PASS",
+        "previous_verdict": "FIXED (Phase C, 33a32f84)"
+      }
     },
     {
       "id": "A-07",
-      "previous_verdict": "FIXED (Phase C, 6a7ed35a)",
-      "current_head": "wave1-reads/wave3-query2/bell2 use the __skip sentinel + independent NOT-RUN counter",
-      "atria_status": "ATRIA_PASS",
-      "evidence": "wave1-reads 17/17 (+1 NOT-RUN), wave3-query2 12/12 (+1 NOT-RUN), bell2 7/7 (+1 NOT-RUN), all exit 0, re-run on e4584806",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-07: wave1-reads/wave3-query2/bell2 use the __skip sentinel + independent NOT-RUN counter",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (ATRIA_PASS). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "ATRIA_PASS",
+        "previous_verdict": "FIXED (Phase C, 6a7ed35a)"
+      }
     },
     {
       "id": "A-08",
-      "previous_verdict": "DEFERRED (needs external infra)",
-      "current_head": "exit(0)-before-any-check heuristic sweep over 964 test files produced 13 flags; the two smallest inspected (demo-thursday.js, session8-gc.js) are LEGITIMATE (real assertions with non-chk idioms / exit-code semantics)",
-      "atria_status": "OPEN (no new false-green confirmed; blanket enumeration not completed)",
-      "evidence": "node-based lexical sweep + manual verification of 2 files",
-      "known_limitations": [
-        "Heuristic cannot prove absence; a per-suite runtime audit of every exit(0) path is unfinished"
-      ],
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-08: exit(0)-before-any-check heuristic sweep over 964 test files produced 13 flags; the two smallest inspected (demo-thursday.js, session8-gc.js) are LEGITIMATE (real assertions with non-chk idioms / exit-code semantics)",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (OPEN (no new false-green confirmed; blanket enumeration not completed)). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "OPEN (no new false-green confirmed; blanket enumeration not completed)",
+        "previous_verdict": "DEFERRED (needs external infra)"
+      }
     },
     {
       "id": "A-09",
-      "previous_verdict": "NOT A DEFECT (Phase C)",
-      "current_head": ".github/workflows/codacy.yml:55 still max-allowed-issues: 2147483647; Codacy run is honestly red by design (MalformedInputException on non-ASCII files)",
-      "atria_status": "ATRIA_PASS (re-confirmed NOT A DEFECT)",
-      "evidence": "source confirmation on e4584806",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-09: .github/workflows/codacy.yml:55 still max-allowed-issues: 2147483647; Codacy run is honestly red by design (MalformedInputException on non-ASCII files)",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (ATRIA_PASS (re-confirmed NOT A DEFECT)). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "ATRIA_PASS (re-confirmed NOT A DEFECT)",
+        "previous_verdict": "NOT A DEFECT (Phase C)"
+      }
     },
     {
       "id": "A-10",
-      "previous_verdict": "DEFERRED / external",
-      "current_head": ".github/workflows/codeql.yml still only echoes 'Default CodeQL setup is enabled in repository settings' (line 10)",
-      "atria_status": "STILL OPEN (no real scan)",
-      "evidence": "source confirmation on e4584806",
-      "known_limitations": [
-        "requires CodeQL runner/policy decision — workflow-level, not code"
-      ],
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-10: .github/workflows/codeql.yml still only echoes 'Default CodeQL setup is enabled in repository settings' (line 10)",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (STILL OPEN (no real scan)). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "STILL OPEN (no real scan)",
+        "previous_verdict": "DEFERRED / external"
+      }
     },
     {
       "id": "A-11",
-      "previous_verdict": "DEFERRED / external",
-      "current_head": ".github/workflows/fortify.yml skips the scan when credentials are absent (echo 'Skipping Fortify scan... NOT EXECUTED')",
-      "atria_status": "STILL OPEN (no real scan; documented skip, not a silent false-green)",
-      "evidence": "source confirmation on e4584806",
-      "known_limitations": [
-        "requires Fortify credentials — external"
-      ],
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-11: .github/workflows/fortify.yml skips the scan when credentials are absent (echo 'Skipping Fortify scan... NOT EXECUTED')",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (STILL OPEN (no real scan; documented skip, not a silent false-green)). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "STILL OPEN (no real scan; documented skip, not a silent false-green)",
+        "previous_verdict": "DEFERRED / external"
+      }
     },
     {
       "id": "A-12",
-      "previous_verdict": "DEFERRED",
-      "current_head": "scripts/run-all-tests.sh still not invoked by package.json or any workflow",
-      "atria_status": "STILL OPEN",
-      "evidence": "package.json test script = run.js + smoke.js only; no workflow invokes run-all-tests.sh",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-12: scripts/run-all-tests.sh still not invoked by package.json or any workflow",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (STILL OPEN). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "STILL OPEN",
+        "previous_verdict": "DEFERRED"
+      }
     },
     {
       "id": "A-13",
-      "previous_verdict": "DEFERRED",
-      "current_head": "ci-test-parity-contract still non-recursive; 30 suites under tests/api/ are invisible to it AND red (see FG-1)",
-      "atria_status": "STILL OPEN — with new measured evidence",
-      "evidence": "30 api suites enumerated; 5/5 sampled return 0/N on e4584806",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-13: ci-test-parity-contract still non-recursive; 30 suites under tests/api/ are invisible to it AND red (see FG-1)",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (STILL OPEN — with new measured evidence). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "STILL OPEN — with new measured evidence",
+        "previous_verdict": "DEFERRED"
+      }
     },
     {
       "id": "A-14",
-      "previous_verdict": "FIXED (Phase C, 6a7ed35a)",
-      "current_head": "bell2 date-dependent skip replaced by explicit NOT-RUN reporting",
-      "atria_status": "ATRIA_PASS",
-      "evidence": "bell2 7/7 (+1 NOT-RUN) exit 0 on e4584806",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-14: bell2 date-dependent skip replaced by explicit NOT-RUN reporting",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (ATRIA_PASS). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "ATRIA_PASS",
+        "previous_verdict": "FIXED (Phase C, 6a7ed35a)"
+      }
     },
     {
       "id": "A-15",
-      "previous_verdict": "FIXED (Phase C, 3e96cb95)",
-      "current_head": "offline-sync-drill S2c now verifies all three ok=true responses",
-      "atria_status": "ATRIA_PASS",
-      "evidence": "offline-sync-drill 29/29 exit 0 on e4584806",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-15: offline-sync-drill S2c now verifies all three ok=true responses",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (ATRIA_PASS). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "ATRIA_PASS",
+        "previous_verdict": "FIXED (Phase C, 3e96cb95)"
+      }
     },
     {
       "id": "A-16",
-      "previous_verdict": "FIXED (Phase C, 3e96cb95)",
-      "current_head": "chaos-drill-lib pg status uses exit code, not a dead buffer comparison",
-      "atria_status": "ATRIA_PASS",
-      "evidence": "source confirmation; chaos path not runtime-exercised in this sandbox (no PG)",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-16: chaos-drill-lib pg status uses exit code, not a dead buffer comparison",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (ATRIA_PASS). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "ATRIA_PASS",
+        "previous_verdict": "FIXED (Phase C, 3e96cb95)"
+      }
     },
     {
       "id": "A-17",
-      "previous_verdict": "FIXED (Phase C, 3e96cb95)",
-      "current_head": "client-features.js asserts the real toast; multigrade2.js asserts real class_subject_members zeroing",
-      "atria_status": "ATRIA_PASS",
-      "evidence": "client-features 12/12, multigrade2 9/9 on e4584806 (index.html restored after build step)",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-17: client-features.js asserts the real toast; multigrade2.js asserts real class_subject_members zeroing",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (ATRIA_PASS). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "ATRIA_PASS",
+        "previous_verdict": "FIXED (Phase C, 3e96cb95)"
+      }
     },
     {
       "id": "A-18",
-      "previous_verdict": "FIXED (Phase C, dc60c89b)",
-      "current_head": "conflicts.js resolves with monotonic nextVer = max(target.version, server_version)+1 and a manager school-scope check on the TARGET record",
-      "atria_status": "ATRIA_PASS",
-      "evidence": "tests/phase-c-conflict-resolution.js 12/12 re-run on 67b6683a; code intact on e4584806",
-      "known_limitations": [
-        "apiList still shows global conflict rows to managers (metadata only; write is now gated)"
-      ],
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-18: conflicts.js resolves with monotonic nextVer = max(target.version, server_version)+1 and a manager school-scope check on the TARGET record",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (ATRIA_PASS). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "ATRIA_PASS",
+        "previous_verdict": "FIXED (Phase C, dc60c89b)"
+      }
     },
     {
       "id": "A-19",
-      "previous_verdict": "FIXED (Phase C, 95a38845)",
-      "current_head": "student-timeline routed through the canonical policy.studentRecordOk gate (idor.js:68; semantic-analytics.js:256)",
-      "atria_status": "ATRIA_PASS",
-      "evidence": "tests/phase-c-student-timeline-ownership.js 6/6 re-run on 67b6683a",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-19: student-timeline routed through the canonical policy.studentRecordOk gate (idor.js:68; semantic-analytics.js:256)",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (ATRIA_PASS). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "ATRIA_PASS",
+        "previous_verdict": "FIXED (Phase C, 95a38845)"
+      }
     },
     {
       "id": "A-20",
-      "previous_verdict": "NOT A DEFECT (Phase C)",
-      "current_head": "VERDICT OVERTURNED. The backward-compat contract is real (occ.js:8-10) but was applied to only 4 of 5 PATCH paths. grades passed isVersioned=true; students/users/classes/attendance did not, so in strict mode grades rejected a version-less write while the other four accepted it. A version-less PATCH silently destroys a concurrent edit.",
-      "atria_status": "FIX REQUIRED → FIXED in 02c14742",
-      "evidence": "tests/reaudit-occ-stale-write.js 34/34 on e4584806: stale-write reproduced on all 5 entities; strict-mode asymmetry reproduced pre-fix (4x200 + 1x400) and eliminated post-fix (5x400 missing_base_version); dev/test compat preserved (occ.js 18/18, phase-c-unvalidated-fks 16/16)",
-      "known_limitations": [
-        "Dev/test still permits version-less writes by design (documented compat); production now fail-closed"
-      ],
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-20: VERDICT OVERTURNED. The backward-compat contract is real (occ.js:8-10) but was applied to only 4 of 5 PATCH paths. grades passed isVersioned=true; students/users/classes/attendance did not, so in strict mode grades rejected a version-less write while the other four accepted it. A version-less PATCH silently destroys a concurrent edit.",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (FIX REQUIRED → FIXED in 02c14742). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "FIX REQUIRED → FIXED in 02c14742",
+        "previous_verdict": "NOT A DEFECT (Phase C)"
+      }
     },
     {
       "id": "A-21",
-      "previous_verdict": "FIXED (Phase C, 81655ef6)",
-      "current_head": "classes.js homeroom_teacher_id must be a same-school teacher on create and update; attendance.js class_id must be the student's enrolled class; grades.js class_id + subject_id validated",
-      "atria_status": "ATRIA_PASS",
-      "evidence": "tests/phase-c-unvalidated-fks.js 16/16 re-run on 67b6683a and on e4584806 (after the A-20 change to the same files)",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-21: classes.js homeroom_teacher_id must be a same-school teacher on create and update; attendance.js class_id must be the student's enrolled class; grades.js class_id + subject_id validated",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (ATRIA_PASS). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "ATRIA_PASS",
+        "previous_verdict": "FIXED (Phase C, 81655ef6)"
+      }
     },
     {
       "id": "A-22",
-      "previous_verdict": "ACCEPTED RISK (Phase C)",
-      "current_head": "VERDICT PARTIALLY OVERTURNED. The fail-open trade-off is documented (revocation.js header) and the compensating controls are real and now runtime-tested, BUT two concrete holes existed: (1) the boot fail-fast predicate in index.js did not cover the REDIS_URL-only shape, so a configured-but-dead Redis booted, reported health=503, and still served with per-request fail-open revocation; (2) no commandTimeout, so a blackholed Redis hung auth indefinitely. Both fixed.",
-      "atria_status": "FIX REQUIRED → FIXED in e4584806 (2 holes) + ACCEPTED RISK for the residual cross-instance fail-open window",
-      "evidence": "tests/reaudit-redis-outage.js 17/17 on e4584806: boot gate now fail-fast for REDIS_URL-only (never listens); cross-instance fail-open reproduced (B accepts a cookie revoked on A) and bounded by restart + token expiry; expired tokens rejected regardless of Redis; partition now returns in ~10s instead of hanging forever",
-      "residual_accepted_risk": {
-        "scope": "cross-instance session revocation during a Redis outage",
-        "rationale": "availability-of-service vs freshness-of-revocation trade-off, documented at revocation.js header",
-        "compensating_controls_runtime_tested": [
-          "per-process local denylist (store.__revoked_jti) — proven S3b",
-          "denylist persists to the store and is reloaded on restart — proven S5",
-          "JWT exp enforced locally in jwtVerify, Redis-independent — proven S4b/S4c",
-          "user.active=false checked in sessionFrom",
-          "audit('revocation_redis_error') on every fail-open — proven via audit log"
-        ],
-        "owner_needed": true,
-        "expiry_or_review_point_needed": true,
-        "note": "Phase C recorded this as ACCEPTED RISK WITHOUT owner/expiry/review-point; that does not satisfy the gate. Owner and review point must still be recorded."
-      },
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-22: VERDICT PARTIALLY OVERTURNED. The fail-open trade-off is documented (revocation.js header) and the compensating controls are real and now runtime-tested, BUT two concrete holes existed: (1) the boot fail-fast predicate in index.js did not cover the REDIS_URL-only shape, so a configured-but-dead Redis booted, reported health=503, and still served with per-request fail-open revocation; (2) no comman",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (FIX REQUIRED → FIXED in e4584806 (2 holes) + ACCEPTED RISK for the residual cross-instance fail-open window). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "FIX REQUIRED → FIXED in e4584806 (2 holes) + ACCEPTED RISK for the residual cross-instance fail-open window",
+        "previous_verdict": "ACCEPTED RISK (Phase C)"
+      }
     },
     {
       "id": "A-23",
-      "previous_verdict": "FIXED (Phase C, 6cb86b99)",
-      "current_head": "regional-intelligence-network.js average_difficulty_p_value derived from totalHard/totalExams, null when no exams",
-      "atria_status": "ATRIA_PASS",
-      "evidence": "tests/phase-c-regional-difficulty-metric.js 9/9 re-run on 67b6683a",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-23: regional-intelligence-network.js average_difficulty_p_value derived from totalHard/totalExams, null when no exams",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (ATRIA_PASS). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "ATRIA_PASS",
+        "previous_verdict": "FIXED (Phase C, 6cb86b99)"
+      }
     },
     {
       "id": "A-24",
-      "previous_verdict": "reconciliation obligation (multi-AI report)",
-      "current_head": "No sync/offline remediation branch exists on origin (only main); A-18/A-20 re-proven on current main by this audit",
-      "atria_status": "PARTIALLY DISCHARGED — A-18/A-20 proven on main; legacy/LWW, crash durability, reconnect, multi-host still unverified",
-      "known_limitations": [
-        "needs live PG + multi-host environment — BLOCKED for full discharge"
-      ],
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-24: No sync/offline remediation branch exists on origin (only main); A-18/A-20 re-proven on current main by this audit",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (PARTIALLY DISCHARGED — A-18/A-20 proven on main; legacy/LWW, crash durability, reconnect, multi-host still unverified). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "PARTIALLY DISCHARGED — A-18/A-20 proven on main; legacy/LWW, crash durability, reconnect, multi-host still unverified",
+        "previous_verdict": "reconciliation obligation (multi-AI report)"
+      }
     },
     {
       "id": "A-25",
-      "previous_verdict": "reconciliation obligation (multi-AI report)",
-      "current_head": "server/outbox.js present and wired into index.js (13 references); tests/phase2-outbox-failover.js and outbox-runtime-reliability.test.js exist",
-      "atria_status": "NOT RE-VERIFIED (no live PG/worker in this sandbox)",
-      "known_limitations": [
-        "BLOCKED on infrastructure"
-      ],
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-25: server/outbox.js present and wired into index.js (13 references); tests/phase2-outbox-failover.js and outbox-runtime-reliability.test.js exist",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (NOT RE-VERIFIED (no live PG/worker in this sandbox)). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "NOT RE-VERIFIED (no live PG/worker in this sandbox)",
+        "previous_verdict": "reconciliation obligation (multi-AI report)"
+      }
     },
     {
       "id": "A-26",
-      "previous_verdict": "reconciliation obligation (multi-AI report)",
-      "current_head": "codeql.yml echo-only (A-10), fortify.yml documented skip (A-11), codacy INT_MAX (A-09) — all re-confirmed on e4584806; no blanket allowlist created by this audit",
-      "atria_status": "PARTIALLY DISCHARGED — the three CI gates are confirmed non-scanning; remaining F-S items not individually re-run",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-26: codeql.yml echo-only (A-10), fortify.yml documented skip (A-11), codacy INT_MAX (A-09) — all re-confirmed on e4584806; no blanket allowlist created by this audit",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (PARTIALLY DISCHARGED — the three CI gates are confirmed non-scanning; remaining F-S items not individually re-run). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "PARTIALLY DISCHARGED — the three CI gates are confirmed non-scanning; remaining F-S items not individually re-run",
+        "previous_verdict": "reconciliation obligation (multi-AI report)"
+      }
     },
     {
       "id": "A-27",
-      "previous_verdict": "reconciliation obligation (multi-AI report)",
-      "current_head": "No real PG/Redis DR environment in this sandbox",
-      "atria_status": "BLOCKED",
-      "evidence": "multi-instance.js and the pg-prod-* suites all fail open on missing DATABASE_URL / live PG — explicitly NOT-RUN, never PASS",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-27: No real PG/Redis DR environment in this sandbox",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (BLOCKED). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "BLOCKED",
+        "previous_verdict": "reconciliation obligation (multi-AI report)"
+      }
     },
     {
       "id": "A-28",
-      "previous_verdict": "reconciliation obligation (multi-AI report)",
-      "current_head": "RAM-authoritative control planes, authority mode, legacy tenant enforcement remain design/documentation obligations",
-      "atria_status": "BLOCKED (no national-scale environment)",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-28: RAM-authoritative control planes, authority mode, legacy tenant enforcement remain design/documentation obligations",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (BLOCKED (no national-scale environment)). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "BLOCKED (no national-scale environment)",
+        "previous_verdict": "reconciliation obligation (multi-AI report)"
+      }
     },
     {
       "id": "A-29",
-      "previous_verdict": "reconciliation obligation (multi-AI report)",
-      "current_head": "Roadmap/Redis-Node version drift and Phase 9.0 wording remain documentation reconciliation work",
-      "atria_status": "NOT RE-VERIFIED (documentation-only)",
+      "status": "UNKNOWN",
+      "requirement": "Legacy carry-over A-29: Roadmap/Redis-Node version drift and Phase 9.0 wording remain documentation reconciliation work",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
       "reviews": [
-        "atria"
-      ]
+        "arena"
+      ],
+      "known_limitations": [
+        "Atria-era record only; not re-verified on this HEAD",
+        "No Arena evidence exists for this item, so no status above UNKNOWN is claimed",
+        "Disposition (fix / accepted risk with owner+expiry / block) still needs an owner decision"
+      ],
+      "blocked": true,
+      "blocked_reason": "Legacy Atria-era record (NOT RE-VERIFIED (documentation-only)). It carries no Arena attestation, no machine status, no HEAD binding and no evidence object — see docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json. It cannot be promoted to PASS/CERTIFIED without Arena evidence reproduced on the recorded SHA, and the disposition it needs (fix / accept risk with owner+expiry / block) is an owner decision.",
+      "owner_decision_required": true,
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "review_note",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 15,
+          "checks_passed": 15,
+          "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+          "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.692Z"
+        }
+      ],
+      "arena": {
+        "status": "BLOCKED",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "review_note",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 15,
+            "checks_passed": 15,
+            "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
+            "sha256": "159bdb96b18796ac21bcff6b22d72487ec1d11632b87fd665666d4f4b429daef",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.692Z"
+          }
+        ]
+      },
+      "legacy_record": {
+        "source": "docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json",
+        "atria_status": "NOT RE-VERIFIED (documentation-only)",
+        "previous_verdict": "reconciliation obligation (multi-AI report)"
+      }
+    },
+    {
+      "id": "M15-01-A",
+      "status": "RUNTIME_VERIFIED",
+      "requirement": "Evidence binds to the immutable SHA it was produced on: every artifact must exist in that commit with the declared sha256, exit_code must be 0 and checks_passed must equal checks_total. A stale or foreign SHA is rejected, not warned about.",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+      "reviews": [
+        "arena"
+      ],
+      "known_limitations": [
+        "Executed and reviewed by the same Arena session — self-review, not an independent review",
+        "Independence is not claimed: the Arena-only model has a single reviewer slot",
+        "Evidence logs are shared between the M15-01 items; each item records which checks back it (scope)",
+        "Human approval for the registry as a whole is still absent, so the registry stays NOT VERIFIED"
+      ],
+      "scope": "focused-suite P1 + negative fixtures V-02/V-02c/V-02d/V-02e/V-02f/V-02g",
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "positive_test",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 23,
+          "checks_passed": 23,
+          "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
+          "sha256": "7804b0e545ec60626f72601a09909cc2a65c048f8ad00da0b829d68e47d2e82f",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:23.859Z"
+        },
+        {
+          "reviewer": "arena",
+          "kind": "negative_test",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 52,
+          "checks_passed": 52,
+          "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
+          "sha256": "d6be75b06c00703ffc3cd8fc57ece5a5b1673e55b94255c75fec1693ff27b38f",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:28.993Z"
+        }
+      ],
+      "arena": {
+        "status": "PASS",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "positive_test",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 23,
+            "checks_passed": 23,
+            "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
+            "sha256": "7804b0e545ec60626f72601a09909cc2a65c048f8ad00da0b829d68e47d2e82f",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:23.859Z"
+          },
+          {
+            "reviewer": "arena",
+            "kind": "negative_test",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 52,
+            "checks_passed": 52,
+            "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
+            "sha256": "d6be75b06c00703ffc3cd8fc57ece5a5b1673e55b94255c75fec1693ff27b38f",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:28.993Z"
+          }
+        ]
+      }
+    },
+    {
+      "id": "M15-01-B",
+      "status": "RUNTIME_VERIFIED",
+      "requirement": "Registry completeness is provable in both directions: every expected id exists, every item is declared, no id is duplicated, and the live registry items are the declared contract.",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+      "reviews": [
+        "arena"
+      ],
+      "known_limitations": [
+        "Executed and reviewed by the same Arena session — self-review, not an independent review",
+        "Independence is not claimed: the Arena-only model has a single reviewer slot",
+        "Evidence logs are shared between the M15-01 items; each item records which checks back it (scope)",
+        "Human approval for the registry as a whole is still absent, so the registry stays NOT VERIFIED"
+      ],
+      "scope": "focused-suite P4 + negative fixtures G14b/G14c/G14d/G8-dup",
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "positive_test",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 23,
+          "checks_passed": 23,
+          "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
+          "sha256": "7804b0e545ec60626f72601a09909cc2a65c048f8ad00da0b829d68e47d2e82f",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:23.859Z"
+        },
+        {
+          "reviewer": "arena",
+          "kind": "negative_test",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 52,
+          "checks_passed": 52,
+          "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
+          "sha256": "d6be75b06c00703ffc3cd8fc57ece5a5b1673e55b94255c75fec1693ff27b38f",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:28.993Z"
+        }
+      ],
+      "arena": {
+        "status": "PASS",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "positive_test",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 23,
+            "checks_passed": 23,
+            "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
+            "sha256": "7804b0e545ec60626f72601a09909cc2a65c048f8ad00da0b829d68e47d2e82f",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:23.859Z"
+          },
+          {
+            "reviewer": "arena",
+            "kind": "negative_test",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 52,
+            "checks_passed": 52,
+            "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
+            "sha256": "d6be75b06c00703ffc3cd8fc57ece5a5b1673e55b94255c75fec1693ff27b38f",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:28.993Z"
+          }
+        ]
+      }
+    },
+    {
+      "id": "M15-01-C",
+      "status": "RUNTIME_VERIFIED",
+      "requirement": "Status discipline: a blocked or unverified item can never be reported as CERTIFIED, the registry headline may not out-claim its weakest item, an absent human decision is never hidden, and a registry that verifies nothing is not a green gate.",
+      "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+      "reviews": [
+        "arena"
+      ],
+      "known_limitations": [
+        "Executed and reviewed by the same Arena session — self-review, not an independent review",
+        "Independence is not claimed: the Arena-only model has a single reviewer slot",
+        "Evidence logs are shared between the M15-01 items; each item records which checks back it (scope)",
+        "Human approval for the registry as a whole is still absent, so the registry stays NOT VERIFIED"
+      ],
+      "scope": "focused-suite P2/P3/P5 + contract suite + negative fixtures V-09/V-10/V-13/V-15/V-15b/V-16",
+      "evidence": [
+        {
+          "reviewer": "arena",
+          "kind": "positive_test",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 23,
+          "checks_passed": 23,
+          "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
+          "sha256": "7804b0e545ec60626f72601a09909cc2a65c048f8ad00da0b829d68e47d2e82f",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:23.859Z"
+        },
+        {
+          "reviewer": "arena",
+          "kind": "positive_test",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 20,
+          "checks_passed": 20,
+          "artifact": "docs/verification/evidence/m15-01-contract-suite.log",
+          "sha256": "20e4197ab8f0298eb4fe100eab488372d6fb537971fe4dea62736c0c4ef02698",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:30.658Z"
+        },
+        {
+          "reviewer": "arena",
+          "kind": "negative_test",
+          "command": "node",
+          "exit_code": 0,
+          "checks_total": 52,
+          "checks_passed": 52,
+          "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
+          "sha256": "d6be75b06c00703ffc3cd8fc57ece5a5b1673e55b94255c75fec1693ff27b38f",
+          "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-26T16:10:28.993Z"
+        }
+      ],
+      "arena": {
+        "status": "PASS",
+        "evidence": [
+          {
+            "reviewer": "arena",
+            "kind": "positive_test",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 23,
+            "checks_passed": 23,
+            "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
+            "sha256": "7804b0e545ec60626f72601a09909cc2a65c048f8ad00da0b829d68e47d2e82f",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:23.859Z"
+          },
+          {
+            "reviewer": "arena",
+            "kind": "positive_test",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 20,
+            "checks_passed": 20,
+            "artifact": "docs/verification/evidence/m15-01-contract-suite.log",
+            "sha256": "20e4197ab8f0298eb4fe100eab488372d6fb537971fe4dea62736c0c4ef02698",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:30.658Z"
+          },
+          {
+            "reviewer": "arena",
+            "kind": "negative_test",
+            "command": "node",
+            "exit_code": 0,
+            "checks_total": 52,
+            "checks_passed": 52,
+            "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
+            "sha256": "d6be75b06c00703ffc3cd8fc57ece5a5b1673e55b94255c75fec1693ff27b38f",
+            "head_sha": "26846d67c8c93a2636f7364c435be8bda28162a2",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-26T16:10:28.993Z"
+          }
+        ]
+      }
     }
   ]
 }
