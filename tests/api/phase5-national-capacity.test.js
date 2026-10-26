@@ -4,6 +4,7 @@
    Phase 5 Step 5 (P2-NI-03): National Capacity Enforcement API Tests
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -222,6 +223,7 @@ async function run() {
       pass++;
     }
 
+    reportSuiteResult({ name: 'phase5-national-capacity', pass, fail });
     console.log(`\nکل آزمون‌های API اجبار ظرفیت ملی: ${pass} آزمون موفق — بدون خطا ✅`);
   } catch (err) {
     console.error('❌ Test failed:', err);

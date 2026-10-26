@@ -3,6 +3,7 @@
    tests/api/bootstrap.test.js — Scoped Bootstrap Endpoint API Tests
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -126,6 +127,7 @@ async function main() {
   });
 
   console.log(`\nBootstrap API Tests: ${pass}/${pass + fail} passed`);
+  reportSuiteResult({ name: 'bootstrap', pass, fail });
   if (fail > 0) process.exit(1);
   server.close();
 }

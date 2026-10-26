@@ -3,6 +3,7 @@
    tests/api/event-processing-health.test.js — Event Processing API Tests (P1-SC-02)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -139,6 +140,7 @@ async function run() {
   }
 
   console.log(`\nEvent Processing Health API Tests: ${pass} passed, ${fail} failed`);
+  reportSuiteResult({ name: 'event-processing-health', pass, fail });
   if (fail > 0) process.exit(1);
 }
 

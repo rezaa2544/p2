@@ -3,6 +3,7 @@
    tests/api/intelligence-platform.test.js — Intelligence Platform API Tests (P0-EI-20)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -140,6 +141,7 @@ async function run() {
   }
 
   console.log(`\nIntelligence Platform API Tests: ${pass} passed, ${fail} failed`);
+  reportSuiteResult({ name: 'intelligence-platform', pass, fail });
   if (fail > 0) process.exit(1);
 }
 

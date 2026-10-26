@@ -277,6 +277,15 @@ jobs:
     - name: TEST/CI parity contract — npm test ≠ whole repository
       if: always()
       run: node tests/ci-test-parity-contract.js
+    # M15-01 / Chat 2: the false-green defense battery used to run only inside
+    # `npm run test:all` (an EXCLUSIVE_SUITES entry). If the canonical runner
+    # step failed early, this proof was skipped like everything else. It is a
+    # first-class gate now: C1–C9 cover generic exploits, C10–C16 exercise the
+    # REAL tests/api/runner.js evidence contract (zero-execution, skip,
+    # swallowed failure, pass=0, inflated evidence, hang, honest control).
+    - name: False-green defense — API execution-evidence contract (C1–C16)
+      if: always()
+      run: node tests/false-green-defense.test.js
     - name: Release version contract — package.json / lock / tags coherence
       if: always()
       run: node tests/release-version-contract.js

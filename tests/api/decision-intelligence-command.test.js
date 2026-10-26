@@ -3,6 +3,7 @@
    tests/api/decision-intelligence-command.test.js — Decision Command API Tests (P0-EI-17)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -138,6 +139,7 @@ async function run() {
   }
 
   console.log(`\nDecision Command API Tests: ${pass} passed, ${fail} failed`);
+  reportSuiteResult({ name: 'decision-intelligence-command', pass, fail });
   if (fail > 0) process.exit(1);
 }
 

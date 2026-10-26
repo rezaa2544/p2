@@ -3,6 +3,7 @@
    tests/api/outcome-evaluation-optimization.test.js — Outcome Evaluation API Tests (P0-EI-19)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -140,6 +141,7 @@ async function run() {
   }
 
   console.log(`\nOutcome Evaluation API Tests: ${pass} passed, ${fail} failed`);
+  reportSuiteResult({ name: 'outcome-evaluation-optimization', pass, fail });
   if (fail > 0) process.exit(1);
 }
 

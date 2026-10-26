@@ -3,6 +3,7 @@
    tests/api/policy-simulation.test.js — Policy Simulation API Tests (P0-EI-16)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -136,6 +137,7 @@ async function run() {
   }
 
   console.log(`\nPolicy Simulation API Tests: ${pass} passed, ${fail} failed`);
+  reportSuiteResult({ name: 'policy-simulation', pass, fail });
   if (fail > 0) process.exit(1);
 }
 

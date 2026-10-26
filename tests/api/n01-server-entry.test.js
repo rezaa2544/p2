@@ -16,6 +16,7 @@
           balanced braces (catches any re-duplication of the file tail)
    ═════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -115,6 +116,7 @@ async function main() {
 
   server.close();
   console.log('\nN-01 regression tests: ' + pass + '/' + (pass + fail) + ' passed');
+  reportSuiteResult({ name: 'n01-server-entry', pass, fail });
   process.exit(fail === 0 ? 0 : 1);
 }
 

@@ -3,6 +3,7 @@
    tests/api/pilot-deployment-health.test.js — Pilot Deployment API Tests (P1-SC-05)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -141,6 +142,7 @@ async function run() {
   }
 
   console.log(`\nPilot Deployment Health API Tests: ${pass} passed, ${fail} failed`);
+  reportSuiteResult({ name: 'pilot-deployment-health', pass, fail });
   if (fail > 0) process.exit(1);
 }
 

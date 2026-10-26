@@ -3,6 +3,7 @@
    tests/api/feedback-learning-memory.test.js — Learning Memory API Tests (P0-EI-14)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -136,6 +137,7 @@ async function run() {
   }
 
   console.log(`\nFeedback Learning Memory API Tests: ${pass} passed, ${fail} failed`);
+  reportSuiteResult({ name: 'feedback-learning-memory', pass, fail });
   if (fail > 0) process.exit(1);
 }
 

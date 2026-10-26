@@ -3,6 +3,7 @@
    tests/api/recommendation-action-planning.test.js — Recommendation API Tests (P0-EI-13)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -142,6 +143,7 @@ async function run() {
   }
 
   console.log(`\nAction Recommendations API Tests: ${pass} passed, ${fail} failed`);
+  reportSuiteResult({ name: 'recommendation-action-planning', pass, fail });
   if (fail > 0) process.exit(1);
 }
 

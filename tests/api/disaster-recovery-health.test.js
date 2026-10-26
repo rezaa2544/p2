@@ -3,6 +3,7 @@
    tests/api/disaster-recovery-health.test.js — Disaster Recovery API Tests (P1-SC-04)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -144,6 +145,7 @@ async function run() {
   }
 
   console.log(`\nDisaster Recovery Health API Tests: ${pass} passed, ${fail} failed`);
+  reportSuiteResult({ name: 'disaster-recovery-health', pass, fail });
   if (fail > 0) process.exit(1);
 }
 

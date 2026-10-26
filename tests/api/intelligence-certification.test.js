@@ -3,6 +3,7 @@
    tests/api/intelligence-certification.test.js — Intelligence Certification API Tests (P0-EI-21)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -149,6 +150,7 @@ async function run() {
   }
 
   console.log(`\nIntelligence Certification API Tests: ${pass} passed, ${fail} failed`);
+  reportSuiteResult({ name: 'intelligence-certification', pass, fail });
   if (fail > 0) process.exit(1);
 }
 

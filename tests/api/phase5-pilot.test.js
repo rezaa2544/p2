@@ -3,6 +3,7 @@
    tests/api/phase5-pilot.test.js — Phase 5 National Pilot API Suite (P2-PL-01)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -214,6 +215,7 @@ async function run() {
     console.log('  ✅ APPV-5: صدور موفق رسید تاییدیه اپراتور انسانی پایلوت ملی (200)');
     pass++;
 
+    reportSuiteResult({ name: 'phase5-pilot', pass, fail });
     console.log(`\nکل آزمون‌های فاز ۵ پایلوت ملی: ${pass} آزمون موفق — بدون خطا ✅`);
   } finally {
     server.close();

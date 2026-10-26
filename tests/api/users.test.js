@@ -3,6 +3,7 @@
    tests/api/users.test.js — Users Resource Endpoint Tests
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -175,6 +176,7 @@ async function main() {
   });
 
   console.log(`\nUsers API Tests: ${pass}/${pass + fail} passed`);
+  reportSuiteResult({ name: 'users', pass, fail });
   if (fail > 0) process.exit(1);
   server.close();
 }

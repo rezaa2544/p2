@@ -4,6 +4,7 @@
    Phase 5 Step 4 (P2-NI-02): National Production Readiness & Operations
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -300,6 +301,7 @@ async function run() {
       pass++;
     }
 
+    reportSuiteResult({ name: 'phase5-production-readiness', pass, fail });
     console.log(`\nکل آزمون‌های API آمادگی بهره‌برداری ملی: ${pass} آزمون موفق — بدون خطا ✅`);
   } catch (err) {
     console.error('❌ Test failed:', err);
