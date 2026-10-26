@@ -100,11 +100,14 @@ chk('G5 Arena is the sole required AI reviewer', !!reg && norm(reg.required_revi
 /* Honest disclosure, not a check: with a single reviewer slot the pairwise-distinct
    checks (V-03, G16) cannot fail. Independence is therefore not obtainable from AI
    review under this model; the compensating controls are G5 (one slot only), V-10
-   (no verification claim survives without a human decision) and V-15 (the headline
-   cannot out-claim the items). This note exists so the vacuity is visible instead of
-   being counted as a passed check. */
+   (no verification claim survives without a human decision), V-15 (the headline
+   cannot out-claim the items), V-17 (one witness cannot certify several claims) and
+   V-18 (no item may claim a status the reviewer contract cannot support). The
+   vacuity is reported as N/A, never as a passed check. */
 if (REVIEWERS.length < 2) {
-  console.log('  NOTE V-03/G16 independence checks are vacuous with ' + REVIEWERS.length + ' reviewer slot (bounded by G5/V-10/V-15)');
+  console.log('  NOTE V-03/G16 independence checks are vacuous with ' + REVIEWERS.length +
+    ' reviewer slot — reported as N/A (never as a pass) and capped by V-18; bounded additionally by G5/V-10/V-15');
+  console.log('  NOTE cross-ITEM witness copying is not vacuous at N=1 and is policed by V-17');
 }
 let allowed = null; try { allowed = JSON.parse(read(ALLOW)); } catch (e) { }
 chk('G6 explicit false-green allowlist exists', !!allowed && Array.isArray(allowed.items));
@@ -329,6 +332,28 @@ if (reg && isObj(reg)) {
     (!Array.isArray(rr[r]) || rr[r].some((x) => !isStr(x)) || new Set(rr[r]).size !== rr[r].length));
   chk('V-09c reviews_recorded records are distinct non-empty entries', rrBad.length === 0, rrBad.join(', '));
 
+  /* ── V-17 support: fingerprint every evidence record and index it by item.
+     Two records match only when artifact bytes, command, exit code and check counts
+     all agree — a genuinely different run is a different witness. */
+  const fpOf = (e) => norm([e.artifact, e.sha256, e.command, e.exit_code, e.checks_total, e.checks_passed, e.kind]);
+  const witnessIndex = new Map();
+  if (Array.isArray(reg.items)) {
+    for (const it0 of reg.items) {
+      if (!isObj(it0) || rankOf(it0.status) < VERIFYING_MIN_RANK) continue;
+      const id0 = String(it0.id || '');
+      const recs = [];
+      if (Array.isArray(it0.evidence)) recs.push(...it0.evidence);
+      for (const r of REVIEWERS) if (isObj(it0[r]) && Array.isArray(it0[r].evidence)) recs.push(...it0[r].evidence);
+      for (const e of recs) {
+        if (!isObj(e)) continue;
+        const fp = fpOf(e);
+        if (!witnessIndex.has(fp)) witnessIndex.set(fp, []);
+        const uses = witnessIndex.get(fp);
+        if (!uses.some((u) => u.id === id0)) uses.push({ id: id0, scope: isStr(it0.scope) ? it0.scope : '', artifact: String(e.artifact || '') });
+      }
+    }
+  }
+
   if (Array.isArray(reg.items)) {
     const ids = new Set();
     for (const item of reg.items) {
@@ -387,6 +412,7 @@ if (reg && isObj(reg)) {
       }
       chk('V-13 ' + id + ' verdict/status/block state consistent', v13.length === 0, v13.join(' | '));
 
+
       /* G15 (upstream contract, object-aware merge) — evidence must be reproducible, not prose.
          Each reviewer entry has to point at a repo artifact or a command/URL, and any
          tests|tools path it cites must actually exist on this HEAD — a citation to a file
@@ -426,8 +452,13 @@ if (reg && isObj(reg)) {
           : null;
       }).filter((x) => x !== null);
       const dupes = texts.filter((x, i) => texts.indexOf(x) !== i);
-      chk('G16 ' + id + ' reviewer evidence is not duplicated', dupes.length === 0,
-        dupes.length ? 'identical evidence across reviewers' : '');
+      /* Vacuity is disclosed, never counted: with one reviewer slot there is no pair to
+         compare, so G16 has no assertion value here. It re-activates automatically if the
+         reviewer contract widens; V-17 is what actually polices copied witnesses at N=1. */
+      if (REVIEWERS.length >= 2) {
+        chk('G16 ' + id + ' reviewer evidence is not duplicated', dupes.length === 0,
+          dupes.length ? 'identical evidence across reviewers' : '');
+      } else console.log('  N/A  G16 ' + id + ' cross-reviewer duplication — vacuous at ' + REVIEWERS.length + ' reviewer slot');
 
       /* evidence slots: item-level + per reviewer */
       const slots = [{ slot: 'item', entries: Array.isArray(item.evidence) ? item.evidence : null }];
@@ -435,6 +466,56 @@ if (reg && isObj(reg)) {
       const flat = [];
       for (const s of slots) if (s.entries) for (let i = 0; i < s.entries.length; i++) flat.push({ where: s.slot + '[' + i + ']', e: s.entries[i] });
 
+      /* ── V-17 (M15-01): one witness may not certify several claims by copying.
+         Cross-ITEM reuse is not excused by a single-reviewer model: the defect is not
+         "two reviewers agreed" but "one run was pasted under two ids". A byte-identical
+         evidence record may back more than one *verifying* item only when each item
+         declares a `scope` that (a) differs from every co-user's scope and (b) names
+         check identifiers that actually occur in the artifacts that item cites. A scope
+         citing a check no cited log contains is a fabricated citation, so it fails.
+         Blocked/UNKNOWN items are exempt: they assert nothing, and forcing a per-item
+         log for 29 honest non-claims would push authors to invent one. */
+      const v17 = [];
+      if (itemRank >= VERIFYING_MIN_RANK) {
+        const myFps = new Set(flat.filter((f) => isObj(f.e)).map((f) => fpOf(f.e)));
+        const myText = (() => {
+          let t = '';
+          for (const f of flat) {
+            if (!isObj(f.e) || !isStr(f.e.artifact)) continue;
+            const ap = path.resolve(ROOT, f.e.artifact);
+            if (!ap.startsWith(ROOT + path.sep) || !fs.existsSync(ap)) continue;
+            try { t += fs.readFileSync(ap, 'utf8'); } catch (e) { /* V-02 reports unreadable artifacts */ }
+          }
+          return t;
+        })();
+        for (const fp of myFps) {
+          const uses = witnessIndex.get(fp) || [];
+          const others = uses.filter((u) => u.id !== id);
+          if (!others.length) continue;
+          const mine = uses.find((u) => u.id === id);
+          const shared = others.map((o) => o.id).join(', ');
+          if (!isStr(mine.scope)) { v17.push('record ' + mine.artifact + ' is shared with ' + shared + ' and this item declares no scope'); continue; }
+          for (const o of others) if (o.scope === mine.scope) v17.push('record ' + mine.artifact + ' is shared with ' + o.id + ' under an identical scope');
+          const tokens = [...new Set(String(mine.scope).match(/\b[A-Z]{1,6}-?\d+[a-z]?\b/g) || [])];
+          if (!tokens.length) v17.push('scope names no check identifier: ' + String(mine.scope).slice(0, 70));
+          else {
+            const absent = tokens.filter((t) => !myText.includes(t));
+            if (absent.length) v17.push('scope cites checks absent from this item\'s artifacts: ' + absent.slice(0, 6).join(','));
+          }
+        }
+      }
+      chk('V-17 ' + id + ' shared witness is scoped per item, not copied', v17.length === 0,
+        v17.slice(0, 3).join(' | ') || 'no cross-item witness reuse');
+
+      /* ── V-18 (M15-01): a status may not claim more reviewers than exist.
+         INDEPENDENTLY_VERIFIED and CERTIFIED mean "corroborated by another reviewer".
+         With one declared slot that meaning is unattainable, so those ranks are
+         unreachable — the cap is enforced here instead of being bought back by a
+         vacuous V-03/G16 pass. */
+      const capRank = REVIEWERS.length >= 2 ? STATUS_RANK.CERTIFIED : STATUS_RANK.ADVERSARIAL_VERIFIED;
+      chk('V-18 ' + id + ' status reachable with ' + REVIEWERS.length + ' reviewer slot(s)',
+        itemRank < 0 || itemRank <= capRank,
+        itemRank > capRank ? 'status=' + item.status + ' requires >=2 reviewer slots; unreachable under this contract' : item.status);
       /* V-02: binding — every evidence object must bind head + existing artifact + real
          hash + bytes that exist AT THE EVIDENCE SHA + a run that actually succeeded.
          A hash of uncommitted bytes, a non-zero exit_code, or "N of M checks" is not
@@ -453,6 +534,7 @@ if (reg && isObj(reg)) {
         if (atSha === null) bindErrs.push(f.where + ': artifact absent from evidence commit ' + String(evidenceHead).slice(0, 12) + ': ' + e.artifact);
         else if (atSha !== e.sha256) bindErrs.push(f.where + ': bytes at evidence SHA differ from declared sha256 (stale or tampered): ' + e.artifact);
         if (e.exit_code !== 0) bindErrs.push(f.where + ': exit_code=' + e.exit_code + ' (a failing run is not evidence)');
+        if (isDate(e.ts) && new Date(e.ts).getTime() > Date.now() + 15 * 60 * 1000) bindErrs.push(f.where + ': ts is in the future');
         if (isInt(e.checks_total) && isInt(e.checks_passed) && e.checks_passed !== e.checks_total) {
           bindErrs.push(f.where + ': checks_passed ' + e.checks_passed + ' != checks_total ' + e.checks_total);
         }
@@ -463,7 +545,9 @@ if (reg && isObj(reg)) {
       const reviewerSlots = REVIEWERS.map((r) => ({ r, entries: slots.find((s) => s.slot === r).entries }));
       const hashes = reviewerSlots.map((s) => norm(s.entries));
       const distinct = new Set(hashes).size === hashes.length;
-      chk('V-03 ' + id + ' reviewer evidence independent (pairwise distinct)', distinct, reviewerSlots.map((s) => s.r + ':' + (Array.isArray(s.entries) ? s.entries.length : 'none')).join(' '));
+      if (REVIEWERS.length >= 2) {
+        chk('V-03 ' + id + ' reviewer evidence independent (pairwise distinct)', distinct, reviewerSlots.map((s) => s.r + ':' + (Array.isArray(s.entries) ? s.entries.length : 'none')).join(' '));
+      } else console.log('  N/A  V-03 ' + id + ' pairwise reviewer independence — vacuous at ' + REVIEWERS.length + ' reviewer slot; V-17/V-18 apply instead');
 
       /* V-08: self-attesting certification modules may not be the sole evidence source */
       const cmds = flat.filter((f) => isObj(f.e) && isStr(f.e.command)).map((f) => String(f.e.command));

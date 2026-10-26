@@ -76,10 +76,33 @@ const PROPERTIES = [
     name: 'P5 BLOCKED/NOT VERIFIED cannot become CERTIFIED',
     cases: ['V-13a', 'V-13c', 'V-15', 'V-15b'],
     note: 'blocked item keeps a verifying status, BLOCKED verdict with verifying status, headline out-claims items, block buried under a green headline'
+  },
+  {
+    name: 'P6 one witness cannot certify several claims',
+    cases: ['V-17', 'V-17b', 'V-17c'],
+    note: 'a byte-identical evidence record reused under another item id, the same tactic under an identical scope, and scopes citing check identifiers no cited log contains; the GOOD-SCOPED-SHARED control proves distinct scoped citations stay admissible'
+  },
+  {
+    name: 'P7 a failing or empty run is never evidence (falsified in the A-30 fixtures)',
+    cases: ['V-02f', 'V-02g', 'V-11', 'V-11b'],
+    note: 'exit_code != 0, checks_passed != checks_total, zero-total and zero-passed evidence — the false-green path that made main report VERIFIED for a registry whose every run had failed'
   }
 ];
+/* V-18 is only registered by the fixture when the contract declares a single reviewer
+   slot, so this property list must match that condition rather than assume it. */
+const CAP_PROPS = [];
+try {
+  const schema = JSON.parse(fs.readFileSync(path.join(ROOT, 'docs', 'verification', 'VERIFICATION_EVIDENCE_SCHEMA.json'), 'utf8'));
+  if (!Array.isArray(schema.reviewers) || schema.reviewers.length < 2) {
+    CAP_PROPS.push({
+      name: 'P8 independence the reviewer contract cannot support is unreachable',
+      cases: ['V-18'],
+      note: 'INDEPENDENTLY_VERIFIED/CERTIFIED require a second reviewer slot; with one slot the gate caps them (V-18) and reports the vacuous V-03/G16 as N/A instead of counting them as passes'
+    });
+  }
+} catch (e) { /* missing schema: the gate itself fails G15/V-12 first */ }
 
-for (const prop of PROPERTIES) {
+for (const prop of PROPERTIES.concat(CAP_PROPS)) {
   const r = runNegativeSuite({ A30_ONLY: prop.cases.join(',') });
   const missing = prop.cases.filter((c) => !new RegExp('^\\s+OK\\s+' + c + ' rejected', 'm').test(r.out));
   chk(prop.name, r.code === 0 && missing.length === 0,
@@ -131,7 +154,10 @@ const MUTATIONS = [
     ['process.exit(fail || nothingVerified ? 1 : 0);', 'process.exit(fail ? 1 : 0);']
   ] },
   { id: 'V-11 adversarial coverage', fixture: 'V-11b', edits: [["if (needsCoverage && !hasAdv) vac.push('no negative/adversarial evidence for a verifying status');", '']] },
-  { id: 'G14c undeclared items', fixture: 'G14c', edits: [["chk('G14c no undeclared/unknown items', undeclared.length === 0,", "chk('G14c no undeclared/unknown items', true,"]] },
+  { id: 'G14c undeclared items (+V-17 also catches the cloned rider)', fixture: 'G14c', edits: [
+    ["chk('G14c no undeclared/unknown items', undeclared.length === 0,", "chk('G14c no undeclared/unknown items', true,"],
+    ["chk('V-17 ' + id + ' shared witness is scoped per item, not copied', v17.length === 0,", "chk('V-17 ' + id + ' shared witness is scoped per item, not copied', true,"]
+  ] },
   { id: 'G14d duplicate declarations', fixture: 'G14d', edits: [["chk('G14d expected_ids has no duplicate entries', dupExpected.length === 0,", "chk('G14d expected_ids has no duplicate entries', true,"]] },
   { id: 'G14b missing declared item', fixture: 'G14b', edits: [["chk('G14b all declared items present (' + expected.length + ')', missing.length === 0,", "chk('G14b all declared items present (' + expected.length + ')', true,"]] },
   { id: 'G10 evidence-free verdict (+V-16 also catches it)', fixture: 'G10-no-arena-slot', edits: [["chk('G10 ' + id + ' ' + r + ' verdict + evidence', REVIEWER_VERDICTS.includes(v.status) && evidenceOk,", "chk('G10 ' + id + ' ' + r + ' verdict + evidence', true,"],
@@ -140,7 +166,11 @@ const MUTATIONS = [
   { id: 'V-10 human approval', fixture: 'V-10d', edits: [['hg.human_approved === true &&', 'true &&']] },
   { id: 'V-09b retired reviewer slot', fixture: 'V-09d', edits: [["chk('V-09b reviews_recorded only uses known reviewer slots', rrUnknown.length === 0,", "chk('V-09b reviews_recorded only uses known reviewer slots', true,"]] },
   { id: 'V-16 nothing-verified exit', fixture: 'GOOD-BLOCKED', edits: [['process.exit(fail || nothingVerified ? 1 : 0);', 'process.exit(fail ? 1 : 0);']], expect: 'CONTROL' },
-  { id: 'G17 uncommitted drift', fixture: 'G17', edits: [["chk('G17 no uncommitted tracked drift outside the registry', drift.length === 0,", "chk('G17 no uncommitted tracked drift outside the registry', true,"]] }
+  { id: 'G17 uncommitted drift', fixture: 'G17', edits: [["chk('G17 no uncommitted tracked drift outside the registry', drift.length === 0,", "chk('G17 no uncommitted tracked drift outside the registry', true,"]] },
+  { id: 'V-17 cross-item witness scoping', fixture: 'V-17', edits: [["chk('V-17 ' + id + ' shared witness is scoped per item, not copied', v17.length === 0,", "chk('V-17 ' + id + ' shared witness is scoped per item, not copied', true,"]] },
+  { id: 'V-17 scope-token verification (fabricated citation)', fixture: 'V-17c', edits: [["const absent = tokens.filter((t) => !myText.includes(t));", "const absent = [];"]] },
+  { id: 'V-18 status cap under a one-slot contract', fixture: 'V-18', edits: [["itemRank < 0 || itemRank <= capRank,", "true,"]] },
+  { id: 'V-02 future timestamp', fixture: 'V-02h', edits: [["if (isDate(e.ts) && new Date(e.ts).getTime() > Date.now() + 15 * 60 * 1000) bindErrs.push(f.where + ': ts is in the future');", '']] }
 ];
 
 const GATE_SRC_TEXT = fs.readFileSync(GATE, 'utf8');

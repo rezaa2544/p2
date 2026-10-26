@@ -31,12 +31,25 @@ const SCHEMA_SRC = path.join(REPO, 'docs', 'verification', 'VERIFICATION_EVIDENC
 const ALERT_SRC = path.join(REPO, 'infra', 'observability', 'alert-rules.yml');
 
 const CANONICAL_STATUSES = ['UNKNOWN', 'TESTED', 'RUNTIME_VERIFIED', 'ADVERSARIAL_VERIFIED', 'INDEPENDENTLY_VERIFIED', 'CERTIFIED'];
-/* M15-01: the operating model is Arena-only (docs/STRICT_VERIFICATION_GATE.md).
-   The previous trio (chatgpt/arena/atria) is gone from the contract, so these
-   fixtures must speak the current contract — otherwise every case would "pass"
-   for the wrong reason (G5 failing on the fixture's own required_reviewers
-   instead of the exploit under test). */
-const TRIO = ['arena'];
+/* ── reviewer contract (M15-01) ───────────────────────────────────────────
+   The operating model is Arena-only (docs/STRICT_VERIFICATION_GATE.md); the retired
+   trio (chatgpt/arena/atria) is gone from the contract, so these fixtures must speak
+   the current contract — otherwise every case would "pass" for the wrong reason (G5
+   failing on the fixture's own required_reviewers instead of the exploit under test).
+   The list is read from the pinned evidence schema — the same file the gate validates
+   its own contract against (V-12) — so fixtures and contract cannot drift apart again. */
+function reviewerContract() {
+  let schema;
+  try { schema = JSON.parse(fs.readFileSync(SCHEMA_SRC, 'utf8')); } catch (e) { schema = null; }
+  if (!schema || !Array.isArray(schema.reviewers) || schema.reviewers.length === 0) {
+    throw new Error('VERIFICATION_EVIDENCE_SCHEMA.json: reviewers[] is missing — cannot build fixtures');
+  }
+  return schema.reviewers.map(String);
+}
+const TRIO = reviewerContract();
+/* Cases that assert pairwise cross-reviewer independence are only meaningful when the
+   contract declares more than one reviewer; they re-activate automatically if it widens. */
+const MULTI_REVIEWER = TRIO.length >= 2;
 
 const sha256 = (p) => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 const git = (dir, args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -448,6 +461,53 @@ cases.push({
   }
 });
 addCase('V-06-PR-DIVERGENT', 'V-06 PR base contained in HEAD', 'PR HEAD does not descend from origin/main', null, { prContext: true, divergentPrOrigin: true });
+
+/* V-17 (M15-01): one witness may not certify several claims by copying.
+   The per-reviewer checks (V-03/G16) are structurally vacuous in a one-slot contract;
+   cross-ITEM reuse is not, so it must stay policed. A shared record is admissible only
+   with a distinct per-item scope whose cited check identifiers really occur in the
+   artifacts that item cites. */
+addCase('V-17', 'V-17', 'identical evidence record certifies a second item with no scope', (r) => {
+  const clone = JSON.parse(JSON.stringify(r.items[0]));
+  clone.id = 'A-30-CLONE';
+  r.items.push(clone);
+});
+addCase('V-17b', 'V-17', 'two items share one witness under the same scope text', (r) => {
+  const clone = JSON.parse(JSON.stringify(r.items[0]));
+  clone.id = 'A-30-CLONE';
+  r.items[0].scope = 'A-30 fixture evidence';
+  clone.scope = 'A-30 fixture evidence';
+  r.items.push(clone);
+});
+addCase('V-17c', 'V-17', 'scopes differ but cite check ids no cited log contains', (r) => {
+  const clone = JSON.parse(JSON.stringify(r.items[0]));
+  clone.id = 'A-30-CLONE';
+  r.items[0].scope = 'A-30 fixture evidence P9';
+  clone.scope = 'A-30 fixture evidence P8';
+  r.items.push(clone);
+});
+addCase('V-02h', 'V-02', 'evidence timestamp lies ahead of the run that recorded it', (r) => {
+  r.items[0].evidence[0].ts = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+});
+/* V-18: a status whose meaning requires a second reviewer is unreachable while the
+   contract declares one slot. Registered only in that situation, so widening the
+   contract removes the assertion instead of leaving a stale expectation behind. */
+if (!MULTI_REVIEWER) {
+  addCase('V-18', 'V-18', 'item claims INDEPENDENTLY_VERIFIED under a one-slot reviewer contract', (r) => {
+    r.items[0].status = 'INDEPENDENTLY_VERIFIED';
+  });
+}
+/* Controls for the two rules above: without them the cases would be satisfied by a
+   gate that rejects every shared witness and every raised status, valid or not. */
+cases.push({ id: 'GOOD-SCOPED-SHARED', expectFail: null, description: 'two items may share one log when each scopes its own claim',
+  mutate: (r) => {
+    const clone = JSON.parse(JSON.stringify(r.items[0]));
+    clone.id = 'A-30-CLONE';
+    r.items[0].scope = 'A-30 DEMO evidence';
+    clone.scope = 'A-30 CLONE evidence';
+    r.items.push(clone);
+    r.expected_ids = r.items.map((x) => String(x.id));
+  }, extra: {} });
 
 /* ── runner ─────────────────────────────────────────────────────────────── */
 console.log('==== A-30 V-01..V-12 NEGATIVE GATE FIXTURES ====');

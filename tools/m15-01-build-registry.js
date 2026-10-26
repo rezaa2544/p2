@@ -70,10 +70,24 @@ function collect() {
     const body = (r.stdout || '') + (r.stderr || '');
     const ts = new Date().toISOString();
     const runtime = 'node:' + process.version + ',os:' + process.platform + ',arch:' + process.arch;
+    /* The header is a machine-readable contract, not prose: `command` contains
+       spaces, so it is quoted and the reader below parses quoted values up to the
+       next `key=`. The previous format wrote it bare and the reader's
+       /([a-z_]+)=([^\s]+)/ stopped at the first space, which silently truncated
+       every registry `command` to the single token "node" (M15-01, 72/72 fields).
+       Both sides are fixed and the round-trip is asserted below, so a regression
+       fails the build instead of quietly corrupting the registry. */
+    const quote = (v) => '"' + String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
     const header = '# M15-01-EVIDENCE name=' + name + ' ts=' + ts + ' exit=' + r.status +
-      ' runtime=' + runtime + ' command=' + spec.command + '\n';
+      ' runtime=' + runtime + ' command=' + quote(spec.command) + '\n';
     fs.writeFileSync(out, header + body);
     const parsed = parseLog(name, out);
+    if (!parsed || parsed.command !== spec.command) {
+      console.log('REFUSED: evidence header round-trip lost the command for ' + name +
+        ' (wrote ' + JSON.stringify(spec.command) + ', read back ' +
+        JSON.stringify(parsed && parsed.command) + ') — the registry would bind an unprovable pointer');
+      process.exit(1);
+    }
     const ok = r.status === 0 && parsed && parsed.fail === 0 && parsed.total > 0;
     if (!ok) failures++;
     console.log((ok ? 'COLLECTED ' : 'COLLECT-FAILED ') + name + ' exit=' + r.status +
@@ -87,13 +101,34 @@ function collect() {
 }
 
 /* ── log parsing (the numbers in the registry come from here) ───────────── */
+/* Read `key=value` pairs where a value may contain spaces: a value runs to the
+   start of the next `key=`, quoted values are unescaped. Unquoted legacy headers
+   are therefore also recovered in full. */
+function parseHeader(line) {
+  const out = {};
+  const marks = [];
+  const re = /(?:^|\s)([a-z_]+)=/g;
+  let m;
+  while ((m = re.exec(line))) {
+    const keyStart = m.index + (m[0].length - m[1].length - 1);
+    marks.push({ key: m[1], keyStart: Math.max(m.index, keyStart), valStart: m.index + m[0].length });
+  }
+  for (let i = 0; i < marks.length; i++) {
+    const to = i + 1 < marks.length ? marks[i + 1].keyStart : line.length;
+    let v = line.slice(marks[i].valStart, to).replace(/\s+$/, '');
+    if (/^"/.test(v)) {
+      v = v.replace(/^"|"$/g, '').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+    }
+    out[marks[i].key] = v;
+  }
+  return out;
+}
+
 function parseLog(name, file) {
   let text = '';
   try { text = fs.readFileSync(file, 'utf8'); } catch (e) { return null; }
   const lines = text.split('\n');
-  const header = {};
-  const h = lines[0] || '';
-  for (const m of h.matchAll(/([a-z_]+)=([^\s]+)/g)) header[m[1]] = m[2];
+  const header = parseHeader(lines[0] || '');
   let total = null, fail = null;
   const chk = text.match(/CHECKS\s+(\d+)\s+FAIL\s+(\d+)/);
   const neg = text.match(/NEGATIVE RESULT\s+(\d+)\s+pass\s*\/\s*(\d+)\s+fail/);
@@ -120,6 +155,9 @@ function runtimeObject(runtime) {
   }
   return Object.keys(out).length ? out : { node: process.version, os: process.platform };
 }
+
+const REVIEWER_SLOTS = ['arena'];
+const STATUS_RANK_VERIFY = (s) => ({ UNKNOWN: 0, TESTED: 1, RUNTIME_VERIFIED: 2, ADVERSARIAL_VERIFIED: 3, INDEPENDENTLY_VERIFIED: 4, CERTIFIED: 5 })[String(s)] ?? -1;
 
 function evidenceObject(head, parsed, kind) {
   return {
@@ -229,6 +267,44 @@ function emit(head, outPath) {
   });
 
   const all = items.concat(m15);
+
+  /* ── refuse to emit what the gate would reject (V-17 mirror) ──────────────
+     A witness record shared between two *verifying* items is only admissible when
+     each item declares a distinct scope and every check identifier in that scope
+     occurs in the artifacts that item cites. Checking it here means the builder
+     cannot produce a registry that the gate then fails — the failure lands in the
+     run that caused it, not in a later CI job someone has to interpret. */
+  const fpUses = new Map();
+  for (const it of all) {
+    if (STATUS_RANK_VERIFY(it.status) < 2) continue;
+    for (const e of (it.evidence || []).concat(...REVIEWER_SLOTS.map((r) => (it[r] && it[r].evidence) || []))) {
+      const fp = JSON.stringify([e.artifact, e.sha256, e.command, e.exit_code, e.checks_total, e.checks_passed, e.kind]);
+      if (!fpUses.has(fp)) fpUses.set(fp, []);
+      fpUses.get(fp).push(it.id);
+    }
+  }
+  const v17Refusals = [];
+  for (const [fp, ids] of fpUses) {
+    if (new Set(ids).size < 2) continue;
+    for (const id of new Set(ids)) {
+      const it = all.find((x) => x.id === id);
+      if (!it.scope) { v17Refusals.push(id + ': shares a witness with ' + ids.filter((x) => x !== id).join(', ') + ' but declares no scope'); continue; }
+      const tokens = [...new Set(String(it.scope).match(/\b[A-Z]{1,6}-?\d+[a-z]?\b/g) || [])];
+      if (!tokens.length) { v17Refusals.push(id + ': scope names no check identifier'); continue; }
+      let text = '';
+      for (const e of it.evidence || []) {
+        try { text += fs.readFileSync(path.join(ROOT, e.artifact), 'utf8'); } catch (err) { }
+      }
+      const absent = tokens.filter((t) => !text.includes(t));
+      if (absent.length) v17Refusals.push(id + ': scope cites checks absent from its artifacts: ' + absent.join(','));
+    }
+  }
+  if (v17Refusals.length) {
+    console.error('REFUSED (V-17 cross-item witness):\n - ' + v17Refusals.join('\n - '));
+    console.error('Fix: give each verifying item its own run, or make each scope cite only checks its own logs contain.');
+    process.exit(1);
+  }
+
   const registry = {
     schema_version: 2,
     policy: 'docs/STRICT_VERIFICATION_GATE.md',
@@ -259,8 +335,28 @@ function emit(head, outPath) {
       note: 'No human decision has been recorded for this HEAD. This field is deliberately false and the gate is ' +
         'expected to fail V-10 until the project owner records an approval (approver must be a human, not the AI reviewer).'
     },
+    /* Structural bound of the declared reviewer model, stated by the artifact that
+       is affected by it (see docs/STRICT_VERIFICATION_GATE.md § V-17/V-18). */
+    independence: {
+      model: 'arena-only',
+      reviewer_slots: 1,
+      pairwise_reviewer_independence: 'UNAVAILABLE — V-03/G16 are reported N/A by the gate, not as passes',
+      enforced_instead: ['V-17 (one witness cannot certify several claims)', 'V-18 (no INDEPENDENTLY_VERIFIED/CERTIFIED below two slots)', 'V-10 (a human decision is required for any verification claim)'],
+      owner_decision_required: true
+    },
     expected_ids: all.map((i) => i.id),
+    expected_ids_basis: 'A-01..A-29 are the inherited official contract (29 items). M15-01-A/B/C are addendum items ' +
+      'added by this mission because they are the only records carrying Arena evidence on a verifying status (V-16 ' +
+      'refuses a registry that verifies nothing). They are NOT silently folded into the official count: see OD-4.',
     open_owner_decisions: [
+      {
+        id: 'OD-4',
+        item: 'expected_ids declares 32 items (29 official + 3 M15-01 addendum) while the official contract count is undecided between 29 and 39',
+        state: 'NOT DECIDED',
+        why_it_blocks: 'G14b/G14c make the declaration binding, so the addendum items can be kept only by owner ratification; ' +
+          'dropping them instead leaves no Arena-evidenced verifying item and the gate stays NOT VERIFIED by V-16. ' +
+          'No number may be chosen by the chats: the owner picks 29 (drop A/B/C), 32 (ratify the addendum) or 39 (extend the contract).'
+      },
       {
         id: 'OD-1',
         item: 'Human approval of the verification registry',
@@ -311,9 +407,48 @@ function emit(head, outPath) {
 const argv = process.argv.slice(2);
 const headArg = argv.includes('--head') ? argv[argv.indexOf('--head') + 1] : null;
 const outArg = argv.includes('--out') ? argv[argv.indexOf('--out') + 1] : null;
-if (argv.includes('--collect')) collect();
+function selftest() {
+  /* The regression this exists for: a header value containing spaces must survive
+     write → read. Proven on the real writer's format, not on a paraphrase. */
+  const os = require('os');
+  const cases = [
+    'node tests/strict-verification-gate.negative.test.js',
+    'node tools/m15-01-build-registry.js --collect --strict',
+    'sh -c "npm run test:all 2>&1"'
+  ];
+  let bad = 0;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'm15-01-header-'));
+  cases.forEach((command, i) => {
+    const file = path.join(dir, 'selftest-' + i + '.log');
+    const runtime = 'node:' + process.version + ',os:' + process.platform + ',arch:' + process.arch;
+    const ts = new Date().toISOString();
+    const quote = (v) => '"' + String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+    fs.writeFileSync(file, '# M15-01-EVIDENCE name=selftest ts=' + ts + ' exit=0 runtime=' + runtime +
+      ' command=' + quote(command) + '\nCHECKS 3 FAIL 0\n');
+    const p = parseLog('selftest', file);
+    const ok = !!p && p.command === command && p.exit === 0 && p.total === 3 && p.ts === ts && p.runtime === runtime;
+    if (!ok) bad++;
+    console.log((ok ? 'SELFTEST OK   ' : 'SELFTEST FAIL ') + '#' + i + ' command=' + JSON.stringify(p && p.command) +
+      ' want=' + JSON.stringify(command));
+  });
+  /* legacy tolerance: an unquoted old header must also be recovered in full */
+  const legacy = path.join(dir, 'legacy-0.log');
+  fs.writeFileSync(legacy, '# M15-01-EVIDENCE name=legacy ts=2026-01-01T00:00:00.000Z exit=0 ' +
+    'runtime=node:v22.22.3,os:linux,arch:x64 command=node tools/verification-legacy-inventory.js\nCHECKS 15 FAIL 0\n');
+  const lp = parseLog('legacy', legacy);
+  const lok = !!lp && lp.command === 'node tools/verification-legacy-inventory.js';
+  if (!lok) bad++;
+  console.log((lok ? 'SELFTEST OK   ' : 'SELFTEST FAIL ') + 'legacy-unquoted command=' + JSON.stringify(lp && lp.command));
+  fs.rmSync(dir, { recursive: true, force: true });
+  console.log(bad ? 'SELFTEST REFUSED (' + bad + ' lossy round-trip(s))' : 'SELFTEST OK');
+  process.exit(bad ? 1 : 0);
+}
+
+if (argv.includes('--selftest')) selftest();
+else if (argv.includes('--collect')) collect();
 else if (argv.includes('--emit')) emit(headArg, outArg);
 else {
-  console.log('usage: node tools/m15-01-build-registry.js --collect');
+  console.log('usage: node tools/m15-01-build-registry.js --selftest');
+  console.log('       node tools/m15-01-build-registry.js --collect');
   console.log('       node tools/m15-01-build-registry.js --emit --head <40-hex source SHA> [--out <path>]');
 }

@@ -115,9 +115,38 @@ V-12 (schema)        reviewer slots in item.reviews must be known and unique; bl
                      is pinned in the gate and in VERIFICATION_EVIDENCE_SCHEMA.json
 G13                  replaced a tautology ("not CERTIFIED implies not CERTIFIED") with a real
                      property: a non-certified item may not claim certification
-V-03/G16             structurally vacuous with one reviewer slot — declared as such in the gate
-                     output instead of being counted as a passed check. Independence is not
-                     obtainable from AI review under this model; G5 + V-10 + V-15 bound it.
+V-03/G16             structurally vacuous with one reviewer slot — reported as N/A (never counted
+                     as a passed check). Independence is not obtainable from AI review under this
+                     model; G5 + V-10 + V-15 + V-17 + V-18 bound it.
+V-17 shared witness  a byte-identical evidence record (artifact + sha256 + command + exit_code +
+                     checks_total + checks_passed + kind) may not certify more than one VERIFYING
+                     item unless each sharing item declares `scope`, the scopes differ, and every
+                     check identifier named by a scope occurs in the artifacts that item cites.
+                     One run pasted under two ids is copy-paste self-confirmation, not evidence;
+                     it is not excused by a single-reviewer model because it is not a
+                     reviewer-pairwise property. Blocked/UNKNOWN items are exempt: they claim
+                     nothing, and forcing a bespoke log per honest non-claim invites invention.
+V-18 status reach    with fewer than two declared reviewer slots no item may carry
+                     INDEPENDENTLY_VERIFIED or CERTIFIED — those ranks mean "corroborated by
+                     another reviewer". The gate caps them instead of letting a vacuous V-03/G16
+                     pass buy them back. Widening the reviewer contract is an owner decision.
+V-02 ts              an evidence timestamp in the future (beyond a 15-minute skew) is rejected.
+
+EVIDENCE HEADER CONTRACT (registry builder)
+Each committed log under `docs/verification/evidence/` starts with a machine-readable header:
+
+    # M15-01-EVIDENCE name=<key> ts=<iso8601> exit=<int> runtime=<a:b,c:d,...> command="<argv>"
+
+`command` contains spaces, so it is QUOTED and the reader captures each value up to the next
+`key=` (quoted values are unescaped; unquoted legacy headers are recovered in full). Before this
+contract, the builder wrote the command bare and read it back with `/([a-z_]+)=([^\s]+)/`, which
+stopped at the first space: every `command` field of a generated registry became the single token
+`node` (72/72 fields in one committed registry). The gate then rejects the pointer (G15a needs a
+real path or command), so the damage was visible rather than silently green — but a registry
+whose `command` does not name the invocation cannot prove reproducibility. The builder now
+asserts the write→read round-trip on every run and refuses to emit on any loss
+(`node tools/m15-01-build-registry.js --selftest` proves the parser without executing suites), and
+`--emit` re-checks the V-17 scoping rule so it cannot produce a registry its own gate would fail.
 
 HONEST BLOCKED STATE (required shape)
   "status": "UNKNOWN", "blocked": true, "blocked_reason": "<why>",
