@@ -10,7 +10,7 @@ try {
  fs.copyFileSync(path.join(__dirname,'../docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json'),path.join(root,'docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json'));
  cp.execFileSync('git',['init','--quiet',root]);
  for (const status of ['UNKNOWN','BLOCKED_UNTIL_REGISTRY_IS_COMPLETE']) {
-  fs.writeFileSync(path.join(root,'docs/verification/VERIFICATION_REGISTRY.json'),JSON.stringify({status,items:[],required_reviewers:['chatgpt','arena','atria']}));
+  fs.writeFileSync(path.join(root,'docs/verification/VERIFICATION_REGISTRY.json'),JSON.stringify({status,items:[],required_reviewers:['arena']}));
   const r=cp.spawnSync(process.execPath,[path.join(root,'tools/strict-verification-gate.js')],{cwd:root,encoding:'utf8'});
   assert.equal(r.status,1);assert(r.stdout.includes('FAIL V-01 registry declares a non-empty items array'));assert(r.stdout.includes('VERDICT NOT VERIFIED'));
   if(status.startsWith('BLOCKED'))assert(r.stdout.includes('FAIL V-05 top-level status in machine & not BLOCKED*'));

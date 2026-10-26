@@ -68,3 +68,79 @@ The binding reads the parent of the landed commit, so the merge strategy is part
 6. Land the metadata commit with a fast-forward, rebase or squash — a single-parent landing commit. A `--no-ff` merge commit gives the metadata commit two parents, `parent_count != 1`, the metadata-only privilege is refused, `evidenceHead` stays at the landing SHA and every per-item `V-02`, `G9` and the registry-level `V-10` binding fails. Measured with a synthetic conformant registry on the current gate: metadata commit on a branch = exit 1 with 1 FAIL (`V-06`, the expected self-reference while unmerged), fast-forward landing = exit 0 with 0 FAIL, merge-commit landing = exit 1 with 60 FAIL (`V-02` x30 + `G9` x29 + `V-10` x1). Repo policy for `main` may still require a merge commit for ordinary PRs; that is why step 7 exists.
 7. Write `head_bound` (and item, evidence and human-governance `head_sha`) as the exact pre-landing `origin/main` SHA, because that is the parent the landed commit will carry. Collect all evidence against that same SHA: rebase the metadata commit onto a newer `main` only after re-running the gate, the fixtures and re-issuing the review/approval bindings, otherwise `V-06`/`V-02`/`G9` go red and no amount of registry editing repairs it.
 8. Pre-flight before pushing (read-only, no ref is moved): `git rev-list --parents -n 1 <candidate>` must print exactly two SHA tokens, and `git diff --name-only --no-renames <pre-landing-main> <candidate>` must print exactly `docs/verification/VERIFICATION_REGISTRY.json`. If either differs, the landing cannot bind and must be rebuilt, not patched afterwards.
+
+
+M15-01 ADDENDUM (2026-10-26) — REGISTRY & STRICT VERIFICATION REPAIR
+
+Measured defects this addendum closes. Each one is a way an honest registry stopped being
+able to say "not verified", or a way a non-verification stopped being detectable.
+
+D-1  REGISTRY COULD NOT REPRESENT "NOT VERIFIED". The A-01..A-29 records carried `atria_status`
+     prose, no `status`, no `head_sha`, no `evidence` objects and no `arena` slot. A legacy
+     record could therefore be neither verified nor blocked: all 29 items failed V-04/V-12 at
+     once, and the only way out was to fabricate statuses. Fixed by the blocked state below.
+D-2  HEADLINE COULD OUT-CLAIM THE ITEMS. Nothing bound `status` to the items, so a registry of
+     29 UNKNOWN items could carry any headline, and one blocked item could be buried.
+D-3  ARTIFACT HASHES COVERED UNCOMMITTED BYTES. V-02 hashed the working tree only, so a log
+     could be hashed against content that never existed in the evidence commit.
+D-4  A FAILING RUN COULD BE FILED AS EVIDENCE. `exit_code` was documented as "must be 0" but
+     was never checked, and `checks_passed` was not compared with `checks_total`.
+D-5  COMPLETENESS WAS ONE-DIRECTIONAL. G14b proved declared ids exist; an item that was never
+     declared rode along, and duplicate declarations were accepted.
+D-6  "NOTHING VERIFIED" READ AS A GREEN GATE. A schema-valid registry whose items were all
+     UNKNOWN printed `VERDICT VERIFIED` and exited 0.
+D-7  THE FIXTURES SPOKE A RETIRED CONTRACT. tests/strict-verification-gate.negative.test.js and
+     tests/strict-verification-gate-a30.test.js still declared chatgpt/arena/atria, so their
+     positive controls failed G5 and every negative case was "rejected" by G5 rather than by
+     the exploit under test. The harness also accepted any output that merely *contained* the
+     check label — including an `OK` line — as proof of rejection.
+
+NEW / CHANGED CHECKS
+V-02s/artifacts      every evidence artifact must exist in the evidence commit with exactly the
+                     declared sha256 (git cat-file), in addition to the working-tree hash
+V-02e/exit           exit_code must be 0 and checks_passed must equal checks_total
+V-13 blocked state   blocked=true => status UNKNOWN + blocked_reason + owner_decision_required +
+                     Arena verdict BLOCKED; a FAIL/BLOCKED verdict may never carry
+                     RUNTIME_VERIFIED or above; verdict BLOCKED without blocked=true fails
+V-14 evidence SHA    the evidence SHA must be a real commit and an ancestor of the checkout
+V-15 headline        registry status <= weakest item; any blocked item caps it at TESTED
+V-16 nothing verified a registry with no item in the verifying band is NOT VERIFIED, exit 1,
+                     even when every structural check passes
+G14c/G14d            undeclared items and duplicate expected_ids are named
+G15b/G17             cited tests|tools paths must exist; no uncommitted tracked drift outside
+                     the registry (evidence must describe the committed tree)
+V-09b/V-09c          reviews_recorded may not name a retired slot and its records must be
+                     distinct non-empty strings
+V-12 (schema)        reviewer slots in item.reviews must be known and unique; blocked_item_keys
+                     is pinned in the gate and in VERIFICATION_EVIDENCE_SCHEMA.json
+G13                  replaced a tautology ("not CERTIFIED implies not CERTIFIED") with a real
+                     property: a non-certified item may not claim certification
+V-03/G16             structurally vacuous with one reviewer slot — declared as such in the gate
+                     output instead of being counted as a passed check. Independence is not
+                     obtainable from AI review under this model; G5 + V-10 + V-15 bound it.
+
+HONEST BLOCKED STATE (required shape)
+  "status": "UNKNOWN", "blocked": true, "blocked_reason": "<why>",
+  "owner_decision_required": true, "arena": { "status": "BLOCKED", "evidence": [<review_note>] }
+This is CONTRACT PASS and recordable, and it is never VERIFIED: V-16 forces the gate to exit 1
+and V-15b keeps the headline at or below TESTED.
+
+MUTATION-VERIFIED FIXTURES
+`node tests/m15-01-registry-strict-verification.test.js` runs each acceptance property against
+its fixtures, then re-runs the same fixtures against a deliberately weakened copy of the gate
+(one check disabled at a time) and fails if a fixture survives its own check being removed.
+A fixture that cannot go red is not evidence.
+
+OPEN (OWNER DECISION REQUIRED — NOT VERIFIED ON PURPOSE)
+O-1  Human governance. VERIFICATION_REGISTRY.json carries
+     human_governance.human_approved=false with no approver and no decided_at, because no human
+     decision exists. Until an owner records one, V-10 keeps the whole registry NOT VERIFIED.
+     This is not a defect to be worked around; it is the gate working.
+O-2  .github/workflows/strict-verification.yml triggers on `push` to `arena/**`, while V-06 in
+     push context requires HEAD to be an ancestor of origin/main. A branch push can therefore
+     never pass V-06. Either the trigger or the ancestry contract must change, and both choices
+     alter a security/CI requirement — that is an owner call, not an execution call.
+O-3  Landing mechanics: the metadata-only registry commit must land as a single-parent commit
+     (fast-forward or a rebuild after landing). A `--no-ff` merge or a squash makes the registry
+     commit non-metadata-only and V-02/G9/V-10 fail by construction. Known and accepted; the
+     registry is bound to the source SHA it was built from and must be rebuilt if the line moves.

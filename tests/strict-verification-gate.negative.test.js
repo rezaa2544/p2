@@ -19,13 +19,24 @@ const crypto = require('crypto');
 const { execFileSync, spawnSync } = require('child_process');
 
 const REPO = path.join(__dirname, '..');
-const GATE_SRC = path.join(REPO, 'tools', 'strict-verification-gate.js');
+/* A30_GATE_SRC / A30_ONLY exist so a caller can run ONE fixture against a
+   deliberately weakened copy of the gate (tests/m15-01-registry-strict-verification.test.js
+   uses this to prove the fixtures are not vacuous). Defaults are unchanged. */
+const GATE_SRC = process.env.A30_GATE_SRC
+  ? path.resolve(process.env.A30_GATE_SRC)
+  : path.join(REPO, 'tools', 'strict-verification-gate.js');
+const ONLY = (process.env.A30_ONLY || '').split(',').map((x) => x.trim()).filter(Boolean);
 const POLICY_SRC = path.join(REPO, 'docs', 'STRICT_VERIFICATION_GATE.md');
 const SCHEMA_SRC = path.join(REPO, 'docs', 'verification', 'VERIFICATION_EVIDENCE_SCHEMA.json');
 const ALERT_SRC = path.join(REPO, 'infra', 'observability', 'alert-rules.yml');
 
 const CANONICAL_STATUSES = ['UNKNOWN', 'TESTED', 'RUNTIME_VERIFIED', 'ADVERSARIAL_VERIFIED', 'INDEPENDENTLY_VERIFIED', 'CERTIFIED'];
-const TRIO = ['chatgpt', 'arena', 'atria'];
+/* M15-01: the operating model is Arena-only (docs/STRICT_VERIFICATION_GATE.md).
+   The previous trio (chatgpt/arena/atria) is gone from the contract, so these
+   fixtures must speak the current contract — otherwise every case would "pass"
+   for the wrong reason (G5 failing on the fixture's own required_reviewers
+   instead of the exploit under test). */
+const TRIO = ['arena'];
 
 const sha256 = (p) => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 const git = (dir, args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -80,12 +91,10 @@ function goodRegistry(head, mutate, fixtureDir) {
     policy: 'docs/STRICT_VERIFICATION_GATE.md',
     status: 'ADVERSARIAL_VERIFIED',
     head_bound: head,
-    required_reviewers: ['chatgpt', 'arena', 'atria'],
+    required_reviewers: TRIO.slice(),
     allowed_statuses: CANONICAL_STATUSES.slice(),
     reviews_recorded: {
-      chatgpt: ['A-30 architecture review'],
-      arena: ['A-30 adversarial runtime run'],
-      atria: ['A-30 independent repro']
+      arena: ['A-30 adversarial runtime run']
     },
     human_governance: {
       requires_human_approval: true,
@@ -101,20 +110,18 @@ function goodRegistry(head, mutate, fixtureDir) {
         status: 'ADVERSARIAL_VERIFIED',
         requirement: 'Strict Verification Gate rejects V-01..V-12 registry exploits',
         head_sha: head,
-        reviews: ['chatgpt', 'arena', 'atria'],
+        reviews: TRIO.slice(),
         known_limitations: ['fixtures only; full registry rebuild happens in A-38'],
         evidence: [
           mkEvidence('arena', 'positive_test', head, { command: 'node tests/strict-verification-gate.negative.test.js' }, fixtureDir),
-          mkEvidence('atria', 'negative_test', head, { command: 'node tests/strict-verification-gate.negative.test.js --adversarial' }, fixtureDir),
-          mkEvidence('chatgpt', 'runtime_evidence', head, { command: 'node tools/strict-verification-gate.js' }, fixtureDir)
+          mkEvidence('arena', 'negative_test', head, { command: 'node tests/strict-verification-gate.negative.test.js --adversarial' }, fixtureDir),
+          mkEvidence('arena', 'runtime_evidence', head, { command: 'node tools/strict-verification-gate.js' }, fixtureDir)
         ],
-        chatgpt: { status: 'PASS', evidence: evidenceByReviewer.chatgpt },
-        arena: { status: 'PASS', evidence: evidenceByReviewer.arena },
-        atria: { status: 'PASS', evidence: evidenceByReviewer.atria }
+        arena: { status: 'PASS', evidence: evidenceByReviewer.arena }
       }
     ]
   };
-  if (mutate) mutate(reg);
+  if (mutate) mutate(reg, fixtureDir);
   return reg;
 }
 
@@ -161,7 +168,7 @@ function mkFixture(name) {
 function writeArtifacts(dir) {
   const evDir = path.join(dir, 'docs', 'verification', 'evidence');
   for (const r of TRIO) {
-    for (const k of ['positive_test', 'negative_test', 'runtime_evidence']) {
+    for (const k of ['positive_test', 'negative_test', 'runtime_evidence', 'review_note']) {
       fs.writeFileSync(path.join(evDir, 'a30-' + r + '-' + k + '.log'), 'A-30 fixture evidence ' + r + ' ' + k + '\n');
     }
   }
@@ -214,15 +221,29 @@ addCase('V-02', 'V-02', 'evidence head_sha forged (not gate head)', (r) => {
   r.items[0].evidence[0].head_sha = '0'.repeat(40);
 });
 addCase('V-02b', 'V-02', 'evidence sha256 does not match artifact bytes', (r) => {
-  r.items[0].chatgpt.evidence[1].sha256 = 'f'.repeat(64);
+  r.items[0].arena.evidence[1].sha256 = 'f'.repeat(64);
 });
 addCase('V-02c', 'V-02', 'registry head_bound mismatches HEAD', (r) => { r.head_bound = 'dead'.repeat(10); });
 
-/* V-03: cloned evidence across reviewers (no independence) */
-addCase('V-03', 'V-03', 'arena/atria evidence byte-cloned from chatgpt', (r) => {
-  const src = r.items[0].chatgpt.evidence;
-  r.items[0].arena.evidence = JSON.parse(JSON.stringify(src));
-  r.items[0].atria.evidence = JSON.parse(JSON.stringify(src));
+/* V-03: under the Arena-only model there is one reviewer slot, so the
+   pairwise-distinct check is structurally vacuous. What must NOT be possible is
+   re-injecting a retired reviewer slot to manufacture the appearance of an
+   independent second opinion — that is now caught by the slot contract (V-12)
+   and by V-03r (an independence claim needs a 2nd reviewer or human corroboration). */
+addCase('V-03', 'V-12', 'retired reviewer slots resurrected to look independent', (r) => {
+  const clone = JSON.parse(JSON.stringify(r.items[0].arena.evidence[0]));
+  r.items[0].chatgpt = { status: 'PASS', evidence: [{ ...clone, reviewer: 'chatgpt' }] };
+  r.items[0].atria = { status: 'PASS', evidence: [{ ...clone, reviewer: 'atria' }] };
+  r.items[0].reviews = ['chatgpt', 'arena', 'atria'];
+  r.items[0].status = 'INDEPENDENTLY_VERIFIED';
+  r.human_governance.human_approved = false;
+});
+/* V-03b: independence cannot be asserted by the single AI slot. Under the
+   Arena-only model this is enforced by the human-governance gate (V-10), not by a
+   pairwise-distinct rule that one slot makes vacuous — so the fixture asserts V-10. */
+addCase('V-03b', 'V-10', 'independence claimed with no human decision behind it', (r) => {
+  r.items[0].status = 'INDEPENDENTLY_VERIFIED';
+  r.human_governance.human_approved = false;
 });
 
 /* V-04: status machine not enforced */
@@ -260,16 +281,16 @@ addCase('V-08', 'V-08', 'all evidence commands run the self-certification module
 
 /* V-09: injected reviewer PASS without recorded corroboration */
 addCase('V-09', 'V-09', 'reviewer PASS claims while reviews_recorded is empty', (r) => {
-  r.reviews_recorded = { chatgpt: [], arena: [], atria: [] };
+  r.reviews_recorded = { arena: [] };
 });
-addCase('V-09b', 'V-09', 'item.reviews omits a reviewer that claims PASS', (r) => {
-  r.items[0].reviews = ['arena', 'atria'];
+addCase('V-09b', 'V-09', 'item.reviews omits the reviewer that claims PASS', (r) => {
+  r.items[0].reviews = [];
 });
 
 /* V-10: human governance absent / fail-open on absent fields */
 addCase('V-10', 'V-10', 'human_governance object absent', (r) => { delete r.human_governance; });
 addCase('V-10b', 'V-10', 'human_approved field absent (fail-open on missing key)', (r) => { delete r.human_governance.human_approved; });
-addCase('V-10c', 'V-10', 'human approver is one of the AI reviewers', (r) => { r.human_governance.approver = 'chatgpt'; });
+addCase('V-10c', 'V-10', 'human approver is one of the AI reviewers', (r) => { r.human_governance.approver = 'arena'; });
 
 /* V-11: vacuous zero-check compliance / no adversarial evidence */
 addCase('V-11', 'V-11', 'evidence claims 0/0 checks (vacuous pass)', (r) => {
@@ -294,14 +315,144 @@ addCase('V-12b', 'V-12', 'registry missing schema keys (no policy/status/allowed
 
 addCase('V-12c', 'V-12', 'schema file weakened (evidence keys stripped) — pinned contract must notice', null, { tamperSchema: true });
 
+
+/* ── M15-01 addendum: stale / uncommitted / failing evidence must not bind ── */
+addCase('V-02d', 'V-02', 'artifact bytes edited after the evidence commit (stale artifact)', null, {
+  afterFinish: (dir) => {
+    const rel = 'docs/verification/evidence/a30-arena-positive_test.log';
+    fs.writeFileSync(path.join(dir, rel), 'A-30 fixture evidence arena positive_test EDITED AFTER COMMIT\n');
+    git(dir, ['add', rel]);
+    git(dir, ['commit', '-qm', 'artifact edited after the evidence was filed']);
+  }
+});
+addCase('V-02e', 'V-02', 'artifact never committed (hash covers uncommitted bytes)', null, {
+  afterFinish: (dir) => {
+    fs.writeFileSync(path.join(dir, 'docs', 'verification', 'evidence', 'uncommitted.log'), 'never committed\n');
+    const regPath = path.join(dir, 'docs', 'verification', 'VERIFICATION_REGISTRY.json');
+    const reg = JSON.parse(fs.readFileSync(regPath, 'utf8'));
+    const e = reg.items[0].arena.evidence[0];
+    e.artifact = 'docs/verification/evidence/uncommitted.log';
+    e.sha256 = sha256(path.join(dir, 'docs', 'verification', 'evidence', 'uncommitted.log'));
+    fs.writeFileSync(regPath, JSON.stringify(reg, null, 2));
+  }
+});
+addCase('V-02f', 'V-02', 'evidence records a failing run (exit_code 1)', (r) => {
+  r.items[0].evidence[0].exit_code = 1;
+});
+addCase('V-02g', 'V-02', 'evidence records 9 of 12 checks passing', (r) => {
+  r.items[0].evidence[1].checks_passed = 9;
+});
+
+/* ── M15-01 addendum: item inventory (missing / duplicate / unknown) ─────── */
+addCase('G14c', 'G14c', 'an item rides along without being declared in expected_ids', null, {
+  afterFinish: (dir) => {
+    const regPath = path.join(dir, 'docs', 'verification', 'VERIFICATION_REGISTRY.json');
+    const reg = JSON.parse(fs.readFileSync(regPath, 'utf8'));
+    const clone = JSON.parse(JSON.stringify(reg.items[0]));
+    clone.id = 'A-30-SMUGGLED';
+    reg.items.push(clone);
+    fs.writeFileSync(regPath, JSON.stringify(reg, null, 2));
+  }
+});
+addCase('G14d', 'G14d', 'expected_ids declares the same id twice', null, {
+  afterFinish: (dir) => {
+    const regPath = path.join(dir, 'docs', 'verification', 'VERIFICATION_REGISTRY.json');
+    const reg = JSON.parse(fs.readFileSync(regPath, 'utf8'));
+    reg.expected_ids.push(reg.expected_ids[0]);
+    fs.writeFileSync(regPath, JSON.stringify(reg, null, 2));
+  }
+});
+addCase('G8-dup', 'G8', 'duplicate item id in the registry', null, {
+  afterFinish: (dir) => {
+    const regPath = path.join(dir, 'docs', 'verification', 'VERIFICATION_REGISTRY.json');
+    const reg = JSON.parse(fs.readFileSync(regPath, 'utf8'));
+    reg.items.push(JSON.parse(JSON.stringify(reg.items[0])));
+    fs.writeFileSync(regPath, JSON.stringify(reg, null, 2));
+  }
+});
+
+/* ── M15-01 addendum: BLOCKED / NOT VERIFIED may not be dressed as CERTIFIED ── */
+addCase('V-13a', 'V-13', 'a blocked item keeps a verifying status', (r) => {
+  const it = r.items[0];
+  it.blocked = true; it.blocked_reason = 'needs owner decision'; it.owner_decision_required = true;
+});
+addCase('V-13b', 'V-13', 'blocked item without a reason and without owner flag', (r) => {
+  const it = r.items[0];
+  it.status = 'UNKNOWN'; it.blocked = true;
+  it.arena.status = 'BLOCKED';
+});
+addCase('V-13c', 'V-13', 'BLOCKED verdict recorded next to a verifying status', (r) => {
+  r.items[0].arena.status = 'BLOCKED';
+});
+addCase('V-15', 'V-15', 'registry headline out-claims its items', (r) => {
+  r.status = 'CERTIFIED';
+});
+addCase('V-15b', 'V-15b', 'blocked item buried under a green registry headline', (r, fixtureDir) => {
+  const it = r.items[0];
+  it.status = 'UNKNOWN'; it.blocked = true; it.blocked_reason = 'owner decision pending';
+  it.owner_decision_required = true; it.arena.status = 'BLOCKED';
+  it.evidence = [mkEvidence('arena', 'review_note', r.head_bound, { checks_total: 1, checks_passed: 1 }, fixtureDir)];
+  r.status = 'ADVERSARIAL_VERIFIED';
+});
+addCase('V-09d', 'V-09b', 'reviews_recorded names a retired reviewer slot', (r) => {
+  r.reviews_recorded.chatgpt = ['legacy review borrowed from the Atria era'];
+});
+addCase('G17', 'G17', 'tracked source file modified but never committed', null, {
+  afterFinish: (dir) => {
+    fs.writeFileSync(path.join(dir, 'tests', 'smoke.js'), '// uncommitted drift in the test that produced the evidence\n');
+  }
+});
+
+/* ── M15-01 acceptance properties, as named fixtures ─────────────────────
+   P2: absence of Arena evidence must never read as PASS.
+   P4: an item declared but absent must be detectable (G14b).
+   P3: a human decision that did not happen must never be silently satisfied. */
+addCase('G10-no-arena-slot', 'G10', 'Arena reviewer slot deleted (no Arena evidence at all)', (r) => {
+  delete r.items[0].arena;
+  r.items[0].reviews = ['arena'];      /* the record still claims Arena reviewed it */
+  r.reviews_recorded = { arena: ['claimed but unattested'] };
+});
+addCase('V-10d', 'V-10', 'human_approved is explicitly false', (r) => {
+  r.human_governance.human_approved = false;
+});
+addCase('G14b', 'G14b', 'a declared item is missing from the registry', null, {
+  afterFinish: (dir) => {
+    const regPath = path.join(dir, 'docs', 'verification', 'VERIFICATION_REGISTRY.json');
+    const reg = JSON.parse(fs.readFileSync(regPath, 'utf8'));
+    reg.expected_ids = ['A-30-DEMO', 'A-30-DECLARED-BUT-ABSENT'];
+    fs.writeFileSync(regPath, JSON.stringify(reg, null, 2));
+  }
+});
+
 /* GOOD control: must stay accepted in push/main context and PR context. */
 cases.push({ id: 'GOOD', expectFail: null, description: 'fully valid registry stays VERIFIED', mutate: null, extra: {} });
 cases.push({ id: 'GOOD-PR-ANCESTRY', expectFail: null, description: 'valid PR HEAD descends from origin/main', mutate: null, extra: { prContext: true } });
+/* GOOD-BLOCKED: an honestly blocked item must remain recordable and must keep the
+   whole registry out of the verifying band without failing the gate. If the new
+   blocked-state rules made honest blocking impossible, this control goes red. */
+cases.push({
+  id: 'GOOD-BLOCKED', expectFail: null, description: 'honest BLOCKED item is recordable', extra: { contractOnly: true },
+  mutate: (r, fixtureDir) => {
+    const note = mkEvidence('arena', 'review_note', r.head_bound, {
+      command: 'node tests/strict-verification-gate.negative.test.js --blocked-note',
+      checks_total: 1, checks_passed: 1
+    }, fixtureDir);
+    const it = r.items[0];
+    r.status = 'UNKNOWN';
+    it.status = 'UNKNOWN';
+    it.blocked = true;
+    it.blocked_reason = 'owner decision required before this claim can be made';
+    it.owner_decision_required = true;
+    it.evidence = [note];
+    it.arena = { status: 'BLOCKED', evidence: [note] };
+  }
+});
 addCase('V-06-PR-DIVERGENT', 'V-06 PR base contained in HEAD', 'PR HEAD does not descend from origin/main', null, { prContext: true, divergentPrOrigin: true });
 
 /* ── runner ─────────────────────────────────────────────────────────────── */
 console.log('==== A-30 V-01..V-12 NEGATIVE GATE FIXTURES ====');
 for (const c of cases) {
+  if (ONLY.length && !ONLY.includes(c.id)) continue;
   const dir = mkFixture(c.id);
   try {
     writeArtifacts(dir);
@@ -310,6 +461,11 @@ for (const c of cases) {
       fs.writeFileSync(path.join(dir, c.extra.addFile.path), c.extra.addFile.content);
     }
     const head = finishFixture(dir, reg); void head;
+    /* M15-01: mutations that must be applied AFTER expected_ids is derived from
+       the item list (undeclared items, duplicate declarations, artifacts that are
+       edited or never committed). The registry file itself is exempt from G17, so
+       rewriting it here is legitimate; anything else is not. */
+    if (c.extra && typeof c.extra.afterFinish === 'function') c.extra.afterFinish(dir);
     if (c.extra && c.extra.prContext) {
       if (c.extra.divergentPrOrigin) {
         /* Create a sibling commit directly so the fixture's rewritten registry
@@ -339,10 +495,29 @@ for (const c of cases) {
       }
     }
     const r = runGate(dir, c.extra && c.extra.prContext ? 'pull_request' : 'push');
+    /* A30_VERBOSE=1 prints the gate's own FAIL lines for the case — needed when a
+       fixture "passes" and you must know which other check rejected it. */
+    if (process.env.A30_VERBOSE) {
+      const lines = r.out.split('\n').filter((l) => /^\s+(FAIL|VERDICT)/.test(l));
+      if (lines.length) console.log('       [gate] ' + lines.join('\n       [gate] '));
+    }
     if (c.expectFail === null) {
-      rec('GOOD control accepted (exit 0)', r.code === 0, 'exit=' + r.code + (r.code !== 0 ? '\n' + r.out.split('\n').slice(-30).join('\n') : ''));
+      /* M15-01 V-16: a fully honest registry whose items are all blocked is CONTRACT
+         PASS but must never be reported VERIFIED — the control asserts that shape
+         instead of a green exit code. */
+      if (c.extra && c.extra.contractOnly) {
+        const okShape = r.code !== 0 && /CONTRACT PASS/.test(r.out) && /verifies nothing/.test(r.out) && /VERDICT NOT VERIFIED/.test(r.out);
+        rec('CONTROL contract-only registry conforms but stays NOT VERIFIED', okShape, 'exit=' + r.code);
+      } else {
+        rec('GOOD control accepted (exit 0)', r.code === 0, 'exit=' + r.code + (r.code !== 0 ? '\n' + r.out.split('\n').slice(-30).join('\n') : ''));
+      }
     } else {
-      const rejected = r.code !== 0 && r.out.includes(c.expectFail);
+      /* M15-01: a case counts as rejected only when the NAMED check is the one that
+         FAILED. Matching the label anywhere in the output let any other blocker
+         (e.g. a new exit-code rule) stand in for the check under test, which would
+         have marked a vacuous fixture as green. */
+      const namedFailure = new RegExp('^\\s+FAIL\\s+' + String(c.expectFail).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'm');
+      const rejected = r.code !== 0 && namedFailure.test(r.out);
       const detail = 'exit=' + r.code + (rejected ? '' : (r.code === 0 ? ' — ACCEPTED by gate (defect)' : ' — exit1 but expected check missing: ' + c.expectFail));
       rec(c.id + ' rejected (' + c.description + ')', rejected, detail);
     }
@@ -403,8 +578,8 @@ function runMetadataBindingFixture(name, mergeCommit) {
     try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) {}
   }
 }
-runMetadataBindingFixture('positive', false);
-runMetadataBindingFixture('merge-negative', true);
+if (!ONLY.length) runMetadataBindingFixture('positive', false);
+if (!ONLY.length) runMetadataBindingFixture('merge-negative', true);
 
 /* ── Issue #472 hardening — every *other* metadata-commit shape must fail closed ──
    The two cases above pin the allowed shape (single parent, registry as the sole
@@ -468,8 +643,10 @@ function runBindingShapeFixture(shape) {
     try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* temp cleanup is best-effort */ }
   }
 }
-for (const shape of ['extra-path', 'rename-into-registry', 'empty-metadata', 'root-no-parent']) {
-  runBindingShapeFixture(shape);
+if (!ONLY.length) {
+  for (const shape of ['extra-path', 'rename-into-registry', 'empty-metadata', 'root-no-parent']) {
+    runBindingShapeFixture(shape);
+  }
 }
 
 console.log('==== A-30 NEGATIVE RESULT ' + pass + ' pass / ' + fail + ' fail ====');

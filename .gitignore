@@ -4,6 +4,10 @@ data/*.sqlite
 data/*.db
 data/backups/
 *.log
+# M15-01: strict-verification evidence must exist IN the commit it is bound to,
+# so the gate's V-02 artifact-at-SHA check can read the bytes out of git.
+!docs/verification/evidence/
+!docs/verification/evidence/*.log
 .DS_Store
 Thumbs.db
 .env

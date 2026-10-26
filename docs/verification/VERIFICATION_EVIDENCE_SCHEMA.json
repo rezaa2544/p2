@@ -3,35 +3,121 @@
   "name": "strict-verification-evidence",
   "policy": "docs/STRICT_VERIFICATION_GATE.md",
   "owner": "A-30 Strict Verification Gate hardening",
-  "note": "Mandatory shape of VERIFICATION_REGISTRY.json. The gate pins these lists to its own canonical contract (V-12): editing this file alone cannot weaken the gate.",
-  "reviewers": ["arena"],
-  "reviewer_verdicts": ["PASS", "FAIL", "BLOCKED"],
-  "allowed_statuses": ["UNKNOWN", "TESTED", "RUNTIME_VERIFIED", "ADVERSARIAL_VERIFIED", "INDEPENDENTLY_VERIFIED", "CERTIFIED"],
-  "required_registry_keys": ["schema_version", "policy", "status", "head_bound", "required_reviewers", "allowed_statuses", "reviews_recorded", "human_governance", "expected_ids", "items"],
-  "required_item_keys": ["id", "status", "requirement", "head_sha", "reviews", "known_limitations", "evidence"],
-  "required_evidence_keys": ["reviewer", "kind", "command", "exit_code", "checks_total", "checks_passed", "artifact", "sha256", "head_sha", "runtime", "ts"],
-  "evidence_kinds": ["positive_test", "negative_test", "adversarial_test", "runtime_evidence", "failure_recovery_evidence", "data_evidence", "review_note"],
+  "note": "Mandatory shape of VERIFICATION_REGISTRY.json under the Arena-only operating model (see docs/STRICT_VERIFICATION_GATE.md). The gate pins these lists to its own canonical contract (V-12 + V-13): editing this file alone cannot weaken the gate, and adding a key here without adding it to the gate's canonical list fails the pin.",
+  "reviewers": [
+    "arena"
+  ],
+  "reviewer_verdicts": [
+    "PASS",
+    "FAIL",
+    "BLOCKED"
+  ],
+  "allowed_statuses": [
+    "UNKNOWN",
+    "TESTED",
+    "RUNTIME_VERIFIED",
+    "ADVERSARIAL_VERIFIED",
+    "INDEPENDENTLY_VERIFIED",
+    "CERTIFIED"
+  ],
+  "required_registry_keys": [
+    "schema_version",
+    "policy",
+    "status",
+    "head_bound",
+    "required_reviewers",
+    "allowed_statuses",
+    "reviews_recorded",
+    "human_governance",
+    "expected_ids",
+    "items"
+  ],
+  "required_item_keys": [
+    "id",
+    "status",
+    "requirement",
+    "head_sha",
+    "reviews",
+    "known_limitations",
+    "evidence"
+  ],
+  "required_evidence_keys": [
+    "reviewer",
+    "kind",
+    "command",
+    "exit_code",
+    "checks_total",
+    "checks_passed",
+    "artifact",
+    "sha256",
+    "head_sha",
+    "runtime",
+    "ts"
+  ],
+  "evidence_kinds": [
+    "positive_test",
+    "negative_test",
+    "adversarial_test",
+    "runtime_evidence",
+    "failure_recovery_evidence",
+    "data_evidence",
+    "review_note"
+  ],
   "evidence_semantics": {
     "reviewer": "Arena; must equal the slot the evidence is attached to (V-09)",
-    "kind": "evidence class; every item needs >=1 positive/runtime AND >=1 negative/adversarial/failure_recovery (V-11)",
+    "kind": "evidence class; an item claiming RUNTIME_VERIFIED or above needs >=1 positive/runtime AND >=1 negative/adversarial/failure_recovery (V-11); a blocked/untested item needs only the review note that explains why",
     "command": "reproducible command; may not be solely a self-certification module (V-08)",
-    "exit_code": "must be 0",
+    "exit_code": "must be 0 — a run that failed is not evidence, it is a recorded failure (V-02)",
     "checks_total": "integer >= 1 — 0/0 vacuous claims rejected (V-11)",
-    "checks_passed": "integer, 0 <= checks_passed <= checks_total",
-    "artifact": "repo-relative path; file must exist (V-02)",
-    "sha256": "sha256 hex of the artifact bytes (V-02)",
-    "head_sha": "40-hex immutable source commit on which the evidence was produced; normally equals checkout HEAD. For a metadata-only registry commit, may equal its parent only when the gate proves docs/verification/VERIFICATION_REGISTRY.json is the sole changed path. All item, evidence, and human-governance bindings must agree on that evidence SHA; ancestry still checks checkout HEAD (V-02/V-06).",
+    "checks_passed": "integer, 0 <= checks_passed <= checks_total; must EQUAL checks_total for every entry (V-02)",
+    "artifact": "repo-relative path; the file must exist in the working tree AND its exact bytes must exist in the evidence commit (V-02)",
+    "sha256": "sha256 hex of the artifact bytes as committed at head_sha; a hash of uncommitted bytes is rejected (V-02)",
+    "head_sha": "40-hex immutable source commit on which the evidence was produced; normally equals checkout HEAD. For a metadata-only registry commit, may equal its parent only when the gate proves docs/verification/VERIFICATION_REGISTRY.json is the sole changed path. All item, evidence, and human-governance bindings must agree on that evidence SHA; ancestry still checks checkout HEAD (V-02/V-06/V-14).",
     "runtime": "non-empty object describing runtime (node/os/...)",
     "ts": "ISO-8601 timestamp"
   },
   "human_governance": {
     "required": true,
-    "keys": ["requires_human_approval", "human_approved", "approver", "decided_at", "head_sha"],
+    "keys": [
+      "requires_human_approval",
+      "human_approved",
+      "approver",
+      "decided_at",
+      "head_sha"
+    ],
     "semantics": "requires_human_approval and human_approved must be literally true (absent key = fail, V-10); approver must be a human, not one of the three AI reviewers (V-10); head_sha must equal the immutable evidence SHA. For a registry-only metadata commit, this is the single parent SHA only when the gate rejects merge commits and proves the registry is the sole changed path; checkout ancestry still binds actual HEAD (V-02/V-06)."
   },
   "false_green_allowlist_entry": {
-    "required": ["pattern", "owner", "reason", "expires", "replacement_test"],
-    "optional": ["path"],
+    "required": [
+      "pattern",
+      "owner",
+      "reason",
+      "expires",
+      "replacement_test"
+    ],
+    "optional": [
+      "path"
+    ],
     "semantics": "pattern must be a known scanner label; expires is 'never' or a future date; optional path scopes approval to one file so gate-internal literals cannot blanket-approve the repo (V-07)"
+  },
+  "blocked_item_keys": [
+    "blocked",
+    "blocked_reason",
+    "owner_decision_required"
+  ],
+  "verdict_rules": {
+    "slot": "item.arena — the only reviewer slot under the Arena-only model (G5)",
+    "verdicts": "PASS | FAIL | BLOCKED; every verdict needs its own evidence array (G10)",
+    "pass_requires": "reviews_recorded.arena non-empty + item.reviews contains arena + evidence[].reviewer == arena (V-09)",
+    "non_pass_ceiling": "a FAIL/BLOCKED verdict can never sit next to RUNTIME_VERIFIED or above; blocked=true pins the item to UNKNOWN and requires blocked_reason + owner_decision_required (V-13)"
+  },
+  "registry_status_bounds": {
+    "ceiling": "the registry status may not exceed the weakest recorded item (V-15)",
+    "blocked": "if any item is blocked, the registry status may not exceed TESTED (V-15b)",
+    "nothing_verified": "a registry with no item in the verifying band is NOT VERIFIED and the gate exits 1 even when every structural check passes (V-16)"
+  },
+  "completeness": {
+    "expected_ids": "must be non-empty, duplicate-free, contain every item id, and be fully present in items — missing, duplicated and undeclared ids are each named (G14a..G14d, G8)",
+    "independence": "with one reviewer slot the pairwise-distinct checks (V-03/G16) are structurally vacuous; independence is not obtainable from AI review and the empty slot must not be re-invented (V-12)"
   }
 }
