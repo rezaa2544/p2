@@ -1,17 +1,24 @@
 {
   "schema_version": 1,
   "policy": "docs/STRICT_VERIFICATION_GATE.md",
-  "status": "BLOCKED_UNTIL_THREE_AI_AGREEMENT",
-  "note": "Atria alone may NOT certify. Every item below is recorded as ATRIA_PASS (Atria-only evidence on the bound HEAD), never CERTIFIED. Certification requires independent ChatGPT + Arena + Atria agreement on the SAME HEAD with their own evidence.",
+  "status": "BLOCKED_UNTIL_ARENA_EVIDENCE_AND_HUMAN_APPROVAL",
+  "note": "Arena is the sole required AI reviewer. Legacy item records below are historical Atria notes and are NOT valid Arena attestations or certification. Do not infer PASS/CERTIFIED; rebuild current-head evidence under the Arena-only schema. Human governance remains mandatory.",
   "head_bound": "e4584806c1af2a1e5db648c8452580a8fa8cbcec",
   "head_basis": "re-audit started at 67b6683a58031f2399d249db372ca853cc8d815f (origin/main); two fixes landed during the audit (02c14742 A-20, e4584806 A-22); all evidence in this registry is bound to the final HEAD e4584806.",
-  "required_reviewers": ["chatgpt", "arena", "atria"],
+  "required_reviewers": [
+    "arena"
+  ],
   "reviews_recorded": {
-    "chatgpt": [],
-    "arena": [],
-    "atria": ["A-20 (fix + reaudit-occ-stale-write 34/34)", "A-22 (fix + reaudit-redis-outage 17/17)"]
+    "arena": []
   },
-  "allowed_statuses": ["UNKNOWN", "TESTED", "RUNTIME_VERIFIED", "ADVERSARIAL_VERIFIED", "INDEPENDENTLY_VERIFIED", "CERTIFIED"],
+  "allowed_statuses": [
+    "UNKNOWN",
+    "TESTED",
+    "RUNTIME_VERIFIED",
+    "ADVERSARIAL_VERIFIED",
+    "INDEPENDENTLY_VERIFIED",
+    "CERTIFIED"
+  ],
   "false_green_blockers_on_head": [
     {
       "id": "FG-1",
@@ -37,8 +44,13 @@
       "current_head": "routes/analytics.js schools query uses WHERE district_id = $1; six collections via db.readCollection with per-collection console.warn fallback",
       "atria_status": "ATRIA_PASS",
       "evidence": "tests/phase-c-regional-pg-reads.js 11/11 re-run on 67b6683a; code inspection on e4584806 confirms fix intact",
-      "known_limitations": ["Proven at E2 (fake PG), not E3 (live PG) — pg not installed in this sandbox", "readCollection is full-table per collection"],
-      "reviews": ["atria"]
+      "known_limitations": [
+        "Proven at E2 (fake PG), not E3 (live PG) — pg not installed in this sandbox",
+        "readCollection is full-table per collection"
+      ],
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-02",
@@ -46,8 +58,12 @@
       "current_head": "server/analytics/health-index.js still has no db access (grep for db./isPostgres/readCollection returns zero hits)",
       "atria_status": "STILL OPEN (deferred, unchanged)",
       "evidence": "source-level confirmation on e4584806; no PG path added",
-      "known_limitations": ["perf-only; superadmin-only; unverifiable without pg"],
-      "reviews": ["atria"]
+      "known_limitations": [
+        "perf-only; superadmin-only; unverifiable without pg"
+      ],
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-03",
@@ -55,7 +71,9 @@
       "current_head": "routes/analytics.js + semantic-analytics.js fallback paths now console.warn",
       "atria_status": "ATRIA_PASS",
       "evidence": "source confirmation on e4584806",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-04",
@@ -63,8 +81,12 @@
       "current_head": "ids.js lastIssued monotonic counter present (ids.js:28,93-95)",
       "atria_status": "ATRIA_PASS (single-instance)",
       "evidence": "tests/phase-c-id-race.js 3/3 re-run on 67b6683a",
-      "known_limitations": ["JSON multi-instance mode still races (lastIssued is in-process); PG immune via nextval"],
-      "reviews": ["atria"]
+      "known_limitations": [
+        "JSON multi-instance mode still races (lastIssued is in-process); PG immune via nextval"
+      ],
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-05",
@@ -72,7 +94,9 @@
       "current_head": "admin.js startAutoBackup returns null with warning in PG-live; index.js banner is honest",
       "atria_status": "ATRIA_PASS",
       "evidence": "tests/phase-c-backup-pg-noop.js 8/8 re-run on 67b6683a",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-06",
@@ -80,7 +104,9 @@
       "current_head": "sms.js per-request memoization, queueById Map, monotonic nextId, idempotency index",
       "atria_status": "ATRIA_PASS",
       "evidence": "tests/phase-c-sms-quota-complexity.js 18/18 re-run on 67b6683a",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-07",
@@ -88,7 +114,9 @@
       "current_head": "wave1-reads/wave3-query2/bell2 use the __skip sentinel + independent NOT-RUN counter",
       "atria_status": "ATRIA_PASS",
       "evidence": "wave1-reads 17/17 (+1 NOT-RUN), wave3-query2 12/12 (+1 NOT-RUN), bell2 7/7 (+1 NOT-RUN), all exit 0, re-run on e4584806",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-08",
@@ -96,8 +124,12 @@
       "current_head": "exit(0)-before-any-check heuristic sweep over 964 test files produced 13 flags; the two smallest inspected (demo-thursday.js, session8-gc.js) are LEGITIMATE (real assertions with non-chk idioms / exit-code semantics)",
       "atria_status": "OPEN (no new false-green confirmed; blanket enumeration not completed)",
       "evidence": "node-based lexical sweep + manual verification of 2 files",
-      "known_limitations": ["Heuristic cannot prove absence; a per-suite runtime audit of every exit(0) path is unfinished"],
-      "reviews": ["atria"]
+      "known_limitations": [
+        "Heuristic cannot prove absence; a per-suite runtime audit of every exit(0) path is unfinished"
+      ],
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-09",
@@ -105,7 +137,9 @@
       "current_head": ".github/workflows/codacy.yml:55 still max-allowed-issues: 2147483647; Codacy run is honestly red by design (MalformedInputException on non-ASCII files)",
       "atria_status": "ATRIA_PASS (re-confirmed NOT A DEFECT)",
       "evidence": "source confirmation on e4584806",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-10",
@@ -113,8 +147,12 @@
       "current_head": ".github/workflows/codeql.yml still only echoes 'Default CodeQL setup is enabled in repository settings' (line 10)",
       "atria_status": "STILL OPEN (no real scan)",
       "evidence": "source confirmation on e4584806",
-      "known_limitations": ["requires CodeQL runner/policy decision — workflow-level, not code"],
-      "reviews": ["atria"]
+      "known_limitations": [
+        "requires CodeQL runner/policy decision — workflow-level, not code"
+      ],
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-11",
@@ -122,8 +160,12 @@
       "current_head": ".github/workflows/fortify.yml skips the scan when credentials are absent (echo 'Skipping Fortify scan... NOT EXECUTED')",
       "atria_status": "STILL OPEN (no real scan; documented skip, not a silent false-green)",
       "evidence": "source confirmation on e4584806",
-      "known_limitations": ["requires Fortify credentials — external"],
-      "reviews": ["atria"]
+      "known_limitations": [
+        "requires Fortify credentials — external"
+      ],
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-12",
@@ -131,7 +173,9 @@
       "current_head": "scripts/run-all-tests.sh still not invoked by package.json or any workflow",
       "atria_status": "STILL OPEN",
       "evidence": "package.json test script = run.js + smoke.js only; no workflow invokes run-all-tests.sh",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-13",
@@ -139,7 +183,9 @@
       "current_head": "ci-test-parity-contract still non-recursive; 30 suites under tests/api/ are invisible to it AND red (see FG-1)",
       "atria_status": "STILL OPEN — with new measured evidence",
       "evidence": "30 api suites enumerated; 5/5 sampled return 0/N on e4584806",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-14",
@@ -147,7 +193,9 @@
       "current_head": "bell2 date-dependent skip replaced by explicit NOT-RUN reporting",
       "atria_status": "ATRIA_PASS",
       "evidence": "bell2 7/7 (+1 NOT-RUN) exit 0 on e4584806",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-15",
@@ -155,7 +203,9 @@
       "current_head": "offline-sync-drill S2c now verifies all three ok=true responses",
       "atria_status": "ATRIA_PASS",
       "evidence": "offline-sync-drill 29/29 exit 0 on e4584806",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-16",
@@ -163,7 +213,9 @@
       "current_head": "chaos-drill-lib pg status uses exit code, not a dead buffer comparison",
       "atria_status": "ATRIA_PASS",
       "evidence": "source confirmation; chaos path not runtime-exercised in this sandbox (no PG)",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-17",
@@ -171,7 +223,9 @@
       "current_head": "client-features.js asserts the real toast; multigrade2.js asserts real class_subject_members zeroing",
       "atria_status": "ATRIA_PASS",
       "evidence": "client-features 12/12, multigrade2 9/9 on e4584806 (index.html restored after build step)",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-18",
@@ -179,8 +233,12 @@
       "current_head": "conflicts.js resolves with monotonic nextVer = max(target.version, server_version)+1 and a manager school-scope check on the TARGET record",
       "atria_status": "ATRIA_PASS",
       "evidence": "tests/phase-c-conflict-resolution.js 12/12 re-run on 67b6683a; code intact on e4584806",
-      "known_limitations": ["apiList still shows global conflict rows to managers (metadata only; write is now gated)"],
-      "reviews": ["atria"]
+      "known_limitations": [
+        "apiList still shows global conflict rows to managers (metadata only; write is now gated)"
+      ],
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-19",
@@ -188,7 +246,9 @@
       "current_head": "student-timeline routed through the canonical policy.studentRecordOk gate (idor.js:68; semantic-analytics.js:256)",
       "atria_status": "ATRIA_PASS",
       "evidence": "tests/phase-c-student-timeline-ownership.js 6/6 re-run on 67b6683a",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-20",
@@ -196,8 +256,12 @@
       "current_head": "VERDICT OVERTURNED. The backward-compat contract is real (occ.js:8-10) but was applied to only 4 of 5 PATCH paths. grades passed isVersioned=true; students/users/classes/attendance did not, so in strict mode grades rejected a version-less write while the other four accepted it. A version-less PATCH silently destroys a concurrent edit.",
       "atria_status": "FIX REQUIRED → FIXED in 02c14742",
       "evidence": "tests/reaudit-occ-stale-write.js 34/34 on e4584806: stale-write reproduced on all 5 entities; strict-mode asymmetry reproduced pre-fix (4x200 + 1x400) and eliminated post-fix (5x400 missing_base_version); dev/test compat preserved (occ.js 18/18, phase-c-unvalidated-fks 16/16)",
-      "known_limitations": ["Dev/test still permits version-less writes by design (documented compat); production now fail-closed"],
-      "reviews": ["atria"]
+      "known_limitations": [
+        "Dev/test still permits version-less writes by design (documented compat); production now fail-closed"
+      ],
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-21",
@@ -205,7 +269,9 @@
       "current_head": "classes.js homeroom_teacher_id must be a same-school teacher on create and update; attendance.js class_id must be the student's enrolled class; grades.js class_id + subject_id validated",
       "atria_status": "ATRIA_PASS",
       "evidence": "tests/phase-c-unvalidated-fks.js 16/16 re-run on 67b6683a and on e4584806 (after the A-20 change to the same files)",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-22",
@@ -227,7 +293,9 @@
         "expiry_or_review_point_needed": true,
         "note": "Phase C recorded this as ACCEPTED RISK WITHOUT owner/expiry/review-point; that does not satisfy the gate. Owner and review point must still be recorded."
       },
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-23",
@@ -235,30 +303,42 @@
       "current_head": "regional-intelligence-network.js average_difficulty_p_value derived from totalHard/totalExams, null when no exams",
       "atria_status": "ATRIA_PASS",
       "evidence": "tests/phase-c-regional-difficulty-metric.js 9/9 re-run on 67b6683a",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-24",
       "previous_verdict": "reconciliation obligation (multi-AI report)",
       "current_head": "No sync/offline remediation branch exists on origin (only main); A-18/A-20 re-proven on current main by this audit",
       "atria_status": "PARTIALLY DISCHARGED — A-18/A-20 proven on main; legacy/LWW, crash durability, reconnect, multi-host still unverified",
-      "known_limitations": ["needs live PG + multi-host environment — BLOCKED for full discharge"],
-      "reviews": ["atria"]
+      "known_limitations": [
+        "needs live PG + multi-host environment — BLOCKED for full discharge"
+      ],
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-25",
       "previous_verdict": "reconciliation obligation (multi-AI report)",
       "current_head": "server/outbox.js present and wired into index.js (13 references); tests/phase2-outbox-failover.js and outbox-runtime-reliability.test.js exist",
       "atria_status": "NOT RE-VERIFIED (no live PG/worker in this sandbox)",
-      "known_limitations": ["BLOCKED on infrastructure"],
-      "reviews": ["atria"]
+      "known_limitations": [
+        "BLOCKED on infrastructure"
+      ],
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-26",
       "previous_verdict": "reconciliation obligation (multi-AI report)",
       "current_head": "codeql.yml echo-only (A-10), fortify.yml documented skip (A-11), codacy INT_MAX (A-09) — all re-confirmed on e4584806; no blanket allowlist created by this audit",
       "atria_status": "PARTIALLY DISCHARGED — the three CI gates are confirmed non-scanning; remaining F-S items not individually re-run",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-27",
@@ -266,21 +346,27 @@
       "current_head": "No real PG/Redis DR environment in this sandbox",
       "atria_status": "BLOCKED",
       "evidence": "multi-instance.js and the pg-prod-* suites all fail open on missing DATABASE_URL / live PG — explicitly NOT-RUN, never PASS",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-28",
       "previous_verdict": "reconciliation obligation (multi-AI report)",
       "current_head": "RAM-authoritative control planes, authority mode, legacy tenant enforcement remain design/documentation obligations",
       "atria_status": "BLOCKED (no national-scale environment)",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     },
     {
       "id": "A-29",
       "previous_verdict": "reconciliation obligation (multi-AI report)",
       "current_head": "Roadmap/Redis-Node version drift and Phase 9.0 wording remain documentation reconciliation work",
       "atria_status": "NOT RE-VERIFIED (documentation-only)",
-      "reviews": ["atria"]
+      "reviews": [
+        "atria"
+      ]
     }
   ]
 }

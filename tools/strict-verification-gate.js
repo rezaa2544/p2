@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 /* PAYESH STRICT VERIFICATION GATE — A-30 hardened (V-01..V-12)
-   Fail-closed: incomplete registry, wrong SHA, missing one of the three
-   reviews, missing evidence, vacuous/self-attested/injectable claims, or
+   Fail-closed: incomplete registry, wrong SHA, missing Arena review/evidence, vacuous/self-attested/injectable claims, or
    inability to prove an assertion => NOT VERIFIED + exit 1. No green fallback. */
 const fs = require('fs'), path = require('path'), cp = require('child_process'), crypto = require('crypto');
 const ROOT = path.join(__dirname, '..');
@@ -13,7 +12,7 @@ const ALERT_RULES = path.join(ROOT, 'infra', 'observability', 'alert-rules.yml')
 
 /* canonical contracts (pinned — must equal the schema file, see V-12 below) */
 const CANONICAL_STATUSES = ['UNKNOWN', 'TESTED', 'RUNTIME_VERIFIED', 'ADVERSARIAL_VERIFIED', 'INDEPENDENTLY_VERIFIED', 'CERTIFIED'];
-const REVIEWERS = ['chatgpt', 'arena', 'atria'];
+const REVIEWERS = ['arena'];
 const REVIEWER_VERDICTS = ['PASS', 'FAIL', 'BLOCKED'];
 const EVIDENCE_KINDS = ['positive_test', 'negative_test', 'adversarial_test', 'runtime_evidence', 'failure_recovery_evidence', 'data_evidence', 'review_note'];
 const POSITIVE_KINDS = ['positive_test', 'runtime_evidence', 'data_evidence'];
@@ -74,7 +73,7 @@ chk('G2 mandatory policy exists', fs.existsSync(path.join(ROOT, 'docs', 'STRICT_
 chk('G3 registry exists', fs.existsSync(REG));
 let reg = null; try { reg = JSON.parse(read(REG)); } catch (e) { }
 chk('G4 registry valid JSON', !!reg);
-chk('G5 three independent reviewers declared', !!reg && norm(reg.required_reviewers) === norm(REVIEWERS));
+chk('G5 Arena is the sole required AI reviewer', !!reg && norm(reg.required_reviewers) === norm(REVIEWERS));
 let allowed = null; try { allowed = JSON.parse(read(ALLOW)); } catch (e) { }
 chk('G6 explicit false-green allowlist exists', !!allowed && Array.isArray(allowed.items));
 chk('G6a canonical alert rules exists', fs.existsSync(ALERT_RULES), path.relative(ROOT, ALERT_RULES));

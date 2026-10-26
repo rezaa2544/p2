@@ -4,18 +4,17 @@ MANDATORY / NON-BYPASSABLE / GROUND-TRUTH
 
 NO EVIDENCE CHAIN -> NO GREEN CHECK.
 
+OPERATING MODEL (2026-10): Arena is the sole required AI execution/review agent. ChatGPT and Atria are not required reviewer slots; no missing vote may be fabricated or used as a blocker. Human governance and fail-closed evidence requirements remain mandatory.
+
 هیچ قابلیت، فاز، defect، security control، role، route، data flow، intelligence engine یا operational claim نباید فقط به دلیل سبز شدن تست، CI، گزارش AI یا review به عنوان PASS/VERIFIED ثبت شود.
 
-THREE-AI RULE
-هر آیتم قابل گواهی باید برای همان HEAD/commit توسط سه بررسی مستقل ارزیابی شود:
-1) ChatGPT: معماری، امنیت، منطق و ground truth
-2) Arena: اجرای مستقل و adversarial
-3) Atria: adversarial reproduction و defect hunting
+ARENA-ONLY REVIEW RULE
+هر آیتم باید توسط Arena برای همان HEAD/commit ارزیابی شود. Arena مسئول اجرا، بررسی کد، تست مثبت و منفی، ثبت محدودیت‌ها و ارائه شواهد قابل بازتولید است. رأی ChatGPT یا Atria الزامی نیست و نباید به‌صورت صوری تولید شود.
 
-هیچ مدل نباید نتیجه دو مدل دیگر را مبنا قرار دهد. اختلاف‌ها باید ثبت و حل شوند.
+Human governance همچنان جداست: تصمیم‌های مالک پروژه و تأیید انسانی هرگز با رأی Arena جایگزین نمی‌شوند.
 
 EVIDENCE CONTRACT
-برای VERIFIED/CERTIFIED وجود requirement، HEAD SHA، positive test، negative/adversarial test، runtime evidence در موارد runtime، data/tenant/ownership evidence در موارد مرتبط، failure/recovery evidence در موارد مرتبط، تعداد واقعی checks، نبود false-green، سه review مستقل، artifact/log قابل بازتولید، reviewer/timestamp و known limitations الزامی است.
+برای VERIFIED/CERTIFIED وجود requirement، HEAD SHA، positive test، negative/adversarial test، runtime evidence در موارد runtime، data/tenant/ownership evidence در موارد مرتبط، failure/recovery evidence در موارد مرتبط، تعداد واقعی checks، نبود false-green، review مستند Arena، artifact/log قابل بازتولید، reviewer/timestamp و known limitations الزامی است.
 
 STATUS MACHINE
 UNKNOWN -> TESTED -> RUNTIME_VERIFIED -> ADVERSARIAL_VERIFIED -> INDEPENDENTLY_VERIFIED -> CERTIFIED
@@ -25,7 +24,7 @@ FALSE-GREEN BLOCKERS
 assert(true)، assertion ثابت، process.exit(0) برای پایان موفق بدون اثبات checks، 0/0، || true برای بلعیدن failure، self-skip/environment skip که PASS گزارش کند، mock-only برای real-runtime، test بدون اجرای target path، prerequisite غایب با PASS، historical CI برای current HEAD و evidence بدون binding به HEAD، همگی blocker هستند مگر در allowlist صریح با owner/reason/expiry/test جایگزین.
 
 FAIL-CLOSED
-registry ناقص، SHA متفاوت، نبود یکی از سه review، نبود evidence یا ناتوانی gate در اثبات ادعا = NOT VERIFIED + exit 1. هیچ fallback سبزی وجود ندارد.
+registry ناقص، SHA متفاوت، نبود review یا evidence معتبر Arena، نبود evidence یا ناتوانی gate در اثبات ادعا = NOT VERIFIED + exit 1. هیچ fallback سبزی وجود ندارد.
 
 SCOPE
 Authentication/Session، RBAC/ABAC/Policy، Tenant/IDOR/ownership، API/Backend، PostgreSQL، Redis/Queue/Worker/Outbox، Sync/Offline/Conflict/OCC، Intelligence/Analytics، Frontend، Roles/Capabilities، E2E، Failure/Recovery/HA/DR، Performance، Observability، CI/Test integrity، Migration/Backup/Restore، Production readiness و هر architecture/security claim جدید.
