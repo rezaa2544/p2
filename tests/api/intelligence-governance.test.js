@@ -3,6 +3,7 @@
    tests/api/intelligence-governance.test.js — Intelligence Governance API Tests (P0-EI-15)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -136,6 +137,7 @@ async function run() {
   }
 
   console.log(`\nIntelligence Governance API Tests: ${pass} passed, ${fail} failed`);
+  reportSuiteResult({ name: 'intelligence-governance', pass, fail });
   if (fail > 0) process.exit(1);
 }
 

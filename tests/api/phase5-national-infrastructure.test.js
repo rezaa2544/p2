@@ -4,6 +4,7 @@
    National Production Fabric API Tests (P2-NI-01)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -247,6 +248,7 @@ async function run() {
     console.log('  ✅ NAT-CR-6: ثبت موفق تغییر وضعیت کلاستر ملی (200)');
     pass++;
 
+    reportSuiteResult({ name: 'phase5-national-infrastructure', pass, fail });
     console.log(`\nکل آزمون‌های API زیرساخت ملی: ${pass} آزمون موفق — بدون خطا ✅`);
   } finally {
     server.close();

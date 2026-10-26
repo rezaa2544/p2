@@ -3,6 +3,7 @@
    tests/api/phase4-certification.test.js — Phase 4 Certification API Tests (P1-SC-07)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -154,6 +155,7 @@ async function run() {
   }
 
   console.log(`\nPhase 4 Certification API Tests: ${pass} passed, ${fail} failed`);
+  reportSuiteResult({ name: 'phase4-certification', pass, fail });
   if (fail > 0) process.exit(1);
 }
 

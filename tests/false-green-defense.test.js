@@ -281,6 +281,100 @@ function tmpDir(name) {
     }
   }
 
+  /* ══════════════════════════════════════════════════════════════════
+     C10–C16: API-layer execution-evidence contract (M15-01 / Chat 2)
+     ──────────────────────────────────────────────────────────────────
+     tests/api/runner.js used to accept "child exited 0" as proof of a pass.
+     The contract now requires each suite to declare pass/fail/skip through
+     tests/api/suite-contract.js, and refuses green when the declaration is
+     missing, skipped, self-contradictory, zero, or inconsistent with the
+     ✅ lines the suite actually printed. These cases build the exploit for
+     every class and require the REAL runner to reject it. The CONTROL case
+     (C16) keeps the battery from passing by rejecting everything.
+     ══════════════════════════════════════════════════════════════════ */
+  {
+    const { runSuites, API_TESTS } = require(path.join(ROOT, 'tests', 'api', 'runner.js'));
+    const contractPath = path.join(ROOT, 'tests', 'api', 'suite-contract.js');
+    const d = tmpDir('api-evidence');
+    const fixture = (file, body) => {
+      const f = path.join(d, file);
+      fs.writeFileSync(f, "const { reportSuiteResult } = require(" + JSON.stringify(contractPath) + ");\n" + body + "\n");
+      return f;
+    };
+
+    /* C10 — a suite that exits 0 having asserted nothing. */
+    fixture('zero-execution.test.js', "console.log('suite ran'); process.exit(0);");
+    chk('C10 zero-execution suite (exit 0, no evidence) is REJECTED by the API runner',
+      runSuites(['zero-execution.test.js'], { dir: d, timeoutMs: 3000, quiet: true }) === 1);
+
+    /* C11 — every assertion skipped, declared honestly, exit 0. */
+    fixture('skip-only.test.js',
+      "console.log('  ✅ T1'); console.log('  ⏭️ T2 skipped — no PostgreSQL');\n" +
+      "reportSuiteResult({ name: 'skip-only', pass: 1, fail: 0, skip: 1 }); process.exit(0);");
+    chk('C11 a suite declaring skip>0 is REJECTED (skip is never a pass)',
+      runSuites(['skip-only.test.js'], { dir: d, timeoutMs: 3000, quiet: true }) === 1);
+
+    /* C12 — a counted failure that the author forgot to turn into exit 1. */
+    fixture('swallowed-fail.test.js',
+      "console.log('  ✅ T1'); console.log('  ❌ T2');\n" +
+      "reportSuiteResult({ name: 'swallowed-fail', pass: 1, fail: 1 }); process.exit(0);");
+    chk('C12 fail>0 with exit 0 is REJECTED (counted failure cannot be green)',
+      runSuites(['swallowed-fail.test.js'], { dir: d, timeoutMs: 3000, quiet: true }) === 1);
+
+    /* C13 — a suite that reports zero passing assertions. */
+    fixture('zero-pass.test.js',
+      "reportSuiteResult({ name: 'zero-pass', pass: 0, fail: 0 }); process.exit(0);");
+    chk('C13 pass=0 is REJECTED (a suite that ran no assertion proves nothing)',
+      runSuites(['zero-pass.test.js'], { dir: d, timeoutMs: 3000, quiet: true }) === 1);
+
+    /* C14 — declared evidence disagrees with printed evidence. */
+    fixture('inflated-evidence.test.js',
+      "console.log('  ✅ T1');\n" +
+      "reportSuiteResult({ name: 'inflated', pass: 5, fail: 0 }); process.exit(0);");
+    chk('C14 declared pass≠printed ✅ is REJECTED (evidence must match reality)',
+      runSuites(['inflated-evidence.test.js'], { dir: d, timeoutMs: 3000, quiet: true }) === 1);
+
+    /* C15 — a hanging suite must become a bounded RED, not an endless gate. */
+    fixture('hanging.test.js',
+      "console.log('  ✅ T1');\n" +
+      "reportSuiteResult({ name: 'hang', pass: 1, fail: 0 }); setTimeout(function () {}, 600000);");
+    const startedAt = Date.now();
+    chk('C15 a hanging suite is REJECTED by the per-suite timeout (bounded RED)',
+      runSuites(['hanging.test.js'], { dir: d, timeoutMs: 2000, quiet: true }) === 1 && Date.now() - startedAt < 60000);
+
+    /* C16 — CONTROL: an honest suite must still be accepted. */
+    fixture('honest.test.js',
+      "console.log('  ✅ T1'); console.log('  ✅ T2');\n" +
+      "reportSuiteResult({ name: 'honest', pass: 2, fail: 0 }); process.exit(0);");
+    chk('C16 CONTROL an honest suite with matching evidence is ACCEPTED',
+      runSuites(['honest.test.js'], { dir: d, timeoutMs: 3000, quiet: true }) === 0);
+
+    /* Every registered API suite must declare evidence — a new suite cannot
+       join the registry without the contract, or it would be red at runtime
+       only in the full run (cheaper to fail here, statically). */
+    const undeclared = API_TESTS.filter((rel) => {
+      const src = fs.readFileSync(path.join(ROOT, 'tests', 'api', rel), 'utf8');
+      return !src.includes('reportSuiteResult(');
+    });
+    chk('C16b every registered API suite declares execution evidence (' + API_TESTS.length + ' suites)',
+      undeclared.length === 0, 'missing: ' + JSON.stringify(undeclared));
+
+    /* No silent registry rot: every registry entry exists, and every
+       tests/api/<dir>/*.test.js on disk is registered (recursive, so nested
+       aggregators like tests/api/phase5-pilot/index.test.js cannot hide). */
+    const missingOnDisk = API_TESTS.filter((rel) => !fs.existsSync(path.join(ROOT, 'tests', 'api', rel)));
+    chk('C16c every registered API suite exists on disk', missingOnDisk.length === 0, JSON.stringify(missingOnDisk));
+    const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) return walk(full);
+      return e.name.endsWith('.test.js') ? [path.relative(path.join(ROOT, 'tests', 'api'), full).split(path.sep).join('/')] : [];
+    });
+    const onDisk = walk(path.join(ROOT, 'tests', 'api')).sort();
+    const unregistered = onDisk.filter((rel) => !API_TESTS.includes(rel));
+    chk('C16d every tests/api/<dir>/*.test.js on disk is registered (' + onDisk.length + ' discovered)',
+      unregistered.length === 0, 'unregistered: ' + JSON.stringify(unregistered));
+  }
+
   /* ── CONTROL: a genuine suite must be accepted ──────────────────── */
   {
     const r = run(`"${NODE}" "tests/g6-migration-022-down.test.js"`);

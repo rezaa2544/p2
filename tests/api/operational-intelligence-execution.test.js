@@ -3,6 +3,7 @@
    tests/api/operational-intelligence-execution.test.js — Execution API Tests (P0-EI-18)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -139,6 +140,7 @@ async function run() {
   }
 
   console.log(`\nOperational Execution API Tests: ${pass} passed, ${fail} failed`);
+  reportSuiteResult({ name: 'operational-intelligence-execution', pass, fail });
   if (fail > 0) process.exit(1);
 }
 

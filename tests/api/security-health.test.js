@@ -3,6 +3,7 @@
    tests/api/security-health.test.js — Zero Trust Security API Tests (P1-SC-06)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -151,6 +152,7 @@ async function run() {
   }
 
   console.log(`\nSecurity Health API Tests: ${pass} passed, ${fail} failed`);
+  reportSuiteResult({ name: 'security-health', pass, fail });
   if (fail > 0) process.exit(1);
 }
 

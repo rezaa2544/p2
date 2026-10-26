@@ -3,6 +3,7 @@
    tests/api/phase5-provincial-pilot.test.js — Provincial Pilot API Tests (P2-PL-02)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -251,6 +252,7 @@ async function run() {
     console.log('  ✅ TRF-3: ارتقای ترافیک به ۱۰۰٪ سراسری (200 ACTIVE)');
     pass++;
 
+    reportSuiteResult({ name: 'phase5-provincial-pilot', pass, fail });
     console.log(`\nکل آزمون‌های API پایلوت استانی: ${pass} آزمون موفق — بدون خطا ✅`);
   } finally {
     server.close();

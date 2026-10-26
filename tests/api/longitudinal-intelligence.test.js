@@ -3,6 +3,7 @@
    tests/api/longitudinal-intelligence.test.js — Longitudinal API Tests (P0-EI-12)
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
+const { reportSuiteResult } = require('./suite-contract');
 
 const assert = require('assert');
 const path = require('path');
@@ -141,6 +142,7 @@ async function run() {
   }
 
   console.log(`\nLongitudinal Intelligence API Tests: ${pass} passed, ${fail} failed`);
+  reportSuiteResult({ name: 'longitudinal-intelligence', pass, fail });
   if (fail > 0) process.exit(1);
 }
 
