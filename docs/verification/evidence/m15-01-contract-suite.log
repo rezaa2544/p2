@@ -1,0 +1,24 @@
+# M15-01-EVIDENCE name=contract ts=2026-10-26T20:51:08.140Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tests/strict-verification-gate-a30.test.js"
+OK positive valid contract passes
+contract reviewers: [arena] (from docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json)
+OK V01-empty-registry fails closed
+OK V02-weak-evidence fails closed
+N/A V03-reviewer-not-independent — contract declares a single reviewer (arena); pairwise cross-reviewer independence is vacuous at N=1
+OK V04-invalid-status fails closed
+OK V05-blocked-until fails closed
+OK V06-head-mismatch fails closed
+OK V08-self-attested-cert fails closed
+OK V09-cert-input-injection fails closed
+OK V10-missing-human-fields fails closed
+OK V11-zero-ranking fails closed
+OK V12-provenance-missing fails closed
+OK V02b-stale-artifact-hash fails closed
+OK V03-retired-reviewer-slot fails closed
+OK V13-blocked-with-verifying-status fails closed
+OK G14c-undeclared-item fails closed
+OK G14d-duplicate-declaration fails closed
+OK honestly blocked registry conforms to the contract
+OK honestly blocked registry is never reported VERIFIED
+OK V07 scanner catches injected false-green pattern
+OK V06 external intended-head mismatch fails closed
+CHECKS 20 FAIL 0

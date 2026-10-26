@@ -27,6 +27,12 @@ jobs:
         run: npm ci
       - name: A-30 V-01..V-12 negative gate fixtures
         run: node tests/strict-verification-gate.negative.test.js
+      - name: A-30 contract suite (Arena-only model)
+        run: node tests/strict-verification-gate-a30.test.js
+      # M15-01: acceptance properties + mutation matrix. This step failing means a
+      # property is unproven or a fixture is vacuous, not that a check was unavailable.
+      - name: M15-01 registry & strict-verification acceptance properties
+        run: node tests/m15-01-registry-strict-verification.test.js
       - name: Strict verification contract
         run: node tools/strict-verification-gate.js
       # Issue #454 item 2: a failing step must not erase the evidence of the steps

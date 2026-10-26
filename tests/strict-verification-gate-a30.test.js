@@ -105,7 +105,11 @@ function validReg(head) {
   return {
     schema_version: 2,
     policy: 'docs/STRICT_VERIFICATION_GATE.md',
-    status: 'INDEPENDENTLY_VERIFIED',
+    /* M15-01: the baseline of this fixture must sit on a status the declared reviewer
+       contract can actually reach. With one reviewer slot V-18 caps claims at
+       ADVERSARIAL_VERIFIED — INDEPENDENTLY_VERIFIED/CERTIFIED need a second slot,
+       which is an owner decision about the reviewer model, not a test value to tweak. */
+    status: 'ADVERSARIAL_VERIFIED',
     head_bound: head,
     expected_ids: ['A30-T'],
     required_reviewers: REVIEWERS.slice(),
@@ -121,7 +125,7 @@ function validReg(head) {
     items: [{
       id: 'A30-T',
       requirement: 'strict gate contract verification',
-      status: 'INDEPENDENTLY_VERIFIED',
+      status: 'ADVERSARIAL_VERIFIED',
       head_sha: head,
       reviews: REVIEWERS.slice(),
       known_limitations: [],
@@ -159,7 +163,26 @@ const cases = {
   'V09-cert-input-injection': () => { reg.items[0][REVIEWERS[0]].evidence[0].reviewer = 'intruder'; },
   'V10-missing-human-fields': () => { delete reg.human_governance; },
   'V11-zero-ranking': () => { reg.items[0].evidence.forEach((e) => { e.checks_total = 0; e.checks_passed = 0; }); },
-  'V12-provenance-missing': () => { delete reg.items[0].evidence[0].runtime; }
+  'V12-provenance-missing': () => { delete reg.items[0].evidence[0].runtime; },
+  'V02b-stale-artifact-hash': () => { reg.items[0][REVIEWERS[0]].evidence[1].sha256 = 'f'.repeat(64); },
+  /* the retired trio must not be resurrected to manufacture a second opinion */
+  'V03-retired-reviewer-slot': MULTI_REVIEWER ? null : () => {
+    reg.items[0].reviews = ['chatgpt', 'arena', 'atria'];
+    reg.items[0].chatgpt = { status: 'PASS', evidence: [reg.items[0][REVIEWERS[0]].evidence[0]] };
+  },
+  'V13-blocked-with-verifying-status': () => {
+    reg.items[0].blocked = true;
+    reg.items[0].blocked_reason = 'owner decision pending';
+    reg.items[0].owner_decision_required = true;
+  },
+  /* G14 completeness is two-way: an undeclared rider and a duplicate declaration
+     must both be visible, not absorbed by a shorter expected_ids list. */
+  'G14c-undeclared-item': () => {
+    const clone = JSON.parse(JSON.stringify(reg.items[0]));
+    clone.id = 'A30-UNDECLARED';
+    reg.items.push(clone);
+  },
+  'G14d-duplicate-declaration': () => { reg.expected_ids.push('A30-T'); }
 };
 console.log('contract reviewers: [' + REVIEWERS.join(', ') + '] (from docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json)');
 for (const [name, mut] of Object.entries(cases)) {
@@ -173,6 +196,22 @@ for (const [name, mut] of Object.entries(cases)) {
   reg = validReg(head); mut(); write();
   chk(name + ' fails closed', run(d).status !== 0);
 }
+/* an honestly blocked item must remain recordable and must keep the registry
+   non-green: CONTRACT PASS, VERDICT NOT VERIFIED, exit 1 (V-16). */
+reg = validReg(head);
+reg.status = 'UNKNOWN';
+reg.items[0].status = 'UNKNOWN';
+reg.items[0].blocked = true;
+reg.items[0].blocked_reason = 'owner decision pending';
+reg.items[0].owner_decision_required = true;
+reg.items[0][REVIEWERS[0]] = { status: 'BLOCKED', evidence: [ev(head, REVIEWERS[0], 'review_note', artRel(REVIEWERS[0]), 'https://example.invalid/run/blocked-note')] };
+reg.items[0].evidence = reg.items[0][REVIEWERS[0]].evidence;
+write();
+const blockedRun = run(d);
+chk('honestly blocked registry conforms to the contract', /CONTRACT PASS/.test(blockedRun.stdout), 'exit=' + blockedRun.status);
+chk('honestly blocked registry is never reported VERIFIED', blockedRun.status !== 0 && /VERDICT NOT VERIFIED/.test(blockedRun.stdout));
+if (!/CONTRACT PASS/.test(blockedRun.stdout)) console.error(blockedRun.stdout + blockedRun.stderr);
+
 reg = validReg(head); write();
 fs.writeFileSync(path.join(d, 'scanner-target.js'), 'const x = ' + 'assert' + '(true);\n');
 chk('V07 scanner catches injected false-green pattern', run(d).status !== 0);
