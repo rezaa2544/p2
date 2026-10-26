@@ -1,10 +1,10 @@
-# M15-01-EVIDENCE name=legacy ts=2026-10-26T20:51:08.169Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tools/verification-legacy-inventory.js"
+# M15-01-EVIDENCE name=legacy ts=2026-10-26T22:36:57.454Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tools/verification-legacy-inventory.js"
 ==== M15-01 LEGACY RECORD INVENTORY ====
 ARCHIVE docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json
 OK   archive exists and parses as JSON — docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json
 ARCHIVE_SHA256 0f53ef6d11abd1f15902f02342ba3e1967e7bf756b64ac43791767c24d1e9d43
 OK   archive is bound to an immutable 40-hex SHA — e4584806c1af2a1e5db648c8452580a8fa8cbcec
-OK   archive binding is NOT the current checkout (stale by construction) — archive=e4584806c1af2a1e5db648c8452580a8fa8cbcec head=2d53d42beb66ab0ee0ab3c5bd932d5056ff1d27c
+OK   archive binding is NOT the current checkout (stale by construction) — archive=e4584806c1af2a1e5db648c8452580a8fa8cbcec head=cea4c034a14c6687ba3bf0f56538ae2da67c23a1
 OK   archive carries the full legacy item set — items=29 expected=29
 OK   no archived item carries an Arena reviewer slot
 OK   no archived item carries a machine status
