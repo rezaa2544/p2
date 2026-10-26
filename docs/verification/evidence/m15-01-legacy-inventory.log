@@ -1,0 +1,22 @@
+# M15-01-EVIDENCE name=legacy ts=2026-10-26T16:10:30.692Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command=node tools/verification-legacy-inventory.js
+==== M15-01 LEGACY RECORD INVENTORY ====
+ARCHIVE docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json
+OK   archive exists and parses as JSON — docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json
+ARCHIVE_SHA256 0f53ef6d11abd1f15902f02342ba3e1967e7bf756b64ac43791767c24d1e9d43
+OK   archive is bound to an immutable 40-hex SHA — e4584806c1af2a1e5db648c8452580a8fa8cbcec
+OK   archive binding is NOT the current checkout (stale by construction) — archive=e4584806c1af2a1e5db648c8452580a8fa8cbcec head=4e9614fb272767f3c497637e0efb68162d596cd9
+OK   archive carries the full legacy item set — items=29 expected=29
+OK   no archived item carries an Arena reviewer slot
+OK   no archived item carries a machine status
+OK   no archived item is bound to a HEAD
+OK   no archived item carries evidence objects (free-text notes only)
+OK   every archived item records its Atria-era status verbatim — 29/29
+OK   archive records no Arena review for any item — {"arena":[]}
+OK   every tracked legacy id is present in the archive (29) — missing: 
+OK   archived legacy ids are unique
+OK   Atria carry-over register exists — docs/audit/ATRIA_PHASE_A_CARRYOVER.md
+OK   carry-over register documents A-01..A-23 (23) — absent: 
+OK   carry-over register declares the Atria source — # ATRIA — Phase A Carry-over Register
+RECONCILIATION_IDS 6 (A-24..A-29 tracked separately in the registry; 5 appear as keys in the carry-over register)
+LEGACY_IDS 29 REGISTRY_ITEMS 29
+CHECKS 15 FAIL 0
