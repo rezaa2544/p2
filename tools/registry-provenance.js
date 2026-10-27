@@ -40,9 +40,11 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = process.env.PAYESH_REPO_ROOT
-  ? path.resolve(process.env.PAYESH_REPO_ROOT)
-  : path.resolve(__dirname, '..');
+const ROOT = (() => {
+  const idx = process.argv.indexOf('--root');
+  if (idx >= 0 && process.argv[idx + 1]) return path.resolve(process.argv[idx + 1]);
+  return path.resolve(__dirname, '..');
+})();
 const REGISTRY_REL = 'docs/verification/VERIFICATION_REGISTRY.json';
 const REGISTRY = path.join(ROOT, 'docs', 'verification', 'VERIFICATION_REGISTRY.json');
 const STATUS_RANK = {
@@ -422,7 +424,7 @@ function audit() {
     console.log('    ancestor-of-HEAD: ' + (boundIsAncestor ? 'YES (evidence is STALE, not lost)' : 'NO (unrelated/diverged — re-verify from scratch)'));
   }
   if (trackedDrift.length > 0) {
-    console.log('  G17 TRACKED-DRIFT: TAMPERED (' + trackedDrift.slice(0, 6).join(', ') + ')');
+    console.log('  G17 TRACKED-DRIFT: MISMATCH / TAMPERED (' + trackedDrift.slice(0, 6).join(', ') + ')');
   }
   if (completenessBad) {
     console.log('  G14 COMPLETENESS: FAIL (items=' + items.length +
@@ -452,7 +454,7 @@ function bind(itemId) {
       dependency_hash: dh.hash,
       dependencies: files,
       bound_at: new Date().toISOString(),
-      agent: process.env.ARENA_AGENT_LABEL || 'arena'
+      agent: 'arena'
     }
   };
   console.log(JSON.stringify(block, null, 2));
