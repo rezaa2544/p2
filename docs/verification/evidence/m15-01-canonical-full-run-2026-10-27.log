@@ -1,0 +1,723 @@
+✅ آمارِ مستندات با دیسک یکی است.
+   اسناد پایدار: 485 ریشه (مانیفست 484) + 115 پایدار = 600 درخت پایدار · قفل rc44
+   روزانه (خارج از شمارش — C6-02): 78 (daily-audits: 8، daily-reports: 70) ⇒ جمع فیزیکی 678
+   وضعیت: فعال 532 + زنده 3 + منجمد 45 + آرشیو 20 = 600
+   تست‌ها: 660 = 628 ریشه + 32 ای‌پی‌آی
+   ⚠ بیرونِ آن تعریف: 384 فایلِ تو‌در‌تو (deployment/pilot: 9، helpers: 7، infrastructure/certification: 10، infrastructure/disaster-recovery: 9، infrastructure/event-processing: 8، infrastructure/phase5: 2، infrastructure/phase5/chaos: 9، infrastructure/phase5/federation: 4، infrastructure/phase5/national: 8، infrastructure/phase5/national-capacity-enforcement: 3، infrastructure/phase5/national-e2e: 6، infrastructure/phase5/national-load: 3، infrastructure/phase5/operational-slo: 2، infrastructure/phase5/pilot-scaling: 5، infrastructure/phase5/production-readiness: 6، infrastructure/phase5/region-isolation: 4، infrastructure/phase5/remediation: 7، infrastructure/phase5/resource-governance: 5، infrastructure/phase5/traffic-enforcement: 2، infrastructure/phase6: 11، infrastructure/phase6/runtime: 1، infrastructure/scalability: 8، monitoring/observability: 10، performance: 5، performance/helpers: 3، performance/scenarios: 6، performance/suites: 5، security/zero-trust: 11، semantic-layer: 15، semantic-layer/assessment-intelligence: 10، semantic-layer/attendance-intelligence: 10، semantic-layer/decision-intelligence-command: 11، semantic-layer/feedback-learning-memory: 12، semantic-layer/intelligence-certification: 9، semantic-layer/intelligence-governance: 11، semantic-layer/intelligence-platform: 9، semantic-layer/intervention-management: 10، semantic-layer/longitudinal-intelligence: 10، semantic-layer/operational-intelligence-execution: 13، semantic-layer/outcome-evaluation-optimization: 12، semantic-layer/parent-360: 10، semantic-layer/policy-simulation: 11، semantic-layer/quality-governance: 10، semantic-layer/recommendation-action-planning: 11، semantic-layer/regional-intelligence-network: 10، semantic-layer/school-health-dashboard: 9، semantic-layer/school-intelligence-center: 10، semantic-layer/student-timeline: 1، semantic-layer/teacher-evidence: 11) — شمارِ رسمی همان تعریفِ tests/test-coverage-report-coverage.js است
+ارجاعِ کهنه به فایلِ ناموجود: 255 مورد در 125 سند
+  خطِ پایه (بدهیِ تاریخی): 255
+  تازه (باید رفع شود)   : 0
+  تولیدی (ردشده با قاعدهٔ .gitignore، نه بدهی): 6
+
+پرتکرارترین ارجاع‌های ناموجود:
+  16 سند → server/middleware/scope.js
+  12 سند → src/js/19-actions.js
+  10 سند → tests/pgbouncer-pooling.js
+   8 سند → docs/control-plane/CHAT1_CONTROL_PLANE.md
+   7 سند → tests/weighted-partitioning.js
+   6 سند → server/partitioning.js
+   6 سند → docs/control-plane/DAILY_20_MISSION_PROTOCOL.md
+   6 سند → docs/control-plane/ARENA_RUNTIME_CONTRACT.md
+
+نتیجه: ۰ ارجاعِ کهنهٔ تازه ✅
+[LEDGER FATAL] Migration failed: Error: connect ECONNREFUSED 127.0.0.1:5432
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 5432
+}
+=== LANES: A=299 (main, 4 workers) B=108 (copies, 4 workers) PORT-serial=75+65
+GREEN g7-ci-database-env.test (0s)
+GREEN false-green-defense.test (4s)
+GREEN docs-metrics (2s)
+GREEN f1-boot-syntax-five-pass (21s)
+GREEN a11y-audit (0s)
+RED   a11y-interactive (0s) :: 
+RED   a11y-keyboard (0s) :: 
+RED   a11y-runtime (0s) :: 
+GREEN reports-export (3s)
+GREEN reports-pdf-e2e (3s)
+GREEN tracing-performance (1s)
+GREEN wave9-performance (9s)
+GREEN wave17-testing (12s)
+GREEN wave18-load (5s)
+GREEN a20-occ-production-invariant.test (0s)
+GREEN a11y-regressions (0s)
+GREEN a02-dev-otp-bypass (0s)
+GREEN analytics-wiring-guard.test (0s)
+GREEN analytics-timestamps.test (0s)
+GREEN api-changelog-coverage (0s)
+GREEN assets (4s)
+GREEN association2 (5s)
+GREEN arena5-demo-guard (6s)
+GREEN att2 (6s)
+GREEN attack-detector (1s)
+GREEN att3 (6s)
+GREEN authz-model (1s)
+GREEN b-pg-canary-sot-bounds (1s)
+RED   a-next-health-blackhole (15s) :: 
+GREEN attpartial (4s)
+GREEN behavior2 (4s)
+GREEN bell2 (4s)
+GREEN bughunt-session9 (1s)
+GREEN bundle-registry-coverage (0s)
+GREEN backup-snap (8s)
+GREEN bgsync (5s)
+GREEN bus2 (3s)
+GREEN c3-remediation-regression.test (0s)
+GREEN cache-l2-epoch (0s)
+GREEN canary-atomic-runtime (0s)
+GREEN canary-atomic-mock-harness (0s)
+GREEN certification-non-circular.test (1s)
+GREEN chaos-drill-lib (0s)
+GREEN bus3 (4s)
+GREEN chat9-behavior-regression (0s)
+GREEN chg_id_cursor (0s)
+GREEN check-authz (0s)
+GREEN classmodel (3s)
+GREEN client-features (3s)
+GREEN collision-detector (0s)
+GREEN clsctx (3s)
+GREEN config-audit (0s)
+GREEN config-reference-coverage (0s)
+GREEN conflicts-list-cap (0s)
+GREEN compact (5s)
+GREEN cursor-token (0s)
+GREEN data-dictionary-coverage (0s)
+GREEN data-integrity-occ-migration (0s)
+GREEN db-engineering (0s)
+GREEN db-replica-recovery (1s)
+GREEN contract-layers (3s)
+GREEN deadletter (4s)
+GREEN delta-schema-gaps (0s)
+GREEN delta-phase4 (6s)
+GREEN demo-thursday (6s)
+GREEN disaster-recovery-coverage (0s)
+GREEN diag2 (5s)
+GREEN docs-export-script (0s)
+GREEN docs-freeze-marker (0s)
+GREEN docs-health (0s)
+GREEN docs-index-coverage (0s)
+GREEN docs-consistency (1s)
+GREEN docs-metadata (1s)
+GREEN documentation-handover-coverage (0s)
+GREEN documentation-maintenance-coverage (0s)
+GREEN documentation-map-coverage (0s)
+GREEN docs-refs-check (1s)
+GREEN dr-runbook (0s)
+GREEN dojo (4s)
+GREEN dropout (4s)
+GREEN env-flags (3s)
+GREEN exam-types (4s)
+GREEN att4 (49s)
+GREEN executive-briefing-coverage (1s)
+GREEN executive-slides-coverage (0s)
+GREEN faq-coverage (0s)
+GREEN examcount (4s)
+GREEN g6-migration-022-down.test (0s)
+GREEN gdpr-tombstones (0s)
+GREEN excuse (5s)
+GREEN glossary-coverage (0s)
+GREEN go-live-package-coverage (0s)
+GREEN finance2 (5s)
+GREEN genp12 (6s)
+GREEN ha-config (0s)
+GREEN handoff-integrity (0s)
+GREEN goals (6s)
+GREEN homework (5s)
+GREEN homework2 (4s)
+GREEN gradeavg2 (9s)
+GREEN id-collision (0s)
+GREEN idb-probe (1s)
+GREEN ics (5s)
+GREEN idor-regression (0s)
+GREEN idb2 (3s)
+GREEN incident-playbooks (0s)
+GREEN intelligence-client-render.test (0s)
+GREEN httpgetjson (9s)
+GREEN iran-compliance-coverage (0s)
+GREEN lessons-learned-coverage (0s)
+GREEN iep2 (4s)
+GREEN internship2 (4s)
+GREEN load-test-results-coverage (0s)
+GREEN library (4s)
+GREEN lock-atomic (2s)
+GREEN m14-b01-stale-cache (0s)
+GREEN m15-durable-invalidation (1s)
+GREEN master-onboarding-path-coverage (0s)
+GREEN migration-009-negative.test (0s)
+GREEN migration-guide-coverage (0s)
+GREEN migration-sequence (0s)
+GREEN libserial2 (3s)
+GREEN mutant-kit-test (1s)
+GREEN n02-check-authz-crlf.test (0s)
+GREEN n03-n11-n12-fabricated-metrics.test (1s)
+GREEN n04-n05-region-tenant-guards.test (0s)
+GREEN n05-n13-analytics-guards-writeperms.test (1s)
+GREEN n06-jwt-key-strength.test (0s)
+GREEN multi-grade (6s)
+GREEN n07-gdpr-durable-erasure.test (5s)
+GREEN n14-migration-rollback.test (0s)
+GREEN n16-migration-sequence-advancement.test (1s)
+GREEN n08-otp-hash-pepper.test (4s)
+GREEN n25-scope-escalation.test (1s)
+GREEN m15-01-registry-strict-verification.test (13s)
+GREEN n26-provincial-scope.test (1s)
+GREEN n27-pull-directory-least-privilege.test (1s)
+GREEN n28-waf-body-and-mode.test (2s)
+GREEN n29-csrf-origin-required.test (1s)
+GREEN n30-simulation-headers.test (1s)
+GREEN n31-teacher-iep-write-scope.test (2s)
+GREEN n33-dead-bearer-middleware.test (1s)
+GREEN n34-edu-office-inscope-failclosed.test (0s)
+GREEN n35-region-resolver-no-implicit-one.test (1s)
+GREEN national-architecture-coverage (0s)
+GREEN n32-route-now-fresh-timestamp.test (4s)
+GREEN no-data-masking.test (0s)
+GREEN national-dataset-integrity (2s)
+GREEN observability-dashboards (0s)
+GREEN observability-doc-coverage (0s)
+GREEN observability-live-setup-coverage (0s)
+GREEN observability-s2-metrics.test (0s)
+GREEN observability-semantic-guard (1s)
+GREEN nudge2 (6s)
+GREEN officesupp2 (5s)
+GREEN offline-indicator (5s)
+GREEN offline-e2e (7s)
+GREEN onboarding-checklist-coverage (1s)
+GREEN onboarding-coverage (0s)
+GREEN capacity-saturation-probe (91s)
+GREEN openapi-spec (0s)
+GREEN openapi-drift (0s)
+GREEN operational-handover-coverage (0s)
+GREEN outbox-dlq-atomicity.test (0s)
+GREEN outbox-lease-fencing.test (0s)
+GREEN p0-blocker-tracker-coverage (1s)
+GREEN outbox-runtime-reliability.test (1s)
+GREEN performance-benchmarks-coverage (0s)
+GREEN p13-public-report-pg (1s)
+GREEN n23-lint-contract.test (26s)
+GREEN pg-outage-control (0s)
+GREEN pg-prod-no-json-writes (1s)
+GREEN pg-prod-suite-policy (3s)
+GREEN phase-b-tenant-and-data-boundaries (1s)
+GREEN phase-c-backup-pg-noop (0s)
+GREEN phase-c-conflict-resolution (0s)
+GREEN phase-c-id-race (0s)
+GREEN persist-roundtrip (6s)
+GREEN phase-c-regional-difficulty-metric (0s)
+GREEN phase-c-regional-pg-reads (0s)
+GREEN phase-c-student-timeline-ownership (0s)
+GREEN phase7-production-verifier-contract.test (0s)
+GREEN pilot-operations-playbook-coverage (0s)
+GREEN pilot-rollout-coverage (0s)
+GREEN pitr-restore-args (0s)
+GREEN phase-c-unvalidated-fks (0s)
+GREEN offline-sync-drill (12s)
+GREEN privacy (5s)
+GREEN pnote (8s)
+GREEN pull-bootstrap (3s)
+GREEN pull-rest-delete (0s)
+GREEN r1-eliminate-ram-authorities.test (1s)
+GREEN pub01-no-universal-credential.test (6s)
+GREEN recovery-instructions-coverage (0s)
+GREEN r2-postgres-authority-fail-closed (0s)
+GREEN redis-cluster (0s)
+GREEN redis-key-audit (1s)
+GREEN redis-mem-ttl (1s)
+GREEN redis-metrics (0s)
+GREEN redis-prodfail (0s)
+GREEN release-notes-coverage (0s)
+GREEN release-version-contract (0s)
+GREEN reports-basic (1s)
+GREEN pull-to-refresh (5s)
+GREEN reports-tenant-isolation (1s)
+GREEN risk-register-coverage (0s)
+GREEN reports-offline (3s)
+GREEN runbook-cards-coverage (0s)
+GREEN pg-prod-boot-no-db (23s)
+GREEN runtime-monitor (0s)
+GREEN runtime-probes-scrape-regression.test (1s)
+GREEN runtime-reliability-five-task.test (0s)
+GREEN schema-migrations-ledger.test (0s)
+GREEN route-url-guard (6s)
+GREEN schoolmode (5s)
+GREEN secrets-management-coverage (0s)
+GREEN security-adversarial-a18-a22.test (1s)
+GREEN security-findings-register-coverage (0s)
+GREEN security-incident-log-coverage (0s)
+GREEN redis-backup (16s)
+GREEN security_client (2s)
+GREEN schoolmode2 (7s)
+GREEN seed-integrity (7s)
+GREEN seed-completeness (7s)
+GREEN session8-audit-async-io (0s)
+GREEN semantic-analytics-e2e.test (0s)
+GREEN session8-audit-flush (1s)
+GREEN session8-audit-queue (1s)
+GREEN security (10s)
+GREEN session8-cache-index (0s)
+GREEN session8-classes-index (0s)
+GREEN session8-public-report (0s)
+GREEN session8-grades-index (0s)
+GREEN session8-gc (0s)
+GREEN sidadiff (5s)
+GREEN stale-path-contract (1s)
+GREEN staffatt2 (5s)
+GREEN simulation (9s)
+GREEN strict-gate-empty-registry (1s)
+GREEN storage-full-honest (5s)
+GREEN storage-quota (6s)
+RED   supply-chain (0s) :: 
+GREEN sync-atomic-batch (0s)
+GREEN sync-cache-errors (1s)
+GREEN strict-verification-gate-a30.test (5s)
+GREEN sync-client-adversarial (0s)
+GREEN superadmin (5s)
+GREEN runbook-coverage (40s)
+GREEN sync-chunk (8s)
+GREEN sync-dup-claim (0s)
+GREEN sync-conflict-ui (6s)
+GREEN sync-mirror-visible (1s)
+GREEN sync-dlq-retry (5s)
+GREEN sync-lastsync (4s)
+GREEN sync-virtualday-audit (0s)
+GREEN sync-queue-caps (4s)
+GREEN sync-del-mirror (10s)
+GREEN test-coverage-report-coverage (0s)
+GREEN sync-sending-revive (5s)
+GREEN teacher-eval (6s)
+GREEN tools-wave18-load-guards.test (1s)
+GREEN tickets (6s)
+GREEN tracing-sampling (1s)
+GREEN theme-picker (9s)
+GREEN tracing-integration (3s)
+GREEN troubleshooting-coverage (0s)
+GREEN tomorrow (6s)
+GREEN truncation-telemetry (2s)
+GREEN training2 (5s)
+GREEN user-guides-coverage (0s)
+GREEN trendcmp2 (6s)
+GREEN underpriv2 (6s)
+GREEN tuition-plan (8s)
+GREEN vendor-playbook-coverage (0s)
+GREEN vclass (8s)
+GREEN vclass2 (5s)
+GREEN vclass3 (5s)
+GREEN visitors (6s)
+GREEN visitors2 (7s)
+GREEN wal-drill-bootstrap (1s)
+GREEN waf-ddos (2s)
+GREEN wave1-reads (1s)
+GREEN wave1-multi-instance (1s)
+GREEN wave1-regression-gate (0s)
+GREEN wave1-writes (0s)
+GREEN wave10-chg-id (0s)
+GREEN wave10-db-scale (0s)
+GREEN wave10-pgbouncer (0s)
+GREEN wave10-query-audit (0s)
+GREEN wave10-retention (0s)
+GREEN wave13-asvs-audit-coverage (1s)
+GREEN vocational-grades (8s)
+GREEN wave11-cache (1s)
+GREEN wave13-security (0s)
+GREEN wave18-hydration-probe (0s)
+GREEN wave18-spike-test (0s)
+GREEN wave18-hydration-guards (0s)
+GREEN wave18-stress-test (0s)
+GREEN wave20-arena5 (0s)
+GREEN wave3-keyset (0s)
+GREEN wave3-query2 (1s)
+GREEN wave4-sync-all-collections (0s)
+GREEN wave19-chaos (1s)
+GREEN wave6-redis (1s)
+GREEN wave8-outbox (0s)
+GREEN wave15-health (4s)
+GREEN worker-timer-replicate (0s)
+GREEN verification-binding-contract.test (17s)
+GREEN zero-suite-fail-closed.test (0s)
+GREEN wave7-offline-queue (5s)
+GREEN workdays (5s)
+GREEN workshop2 (4s)
+GREEN runner (19s)
+GREEN a11y-motion-determinism (0s)
+GREEN a11y-audit-mutations (1s)
+GREEN a11y-modal-focus (6s)
+GREEN academic-years (8s)
+GREEN assets2 (6s)
+GREEN assocmin2 (8s)
+GREEN a11y-modal-focus-mutations (33s)
+GREEN assets-mutations (31s)
+GREEN academic-years-mutations (40s)
+GREEN attack-detector-mutations (10s)
+GREEN att2-mutations (48s)
+GREEN attpartial-mutations (39s)
+GREEN att3-mutations (59s)
+GREEN boom2-mutations (21s)
+GREEN behavior-mutations (26s)
+GREEN boom2 (6s)
+GREEN build-eol-reproducibility.test (8s)
+GREEN backup-snap-mutations (56s)
+GREEN cmsg2 (5s)
+GREEN att4-mutations (107s)
+GREEN clsctx-mutations (16s)
+GREEN db-engineering-mutations (0s)
+GREEN bughunt-session9-mutations (41s)
+GREEN deadletter-mutations (20s)
+GREEN delta-sync-hardening (10s)
+GREEN donations2 (7s)
+GREEN donations-mutations (22s)
+GREEN drills2 (8s)
+GREEN drills-mutations (23s)
+GREEN examcount-mutations (30s)
+GREEN exam-types-mutations (39s)
+GREEN compact-mutations (107s)
+GREEN excuse-mutations (36s)
+GREEN genp12-mutations (31s)
+GREEN finance2-mutations (45s)
+GREEN ha-config-mutations (2s)
+GREEN goals-mutations (36s)
+GREEN gradeavg2-mutations (53s)
+GREEN httpgetjson-mutations (47s)
+GREEN idb-persistence-mutations (4s)
+GREEN ics-mutations (30s)
+GREEN delta-phase4-mutations (194s)
+GREEN library2 (6s)
+GREEN iep2-mutations (27s)
+RED   migration-009-live-mutations (0s) :: 
+GREEN library-mutations (33s)
+GREEN internship-mutations (38s)
+GREEN libserial2-mutations (29s)
+GREEN minutes2 (9s)
+GREEN multigrade2 (10s)
+GREEN minutes2-mutations (24s)
+GREEN pathway2 (7s)
+GREEN multigrade2-mutations (35s)
+GREEN pathway2-mutations (26s)
+GREEN pr81-mutations (0s)
+GREEN preapp2 (7s)
+GREEN public-security (9s)
+GREEN offline-e2e-mutations (68s)
+GREEN persist-roundtrip-mutations (54s)
+GREEN public2-mutations (21s)
+GREEN public2 (7s)
+GREEN push-recovery-playbook-coverage (0s)
+GREEN pubrep (7s)
+GREEN pnote-mutations (60s)
+GREEN reexam2 (6s)
+GREEN run (1s)
+GREEN rate-limit-mutations (14s)
+GREEN runtime-monitor-mutations (6s)
+GREEN schedule-gen (7s)
+GREEN scholarship2 (7s)
+GREEN school-type (7s)
+GREEN secret-scan (7s)
+GREEN pubrep-mutations (55s)
+GREEN schedule-gen-mutations (39s)
+GREEN session8-audit-async-io-mutations (1s)
+GREEN session8-audit-flush-mutations (1s)
+GREEN session8-audit-queue-mutations (1s)
+GREEN school-type-mutations (34s)
+GREEN session8-cache-index-mutations (0s)
+GREEN session-revocation-mutations (10s)
+GREEN session8-classes-index-mutations (1s)
+GREEN session8-public-report-mutations (1s)
+GREEN session8-grades-index-mutations (1s)
+GREEN session8-gc-mutations (3s)
+GREEN sync-atomic-batch-mutations (2s)
+GREEN server2 (26s)
+GREEN summer2 (8s)
+GREEN staffatt-mutations (19s)
+GREEN teacher-eval-mutations (33s)
+GREEN sync-queue-caps-mutations (36s)
+GREEN tickets-mutations (32s)
+GREEN tracing-mutations (11s)
+GREEN sync-chunk-mutations (58s)
+GREEN training-mutations (19s)
+GREEN tomorrow-mutations (32s)
+GREEN truncation-telemetry-mutations (16s)
+GREEN user-guide-mutations (3s)
+GREEN trendcmp2-mutations (31s)
+GREEN tuition-plan-mutations (33s)
+GREEN underpriv2-mutations (38s)
+GREEN wal-disk-full-mutations (0s)
+GREEN waf-mutations (10s)
+GREEN wave1-writes-mutations (2s)
+GREEN wave10-chg-id-mutations (2s)
+GREEN wave8-outbox-mutations (2s)
+GREEN visitors-mutations (45s)
+GREEN vocational-grades-mutations (49s)
+GREEN workshop2-mutations (24s)
+GREEN a01-report-logs-repro (23s)
+GREEN assocmin3 (6s)
+GREEN audit (0s)
+GREEN b02-school-transfer-cache (1s)
+GREEN bounded-delta-resume (4s)
+GREEN certify (3s)
+GREEN ci-test-parity-contract (0s)
+GREEN cmsg3 (3s)
+GREEN dorm-kind (5s)
+GREEN dorm-leave-dates (3s)
+GREEN dropout2 (3s)
+GREEN entry-gpa (5s)
+GREEN experience-store.test (1s)
+GREEN family2 (2s)
+GREEN form-validation-ux (0s)
+GREEN h02-update-user-cache-invalidation (1s)
+GREEN health-index (0s)
+GREEN idb-migration-queue (2s)
+GREEN idb-persistence (1s)
+GREEN iep3 (3s)
+GREEN import2 (3s)
+GREEN integration (6s)
+GREEN m14-c01-retry-exhaustion (25s)
+GREEN m15-01-ci-flake-01-unit (32s)
+GREEN m15-01-dr-runtime-unit (1s)
+GREEN m15-01-e4-verify-unit (0s)
+GREEN m15-01-runtime-evidence-unit (1s)
+GREEN m15-03-aggregate-pg (0s)
+GREEN m15-03-aggregate-sql (0s)
+GREEN n09-n10-seed-and-backpressure.test (0s)
+GREEN n15-rest-phantom-columns.test (1s)
+GREEN navgroups (3s)
+GREEN observability-config (0s)
+GREEN occ (1s)
+GREEN office-head-contract (0s)
+GREEN otp-ratelimit (41s)
+GREEN p06-sync-oom-arch (1s)
+GREEN p11-phone-auth (1s)
+GREEN phase-c-sms-quota-complexity (0s)
+GREEN placement-overflow (4s)
+GREEN preapp3 (7s)
+GREEN rate-limit-distributed (3s)
+GREEN reaudit-a19-student-id-ownership (2s)
+GREEN reaudit-occ-stale-write (1s)
+GREEN reaudit-redis-outage (14s)
+GREEN red-team (0s)
+GREEN redis-fallback (2s)
+GREEN reexam3 (5s)
+GREEN region-scorecard (2s)
+GREEN reports-bounded-cache (5s)
+GREEN scholarship3 (5s)
+GREEN security2 (5s)
+GREEN security_seed (9s)
+GREEN session-revocation (3s)
+GREEN si013-secret-scan (3s)
+GREEN sim_full3 (6s)
+GREEN smoke-jsdom-runtime.test (0s)
+GREEN smoke (20s)
+GREEN staff-gap (3s)
+GREEN strict-verification-gate.negative.test (7s)
+GREEN subs2 (2s)
+GREEN summer3 (6s)
+GREEN sync-conflict-storm-drill (0s)
+GREEN teacher-eval-server (6s)
+GREEN tombstone (1s)
+GREEN tuition-exempt (2s)
+GREEN urgent-ann (3s)
+GREEN waf-enforce (6s)
+GREEN wave12-network (0s)
+GREEN wave14-observability (1s)
+GREEN wave16-dr (1s)
+GREEN wave18-load-test (0s)
+GREEN wave23-reports-sql (0s)
+GREEN wave5-authz (1s)
+GREEN xss-guard (4s)
+GREEN report2 (3s)
+GREEN reporttpl2 (3s)
+GREEN schedconf2 (3s)
+GREEN server1 (7s)
+GREEN server10 (1s)
+GREEN server11-sms (2s)
+GREEN server12 (21s)
+RED   server13 (89s) :: 
+GREEN server14-gc (3s)
+GREEN server15 (26s)
+GREEN server16 (8s)
+GREEN server17 (77s)
+GREEN server18 (12s)
+GREEN server3 (13s)
+GREEN server4 (4s)
+GREEN server5 (4s)
+GREEN server6 (4s)
+GREEN server7 (5s)
+GREEN server8 (7s)
+GREEN server9 (6s)
+GREEN sim_full2 (6s)
+GREEN uiclick (3s)
+GREEN user-guide (0s)
+GREEN assocmin2-mutations (20s)
+GREEN bounded-delta-resume-mutations (138s)
+GREEN cmsg2-mutations (19s)
+GREEN dorm-kind-mutations (28s)
+GREEN dropout-mutations (13s)
+GREEN entry-gpa-mutations (34s)
+GREEN health-index-mutations (5s)
+GREEN import2-mutations (11s)
+GREEN national-dataset-mutations (7s)
+GREEN observability-config-mutations (0s)
+GREEN placement-overflow-mutations (23s)
+GREEN pr74-mutations (12s)
+GREEN preapp2-mutations (24s)
+GREEN red-team-mutations (3s)
+GREEN reexam2-mutations (20s)
+GREEN region-scorecard-mutations (15s)
+GREEN report2-mutations (12s)
+GREEN reports-bounded-cache-mutations (46s)
+GREEN reporttpl2-mutations (16s)
+GREEN runtime-security-alert-mutations (0s)
+GREEN schedconf2-mutations (12s)
+GREEN scholarship2-mutations (20s)
+GREEN server-mutations (218s)
+GREEN server11-mutations (17s)
+GREEN server12-mutations (63s)
+RED   server13-mutations (89s) :: 
+GREEN server14-gc-mutations (102s)
+GREEN server15-mutations (286s)
+GREEN server16-mutations (270s)
+GREEN sim_full3-mutations (26s)
+GREEN staff-gap-mutations (21s)
+GREEN subs2-mutations (12s)
+GREEN summer2-mutations (20s)
+GREEN tuition-exempt-mutations (7s)
+GREEN uiclick-mutations (15s)
+GREEN urgent-ann-mutations (18s)
+GREEN wave1-mutations (4s)
+GREEN wave12-network-mutations (3s)
+GREEN wave14-observability-mutations (5s)
+GREEN wave16-dr-mutations (8s)
+GREEN wave17-testing-mutations (80s)
+GREEN wave5-authz-mutations (6s)
+GREEN otp-ratelimit-mutations (326s)
+RED   schema-migrations-live-pg.test (30s) :: 
+RED   migration-012-crash-recovery-live (30s) :: 
+RED   migration-009-live (29s) :: migration-009-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prereq
+RED   pg-relational-seed (30s) :: 
+GREEN migrate-pg-constraints (30s)
+GREEN migrate-pg-constraints-mutations (32s)
+RED   wave3-query (30s) :: نتیجه Wave3 Query: 12/13  —  1 ناموفق 
+RED   wave3-query3 (30s) ::   جمع: 18 موفق، 1 ناموفق از 19 
+RED   wave3-parity (30s) ::   جمع: 0 موفق، 1 ناموفق از 1 
+GREEN wave3-parity-mutations (31s)
+RED   wave4-sync (29s) :: نتیجه Wave4 Sync: 10/11  —  1 ناموفق 
+RED   wave6-11-redis-live (29s) :: 
+GREEN wave6-11-redis-live-mutations (31s)
+RED   wave10-pg-live (30s) :: wave10-pg-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisi
+RED   wave10-pg-live-mutations (29s) :: wave10-pg-live-mutations: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing 
+RED   wave10-tenant-live (30s) :: wave10-tenant-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prereq
+RED   wave10-tenant-live-mutations (30s) :: wave10-tenant-live-mutations: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; miss
+GREEN wave18w19-multinode-live (30s)
+GREEN wave23-reports-pg (30s)
+RED   wave23-reports-mutations (30s) ::   جمع: 0 کشته، 11 زنده از 11 
+RED   wave23-norm-edge-mutations (30s) :: 
+RED   bench-phone-lookup-p11 (10s) :: 
+GREEN wave1-gate (135s)
+RED   arena5-recovery (48s) :: 
+RED   b-pg-health-blackhole (30s) :: 
+RED   b-pg-migration-midflight-kill (30s) ::   PASS  precondition: pg-client split path forced (PGURL/DATABASE_URL absent from env, so usePsql st
+RED   b-pg-timeout-failsafe (30s) :: 
+RED   canary-atomic-postgres-live-runtime (30s) :: 
+RED   canary-persistence (30s) :: 
+RED   n17-n18-tombstones-sms-wallet.test (29s) :: 
+RED   n21-schema-drift.test (30s) ::   PASS  N21-4 migration 021/023 parity: processing_token, DLQ unique index, server_tombstones 
+RED   n22-hydrate-cap.test (30s) :: 
+RED   otp-redis (30s) :: 
+RED   outbox-lease-race-live (30s) :: 
+RED   p11-phone-auth-live (15s) :: 
+GREEN partitioning (31s)
+RED   pg-prod-boot-with-db (32s) :: 
+RED   pg-prod-client-error (31s) :: 
+GREEN pg-prod-fallback-probe (32s)
+RED   pg-prod-persistence-failure (30s) :: 
+RED   pg-prod-two-instance (30s) :: 
+RED   pg-prod-uid-idempotency (30s) :: 
+RED   phase2-occ-multi (29s) :: 
+RED   phase2-outbox-failover (30s) :: 
+RED   phase2-redis-fail-closed (65s) :: 
+RED   phase65-runtime-truth (30s) :: 
+RED   r5-prod-redis-boot-gate (71s) :: 
+GREEN redis-sentinel-failover (19s)
+RED   sync-occ-adversarial-live (30s) :: 
+RED   sync-replay-adversarial-live (30s) :: 
+GREEN unified-production-verifier (30s)
+RED   multi-instance (35s) :: 
+RED   queue-outage-drill (30s) :: Queue-Outage drill: 7 موفق / 0 خطا / 4 NOT-RUN ⏭️ 
+RED   chaos-drill-api-kill (30s) :: 
+RED   chaos-drill-redis-outage (30s) :: 
+RED   chaos-drill-pg-outage (30s) :: 
+RED   chaos-drill-queue-outage (29s) :: 
+RED   chaos-drill-network-degradation (30s) :: 
+RED   chaos-drill-disk-pressure (30s) :: 
+RED   chaos-suite (34s) :: 
+RED   idor-runtime (11s) :: 
+RED   idor-runtime-r4 (10s) :: 
+RED   a31-intelligence-semantic-integrity (30s) :: 
+RED   a35-regression (10s) :: 
+RED   wal-disk-full (11s) :: خروجیِ ۲: «اجرا نشد» با «موفق» فرق دارد (سبزِ جعلی ممنوع
+=== TOTAL: green=565 red=62
+=== RED: a11y-interactive
+=== RED: a11y-keyboard
+=== RED: a11y-runtime
+=== RED: a-next-health-blackhole
+=== RED: supply-chain
+=== RED: migration-009-live-mutations
+=== RED: server13
+=== RED: server13-mutations
+=== RED: schema-migrations-live-pg.test
+=== RED: migration-012-crash-recovery-live
+=== RED: migration-009-live
+=== RED: pg-relational-seed
+=== RED: wave3-query
+=== RED: wave3-query3
+=== RED: wave3-parity
+=== RED: wave4-sync
+=== RED: wave6-11-redis-live
+=== RED: wave10-pg-live
+=== RED: wave10-pg-live-mutations
+=== RED: wave10-tenant-live
+=== RED: wave10-tenant-live-mutations
+=== RED: wave23-reports-mutations
+=== RED: wave23-norm-edge-mutations
+=== RED: bench-phone-lookup-p11
+=== RED: arena5-recovery
+=== RED: b-pg-health-blackhole
+=== RED: b-pg-migration-midflight-kill
+=== RED: b-pg-timeout-failsafe
+=== RED: canary-atomic-postgres-live-runtime
+=== RED: canary-persistence
+=== RED: n17-n18-tombstones-sms-wallet.test
+=== RED: n21-schema-drift.test
+=== RED: n22-hydrate-cap.test
+=== RED: otp-redis
+=== RED: outbox-lease-race-live
+=== RED: p11-phone-auth-live
+=== RED: pg-prod-boot-with-db
+=== RED: pg-prod-client-error
+=== RED: pg-prod-persistence-failure
+=== RED: pg-prod-two-instance
+=== RED: pg-prod-uid-idempotency
+=== RED: phase2-occ-multi
+=== RED: phase2-outbox-failover
+=== RED: phase2-redis-fail-closed
+=== RED: phase65-runtime-truth
+=== RED: r5-prod-redis-boot-gate
+=== RED: sync-occ-adversarial-live
+=== RED: sync-replay-adversarial-live
+=== RED: multi-instance
+=== RED: queue-outage-drill
+=== RED: chaos-drill-api-kill
+=== RED: chaos-drill-redis-outage
+=== RED: chaos-drill-pg-outage
+=== RED: chaos-drill-queue-outage
+=== RED: chaos-drill-network-degradation
+=== RED: chaos-drill-disk-pressure
+=== RED: chaos-suite
+=== RED: idor-runtime
+=== RED: idor-runtime-r4
+=== RED: a31-intelligence-semantic-integrity
+=== RED: a35-regression
+=== RED: wal-disk-full
+=== elapsed: 5896s
+DONE
