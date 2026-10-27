@@ -131,6 +131,44 @@ jobs:
     - name: Comprehensive canonical regression runner
       timeout-minutes: 120
       run: npm run test:all
+    # M15-01 (2026-10-27): the canonical runner writes /tmp/all-tests.log and one
+    # /tmp/at-<suite>.log per suite, and tests/a11y-runtime.js writes
+    # out/a11y-runtime.json. None of that survived the job, so a RED suite could
+    # only ever be diagnosed from a 400-character annotation — and when the log
+    # blob host is unreachable from the reviewing environment, from nothing at
+    # all. Evidence that cannot be retrieved is not evidence. This step copies
+    # the artefacts into the workspace, writes a sha256 manifest, and uploads
+    # them; it runs even when the runner fails, which is exactly when they matter.
+    - name: Collect canonical-run evidence (logs + a11y JSON + sha256)
+      if: always()
+      run: |
+        set -e
+        mkdir -p out/canonical
+        cp /tmp/all-tests.log out/canonical/all-tests.log 2>/dev/null || true
+        cp /tmp/at-*.log out/canonical/ 2>/dev/null || true
+        cp out/a11y-runtime.json out/canonical/a11y-runtime.json 2>/dev/null || true
+        node - <<'EOF'
+        const fs = require('fs'), path = require('path'), crypto = require('crypto');
+        const dir = 'out/canonical';
+        const files = fs.readdirSync(dir).filter(f => f !== 'SHA256SUMS').sort();
+        const lines = files.map(f => {
+          const h = crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, f))).digest('hex');
+          return h + '  ' + f;
+        });
+        lines.push('head_sha ' + (process.env.GITHUB_SHA || 'unknown'));
+        lines.push('run_id ' + (process.env.GITHUB_RUN_ID || 'unknown'));
+        lines.push('collected_at ' + new Date().toISOString());
+        fs.writeFileSync(path.join(dir, 'SHA256SUMS'), lines.join('\n') + '\n');
+        console.log(lines.join('\n'));
+        EOF
+    - name: Upload canonical-run evidence
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: canonical-evidence-${{ github.sha }}
+        path: out/canonical/
+        if-no-files-found: warn
+        retention-days: 14
     - name: Reset shared test ports, Redis state, and clean payesh_ci schema after canonical runner
       if: always()
       run: |

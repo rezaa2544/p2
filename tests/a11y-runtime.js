@@ -251,7 +251,12 @@ async function settle(page) {
           node: i.detail && i.detail[0] ? { target: i.detail[0].target, html: i.detail[0].html, contrast: i.detail[0].contrast } : null
         })));
     console.log('A11Y-EVIDENCE ' + JSON.stringify({ totals: tot, first_failures: first.slice(0, 3) }));
-    for (let i = 0; i < 11; i++) console.log('');
+    /* workflow builds its annotation with `tail -n 12 | tr '\n' ' ' | cut -c1-400`
+       and keeps the FIRST 400 chars, so the evidence line must be the FIRST of
+       the last 12 lines: evidence + 10 blanks + the closing line = 12. (11 blanks
+       pushed it out of the window entirely — measured on run 40549396576, whose
+       annotation showed only the closing sentence.) */
+    for (let i = 0; i < 10; i++) console.log('');
     console.log('  ❌ قبولی نگرفت: critical/serious باید صفر باشند (شاهد: خطِ A11Y-EVIDENCE بالا).');
     process.exit(1);
   }
