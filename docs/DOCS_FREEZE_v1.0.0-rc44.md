@@ -8,7 +8,7 @@
 
 **نسخهٔ قفل:** ۱.۰.۰-rc44 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۳ | **مالک:** همگراییِ قفل پس از بازپایه روی main — چت ۶ (Arena)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۴۸۳ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۴۸۵ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
@@ -69,7 +69,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۴۸۳)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۴۸۵)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -91,11 +91,11 @@
 | `ARCHITECTURE_REVIEW.md` | `sha256:e40c46cd9dccb9e1108b7f8f89e569302d316462191a10ca0513aa001c5328da` |
 | `ARENA4_PERFORMANCE_INFRA.md` | `sha256:1d9165d0eab6d6d02de494c56afc0766b83086e6bfcdaf9a0005d4b520292881` |
 | `ARENA5_QA_RELIABILITY.md` | `sha256:0545b420c46f649cfeb2966be2c5bbc60982bb4f976bcf059aa6a18aef0435ee` |
-| `ARENA_AGENT_PROMPT.md` | `sha256:2116804a1c6c23a1bd8f9e0ce7f1d84e583d832a77e6dcb14514a486af77dad0` |
+| `ARENA_AGENT_PROMPT.md` | `sha256:cc53508d104ae10f0db5290a2c71145c3683249089d06b1f93dba7c46f94a68e` |
 | `ARENA_CONTINUATION_POLICY.md` | `sha256:f096005a530c6f5de8832f8a5497d580bcb76bf68071923f80a98598d105f5b7` |
 | `ARENA_CONTINUITY_AUTHORIZATION.md` | `sha256:a2605d085f2c46906357f30965ad8a24a92ab79a87ac65cd5c10f87d3fc998fa` |
 | `ARENA_CONTROL_PLANE_RECOVERY.md` | `sha256:11417d54369f053127d806f7afafd63e9d4c1e52a4700a1dec3765c183f3f291` |
-| `ARENA_EXECUTION_MODEL.md` | `sha256:c2a17649cf6a185b58df2d04c9a86ae4b555162f4d0225ff8618e9b80d902bfd` |
+| `ARENA_EXECUTION_MODEL.md` | `sha256:5d0d22eb7ae2a56eb7485eebc32bf655015c2ee3ced067c21e051f94ffe75d0f` |
 | `ARENA_MISSION_TEMPLATE.md` | `sha256:fe2b1bc306fa4f02b45e7d831606029fc6e8ce8bd48f99009e76a1ebc1cc69a3` |
 | `ARENA_REGISTRY.md` | `sha256:036825376632f650f03b7ca93cc3300e1b32ffa790cdf43af68f62617212d72d` |
 | `ARENA_RUNTIME_CONTRACT.md` | `sha256:cf19ef6a15325b1a97afff17c1aaac552b8ea36c202ec9c0439cc9e0f53b3f03` |
@@ -205,11 +205,11 @@
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:36bf496d42732300a7872e76e6a3ce64dca6d52ed20eb1d9621fdce63f3d4169` |
 | `DOCS_INDEX.md` | `sha256:711a37f4b3272ce438ca7f90e5dee0e5e65cb135991a75b61f744af2ee7baee6` |
-| `DOCS_METRICS.md` | `sha256:f592ab3cbcf8ae1c2761747ee174a9ad880df42d3f01709714fe94a4e850d030` |
+| `DOCS_METRICS.md` | `sha256:3efce2a4399459ea7bf7f5045ab1131d3daea409611ed7af790b23fd72b4ccf7` |
 | `DOCUMENTATION_GOVERNANCE.md` | `sha256:01a5156c69ff0572f2b49dc2ce31453fdf59bfe30cec1a17f2d70a1dd4cfd3fd` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:dff12b6227b14b69e66d38bbe813d5365688ff8ce482a6fc9bbb2f12f855036e` |
-| `DOCUMENTATION_MAP.md` | `sha256:3cf7b346538767c9b13571b6eb600eab361e915974e46fdb862f59828c99a9de` |
+| `DOCUMENTATION_MAP.md` | `sha256:14a00f36e1dd25213bd429f853ca4d3e02f1c0e618b9b26ea2428a538e244d9d` |
 | `DR_RUNBOOK.md` | `sha256:eba33f0ad562941cf8aea2087dae1318628708cb37b1330aa0bc1cb34c81cc89` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
@@ -261,6 +261,7 @@
 | `LOAD_TEST_RESULTS.md` | `sha256:7a4ea6f04fda9095bf4e3cee7c9fef6d06dfaf1620113e598f63ada5f7d06604` |
 | `LONGITUDINAL_INTELLIGENCE_MONITORING_AUDIT.md` | `sha256:6d8ce291f1cc972d3b0adf0455531136ff8d394fa0f20be850e67df076d01254` |
 | `LONGITUDINAL_INTELLIGENCE_MONITORING_MODEL.md` | `sha256:bddbb16e7b0be5228ae57906b062452962be684f404a367f1da4f9428ccedb66` |
+| `M15-01_RECOVERY_2026-10-27.md` | `sha256:c228257ee9618d0af7ee8041cd2d49fc07e76cf21b08bd95c7781af42b52bffe` |
 | `MASTER_ONBOARDING_PATH.md` | `sha256:bcb1d796003687a1c219af76199ee1de2c45f3244a27f9da307f61b7777503be` |
 | `MASTER_PROJECT_HANDOVER_PROMPT.md` | `sha256:1e833bbccaea9ef4df4b60037284076196daa6d591aa168bb3f11becd8e12c86` |
 | `MIGRATION_AUDIT.md` | `sha256:d1361ed0ccf6bb3b12676aa07756d02933c72ccc795b6ebe6d5b86c1838a75bf` |
@@ -374,7 +375,7 @@
 | `POSTGRESQL_MIGRATION_PLAN.md` | `sha256:3595d8f2aa4bbe997af1add7305a7afcdcd44402d5182e61fb50b6e49f70b533` |
 | `POST_MERGE_AUDIT_2026-09-10.md` | `sha256:ce0a844a0d5f3175ce2b4de2e227fba5d4c38085cf130d4721ba5646a2983acd` |
 | `POST_RESET_INTEGRITY_REPORT.md` | `sha256:e7561e1d66f1d0cd0d72b2973532fcfb63a1ebd0897dff014a03d12b610f9c8a` |
-| `PREQUISITES.md` | `sha256:c18bb761ac3b794ae9aefddec453814173f6d95c7cd1bbdf181bd32d49c0942a` |
+| `PREQUISITES.md` | `sha256:00bcda59ab8c851cb518fef0f6d72dd2e0838448c54a25e01fdcdaf4bcda24a2` |
 | `PRIVACY_POLICY.md` | `sha256:94651d72ec3ef03777f007cca01ca34aad138350472bbf495beb288b5fb08757` |
 | `PRODUCTION_OBSERVABILITY_AUDIT.md` | `sha256:9187dac76729a9a7101348970ca52d8d9cd0ebeff05c98b79fe1fcaa55925dd8` |
 | `PRODUCTION_OBSERVABILITY_MODEL.md` | `sha256:2e59bf68925db28c1e220645f03e9cdc40623822c2848b80317242e41c4cfff8` |
@@ -506,8 +507,9 @@
 | `TEACHER_EVIDENCE_AUDIT.md` | `sha256:02553d84bcc7391af0753432aeadc2d372fc2aa0771478cf868a69309b0dbd13` |
 | `TEACHER_EVIDENCE_MODEL.md` | `sha256:125498ab231ac993c3c6deab55356594b4b1a7d37478f076bc76a51d20943c24` |
 | `TESTING_GUIDE.md` | `sha256:a825d5bfda2d0704f0df539d17926ffac13eb788080083eb5e8f9b8ceeee6e65` |
-| `TEST_CI_PARITY_CONTRACT.md` | `sha256:d8e124cf28619b06f6e019c408830e2e74f59c07aa91a30a0b721c5c7ef7af8f` |
-| `TEST_COVERAGE_REPORT.md` | `sha256:db6b2cd39f0c1180b68fc713ddbe8fdc03bd541df00ca0020e40ec7b59f42706` |
+| `TEST_CI_PARITY_CONTRACT.md` | `sha256:66ee0dc06b8487a6c32e8199728d9be4bf80a9dcb0abc4d7fc31c61f3d940867` |
+| `TEST_COVERAGE_M15_01_CHAT2_REPORT.md` | `sha256:12e7abe76359987cfc94b9dc7949b55ad5d2d309bcc7aee66504c31ac887926b` |
+| `TEST_COVERAGE_REPORT.md` | `sha256:209af039c1d21dd28fb20722e8548c9488b7ab8e4451d7b6ee5f45dbdab77790` |
 | `THIRD_PARTY_LICENSES.md` | `sha256:0ba5fea6dbc40fa7004d1dd8a4e7d6deec26dbf4d7ac2be80da6a5dc5bff34e8` |
 | `THREAT_MODEL.md` | `sha256:2d93966da760fec407778e27e9ef85033f95efffe71d1135dd849f6780d966f0` |
 | `TRACING_SETUP.md` | `sha256:6d17e75b8cc28763db6d7d7c9310d587fb3419c15a2d1dbf2f9e938881040099` |
