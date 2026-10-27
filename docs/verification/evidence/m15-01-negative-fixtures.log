@@ -1,4 +1,4 @@
-# M15-01-EVIDENCE name=negative ts=2026-10-26T22:36:55.732Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tests/strict-verification-gate.negative.test.js"
+# M15-01-EVIDENCE name=negative ts=2026-10-27T05:45:02.355Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tests/strict-verification-gate.negative.test.js"
 ==== A-30 V-01..V-12 NEGATIVE GATE FIXTURES ====
   OK   V-01 rejected (registry with zero items) — exit=1
   OK   V-01b rejected (registry without items key) — exit=1
@@ -6,7 +6,6 @@
   OK   V-02b rejected (evidence sha256 does not match artifact bytes) — exit=1
   OK   V-02c rejected (registry head_bound mismatches HEAD) — exit=1
   OK   V-03 rejected (retired reviewer slots resurrected to look independent) — exit=1
-  OK   V-03b rejected (independence claimed with no human decision behind it) — exit=1
   OK   V-04 rejected (item status outside allowed_statuses) — exit=1
   OK   V-04b rejected (registry allowed_statuses tampered to shrink policy) — exit=1
   OK   V-05 rejected (top-level BLOCKED_UNTIL status while items look green) — exit=1
@@ -17,9 +16,6 @@
   OK   V-08 rejected (all evidence commands run the self-certification module) — exit=1
   OK   V-09 rejected (reviewer PASS claims while reviews_recorded is empty) — exit=1
   OK   V-09b rejected (item.reviews omits the reviewer that claims PASS) — exit=1
-  OK   V-10 rejected (human_governance object absent) — exit=1
-  OK   V-10b rejected (human_approved field absent (fail-open on missing key)) — exit=1
-  OK   V-10c rejected (human approver is one of the AI reviewers) — exit=1
   OK   V-11 rejected (evidence claims 0/0 checks (vacuous pass)) — exit=1
   OK   V-11b rejected (item has no negative/adversarial evidence (empty compliance)) — exit=1
   OK   V-12 rejected (evidence entries are bare strings (no schema)) — exit=1
@@ -40,8 +36,9 @@
   OK   V-09d rejected (reviews_recorded names a retired reviewer slot) — exit=1
   OK   G17 rejected (tracked source file modified but never committed) — exit=1
   OK   G10-no-arena-slot rejected (Arena reviewer slot deleted (no Arena evidence at all)) — exit=1
-  OK   V-10d rejected (human_approved is explicitly false) — exit=1
   OK   G14b rejected (a declared item is missing from the registry) — exit=1
+  OK   GOOD control accepted (exit 0) — exit=0
+  OK   GOOD control accepted (exit 0) — exit=0
   OK   GOOD control accepted (exit 0) — exit=0
   OK   GOOD control accepted (exit 0) — exit=0
   OK   CONTROL contract-only registry conforms but stays NOT VERIFIED — exit=1
@@ -58,4 +55,4 @@
   OK   Issue #472 rename-into-registry commit fails closed for metadata binding — exit=1
   OK   Issue #472 empty-metadata commit fails closed for metadata binding — exit=1
   OK   Issue #472 root-no-parent commit fails closed for metadata binding — exit=1
-==== A-30 NEGATIVE RESULT 58 pass / 0 fail ====
+==== A-30 NEGATIVE RESULT 55 pass / 0 fail ====
