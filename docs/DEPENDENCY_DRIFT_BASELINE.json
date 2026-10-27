@@ -3,7 +3,7 @@
   "generated_at": "2026-09-11",
   "lockfile": "package-lock.json",
   "lockfile_version": 3,
-  "lockfile_sha256": "1d98b3ffc6c96177b8e81720969793edc43a0548948175a117243511d5937a10",
+  "lockfile_sha256": "b7b13ed2d02121de6b12db576f0acd200449cc3706aa2bcded2d1b346334f701",
   "package_count": 194,
   "direct_dependencies": {
     "@eslint/js": {
@@ -27,7 +27,7 @@
       "resolved": "0.223.0"
     },
     "@opentelemetry/resources": {
-      "declared": "^2.11.0",
+      "declared": "^2.12.0",
       "resolved": "2.12.0"
     },
     "@opentelemetry/sdk-trace-node": {

@@ -3,7 +3,7 @@
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
   "name": "@rezaa2544/payesh-sbom",
-  "documentNamespace": "https://github.com/rezaa2544/p2/sbom/1d98b3ffc6c96177b8e81720",
+  "documentNamespace": "https://github.com/rezaa2544/p2/sbom/b7b13ed2d02121de6b12db57",
   "creationInfo": {
     "created": "2026-09-11T00:00:00Z",
     "creators": [
@@ -4566,7 +4566,7 @@
       "annotationDate": "2026-09-11T00:00:00Z",
       "annotationType": "OTHER",
       "annotator": "Tool: payesh-supply-chain-audit/1.0",
-      "comment": "Lockfile SHA256: 1d98b3ffc6c96177b8e81720969793edc43a0548948175a117243511d5937a10"
+      "comment": "Lockfile SHA256: b7b13ed2d02121de6b12db576f0acd200449cc3706aa2bcded2d1b346334f701"
     }
   ]
 }
