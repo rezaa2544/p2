@@ -1,16 +1,22 @@
 {
   "schema_version": 2,
   "policy": "docs/STRICT_VERIFICATION_GATE.md",
-  "status": "UNKNOWN",
-  "note": "Arena is the sole required AI reviewer. Legacy A-01..A-29 records are preserved as BLOCKED/UNKNOWN with their Atria-era status quoted verbatim; they are NOT Arena attestations and MUST NOT be read as PASS/CERTIFIED. Only M15-01-A..C carry Arena evidence on this HEAD. The registry headline is UNKNOWN because the weakest recorded item is UNKNOWN. That is the whole reason: the gate caps a headline at its weakest item (V-15) and refuses a registry that verifies nothing (V-16). No human signature is required to change that, and adding one would not (owner ruling 2026-10-27, retired V-10).",
-  "head_bound": "bf263bf253696d3afac2057332eb29c7dd7820a5",
-  "head_basis": "Evidence for M15-01-A..C and the legacy inventory was produced on bf263bf253696d3afac2057332eb29c7dd7820a5, the source commit that this registry-only metadata commit follows. Any code/test change after that SHA invalidates the binding and the tests must be re-run before the registry is rebound.",
+  "status": "RUNTIME_VERIFIED",
+  "binding_mode": "lineage",
+  "closure_scope": [
+    "M15-01-A",
+    "M15-01-B",
+    "M15-01-C"
+  ],
+  "note": "Arena is the sole required AI reviewer. The registry headline (RUNTIME_VERIFIED) applies ONLY to the declared closure_scope; legacy A-01..A-29 records are preserved as BLOCKED/UNKNOWN with their Atria-era status quoted verbatim and are NOT Arena attestations. They are counted in blocked_items and can never be promoted by this file (V-19b/V-19c/V-19d). The binding is lineage-based: evidence was produced on head_bound and stays valid only while every file it depends on is byte-identical (witness), so a docs or dependency commit does not fake staleness and a change to a witnessed test does not survive as evidence. No human signature is required (owner ruling 2026-10-27, retired V-10).",
+  "head_bound": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
+  "head_basis": "Evidence for M15-01-A..C and the legacy inventory was produced on dcc7060e383f8dee84ccee806f47b4cfb15097d0. binding_mode=lineage: the binding survives later commits only for files outside the witness set; any change to a witnessed path (evidence artifacts, cited tests/tools, this gate, the schema, the policy, tests/run.js, package.json) makes the evidence stale and requires a re-run and a re-emit.",
   "required_reviewers": [
     "arena"
   ],
   "reviews_recorded": {
     "arena": [
-      "M15-01 Chat 1 self-review on bf263bf253696d3afac2057332eb29c7dd7820a5: focused acceptance suite, A-30 fixtures (mutation-verified) and the legacy inventory were executed and their output committed under docs/verification/evidence/. This record is Arena reviewing Arena; it is not independent verification."
+      "M15-01 Chat 1 self-review on dcc7060e383f8dee84ccee806f47b4cfb15097d0: focused acceptance suite, A-30 fixtures (mutation-verified) and the legacy inventory were executed and their output committed under docs/verification/evidence/. This record is Arena reviewing Arena; it is not independent verification."
     ]
   },
   "allowed_statuses": [
@@ -66,13 +72,14 @@
     "M15-01-B",
     "M15-01-C"
   ],
+  "blocked_items": 29,
   "expected_ids_basis": "A-01..A-29 are the inherited official contract (29 items). M15-01-A/B/C are addendum items added by this mission because they are the only records carrying Arena evidence on a verifying status (V-16 refuses a registry that verifies nothing). They are NOT silently folded into the official count: see OD-4.",
   "open_owner_decisions": [
     {
       "id": "OD-4",
       "item": "expected_ids declares 32 items (29 official + 3 M15-01 addendum) while the official contract count is undecided between 29 and 39",
       "state": "NOT DECIDED",
-      "why_it_blocks": "G14b/G14c make the declaration binding, so the addendum items can be kept only by owner ratification; dropping them instead leaves no Arena-evidenced verifying item and the gate stays NOT VERIFIED by V-16. No number may be chosen by the chats: the owner picks 29 (drop A/B/C), 32 (ratify the addendum) or 39 (extend the contract)."
+      "why_it_blocks": "G14b/G14c make the declaration binding. M15-01 recovery removed this from the mechanical path (closure is now measured against closure_scope, so the official count no longer decides the gate verdict), but the OFFICIAL contract count is still the owner's to ratify: 29 (drop A/B/C), 32 (ratify the addendum) or 39 (extend the contract). No number may be chosen by the chats."
     },
     {
       "id": "OD-1",
@@ -114,7 +121,7 @@
       "id": "A-01",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-01: routes/analytics.js schools query uses WHERE district_id = $1; six collections via db.readCollection with per-collection console.warn fallback",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -135,14 +142,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -156,14 +163,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -177,7 +184,7 @@
       "id": "A-02",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-02: server/analytics/health-index.js still has no db access (grep for db./isPostgres/readCollection returns zero hits)",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -198,14 +205,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -219,14 +226,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -240,7 +247,7 @@
       "id": "A-03",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-03: routes/analytics.js + semantic-analytics.js fallback paths now console.warn",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -261,14 +268,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -282,14 +289,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -303,7 +310,7 @@
       "id": "A-04",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-04: ids.js lastIssued monotonic counter present (ids.js:28,93-95)",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -324,14 +331,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -345,14 +352,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -366,7 +373,7 @@
       "id": "A-05",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-05: admin.js startAutoBackup returns null with warning in PG-live; index.js banner is honest",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -387,14 +394,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -408,14 +415,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -429,7 +436,7 @@
       "id": "A-06",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-06: sms.js per-request memoization, queueById Map, monotonic nextId, idempotency index",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -450,14 +457,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -471,14 +478,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -492,7 +499,7 @@
       "id": "A-07",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-07: wave1-reads/wave3-query2/bell2 use the __skip sentinel + independent NOT-RUN counter",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -513,14 +520,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -534,14 +541,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -555,7 +562,7 @@
       "id": "A-08",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-08: exit(0)-before-any-check heuristic sweep over 964 test files produced 13 flags; the two smallest inspected (demo-thursday.js, session8-gc.js) are LEGITIMATE (real assertions with non-chk idioms / exit-code semantics)",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -576,14 +583,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -597,14 +604,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -618,7 +625,7 @@
       "id": "A-09",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-09: .github/workflows/codacy.yml:55 still max-allowed-issues: 2147483647; Codacy run is honestly red by design (MalformedInputException on non-ASCII files)",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -639,14 +646,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -660,14 +667,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -681,7 +688,7 @@
       "id": "A-10",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-10: .github/workflows/codeql.yml still only echoes 'Default CodeQL setup is enabled in repository settings' (line 10)",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -702,14 +709,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -723,14 +730,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -744,7 +751,7 @@
       "id": "A-11",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-11: .github/workflows/fortify.yml skips the scan when credentials are absent (echo 'Skipping Fortify scan... NOT EXECUTED')",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -765,14 +772,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -786,14 +793,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -807,7 +814,7 @@
       "id": "A-12",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-12: scripts/run-all-tests.sh still not invoked by package.json or any workflow",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -828,14 +835,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -849,14 +856,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -870,7 +877,7 @@
       "id": "A-13",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-13: ci-test-parity-contract still non-recursive; 30 suites under tests/api/ are invisible to it AND red (see FG-1)",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -891,14 +898,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -912,14 +919,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -933,7 +940,7 @@
       "id": "A-14",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-14: bell2 date-dependent skip replaced by explicit NOT-RUN reporting",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -954,14 +961,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -975,14 +982,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -996,7 +1003,7 @@
       "id": "A-15",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-15: offline-sync-drill S2c now verifies all three ok=true responses",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -1017,14 +1024,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -1038,14 +1045,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -1059,7 +1066,7 @@
       "id": "A-16",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-16: chaos-drill-lib pg status uses exit code, not a dead buffer comparison",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -1080,14 +1087,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -1101,14 +1108,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -1122,7 +1129,7 @@
       "id": "A-17",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-17: client-features.js asserts the real toast; multigrade2.js asserts real class_subject_members zeroing",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -1143,14 +1150,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -1164,14 +1171,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -1185,7 +1192,7 @@
       "id": "A-18",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-18: conflicts.js resolves with monotonic nextVer = max(target.version, server_version)+1 and a manager school-scope check on the TARGET record",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -1206,14 +1213,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -1227,14 +1234,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -1248,7 +1255,7 @@
       "id": "A-19",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-19: student-timeline routed through the canonical policy.studentRecordOk gate (idor.js:68; semantic-analytics.js:256)",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -1269,14 +1276,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -1290,14 +1297,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -1311,7 +1318,7 @@
       "id": "A-20",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-20: VERDICT OVERTURNED. The backward-compat contract is real (occ.js:8-10) but was applied to only 4 of 5 PATCH paths. grades passed isVersioned=true; students/users/classes/attendance did not, so in strict mode grades rejected a version-less write while the other four accepted it. A version-less PATCH silently destroys a concurrent edit.",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -1332,14 +1339,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -1353,14 +1360,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -1374,7 +1381,7 @@
       "id": "A-21",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-21: classes.js homeroom_teacher_id must be a same-school teacher on create and update; attendance.js class_id must be the student's enrolled class; grades.js class_id + subject_id validated",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -1395,14 +1402,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -1416,14 +1423,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -1437,7 +1444,7 @@
       "id": "A-22",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-22: VERDICT PARTIALLY OVERTURNED. The fail-open trade-off is documented (revocation.js header) and the compensating controls are real and now runtime-tested, BUT two concrete holes existed: (1) the boot fail-fast predicate in index.js did not cover the REDIS_URL-only shape, so a configured-but-dead Redis booted, reported health=503, and still served with per-request fail-open revocation; (2) no comman",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -1458,14 +1465,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -1479,14 +1486,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -1500,7 +1507,7 @@
       "id": "A-23",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-23: regional-intelligence-network.js average_difficulty_p_value derived from totalHard/totalExams, null when no exams",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -1521,14 +1528,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -1542,14 +1549,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -1563,7 +1570,7 @@
       "id": "A-24",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-24: No sync/offline remediation branch exists on origin (only main); A-18/A-20 re-proven on current main by this audit",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -1584,14 +1591,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -1605,14 +1612,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -1626,7 +1633,7 @@
       "id": "A-25",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-25: server/outbox.js present and wired into index.js (13 references); tests/phase2-outbox-failover.js and outbox-runtime-reliability.test.js exist",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -1647,14 +1654,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -1668,14 +1675,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -1689,7 +1696,7 @@
       "id": "A-26",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-26: codeql.yml echo-only (A-10), fortify.yml documented skip (A-11), codacy INT_MAX (A-09) — all re-confirmed on e4584806; no blanket allowlist created by this audit",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -1710,14 +1717,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -1731,14 +1738,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -1752,7 +1759,7 @@
       "id": "A-27",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-27: No real PG/Redis DR environment in this sandbox",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -1773,14 +1780,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -1794,14 +1801,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -1815,7 +1822,7 @@
       "id": "A-28",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-28: RAM-authoritative control planes, authority mode, legacy tenant enforcement remain design/documentation obligations",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -1836,14 +1843,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -1857,14 +1864,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -1878,7 +1885,7 @@
       "id": "A-29",
       "status": "UNKNOWN",
       "requirement": "Legacy carry-over A-29: Roadmap/Redis-Node version drift and Phase 9.0 wording remain documentation reconciliation work",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -1899,14 +1906,14 @@
           "checks_total": 15,
           "checks_passed": 15,
           "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-          "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.940Z"
+          "ts": "2026-10-27T14:22:02.129Z"
         }
       ],
       "arena": {
@@ -1920,14 +1927,14 @@
             "checks_total": 15,
             "checks_passed": 15,
             "artifact": "docs/verification/evidence/m15-01-legacy-inventory.log",
-            "sha256": "e29dd710b64e42cc2899e627cc259721b179cf5f4a78614cb6d853a33ab34a7b",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "664dd1709eeee7e8f51cb8fc85fade4ee917a898051a7a304cea02895f1781c8",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.940Z"
+            "ts": "2026-10-27T14:22:02.129Z"
           }
         ]
       },
@@ -1941,7 +1948,7 @@
       "id": "M15-01-A",
       "status": "RUNTIME_VERIFIED",
       "requirement": "Evidence binds to the immutable SHA it was produced on: every artifact must exist in that commit with the declared sha256, exit_code must be 0 and checks_passed must equal checks_total. A stale or foreign SHA is rejected, not warned about.",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -1951,7 +1958,7 @@
         "Evidence logs are shared between the M15-01 items; each item records which checks back it (scope)",
         "The registry stays NOT VERIFIED on its own merits: 29 legacy items are UNKNOWN (V-15) and no item was promoted. A human signature is not the reason (owner ruling 2026-10-27)"
       ],
-      "scope": "focused-suite P1 + negative fixtures V-02/V-02c/V-02d/V-02e/V-02f/V-02g",
+      "scope": "focused-suite P1 + negative fixtures V-02/V-02c/V-02d/V-02e/V-02f/V-02g + real-git binding C1/C5/C8/C9/C10/C11/C12/C13",
       "evidence": [
         {
           "reviewer": "arena",
@@ -1961,14 +1968,14 @@
           "checks_total": 32,
           "checks_passed": 32,
           "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
-          "sha256": "f294fe4a46ce806b7d23add208e910046e5f5400be0cbf7555561762173eacae",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "97d4eeaeb5fc758f31dccf3a5954ccd96efa4af3e648ddc18caf0bfefe8daaef",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:44:57.193Z"
+          "ts": "2026-10-27T14:21:50.700Z"
         },
         {
           "reviewer": "arena",
@@ -1978,14 +1985,31 @@
           "checks_total": 55,
           "checks_passed": 55,
           "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
-          "sha256": "46e60f5ba3cc952e4b99cb35226a0d7803338a716dd76e207c722793e8de23b7",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "c25d6e6d4aa6eb645f7601a57de97adb30d40589c3283b155e4195774aef179a",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:02.355Z"
+          "ts": "2026-10-27T14:21:56.609Z"
+        },
+        {
+          "reviewer": "arena",
+          "kind": "positive_test",
+          "command": "node tests/verification-binding-contract.test.js",
+          "exit_code": 0,
+          "checks_total": 24,
+          "checks_passed": 24,
+          "artifact": "docs/verification/evidence/m15-01-binding-contract.log",
+          "sha256": "f162511e43e41214490fcd4e52709b7d28d6d7622efb5c5a20f28f27365cccfe",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
+          "runtime": {
+            "node": "v22.22.3",
+            "os": "linux",
+            "arch": "x64"
+          },
+          "ts": "2026-10-27T14:22:02.096Z"
         }
       ],
       "arena": {
@@ -1999,14 +2023,14 @@
             "checks_total": 32,
             "checks_passed": 32,
             "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
-            "sha256": "f294fe4a46ce806b7d23add208e910046e5f5400be0cbf7555561762173eacae",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "97d4eeaeb5fc758f31dccf3a5954ccd96efa4af3e648ddc18caf0bfefe8daaef",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:44:57.193Z"
+            "ts": "2026-10-27T14:21:50.700Z"
           },
           {
             "reviewer": "arena",
@@ -2016,14 +2040,31 @@
             "checks_total": 55,
             "checks_passed": 55,
             "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
-            "sha256": "46e60f5ba3cc952e4b99cb35226a0d7803338a716dd76e207c722793e8de23b7",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "c25d6e6d4aa6eb645f7601a57de97adb30d40589c3283b155e4195774aef179a",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:02.355Z"
+            "ts": "2026-10-27T14:21:56.609Z"
+          },
+          {
+            "reviewer": "arena",
+            "kind": "positive_test",
+            "command": "node tests/verification-binding-contract.test.js",
+            "exit_code": 0,
+            "checks_total": 24,
+            "checks_passed": 24,
+            "artifact": "docs/verification/evidence/m15-01-binding-contract.log",
+            "sha256": "f162511e43e41214490fcd4e52709b7d28d6d7622efb5c5a20f28f27365cccfe",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
+            "runtime": {
+              "node": "v22.22.3",
+              "os": "linux",
+              "arch": "x64"
+            },
+            "ts": "2026-10-27T14:22:02.096Z"
           }
         ]
       }
@@ -2032,7 +2073,7 @@
       "id": "M15-01-B",
       "status": "RUNTIME_VERIFIED",
       "requirement": "Registry completeness is provable in both directions: every expected id exists, every item is declared, no id is duplicated, and the live registry items are the declared contract.",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -2052,14 +2093,14 @@
           "checks_total": 32,
           "checks_passed": 32,
           "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
-          "sha256": "f294fe4a46ce806b7d23add208e910046e5f5400be0cbf7555561762173eacae",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "97d4eeaeb5fc758f31dccf3a5954ccd96efa4af3e648ddc18caf0bfefe8daaef",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:44:57.193Z"
+          "ts": "2026-10-27T14:21:50.700Z"
         },
         {
           "reviewer": "arena",
@@ -2069,14 +2110,14 @@
           "checks_total": 55,
           "checks_passed": 55,
           "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
-          "sha256": "46e60f5ba3cc952e4b99cb35226a0d7803338a716dd76e207c722793e8de23b7",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "c25d6e6d4aa6eb645f7601a57de97adb30d40589c3283b155e4195774aef179a",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:02.355Z"
+          "ts": "2026-10-27T14:21:56.609Z"
         }
       ],
       "arena": {
@@ -2090,14 +2131,14 @@
             "checks_total": 32,
             "checks_passed": 32,
             "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
-            "sha256": "f294fe4a46ce806b7d23add208e910046e5f5400be0cbf7555561762173eacae",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "97d4eeaeb5fc758f31dccf3a5954ccd96efa4af3e648ddc18caf0bfefe8daaef",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:44:57.193Z"
+            "ts": "2026-10-27T14:21:50.700Z"
           },
           {
             "reviewer": "arena",
@@ -2107,14 +2148,14 @@
             "checks_total": 55,
             "checks_passed": 55,
             "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
-            "sha256": "46e60f5ba3cc952e4b99cb35226a0d7803338a716dd76e207c722793e8de23b7",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "c25d6e6d4aa6eb645f7601a57de97adb30d40589c3283b155e4195774aef179a",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:02.355Z"
+            "ts": "2026-10-27T14:21:56.609Z"
           }
         ]
       }
@@ -2123,7 +2164,7 @@
       "id": "M15-01-C",
       "status": "RUNTIME_VERIFIED",
       "requirement": "Status discipline: a blocked or unverified item can never be reported as CERTIFIED, the registry headline may not out-claim its weakest item, a human decision in the registry is not a gate condition (owner ruling 2026-10-27) and is neither required nor sufficient to raise anything, and a registry that verifies nothing is not a green gate.",
-      "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+      "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
       "reviews": [
         "arena"
       ],
@@ -2143,14 +2184,14 @@
           "checks_total": 32,
           "checks_passed": 32,
           "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
-          "sha256": "f294fe4a46ce806b7d23add208e910046e5f5400be0cbf7555561762173eacae",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "97d4eeaeb5fc758f31dccf3a5954ccd96efa4af3e648ddc18caf0bfefe8daaef",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:44:57.193Z"
+          "ts": "2026-10-27T14:21:50.700Z"
         },
         {
           "reviewer": "arena",
@@ -2160,14 +2201,14 @@
           "checks_total": 21,
           "checks_passed": 21,
           "artifact": "docs/verification/evidence/m15-01-contract-suite.log",
-          "sha256": "6fae15bfe72c719945617c4b1f11137f340081b3080191c86bcfeadfc67f922c",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "3b3f18db39e489804cc01a812e40db226489391de5d174d32caceaf967f6d93f",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:03.906Z"
+          "ts": "2026-10-27T14:21:58.362Z"
         },
         {
           "reviewer": "arena",
@@ -2177,14 +2218,14 @@
           "checks_total": 55,
           "checks_passed": 55,
           "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
-          "sha256": "46e60f5ba3cc952e4b99cb35226a0d7803338a716dd76e207c722793e8de23b7",
-          "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+          "sha256": "c25d6e6d4aa6eb645f7601a57de97adb30d40589c3283b155e4195774aef179a",
+          "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
           "runtime": {
             "node": "v22.22.3",
             "os": "linux",
             "arch": "x64"
           },
-          "ts": "2026-10-27T05:45:02.355Z"
+          "ts": "2026-10-27T14:21:56.609Z"
         }
       ],
       "arena": {
@@ -2198,14 +2239,14 @@
             "checks_total": 32,
             "checks_passed": 32,
             "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
-            "sha256": "f294fe4a46ce806b7d23add208e910046e5f5400be0cbf7555561762173eacae",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "97d4eeaeb5fc758f31dccf3a5954ccd96efa4af3e648ddc18caf0bfefe8daaef",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:44:57.193Z"
+            "ts": "2026-10-27T14:21:50.700Z"
           },
           {
             "reviewer": "arena",
@@ -2215,14 +2256,14 @@
             "checks_total": 21,
             "checks_passed": 21,
             "artifact": "docs/verification/evidence/m15-01-contract-suite.log",
-            "sha256": "6fae15bfe72c719945617c4b1f11137f340081b3080191c86bcfeadfc67f922c",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "3b3f18db39e489804cc01a812e40db226489391de5d174d32caceaf967f6d93f",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:03.906Z"
+            "ts": "2026-10-27T14:21:58.362Z"
           },
           {
             "reviewer": "arena",
@@ -2232,17 +2273,55 @@
             "checks_total": 55,
             "checks_passed": 55,
             "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
-            "sha256": "46e60f5ba3cc952e4b99cb35226a0d7803338a716dd76e207c722793e8de23b7",
-            "head_sha": "bf263bf253696d3afac2057332eb29c7dd7820a5",
+            "sha256": "c25d6e6d4aa6eb645f7601a57de97adb30d40589c3283b155e4195774aef179a",
+            "head_sha": "dcc7060e383f8dee84ccee806f47b4cfb15097d0",
             "runtime": {
               "node": "v22.22.3",
               "os": "linux",
               "arch": "x64"
             },
-            "ts": "2026-10-27T05:45:02.355Z"
+            "ts": "2026-10-27T14:21:56.609Z"
           }
         ]
       }
     }
-  ]
+  ],
+  "witness": {
+    "paths": [
+      "docs/STRICT_VERIFICATION_GATE.md",
+      "docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json",
+      "docs/verification/evidence/m15-01-binding-contract.log",
+      "docs/verification/evidence/m15-01-contract-suite.log",
+      "docs/verification/evidence/m15-01-focused-suite.log",
+      "docs/verification/evidence/m15-01-legacy-inventory.log",
+      "docs/verification/evidence/m15-01-negative-fixtures.log",
+      "package.json",
+      "tests/m15-01-registry-strict-verification.test.js",
+      "tests/run.js",
+      "tests/strict-verification-gate-a30.test.js",
+      "tests/strict-verification-gate.negative.test.js",
+      "tests/verification-binding-contract.test.js",
+      "tools/lib/verification-witness.js",
+      "tools/strict-verification-gate.js",
+      "tools/verification-legacy-inventory.js"
+    ],
+    "blobs": {
+      "docs/STRICT_VERIFICATION_GATE.md": "bb793ab764b5b2ce5a28927d646c282f466a8052",
+      "docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json": "b5654397761f91b01c41e58feb5b2cc11262fac2",
+      "docs/verification/evidence/m15-01-binding-contract.log": "d6376260171a3095a459f5155c80e2fbd5e45cec",
+      "docs/verification/evidence/m15-01-contract-suite.log": "f96a556f40f001ab94dc93fa55f232c4e69c1746",
+      "docs/verification/evidence/m15-01-focused-suite.log": "cb528c7aa442a88e71bcd4013462b2efa92944a9",
+      "docs/verification/evidence/m15-01-legacy-inventory.log": "13eee34bf32ce4e2b514867573c5a9b6c1f070f8",
+      "docs/verification/evidence/m15-01-negative-fixtures.log": "21901cfafcece3ba192c2c60729a7e3b887cb812",
+      "package.json": "fb863e2140f479bfde5302e8fffd5d29e837850e",
+      "tests/m15-01-registry-strict-verification.test.js": "87cf5be8d6cef15fb0398a76470759fb616d874a",
+      "tests/run.js": "5e52174529a205332b34c89b3df781eaf38c39ba",
+      "tests/strict-verification-gate-a30.test.js": "64b6ed18f4daec3645ae998b08287cc70bd01f80",
+      "tests/strict-verification-gate.negative.test.js": "4f4446c7881404a6c172bb1ba7e983e63d45c409",
+      "tests/verification-binding-contract.test.js": "4eeb6a332a2e81ec0efc1eebb8d58038f5977bbb",
+      "tools/lib/verification-witness.js": "1c63bef783027df743ecd19b41c485f681f3e2f8",
+      "tools/strict-verification-gate.js": "7ba6a37ec68a840eda6f78f15dfd854528b995ed",
+      "tools/verification-legacy-inventory.js": "2a86b41f858a52c6f8767a762c9a8108e461e3d4"
+    }
+  }
 }
