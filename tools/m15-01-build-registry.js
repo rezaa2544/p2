@@ -322,7 +322,7 @@ function emit(head, outPath) {
     required_reviewers: ['arena'],
     reviews_recorded: {
       arena: [
-        'M15-01 Chat 1 self-review on ' + head + ': focused acceptance suite, A-30 fixtures (mutation-verified) and ' +
+        'M15-01 Arena Channel 4 self-review on ' + head + ': focused acceptance suite, A-30 fixtures (mutation-verified) and ' +
         'the legacy inventory were executed and their output committed under docs/verification/evidence/. ' +
         'This record is Arena reviewing Arena; it is not independent verification.'
       ]

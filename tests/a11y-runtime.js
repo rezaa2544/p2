@@ -49,6 +49,7 @@ const ROLES = [
   { role: 'counselor', pickSpec: { username: 'counselor1', fallbackRole: 'counselor' } },
 ];
 const MAX_VIEWS_PER_ROLE = 10;
+const THEMES = (process.env.A11Y_THEMES ? process.env.A11Y_THEMES.split(',').map((s) => s.trim()).filter(Boolean) : ['theme-1', 'theme-2', 'theme-3']);
 
 /* ---------- سرور استاتیک production-like برایِ index.html ---------- */
 function startStaticServer() {
@@ -89,7 +90,12 @@ function startStaticServer() {
   const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH, args: launchArgs } : { args: launchArgs });
   /* bypassCSP فقط برایِ تزریقِ axe-core لازم است (CSP تک‌فایلی nonce دارد)؛
      خودِ سنجشِ a11y ربطی به CSP ندارد. */
-  const context = await browser.newContext({ bypassCSP: true, reducedMotion: 'reduce', viewport: { width: 1280, height: 900 } });
+  const context = await browser.newContext({
+    bypassCSP: true,
+    reducedMotion: 'reduce',
+    viewport: { width: 1280, height: 900 },
+    deviceScaleFactor: 1
+  });
   const page = await context.newPage();
   page.setDefaultTimeout(30000);
 
@@ -133,9 +139,9 @@ function startStaticServer() {
     await page.waitForTimeout(150); /* بگذار paint تمام شود */
   }
 
-  /* ۱) خودِ صفحهٔ ورود هم اسکن می‌شود (نمایِ مشترکِ همهٔ نقش‌ها) */
-  const results = [];   /* {role, route, critical, serious, moderate, minor, items:[]} */
-  async function scan(role, route) {
+  /* ۱) اسکن در هر سه تم (theme-1, theme-2, theme-3): هم صفحهٔ ورود و هم ۵ نقش × تا ۱۰ نما */
+  const results = [];   /* {theme, role, route, critical, serious, moderate, minor, items:[]} */
+  async function scan(theme, role, route) {
     const axe = new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']);
     const r = await axe.analyze();
@@ -154,56 +160,65 @@ function startStaticServer() {
         sample: (nodeDetails[0] && nodeDetails[0].target.slice(0, 90)) || '',
         details: nodeDetails });
     }
-    results.push({ role, route, ...bySev, items });
+    results.push({ theme, role, route, ...bySev, items });
     const flag = (bySev.critical || bySev.serious) ? '❌' : '✅';
-    console.log(`  ${flag} ${role.padEnd(10)} ${route.padEnd(15)} critical:${bySev.critical} serious:${bySev.serious} moderate:${bySev.moderate} minor:${bySev.minor}`);
+    console.log(`  ${flag} ${theme.padEnd(8)} ${role.padEnd(10)} ${route.padEnd(15)} critical:${bySev.critical} serious:${bySev.serious} moderate:${bySev.moderate} minor:${bySev.minor}`);
     if (bySev.critical || bySev.serious) {
       for (const it of items) {
         if (it.impact !== 'critical' && it.impact !== 'serious') continue;
         for (const d of (it.details || [])) {
-          console.log(`     ↳ [${it.impact}] ${it.id} target=${d.target} data=${JSON.stringify(d.data)} html=${d.html}`);
+          console.log(`     ↳ [${it.impact}] ${it.id} (${theme}/${role}/${route}) target=${d.target} data=${JSON.stringify(d.data)} html=${d.html}`);
         }
       }
     }
   }
 
-  await settleBeforeScan();
-  await scan('(login)', 'login');
-
-  /* ۲) پنج نقش × تا ۱۰ نمایِ اصلی — نمای هر نقش از PANELS خودِ برنامه */
-  for (const R of ROLES) {
-    /* db/S/NAV/finishLogin/closeModal/render همگی متغیرهایِ lexicalِ سراسریِ
-       صفحه‌اند؛ تابعِ انتخاب‌گر را مستقیماً می‌فرستیم تا در همان scope
-       اجرا شود. هیچ متنی ساخته یا الحاق نمی‌شود. */
-    const ok = await page.evaluate((spec) => {
-      const u = (spec.username && db.users.find((x) => x.username === spec.username))
-        || (spec.fallbackRole && db.users.find((x) => x.role === spec.fallbackRole))
-        || (spec.role && db.users.find((x) => x.role === spec.role));
-      if (!u) return null;
-      finishLogin(u);
+  for (const theme of THEMES) {
+    await page.evaluate((th) => {
+      document.documentElement.setAttribute('data-theme', th);
+      S.user = null;
       S.showPicker = false;
       if (typeof closeModal === 'function') closeModal();
       render();
-      return { username: u.username, role: u.role };
-    }, R.pickSpec);
-    if (!ok) { console.log(`  ⚠️ ${R.role}: کاربرِ دمو پیدا نشد — رد شد`); continue; }
+    }, theme);
+    await settleBeforeScan();
+    await scan(theme, '(login)', 'login');
 
-    const routes = await page.evaluate((max) => {
-      const u = S.user;
-      const groups = NAV[u.role] || [];
-      const out = [];
-      for (const g of groups) for (const it of g[1]) { if (out.length < max) out.push(it[0]); }
-      return out;
-    }, MAX_VIEWS_PER_ROLE);
-
-    for (const route of routes) {
-      await page.evaluate((r) => {
-        S.route = r; S.filters = {}; S.page = 1; S.stack = [];
+    /* ۲) پنج نقش × تا ۱۰ نمایِ اصلی — نمای هر نقش از PANELS خودِ برنامه */
+    for (const R of ROLES) {
+      const ok = await page.evaluate((arg) => {
+        const spec = arg.spec;
+        document.documentElement.setAttribute('data-theme', arg.theme);
+        const u = (spec.username && db.users.find((x) => x.username === spec.username))
+          || (spec.fallbackRole && db.users.find((x) => x.role === spec.fallbackRole))
+          || (spec.role && db.users.find((x) => x.role === spec.role));
+        if (!u) return null;
+        finishLogin(u);
+        S.showPicker = false;
         if (typeof closeModal === 'function') closeModal();
+        /* حذف هر toast باقیمانده از ورود یا سوئیچ قبلی پس از تست کنتراست خودِ toast */
         render();
-      }, route);
-      await settleBeforeScan();
-      await scan(R.role, route);
+        return { username: u.username, role: u.role };
+      }, { spec: R.pickSpec, theme });
+      if (!ok) { console.log(`  ⚠️ ${theme} ${R.role}: کاربرِ دمو پیدا نشد — رد شد`); continue; }
+
+      const routes = await page.evaluate((max) => {
+        const u = S.user;
+        const groups = NAV[u.role] || [];
+        const out = [];
+        for (const g of groups) for (const it of g[1]) { if (out.length < max) out.push(it[0]); }
+        return out;
+      }, MAX_VIEWS_PER_ROLE);
+
+      for (const route of routes) {
+        await page.evaluate((r) => {
+          S.route = r; S.filters = {}; S.page = 1; S.stack = [];
+          if (typeof closeModal === 'function') closeModal();
+          render();
+        }, route);
+        await settleBeforeScan();
+        await scan(theme, R.role, route);
+      }
     }
   }
 
@@ -224,7 +239,13 @@ function startStaticServer() {
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(path.join(OUT_DIR, 'a11y-runtime.json'),
-    JSON.stringify({ date: new Date().toISOString(), totals: tot, rules: Object.values(ruleAgg), results }, null, 2));
+    JSON.stringify({
+      date: new Date().toISOString(),
+      totals: tot,
+      rules: Object.values(ruleAgg),
+      conditions: { themes: THEMES, viewport: '1280x900', dpr: 1, reduced_motion: 'reduce', tags: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] },
+      results
+    }, null, 2));
 
   console.log('\n  ── قانون‌هایِ نقض‌شده (تجمیعی) ──');
   Object.values(ruleAgg)
@@ -235,7 +256,16 @@ function startStaticServer() {
   console.log(`  گزارشِ JSON: out/a11y-runtime.json (${results.length} اسکن)`);
 
   if (tot.critical || tot.serious) {
-    console.log('\n  ❌ قبولی نگرفت: critical/serious باید صفر باشند.');
+    const first = results
+      .filter((r) => r.critical || r.serious)
+      .flatMap((r) => r.items.filter((i) => i.impact === 'critical' || i.impact === 'serious')
+        .slice(0, 1).map((i) => ({
+          theme: r.theme, role: r.role, route: r.route, rule: i.id, impact: i.impact,
+          node: i.details && i.details[0] ? { target: i.details[0].target, html: i.details[0].html, data: i.details[0].data } : null
+        })));
+    console.log('A11Y-EVIDENCE ' + JSON.stringify({ totals: tot, first_failures: first.slice(0, 3) }));
+    for (let i = 0; i < 10; i++) console.log('');
+    console.log('  ❌ قبولی نگرفت: critical/serious باید صفر باشند (شاهد: خطِ A11Y-EVIDENCE بالا).');
     process.exit(1);
   }
   console.log('\n  ✅ قبول: صفر critical، صفر serious.');

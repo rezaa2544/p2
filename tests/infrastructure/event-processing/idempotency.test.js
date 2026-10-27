@@ -31,6 +31,26 @@ async function runTests() {
     payload: { student_id: 501 }
   });
 
+  // فاز ۱: بدون اقتدار پایگاه‌داده و بدون opt-in صریح توسعه باید fail-closed رد شود
+  const savedAllow = process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY;
+  const savedNodeEnv = process.env.NODE_ENV;
+  delete process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY;
+  await assert.rejects(
+    () => consumeEvent(event),
+    (err) => err && err.code === 'AUTHORITY_UNAVAILABLE'
+  );
+  assert.strictEqual(executionCounter, 0);
+
+  // فاز ۱ب: در NODE_ENV=production پرچم توسعه نباید گارد را دور بزند
+  process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY = '1';
+  process.env.NODE_ENV = 'production';
+  await assert.rejects(
+    () => consumeEvent(event),
+    (err) => err && err.code === 'AUTHORITY_UNAVAILABLE'
+  );
+  assert.strictEqual(executionCounter, 0);
+  delete process.env.NODE_ENV;
+
   // اجرای اول: باید هندلر صدا زده شود و شمارنده ۱ شود
   const result1 = await consumeEvent(event);
   assert.strictEqual(result1.status, EVENT_STATUS.PROCESSED);
@@ -42,6 +62,11 @@ async function runTests() {
   assert.strictEqual(result2.status, EVENT_STATUS.PROCESSED);
   assert.strictEqual(result2.duplicate_suppressed, true);
   assert.strictEqual(executionCounter, 1, 'شمارنده نباید افزایش یافته باشد (تضمین Idempotent)');
+
+  if (savedAllow === undefined) delete process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY;
+  else process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY = savedAllow;
+  if (savedNodeEnv === undefined) delete process.env.NODE_ENV;
+  else process.env.NODE_ENV = savedNodeEnv;
 
   console.log('  ✅ سرکوب موفقیت‌آمیز رویداد تکراری و تضمین مصرف بی‌اثر اثبات شد');
 }

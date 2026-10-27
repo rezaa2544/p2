@@ -14,20 +14,36 @@ function runHealthCheckTests() {
   const user = { id: 10, role: 'manager', school_id: 101, region_id: 1 };
   const snapshot = buildObservabilityHealthSnapshot({ schoolId: 101, regionId: 1, user });
 
-  // ۱. ساختار و فیلدهای هویتی
+  // ۱. ساختار و فیلدهای هویتی (N-11: بدون نمونه اندازه‌گیری‌شده وضعیت باید unknown باشد، نه healthy ساختگی)
   assert(snapshot.snapshot_id.startsWith('OBS-HLTH-101-'));
   assert.strictEqual(snapshot.phase, 'PHASE_4');
   assert.strictEqual(snapshot.scope, 'PRODUCTION_OBSERVABILITY_LAYER');
-  assert.strictEqual(snapshot.status, 'healthy');
+  assert.strictEqual(snapshot.status, 'unknown');
   assert(typeof snapshot.timestamp === 'string');
   assert.strictEqual(snapshot.school_id, 101);
   assert.strictEqual(snapshot.region_id, 1);
 
-  // ۲. وضعیت سرویس‌های اصلی
-  assert.strictEqual(snapshot.services.database, 'healthy');
-  assert.strictEqual(snapshot.services.redis, 'healthy');
-  assert.strictEqual(snapshot.services.event_queue, 'healthy');
-  assert.strictEqual(snapshot.services.api_gateway, 'healthy');
+  // ۲. وضعیت سرویس‌های اصلی در حالت بدون ورودی اندازه‌گیری‌شده
+  assert.strictEqual(snapshot.services.database, 'unknown');
+  assert.strictEqual(snapshot.services.redis, 'unknown');
+  assert.strictEqual(snapshot.services.event_queue, 'unknown');
+  assert.strictEqual(snapshot.services.api_gateway, 'unknown');
+
+  // ۲ب. وضعیت healthy زمانی برقرار می‌شود که هر چهار لایه نمونه سالم واقعی داشته باشند
+  const measuredHealthy = buildObservabilityHealthSnapshot(
+    { schoolId: 101, regionId: 1, user },
+    {
+      applicationMetrics: { latency_p95_ms: 45, latency_p99_ms: 90, total_requests: 500, error_count: 0 },
+      databaseMetrics: { active_connections: 12, max_connections: 100, query_latency_p95_ms: 8 },
+      queueMetrics: { dead_letter_queue_size: 0, consumer_lag: 2 },
+      cacheMetrics: { hit_ratio: 0.92, memory_pressure: 0.30 }
+    }
+  );
+  assert.strictEqual(measuredHealthy.status, 'healthy');
+  assert.strictEqual(measuredHealthy.services.database, 'healthy');
+  assert.strictEqual(measuredHealthy.services.redis, 'healthy');
+  assert.strictEqual(measuredHealthy.services.event_queue, 'healthy');
+  assert.strictEqual(measuredHealthy.services.api_gateway, 'healthy');
 
   // ۳. ظرفیت و متریک‌ها
   assert(snapshot.capacity.cpu);

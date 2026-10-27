@@ -14,7 +14,7 @@ const http = require('http');
 const ROOT = path.join(__dirname, '..');
 const SERVER = path.join(ROOT, 'server', 'index.js');
 const JAEGER_VERSION = 'v2.20.0';
-const JAEGER_CACHE = path.join(__dirname, '.cache-jaeger');
+const JAEGER_CACHE = path.join(os.tmpdir(), 'payesh-jaeger-cache');
 
 let pass = 0, fail = 0, skip = 0;
 const failures = [];
