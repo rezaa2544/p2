@@ -42,6 +42,33 @@ jobs:
       - name: Core tests
         if: always()
         run: npm test
+      # M15-01 (2026-10-27): this step exists so the gate's silence is not read as
+      # evidence. The step below is guarded by `env.DATABASE_URL != ''` and skips
+      # whenever secrets.DATABASE_URL is empty; tools/production-truth-gate.js fails
+      # closed without a DATABASE_URL (line 154: exit 1), so skipping is the intended
+      # behaviour and that guard is NOT a defect. What was missing was a record: a
+      # skipped step is invisible inside a green job, so no run could state whether
+      # the gate had run. This step always runs and says which case obtained.
+      #
+      # Scope note, measured not assumed: a step's own `env:` IS visible to that
+      # step's `if`. Run 40572991240 ran the control and the experiment side by side
+      # and reported BOTH as `success` (a skipped step reports `skipped`, as run
+      # 40570647326 shows for this very step), so the experiment step executed. An
+      # earlier reading of this file assumed the opposite and is refuted here rather
+      # than quietly dropped.
+      #
+      # The truth gate that actually executes is in node.js.yml, where PostgreSQL is
+      # provisioned and the gate is bound to the pg-chain-ready step.
+      - name: Report production truth gate availability
+        if: ${{ always() }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -n "${DATABASE_URL}" ]; then
+            echo "secrets.DATABASE_URL is present — the production truth gate below runs."
+          else
+            echo "::warning title=Production truth gate NOT RUN::secrets.DATABASE_URL is empty, so the truth gate cannot run in this job (it fails closed without a URL). This job makes no claim that it ran."
+          fi
       - name: Production truth gate
         if: ${{ always() && env.DATABASE_URL != '' }}
         env:
