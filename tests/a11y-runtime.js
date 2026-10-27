@@ -73,6 +73,27 @@ function startStaticServer() {
   return new Promise((resolve) => srv.listen(PORT, '127.0.0.1', () => resolve(srv)));
 }
 
+/* ── شرایطِ سنجشِ قطعی (M15-01 / Chat 2، ۲۰۲۶-۱۰-۲۷) ──────────────────
+   نقصِ «serious color-contrast متناوب» تا امروز توضیح‌نشده بود، چون اسکن
+   در «هر تمی که آن لحظه فعال بود» اجرا می‌شد و ۱۵۰ms پس از render، در حالی
+   که گذارهای CSS (toast/att-btn/theme) هنوز در جریان‌اند — axe رنگِ
+   computed را همان لحظه می‌خواند، پس نتیجه به زمان‌بندی گره می‌خورد.
+   سه تغییرِ زیر حالتِ سنجیده‌شده را قطعی می‌کند، بدونِ هیچ سرکوبی:
+     ۱) هر سه تم صریحاً اسکن می‌شوند (نه «تمِ ذخیره‌شده»).
+     ۲) پیش از هر اسکن، گذار/انیمیشن غیرفعال می‌شود تا حالتِ پایانی سنجیده
+        شود نه فریمِ میانی. (گزینشِ حالتِ پایانی = سخت‌گیرانه‌تر، نه آسان‌تر)
+     ۳) پیش از اسکن، فونت‌ها آماده و دو فریم رندر شده‌اند.
+   هیچ قانونِ axe، آستانه، یا نمای اسکن‌شده حذف نشده است. */
+const THEMES = (process.env.A11Y_THEMES ? String(process.env.A11Y_THEMES).split(',') : ['theme-1', 'theme-2', 'theme-3'])
+  .map((t) => t.trim()).filter(Boolean);
+const SETTLE_CSS = '*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}';
+
+async function settle(page) {
+  await page.addStyleTag({ content: SETTLE_CSS });
+  await page.evaluate(() => (document.fonts && document.fonts.ready) ? document.fonts.ready.then(() => true) : true);
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+}
+
 (async () => {
   let chromium, AxeBuilder;
   try {
@@ -107,7 +128,8 @@ function startStaticServer() {
 
   /* ۱) خودِ صفحهٔ ورود هم اسکن می‌شود (نمایِ مشترکِ همهٔ نقش‌ها) */
   const results = [];   /* {role, route, critical, serious, moderate, minor, items:[]} */
-  async function scan(role, route) {
+  async function scan(role, route, theme) {
+    await settle(page);
     const axe = new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']);
     const r = await axe.analyze();
@@ -116,52 +138,70 @@ function startStaticServer() {
     for (const v of r.violations) {
       const sev = v.impact || 'minor';
       bySev[sev] = (bySev[sev] || 0) + v.nodes.length;
-      items.push({ id: v.id, impact: sev, help: v.help, nodes: v.nodes.length,
-        sample: (v.nodes[0] && v.nodes[0].target && String(v.nodes[0].target[0]).slice(0, 90)) || '' });
+      items.push({
+        id: v.id, impact: sev, help: v.help, nodes: v.nodes.length,
+        /* شاهدِ کاملِ هر نود: پیش‌تر فقط یک انتخابگرِ ۹۰ کاراکتری ذخیره می‌شد
+           و همین باعث شد نقصِ color-contrast «توضیح‌نشده» بماند. اکنون HTML
+           عنصر، پیامِ شکست و دادهٔ محاسبه‌شدهٔ axe (نسبتِ کنتراست، رنگِ متن و
+           پس‌زمینه، اندازه و وزنِ فونت) ثبت می‌شود تا ریشه قابلِ بازتولید باشد. */
+        detail: v.nodes.slice(0, 25).map((n) => ({
+          target: (n.target || []).map(String).join(' ').slice(0, 200),
+          html: String(n.html || '').slice(0, 300),
+          failureSummary: String(n.failureSummary || '').replace(/\s+/g, ' ').slice(0, 400),
+          contrast: ((n.any || []).concat(n.all || [], n.none || []))
+            .filter((c) => c && c.data && (c.data.contrastRatio != null || c.data.fgColor != null))
+            .map((c) => ({
+              id: c.id, fg: c.data.fgColor, bg: c.data.bgColor,
+              ratio: c.data.contrastRatio, fontSize: c.data.fontSize,
+              fontWeight: c.data.fontWeight, expected: c.data.expectedContrastRatio
+            }))
+        }))
+      });
     }
-    results.push({ role, route, ...bySev, items });
+    results.push({ theme, role, route, ...bySev, items });
     const flag = (bySev.critical || bySev.serious) ? '❌' : '✅';
-    console.log(`  ${flag} ${role.padEnd(10)} ${route.padEnd(15)} critical:${bySev.critical} serious:${bySev.serious} moderate:${bySev.moderate} minor:${bySev.minor}`);
+    console.log(`  ${flag} ${theme} ${role.padEnd(10)} ${route.padEnd(15)} critical:${bySev.critical} serious:${bySev.serious} moderate:${bySev.moderate} minor:${bySev.minor}`);
   }
 
-  await scan('(login)', 'login');
+  for (const theme of THEMES) {
+    await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme);
+    await scan('(login)', 'login', theme);
 
-  /* ۲) پنج نقش × تا ۱۰ نمایِ اصلی — نمای هر نقش از PANELS خودِ برنامه */
-  for (const R of ROLES) {
-    /* db/S/NAV/finishLogin/closeModal/render همگی متغیرهایِ lexicalِ سراسریِ
-       صفحه‌اند؛ تابعِ انتخاب‌گر را مستقیماً می‌فرستیم تا در همان scope
-       اجرا شود. هیچ متنی ساخته یا الحاق نمی‌شود. */
-    const ok = await page.evaluate((spec) => {
-      const u = (spec.username && db.users.find((x) => x.username === spec.username))
-        || (spec.fallbackRole && db.users.find((x) => x.role === spec.fallbackRole))
-        || (spec.role && db.users.find((x) => x.role === spec.role));
-      if (!u) return null;
-      finishLogin(u);
-      S.showPicker = false;
-      if (typeof closeModal === 'function') closeModal();
-      render();
-      return { username: u.username, role: u.role };
-    }, R.pickSpec);
-    if (!ok) { console.log(`  ⚠️ ${R.role}: کاربرِ دمو پیدا نشد — رد شد`); continue; }
-
-    const routes = await page.evaluate((max) => {
-      const u = S.user;
-      const groups = NAV[u.role] || [];
-      const out = [];
-      for (const g of groups) for (const it of g[1]) { if (out.length < max) out.push(it[0]); }
-      return out;
-    }, MAX_VIEWS_PER_ROLE);
-
-    for (const route of routes) {
-      await page.evaluate((r) => {
-        S.route = r; S.filters = {}; S.page = 1; S.stack = [];
+    /* ۲) پنج نقش × تا ۱۰ نمایِ اصلی — نمای هر نقش از PANELS خودِ برنامه */
+    for (const R of ROLES) {
+      const pinned = await page.evaluate((spec) => {
+        const u = (spec.username && db.users.find((x) => x.username === spec.username))
+          || (spec.fallbackRole && db.users.find((x) => x.role === spec.fallbackRole))
+          || (spec.role && db.users.find((x) => x.role === spec.role));
+        if (!u) return null;
+        finishLogin(u);
+        S.showPicker = false;
         if (typeof closeModal === 'function') closeModal();
         render();
-      }, route);
-      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-      await page.waitForTimeout(150); /* بگذار paint تمام شود */
-      await scan(R.role, route);
+        return { username: u.username, role: u.role };
+      }, R.pickSpec);
+      if (!pinned) { console.log(`  ⚠️ ${theme} ${R.role}: کاربرِ دمو پیدا نشد — رد شد`); continue; }
+
+      const routes = await page.evaluate((max) => {
+        const u = S.user;
+        const groups = NAV[u.role] || [];
+        const out = [];
+        for (const g of groups) for (const it of g[1]) { if (out.length < max) out.push(it[0]); }
+        return out;
+      }, MAX_VIEWS_PER_ROLE);
+
+      for (const route of routes) {
+        await page.evaluate((r) => {
+          S.route = r; S.filters = {}; S.page = 1; S.stack = [];
+          if (typeof closeModal === 'function') closeModal();
+          render();
+        }, route);
+        await scan(R.role, route, theme);
+      }
     }
+    /* خروج از نقش برای تمِ بعدی: ورود مجدد از صفحهٔ ورود سنجیده نمی‌شود،
+       ولی وضعیتِ خروج باید صریح باشد تا اسکنِ بعدی از حالتِ تعریف‌شده شروع شود. */
+    await page.evaluate(() => { if (typeof window !== 'undefined' && typeof window.logout === 'function') window.logout(); });
   }
 
   await browser.close();
@@ -181,7 +221,10 @@ function startStaticServer() {
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(path.join(OUT_DIR, 'a11y-runtime.json'),
-    JSON.stringify({ date: new Date().toISOString(), totals: tot, rules: Object.values(ruleAgg), results }, null, 2));
+    JSON.stringify({
+      date: new Date().toISOString(), totals: tot, rules: Object.values(ruleAgg), results,
+      conditions: { themes: THEMES, settle_css: SETTLE_CSS, viewport: '1280x900', dpr: 1, reduced_motion: 'reduce', tags: ['wcag2a','wcag2aa','wcag21a','wcag21aa'] }
+    }, null, 2));
 
   console.log('\n  ── قانون‌هایِ نقض‌شده (تجمیعی) ──');
   Object.values(ruleAgg)
