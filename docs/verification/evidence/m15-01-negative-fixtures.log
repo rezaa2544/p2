@@ -1,4 +1,4 @@
-# M15-01-EVIDENCE name=negative ts=2026-10-27T17:33:50.322Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tests/strict-verification-gate.negative.test.js"
+# M15-01-EVIDENCE name=negative ts=2026-10-27T17:53:51.581Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tests/strict-verification-gate.negative.test.js"
 ==== A-30 V-01..V-12 NEGATIVE GATE FIXTURES ====
   OK   V-01 rejected (registry with zero items) — exit=1
   OK   V-01b rejected (registry without items key) — exit=1
