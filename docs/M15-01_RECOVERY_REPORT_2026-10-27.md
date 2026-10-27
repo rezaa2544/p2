@@ -183,12 +183,14 @@ GitHub Actions, commit `06ba3da3`, PR lane (`pull_request` → `main`), read via
 | Runtime Reliability | **PASS** | run for this commit |
 | observability-regression | **PASS** | run for this commit |
 | Codacy / CodeQL / SecurityCodeScan / WAF & nginx / outbox-lease / static-and-promtool | **PASS** | PR #498 check list |
-| Node.js CI `build (22.x)` | **NOT RUN (in progress at snapshot)** | run `40521544408` |
-| Isolated E3 runtime run a/b, PITR + HA + Redis Sentinel drill | **NOT RUN (in progress at snapshot)** | run `40521544368` |
+| Node.js CI `build (22.x)` | **NOT RUN (in progress at snapshot)** | run `40521544408` — not yet concluded when this snapshot was taken |
+| Current-head PITR + HA failover + Redis Sentinel failover (single-runner E3/DR, **not** E4) | **PASS** | run `40521544368`, job "Current-head PostgreSQL PITR and HA failover plus Redis Sentinel failover" |
+| Isolated E3 runtime run a/b | **NOT RUN (in progress at snapshot)** | same run `40521544368` |
 | Fortify AST Scan | **FAIL — BLOCKED (owner credential)** | see §5 |
 | APIsec | **FAIL — BLOCKED (owner credential)** | see §5 |
 | Jscrambler Code Integrity | **FAIL — BLOCKED (owner credential)** | see §5 |
-| Payesh Watch (Notion write) | **FAIL** | job `122249681846`, step "Watch — classify live GitHub state and record verdict to Notion" |
+| Payesh Watch (Notion write) | **FAIL** | job `122249681846`, step "Watch — classify live GitHub state and record verdict to Notion" (the *other* Notion path, `notion-sync.yml`, succeeds — see §7) |
+| Payesh Strict Verification Gate (push-triggered twin, `arena/**`) | **FAIL — expected, owner decision OD-2** | only failure is V-06 (HEAD ⊆ origin/main), which cannot hold for an unmerged branch head; the PR-lane twin of the same commit is PASS |
 
 Local, same commit (`npm ci` clean, `node_modules` resolved):
 
@@ -293,7 +295,7 @@ decision (no history rewrite was performed and none is attempted here).
 | OD-4 (official item count 29 / 32 / 39) | **OPEN — owner decision** | closure no longer depends on it (V-19 measures the scope), but the contract count is unratified |
 | PR #484 | **OPEN / UNSTABLE** at `b31e2bdb` | different branch; not modified, not merged, not closed by this work. Its own red checks are listed on the PR. |
 | Independent review on this exact SHA | **NOT DONE** | `reviews_recorded.arena` is self-review by the same session; the repo has one reviewer slot, so `INDEPENDENTLY_VERIFIED`/`CERTIFIED` are unreachable (V-18) |
-| Docs + Notion synchronized and read back | **PARTIAL** | docs updated in this commit; Notion write path is the failing `Payesh Watch` workflow (owner secret), so the Notion update is done out-of-band and read back manually |
+| Docs + Notion synchronized and read back | **PASS (automated status sync) / PARTIAL (narrative)** | docs updated in this branch. Notion: `notion-sync.yml` ran on this head, step "Reconcile current GitHub state into Notion" **PASS**, and the workflow PATCHes then re-GETs the block it wrote (built-in read-back). The narrative report itself was **not** pushed to Notion: the interactive Notion connector returned `auth_error` ("connection is no longer valid") and per its own instruction was not retried, and `Payesh Watch` (the other Notion writer) fails on its step. Reconnecting Notion is an owner action. |
 
 ---
 
@@ -305,5 +307,24 @@ repository secrets / infrastructure the sandbox cannot provision (E4-01..E4-07, 
 APIsec, Jscrambler, Production truth gate `DATABASE_URL`, the Notion write token) or an owner
 ruling (OD-2, OD-3, OD-4, the official item count, SI-013 history disposition) or a second
 reviewer (independent review / `CERTIFIED`).
+
+### The single owner action that would unblock the largest number of rows
+
+Nothing below is a request for the owner to *do engineering work*; each item is an action only
+the owner can perform, with the smallest form of it:
+
+1. Add the four sets of repository secrets: `JSCRAMBLER_*` (3), `FOD_*`/`SSC_TOKEN`/
+   `SC_CLIENT_AUTH_TOKEN`/`DEBRICKED_TOKEN`, `apisec_username`/`apisec_password`,
+   and `DATABASE_URL` (which alone enables the currently-skipped Production truth gate).
+   Effect: three vendor rows move from BLOCKED to a real verdict, and the truth gate runs.
+2. Provision the seven E4 targets in §4 (or rule them out of scope). Effect: E4-01..E4-07 can
+   move from BLOCKED to measured.
+3. Rule on OD-2 (gate trigger vs V-06), OD-3 (landing strategy) and OD-4 (official item
+   count). Effect: removes the only red step of the strict-verification workflow on branch
+   pushes and ratifies the contract count.
+4. Decide the SI-013 history disposition (rotate/purge/notify, or accept with expiry).
+5. Provide a second reviewer slot if `INDEPENDENTLY_VERIFIED`/`CERTIFIED` is ever to be
+   reachable (V-18 caps it at one slot), and reconnect the Notion connector if the narrative
+   report is to be mirrored there.
 
 **M15-01 BLOCKED — OWNER/INFRASTRUCTURE ACTION PROVEN NECESSARY**
