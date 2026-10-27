@@ -525,7 +525,26 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 /* پرشدگی میلهٔ عمودی با درخشش بالا می‌آید */
 @keyframes hgtFillUp{ from{ opacity:0; transform:translateY(8px); } }
 .hgt-fill{ animation:hgtFillUp .85s cubic-bezier(.25,.8,.3,1); }
+/* ── prefers-reduced-motion: reduce — خاموشیِ کاملِ حرکت (WCAG 2.3.3) ──
+   پیش از این فقط سه انیمیشنِ .hgt-* خاموش می‌شد و ۹ keyframe + ۳۸ transitionِ
+   دیگر (pop/fslide/pulse/spin/sh/att-pulse/fieldShake و transitionهایِ
+   background/color رویِ nav-item، att-btn، btn، tab، pager …) همچنان اجرا
+   می‌شدند. axe-core رنگِ «محاسبه‌شده» را در لحظهٔ نمونه‌برداری می‌خواند؛ پس
+   یک اسکن که وسطِ یک fade/transition بیفتد رنگِ آمیخته (مثلاً toast با
+   opacity≈۰٫۳ یا رنگی میانِ --muted و --green-text) می‌بیند و color-contrast
+   به‌صورتِ متناوب serious می‌شود. قاعدهٔ زیر همهٔ آن‌ها را قطع می‌کند:
+   مدت‌زمان عملاً صفر و تک‌تکرار ⇒ عنصر بلافاصله در حالتِ نهایی رنگ می‌شود
+   (نه در وضعیتِ نیمه‌کاره) و انیمیشنِ بی‌پایان (pulse/spin/sh) هم تمام
+   می‌شود. این یک بهبودِ واقعیِ دسترس‌پذیری است، نه خفه‌کردنِ آزمون. */
 @media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms !important;
+    animation-delay:0ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;
+    transition-delay:0ms !important;
+    scroll-behavior:auto !important;
+  }
   .hgt-needle,.hgt-dot,.hgt-fill{ animation:none; }
 }
 

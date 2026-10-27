@@ -137,3 +137,55 @@ node tests/a11y-regressions.js  # نگهبانِ استاتیک — بدونِ �
 - بازگرداندنِ `--red` به `#e0405a` → دو چکِ کنتراست سرخ، خروجی 1 ✅
 - تستِ runtime پیش از رفع‌ها واقعاً سرخ بود (critical=43, serious=337) و پیوسته با هر کامیتِ رفع پایین آمد (43→2→0 و 337→199→147→20→0).
 - فاز ۲: برگرداندنِ `f()` به قالبِ قدیمی → ۳ چک سرخ، خروجی 1 ✅؛ حذفِ hook از `openModal` → ۱ چک سرخ، خروجی 1 ✅؛ تستِ interactive پیش از رفع واقعاً سرخ بود (74/2) و بعدِ رفع صفر/صفر.
+
+## A11Y-MOTION-01 — یافتهٔ **متناوب**ِ `serious: color-contrast` (2026-10-27)
+
+### نشانه
+در برخی اجراها `tests/a11y-runtime.js` یک یافتهٔ `serious` از نوعِ `color-contrast` می‌داد و
+در اجرایِ بعد، با همان کامیت و همان مرورگر، صفر. یعنی یافته به کد وابسته نبود، به **زمان‌بندی**.
+
+### ریشه (نه نشانه)
+axe-core نسبتِ کنتراست را از رنگِ **محاسبه‌شده** (`getComputedStyle`) در لحظهٔ نمونه‌برداری
+می‌سازد. اگر در آن لحظه یک CSS animation/transition در جریان باشد، رنگِ خوانده‌شده رنگِ
+**آمیختهٔ نیمه‌کاره** است:
+
+| منبعِ حرکت | نمونه | چرا کنتراست را می‌شکند |
+|---|---|---|
+| `@keyframes pop{from{opacity:0}}` رویِ `.toast`/`.modal` | ظاهر شدنِ toast/modal پس از `render()` | متنِ سفید با opacity≈۰٫۳ رویِ `#101a2e` ترکیب می‌شود ⇒ نسبتِ زیرِ ۴٫۵:۱ |
+| `@keyframes fslide{from{opacity:0}}` رویِ `.filter-body` | باز شدنِ پنلِ فیلتر | همان مکانیزم |
+| `transition:background .15s,color .15s` رویِ `.nav-item`/`.att-btn`/`.tab`/`.btn`/`.pager` | تغییرِ کلاس با `render()` یا با تایمر | رنگ میانِ دو توکن می‌افتد (مثلاً میانِ `--muted` و `--green-text`) |
+| `@keyframes sh/sp/pulse/att-pulse` (بی‌پایان) | skeleton، spinner، sync-chip | با هر نمونه‌برداری در فازِ متفاوتی هستند |
+
+هارنس دو عاملِ تقویت‌کننده داشت:
+1. `reducedMotion:'reduce'` برقرار بود، ولی **تنها** قاعدهٔ `@media (prefers-reduced-motion:reduce)`
+   در شیت سه انیمیشنِ `.hgt-*` را خاموش می‌کرد؛ ۹ keyframe و ۳۸ transitionِ دیگر زنده بودند.
+2. اسکنِ صفحهٔ ورود **هیچ** انتظاری نداشت و بقیهٔ نماها `waitForTimeout(150)` داشتند — عددی
+   کوتاه‌تر از `pop .18s`/`fslide .16s`/`sh 1.3s` و وابسته به سرعتِ ماشین. تایمرهایِ دورهٔ
+   برنامه (`attTimerPaint` هر ۱s، `bellLiveTick`، `syncConflictsTick`) هم می‌توانند درست پیش از
+   نمونه‌برداری یک transitionِ تازه شروع کنند.
+
+### رفع (بدونِ خفه‌کردنِ آزمون)
+- `src/styles/base.css`: قاعدهٔ reduced-motion به **همهٔ** حرکت تعمیم یافت —
+  `*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;…}`
+  ⇒ هر عنصر بلافاصله در حالتِ نهایی رنگ می‌شود و انیمیشنِ بی‌پایان تمام می‌شود. این یک بهبودِ
+  واقعیِ دسترس‌پذیری (WCAG 2.3.3) است، نه تنظیمِ آزمون.
+- `tests/helpers/a11y-quiescence.js` (نو): سدِ قطعیِ حرکت — `finish()` برای هر انیمیشنِ متناهی،
+  `cancel()` برای هر بی‌پایان، دو فریم انتظار تا رنگِ نهایی، سپس بازبینیِ محدود. اگر چیزی آرام
+  نشود اسکن انجام **نمی‌شود** و تست شکست می‌دهد؛ مرورگرِ بی‌`getAnimations` هم fail-closed است.
+- `tests/a11y-runtime.js`: `waitForTimeout(150)` حذف شد؛ خودِ `scan()` پیش از هر `AxeBuilder.analyze()`
+  سد را می‌زند و صفحهٔ ورود سدِ صریح دارد. هیچ قاعده‌ای از axe خفه نشد و شرطِ `critical/serious == 0`
+  دست‌نخورده است.
+
+### رگرسیونِ قطعی
+`tests/a11y-motion-determinism.js` — **46 چک، 0 شکست**، بدونِ مرورگر:
+- ۱۴ چک رویِ سورس/آرتیفکت: قاعدهٔ عمومی + `!important` + تک‌تکرار + حضور در `index.html`ِ ساخته‌شده؛
+  سیم‌کشیِ سد در `scan`، نبودِ `waitForTimeout`، حفظِ سیاستِ خروجی (۱/۳) و نبودِ `disableRules`.
+- ۱۰ چکِ رفتاری رویِ سد با DOMِ ساختگی: متناهی→`finish`، بی‌پایان→`cancel`، خطایِ `finish`→`cancel`،
+  لجباز→`ok=false` (نه skip)، `quiesce()` در چهار حالت fail-closed.
+- ۱۲ چکِ mutation (درجا، بدونِ کامیت): برگرداندنِ قاعدهٔ محدود، حذفِ `iteration-count`/`transition-duration`/
+  کلِ بلوک/`!important`، و حذفِ سد از `scan`/بازگشتِ `waitForTimeout`/حذفِ require/برداشتنِ
+  `reducedMotion` — هر یک نگهبانِ مربوطه را سرخ می‌کند و سورسِ دست‌نخورده سبز است.
+
+**صادقانه:** این تست قطعی‌بودنِ سازوکار را اثبات می‌کند؛ اجرایِ actual مرورگری در این محیط
+ممکن نشد (playwright/chromium در دسترس نیست: `exit 3`ِ پیش‌نیاز)، پس «صفر serious رویِ HEADِ نهایی
+با Chromiumِ واقعی» یک ادعای اثبات‌نشده باقی می‌ماند تا اجرایِ دارایِ لاگ در CI.

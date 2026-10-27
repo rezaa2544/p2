@@ -35,6 +35,8 @@ const cp = require('child_process');
 const ROOT = path.join(__dirname, '..');
 const EVIDENCE_DIR = path.join(ROOT, 'docs', 'verification', 'evidence');
 const LEGACY_ARCHIVE_REL = 'docs/verification/legacy/VERIFICATION_REGISTRY.atria-6612f58.json';
+const WITNESS = require('./lib/verification-witness');
+const CLOSURE_SCOPE = ['M15-01-A', 'M15-01-B', 'M15-01-C'];
 const REGISTRY_REL = 'docs/verification/VERIFICATION_REGISTRY.json';
 
 const EVIDENCE = {
@@ -49,6 +51,13 @@ const EVIDENCE = {
   contract: {
     file: 'm15-01-contract-suite.log',
     command: 'node tests/strict-verification-gate-a30.test.js'
+  },
+  /* A11Y-MOTION-01 / M15-01-A: the real-git binding & closure contract suite.
+     It is a separate log from `contract` so each verifying item can cite the
+     checks its own artifacts actually contain (V-17). */
+  binding: {
+    file: 'm15-01-binding-contract.log',
+    command: 'node tests/verification-binding-contract.test.js'
   },
   legacy: {
     file: 'm15-01-legacy-inventory.log',
@@ -231,8 +240,8 @@ function emit(head, outPath) {
     {
       id: 'M15-01-A',
       requirement: 'Evidence binds to the immutable SHA it was produced on: every artifact must exist in that commit with the declared sha256, exit_code must be 0 and checks_passed must equal checks_total. A stale or foreign SHA is rejected, not warned about.',
-      scope: 'focused-suite P1 + negative fixtures V-02/V-02c/V-02d/V-02e/V-02f/V-02g',
-      logs: ['focused', 'negative']
+      scope: 'focused-suite P1 + negative fixtures V-02/V-02c/V-02d/V-02e/V-02f/V-02g + real-git binding C1/C5/C8/C9/C10/C11/C12/C13',
+      logs: ['focused', 'negative', 'binding']
     },
     {
       id: 'M15-01-B',
@@ -308,17 +317,24 @@ function emit(head, outPath) {
   const registry = {
     schema_version: 2,
     policy: 'docs/STRICT_VERIFICATION_GATE.md',
-    status: 'UNKNOWN',
-    note: 'Arena is the sole required AI reviewer. Legacy A-01..A-29 records are preserved as BLOCKED/UNKNOWN with their ' +
-      'Atria-era status quoted verbatim; they are NOT Arena attestations and MUST NOT be read as PASS/CERTIFIED. ' +
-      'Only M15-01-A..C carry Arena evidence on this HEAD. The registry headline is UNKNOWN because the weakest ' +
-      'recorded item is UNKNOWN. That is the whole reason: the gate caps a headline at its weakest item (V-15) and ' +
-      'refuses a registry that verifies nothing (V-16). No human signature is required to change that, and adding ' +
-      'one would not (owner ruling 2026-10-27, retired V-10).',
+    /* M15-01 recovery: the headline means exactly closure_scope, not "everything".
+       The three in-scope items are RUNTIME_VERIFIED with Arena evidence; the 29 legacy
+       items stay blocked and are counted. V-19b/V-19c/V-19d make that split binding. */
+    status: 'RUNTIME_VERIFIED',
+    binding_mode: 'lineage',
+    closure_scope: CLOSURE_SCOPE.slice(),
+    note: 'Arena is the sole required AI reviewer. The registry headline (RUNTIME_VERIFIED) applies ONLY to the ' +
+      'declared closure_scope; legacy A-01..A-29 records are preserved as BLOCKED/UNKNOWN with their Atria-era ' +
+      'status quoted verbatim and are NOT Arena attestations. They are counted in blocked_items and can never be ' +
+      'promoted by this file (V-19b/V-19c/V-19d). The binding is lineage-based: evidence was produced on head_bound ' +
+      'and stays valid only while every file it depends on is byte-identical (witness), so a docs or dependency ' +
+      'commit does not fake staleness and a change to a witnessed test does not survive as evidence. No human ' +
+      'signature is required (owner ruling 2026-10-27, retired V-10).',
     head_bound: head,
     head_basis: 'Evidence for M15-01-A..C and the legacy inventory was produced on ' + head +
-      ', the source commit that this registry-only metadata commit follows. Any code/test change after that SHA ' +
-      'invalidates the binding and the tests must be re-run before the registry is rebound.',
+      '. binding_mode=lineage: the binding survives later commits only for files outside the witness set; any ' +
+      'change to a witnessed path (evidence artifacts, cited tests/tools, this gate, the schema, the policy, ' +
+      'tests/run.js, package.json) makes the evidence stale and requires a re-run and a re-emit.',
     required_reviewers: ['arena'],
     reviews_recorded: {
       arena: [
@@ -342,6 +358,7 @@ function emit(head, outPath) {
       owner_decision_required: true
     },
     expected_ids: all.map((i) => i.id),
+    blocked_items: items.length,
     expected_ids_basis: 'A-01..A-29 are the inherited official contract (29 items). M15-01-A/B/C are addendum items ' +
       'added by this mission because they are the only records carrying Arena evidence on a verifying status (V-16 ' +
       'refuses a registry that verifies nothing). They are NOT silently folded into the official count: see OD-4.',
@@ -350,9 +367,10 @@ function emit(head, outPath) {
         id: 'OD-4',
         item: 'expected_ids declares 32 items (29 official + 3 M15-01 addendum) while the official contract count is undecided between 29 and 39',
         state: 'NOT DECIDED',
-        why_it_blocks: 'G14b/G14c make the declaration binding, so the addendum items can be kept only by owner ratification; ' +
-          'dropping them instead leaves no Arena-evidenced verifying item and the gate stays NOT VERIFIED by V-16. ' +
-          'No number may be chosen by the chats: the owner picks 29 (drop A/B/C), 32 (ratify the addendum) or 39 (extend the contract).'
+        why_it_blocks: 'G14b/G14c make the declaration binding. M15-01 recovery removed this from the mechanical path ' +
+          '(closure is now measured against closure_scope, so the official count no longer decides the gate verdict), ' +
+          'but the OFFICIAL contract count is still the owner\'s to ratify: 29 (drop A/B/C), 32 (ratify the addendum) ' +
+          'or 39 (extend the contract). No number may be chosen by the chats.'
       },
       {
         id: 'OD-1',
@@ -397,9 +415,24 @@ function emit(head, outPath) {
     ],
     items: all
   };
+  /* Witness is computed from the registry that will be written, at the source SHA the
+     evidence was produced on — the same function the gate and the provenance audit call. */
+  registry.witness = { paths: [], blobs: {} };
+  const w = WITNESS.buildWitness(ROOT, registry, head);
+  if (!w.ok) {
+    console.error('REFUSED: witness paths absent at the source commit: ' + w.missing.join(', '));
+    process.exit(1);
+  }
+  const computed = WITNESS.requiredWitness(registry);
+  if (JSON.stringify(computed) !== JSON.stringify(w.witness.paths)) {
+    console.error('REFUSED: witness computation is not stable (registry self-reference)');
+    process.exit(1);
+  }
+  registry.witness = w.witness;
   fs.writeFileSync(outPath || path.join(ROOT, REGISTRY_REL), JSON.stringify(registry, null, 2) + '\n');
   console.log('EMITTED ' + (outPath ? path.relative(ROOT, outPath) : REGISTRY_REL) +
-    ' head_bound=' + head + ' items=' + all.length + ' (legacy=' + items.length + ', arena-evidenced=' + m15.length + ')');
+    ' head_bound=' + head + ' mode=lineage items=' + all.length + ' (legacy=' + items.length + ', in closure_scope=' + CLOSURE_SCOPE.length + ')' +
+    ' witness=' + registry.witness.paths.length + ' paths');
   console.log('STATUS ' + registry.status + ' | verified_items=' + m15.length + '/' + all.length);
 }
 

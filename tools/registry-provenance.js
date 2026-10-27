@@ -47,6 +47,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
+const WITNESS = require('./lib/verification-witness');
 const REGISTRY = path.join(ROOT, 'docs', 'verification', 'VERIFICATION_REGISTRY.json');
 
 function sh(cmd) {
@@ -108,54 +109,81 @@ function audit() {
     process.exit(1);
   }
   const reg = JSON.parse(fs.readFileSync(REGISTRY, 'utf8'));
-  const head = sh('git rev-parse HEAD') || '(unknown HEAD)';
+  const head = sh('git rev-parse HEAD') || '';
   const remote = (sh('git ls-remote origin refs/heads/main') || '').split(/\s+/)[0] || '(unreachable)';
 
   console.log('══ REGISTRY PROVENANCE AUDIT ══');
   console.log('  registry head_bound : ' + reg.head_bound);
   console.log('  local HEAD          : ' + head);
   console.log('  origin/main         : ' + remote);
-  const boundIsAncestor = reg.head_bound && reg.head_bound !== head
-    ? !!(sh('merge-base --is-ancestor ' + reg.head_bound + ' ' + head) === '' ? false : true)
-    : true;
+  console.log('  binding_mode        : ' + (reg.binding_mode || 'legacy'));
 
-  let stale = 0;
-  let current = 0;
-  let unbound = 0;
+  /* ONE rule, shared with the gate: tools/lib/verification-witness.js.
+     The previous version of this tool kept its own DEPENDENCY_SETS keyed by legacy ids
+     and its own `provenance.dependency_hash`, which no registry item ever carried and
+     which the gate never read. That is why the gate and this audit could disagree and
+     why the audit reported 29 UNBOUND items while the gate reported 65 binding failures
+     for the same registry (measured on main fff1beae). Both now call the same code. */
+  const binding = WITNESS.verifyBinding(ROOT, reg, head, head, false);
+  const scope = Array.isArray(reg.closure_scope) ? reg.closure_scope.map(String) : [];
+  const items = Array.isArray(reg.items) ? reg.items : [];
+  const blocked = items.filter((it) => it && (it.blocked === true || (it.arena && it.arena.status === 'BLOCKED')));
+  const byId = new Map(items.filter((it) => it && it.id).map((it) => [String(it.id), it]));
+
   const rows = [];
-
-  for (const item of (reg.items || [])) {
-    const id = item.id;
-    const files = DEPENDENCY_SETS[id];
-    if (!files) { unbound++; rows.push({ id, state: 'NO_DEP_SET', note: 'add a dependency set' }); continue; }
-    const dh = dependencyHash(files);
-    const recorded = item.provenance && item.provenance.dependency_hash;
-    if (!recorded) {
-      unbound++;
-      rows.push({ id, state: 'UNBOUND', note: 'hash ' + dh.hash + (dh.missing.length ? ' (missing ' + dh.missing.join(',') + ')' : '') });
-      continue;
-    }
-    if (recorded === dh.hash) { current++; rows.push({ id, state: 'CURRENT', note: dh.hash }); }
-    else { stale++; rows.push({ id, state: 'STALE', note: 'recorded ' + recorded + ' ≠ tree ' + dh.hash }); }
+  for (const it of items) {
+    const id = String(it && it.id);
+    if (!it) continue;
+    if (it.blocked === true || (it.arena && it.arena.status === 'BLOCKED')) { rows.push({ id: id, state: 'BLOCKED', note: String(it.blocked_reason || '').slice(0, 90) }); continue; }
+    if (scope.includes(id)) { rows.push({ id: id, state: 'IN-SCOPE', note: String(it.status) }); continue; }
+    rows.push({ id: id, state: 'OUT-SCOPE', note: String(it.status || '(none)') });
   }
+  for (const r of rows) console.log('  ' + r.state.padEnd(10) + ' ' + r.id + ' — ' + r.note);
 
-  for (const r of rows) console.log('  ' + r.state.padEnd(12) + ' ' + r.id + ' — ' + r.note);
+  /* closure-scope arithmetic, identical to V-19b/V-19c/V-19d/V-19e */
+  const problems = [];
+  for (const p of binding.problems) problems.push('binding: ' + p);
+  if (!scope.length) problems.push('closure_scope absent or empty');
+  for (const id of scope) {
+    const it = byId.get(id);
+    if (!it) { problems.push('closure_scope names an absent item: ' + id); continue; }
+    if (it.blocked === true) problems.push('blocked item inside closure_scope: ' + id);
+    const rank = ['UNKNOWN', 'TESTED', 'RUNTIME_VERIFIED', 'ADVERSARIAL_VERIFIED', 'INDEPENDENTLY_VERIFIED', 'CERTIFIED'].indexOf(String(it.status));
+    if (rank < 2) problems.push('in-scope item below the verifying band: ' + id + '=' + it.status);
+    if (!it.arena || it.arena.status !== 'PASS') problems.push('in-scope item without an Arena PASS: ' + id);
+  }
+  const rankOf = (s) => ['UNKNOWN', 'TESTED', 'RUNTIME_VERIFIED', 'ADVERSARIAL_VERIFIED', 'INDEPENDENTLY_VERIFIED', 'CERTIFIED'].indexOf(String(s));
+  const offScope = items.filter((it) => it && rankOf(it.status) >= 2 && !scope.includes(String(it.id))).map((it) => String(it.id));
+  if (offScope.length) problems.push('items claim a verifying status outside closure_scope: ' + offScope.join(','));
+  if (reg.blocked_items !== blocked.length) problems.push('blocked_items declared ' + reg.blocked_items + ' but ' + blocked.length + ' are blocked');
+  const scopeRanks = scope.map((id) => (byId.get(id) ? rankOf(byId.get(id).status) : -1)).filter((r) => r >= 0);
+  const minScope = scopeRanks.length ? Math.min.apply(null, scopeRanks) : -1;
+  if (rankOf(reg.status) < 0 || (minScope >= 0 && rankOf(reg.status) > minScope)) {
+    problems.push('registry status ' + reg.status + ' out-claims the weakest in-scope item (rank ' + minScope + ')');
+  }
+  if (blocked.length && rankOf(reg.status) >= rankOf('CERTIFIED')) problems.push('a registry with blocked items cannot be CERTIFIED');
+
   console.log('────────────────────────────────────────');
-  console.log('  CURRENT : ' + current);
-  console.log('  STALE   : ' + stale + (stale ? '  ← re-run these items\' verification' : ''));
-  console.log('  UNBOUND : ' + unbound + (unbound ? '  ← bind with --bind <id>' : ''));
-
-  if (reg.head_bound !== head) {
-    console.log('');
-    console.log('  V-02 HEAD-BIND: MISMATCH (registry ' + reg.head_bound.slice(0, 10) +
-      ' vs HEAD ' + head.slice(0, 10) + ')');
-    console.log('    ancestor-of-HEAD: ' + (boundIsAncestor ? 'YES (evidence is STALE, not lost)' : 'NO (diverged — re-verify from scratch)'));
+  /* The word MISMATCH is part of the audit's contract: tests/false-green-defense.js
+     C6 asserts that a stale registry is not merely rejected but *named* as a
+     head_bound mismatch, so a future rewrite cannot turn a real defect into a
+     generic "invalid". */
+  console.log('  HEAD-BIND  : ' + (binding.ok
+    ? 'VALID (' + binding.mode + ')'
+    : 'MISMATCH/INVALID (' + binding.mode + ')'));
+  if (binding.witness) {
+    console.log('  WITNESS    : ' + binding.witness.paths.length + ' path(s); ' +
+      binding.witness.changedSinceSource.length + ' changed since ' + String(reg.head_bound).slice(0, 10));
   }
+  console.log('  IN-SCOPE   : ' + scope.length + '   BLOCKED: ' + blocked.length + '   ITEMS: ' + items.length);
+  console.log('  VERDICT    : ' + (problems.length ? 'PROVENANCE INVALID — ' + problems.length + ' problem(s)' : 'PROVENANCE VALID'));
 
-  /* exit 2 = stale or head-mismatch (the gate would be red); exit 3 =
-     unbound items present (registry cannot self-prove provenance at all). */
-  const bad = stale > 0 || reg.head_bound !== head;
-  process.exit(bad ? 2 : (unbound > 0 ? 3 : 0));
+  /* exit 0 = binding valid and scope consistent; exit 2 = binding invalid or stale
+     (the gate would be red for the same reason); exit 3 = the registry declares no
+     closure scope, i.e. it cannot state what it proves at all. */
+  for (const p of problems) console.log('  PROBLEM    : ' + p);
+  const bad = !binding.ok || problems.some((p) => !/^closure_scope absent/.test(p));
+  process.exit(!binding.ok || bad ? 2 : (!scope.length ? 3 : 0));
 }
 
 function bind(itemId) {

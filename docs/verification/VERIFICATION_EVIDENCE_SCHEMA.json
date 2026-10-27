@@ -25,6 +25,9 @@
     "policy",
     "status",
     "head_bound",
+    "binding_mode",
+    "witness",
+    "closure_scope",
     "required_reviewers",
     "allowed_statuses",
     "reviews_recorded",
@@ -119,5 +122,31 @@
   "completeness": {
     "expected_ids": "must be non-empty, duplicate-free, contain every item id, and be fully present in items — missing, duplicated and undeclared ids are each named (G14a..G14d, G8)",
     "independence": "with one reviewer slot the pairwise-distinct checks (V-03/G16) are structurally vacuous; independence is not obtainable from AI review and the empty slot must not be re-invented (V-12)"
+  },
+  "binding": {
+    "modes": [
+      "legacy",
+      "lineage"
+    ],
+    "legacy": "head_bound must equal the evidence head: checkout HEAD, or the parent SHA of a single-parent registry-only metadata commit",
+    "lineage": {
+      "head_bound": "immutable source commit that the evidence was produced on; must be a commit and an ancestor of the checkout",
+      "witness.paths": "sorted set of every path the evidence depends on: all evidence artifacts, every repo path cited by an evidence command, plus the policy, the schema, the gate, tools/lib/verification-witness.js, package.json and tests/run.js",
+      "witness.blobs": "{path: git blob sha1 at head_bound}",
+      "rule": "the gate and the provenance audit both RECOMPUTE witness.paths from the registry (a registry cannot shrink its scope) and require every recorded blob to equal the blob at head_bound AND at the checkout; any witness path that changed after head_bound makes the evidence stale and the binding invalid"
+    },
+    "shared_implementation": "tools/lib/verification-witness.js — one rule for gate, provenance audit and registry builder"
+  },
+  "closure_scope": {
+    "purpose": "the ids whose verification constitutes closure of the declared mission; the registry headline means exactly this scope",
+    "rules": [
+      "non-empty, duplicate-free, subset of expected_ids",
+      "every in-scope item must be RUNTIME_VERIFIED or above with an Arena PASS and must not be blocked (V-19b)",
+      "no item may claim a verifying status outside the scope (V-19c)",
+      "no blocked item may be in the scope (V-19d)",
+      "registry.blocked_items must equal the number of blocked items (V-19e)",
+      "registry status <= weakest in-scope item (V-15); a registry with blocked items cannot be CERTIFIED (V-15b)",
+      "V-16 requires at least one in-scope item and every in-scope item verified"
+    ]
   }
 }

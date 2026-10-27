@@ -28,6 +28,7 @@ const GATE_SRC = process.env.A30_GATE_SRC
 const ONLY = (process.env.A30_ONLY || '').split(',').map((x) => x.trim()).filter(Boolean);
 const POLICY_SRC = path.join(REPO, 'docs', 'STRICT_VERIFICATION_GATE.md');
 const SCHEMA_SRC = path.join(REPO, 'docs', 'verification', 'VERIFICATION_EVIDENCE_SCHEMA.json');
+const WITNESS_SRC = path.join(REPO, 'tools', 'lib', 'verification-witness.js');
 const ALERT_SRC = path.join(REPO, 'infra', 'observability', 'alert-rules.yml');
 
 const CANONICAL_STATUSES = ['UNKNOWN', 'TESTED', 'RUNTIME_VERIFIED', 'ADVERSARIAL_VERIFIED', 'INDEPENDENTLY_VERIFIED', 'CERTIFIED'];
@@ -104,6 +105,12 @@ function goodRegistry(head, mutate, fixtureDir) {
     policy: 'docs/STRICT_VERIFICATION_GATE.md',
     status: 'ADVERSARIAL_VERIFIED',
     head_bound: head,
+    /* legacy binding + an explicit closure scope: these fixtures test the OTHER checks,
+       so they must not fail V-19/V-02 for a reason unrelated to the exploit under test */
+    binding_mode: 'legacy',
+    witness: { paths: [], blobs: {} },
+    closure_scope: ['A-30-DEMO'],
+    blocked_items: 0,
     required_reviewers: TRIO.slice(),
     allowed_statuses: CANONICAL_STATUSES.slice(),
     reviews_recorded: {
@@ -146,6 +153,9 @@ function mkFixture(name) {
   fs.mkdirSync(path.join(dir, 'infra', 'observability'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'tests'), { recursive: true });
   fs.copyFileSync(GATE_SRC, path.join(dir, 'tools', 'strict-verification-gate.js'));
+  /* the gate now resolves its binding rule through tools/lib/verification-witness.js */
+  fs.mkdirSync(path.join(dir, 'tools', 'lib'), { recursive: true });
+  fs.copyFileSync(WITNESS_SRC, path.join(dir, 'tools', 'lib', 'verification-witness.js'));
   /* G15b: the commands GOOD evidence cites must exist inside the fixture repo */
   fs.writeFileSync(path.join(dir, 'tests', 'smoke.js'), '// a30 fixture smoke stub\n');
   fs.writeFileSync(path.join(dir, 'tests', 'strict-verification-gate.negative.test.js'),
@@ -398,7 +408,10 @@ addCase('V-15b', 'V-15b', 'blocked item buried under a green registry headline',
   it.status = 'UNKNOWN'; it.blocked = true; it.blocked_reason = 'owner decision pending';
   it.owner_decision_required = true; it.arena.status = 'BLOCKED';
   it.evidence = [mkEvidence('arena', 'review_note', r.head_bound, { checks_total: 1, checks_passed: 1 }, fixtureDir)];
-  r.status = 'ADVERSARIAL_VERIFIED';
+  r.arena_note = 'blocked item recorded; scope emptied';
+  r.closure_scope = [];
+  r.blocked_items = 1;
+  r.status = 'CERTIFIED';
 });
 addCase('V-09d', 'V-09b', 'reviews_recorded names a retired reviewer slot', (r) => {
   r.reviews_recorded.chatgpt = ['legacy review borrowed from the Atria era'];
@@ -465,6 +478,8 @@ cases.push({
     }, fixtureDir);
     const it = r.items[0];
     r.status = 'UNKNOWN';
+    r.closure_scope = [];
+    r.blocked_items = 1;
     it.status = 'UNKNOWN';
     it.blocked = true;
     it.blocked_reason = 'owner decision required before this claim can be made';
@@ -520,6 +535,7 @@ cases.push({ id: 'GOOD-SCOPED-SHARED', expectFail: null, description: 'two items
     clone.scope = 'A-30 CLONE evidence';
     r.items.push(clone);
     r.expected_ids = r.items.map((x) => String(x.id));
+    r.closure_scope = r.items.map((x) => String(x.id)); /* both are in the declared scope */
   }, extra: {} });
 
 /* ── runner ─────────────────────────────────────────────────────────────── */

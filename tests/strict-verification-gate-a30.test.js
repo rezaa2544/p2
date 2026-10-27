@@ -43,6 +43,8 @@ function base() {
   fs.mkdirSync(path.join(d, 'infra/observability'), { recursive: true });
   fs.mkdirSync(path.join(d, 'artifacts'), { recursive: true });
   fs.copyFileSync(GATE, path.join(d, 'tools/strict-verification-gate.js'));
+  fs.mkdirSync(path.join(d, 'tools/lib'), { recursive: true });
+  fs.copyFileSync(path.join(ROOT, 'tools/lib/verification-witness.js'), path.join(d, 'tools/lib/verification-witness.js'));
   fs.copyFileSync(SCHEMA, path.join(d, 'docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json'));
   const allowJson = JSON.parse(fs.readFileSync(ALLOW, 'utf8'));
   for (const pat of ['assert(true', 'process.exit(0)', '|| true', '0/0 checks']) {
@@ -111,6 +113,10 @@ function validReg(head) {
        which is an owner decision about the reviewer model, not a test value to tweak. */
     status: 'ADVERSARIAL_VERIFIED',
     head_bound: head,
+    binding_mode: 'legacy',
+    witness: { paths: [], blobs: {} },
+    closure_scope: ['A30-T'],
+    blocked_items: 0,
     expected_ids: ['A30-T'],
     required_reviewers: REVIEWERS.slice(),
     reviews_recorded: reviewsRecorded,
@@ -219,6 +225,8 @@ chk('an explicitly unapproved human_governance block also stays green', unapprov
    non-green: CONTRACT PASS, VERDICT NOT VERIFIED, exit 1 (V-16). */
 reg = validReg(head);
 reg.status = 'UNKNOWN';
+reg.closure_scope = [];
+reg.blocked_items = 1;
 reg.items[0].status = 'UNKNOWN';
 reg.items[0].blocked = true;
 reg.items[0].blocked_reason = 'owner decision pending';

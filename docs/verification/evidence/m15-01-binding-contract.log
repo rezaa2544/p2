@@ -1,0 +1,27 @@
+# M15-01-EVIDENCE name=binding ts=2026-10-27T14:22:02.096Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tests/verification-binding-contract.test.js"
+==== M15-01 BINDING & CLOSURE CONTRACT (real git) ====
+  OK   C1 lineage binding accepts a registry-only commit (exit 0) — exit=0
+  OK   C2 provenance audit agrees with the gate (exit 0) — exit=0
+  OK   C3 binding survives an unrelated documentation commit — exit=0
+  OK   C4 provenance audit agrees after the unrelated commit — exit=0
+  OK   C5 changing a witnessed test makes the evidence stale (rejected) — exit=1
+  OK   C6 the rejection names the stale path — witness content changed after the evidence commit (stale evidence for): tests/witnessed-suite.js
+  OK   C7 provenance audit agrees that the binding is invalid (exit 2) — exit=2
+  OK   C8 a narrowed witness is rejected (scope cannot be shrunk after the fact) — exit=1
+  OK   C9 an inflated witness is rejected — exit=1
+  OK   C10 a forged witness blob is rejected — exit=1
+  OK   C11 a non-ancestor head_bound is rejected — exit=1
+  OK   C12 legacy mode keeps the old strict rule (a later commit invalidates it) — exit=1
+  OK   C-scope-blocked-member rejected by its named check — exit=1
+  OK   C-scope-off-scope-claim rejected by its named check — exit=1
+  OK   C-scope-empty-but-green conforms but is never reported VERIFIED — exit=1
+  OK   C-scope-blocked-count-lie rejected by its named check — exit=1
+  OK   C-scope-certified-blocked rejected by its named check — exit=1
+  OK   C-scope-weakest-headline rejected by its named check — exit=1
+  OK   C13 gate and provenance audit agree on a valid registry — gate=true audit=true
+  OK   C14 gate and provenance audit agree on an invalid one (both reject) — gate=1 audit=2
+  OK   C15 witness-changed the rule is what rejects it (real=false, weakened=true) — real=false weakened=true why=witness content changed after the evidence commit (stale evidence for): tests/wi
+  OK   C15 witness-forged the rule is what rejects it (real=false, weakened=true) — real=false weakened=true why=witness blob does not match the evidence commit: tests/witnessed-suite.js
+  OK   C15 witness-shrunk the rule is what rejects it (real=false, weakened=true) — real=false weakened=true why=witness.paths must equal the set the registry implies; missing=["tests/run.js"] 
+  OK   C15 not-ancestor the rule is what rejects it (real=false, weakened=true) — real=false weakened=true why=head_bound is not an ancestor of the checkout: 6e235ebf1062e00e9df957c571d9e93ce
+CHECKS 24 FAIL 0

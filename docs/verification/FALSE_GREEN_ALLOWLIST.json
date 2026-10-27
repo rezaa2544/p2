@@ -1401,6 +1401,38 @@
       "reason": "False-green gate definition / adversarial exploit self-test in tools/strict-verification-gate.js verifying scanner enforcement of 0/0 checks",
       "expires": "2027-10-23",
       "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "assert(true",
+      "path": "tests/verification-binding-contract.test.js",
+      "owner": "arena-m15-01",
+      "reason": "The real-git binding/closure contract suite writes a fixture FALSE_GREEN_ALLOWLIST.json whose entries carry these scanner literals as data (each fixture repository must be self-contained); the literals are never used as assertions in this repository. Named-rule rejection is proven by mutation in the same file (C15).",
+      "expires": "2027-10-27",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "process.exit(0)",
+      "path": "tests/verification-binding-contract.test.js",
+      "owner": "arena-m15-01",
+      "reason": "The real-git binding/closure contract suite writes a fixture FALSE_GREEN_ALLOWLIST.json whose entries carry these scanner literals as data (each fixture repository must be self-contained); the literals are never used as assertions in this repository. Named-rule rejection is proven by mutation in the same file (C15).",
+      "expires": "2027-10-27",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "|| true",
+      "path": "tests/verification-binding-contract.test.js",
+      "owner": "arena-m15-01",
+      "reason": "The real-git binding/closure contract suite writes a fixture FALSE_GREEN_ALLOWLIST.json whose entries carry these scanner literals as data (each fixture repository must be self-contained); the literals are never used as assertions in this repository. Named-rule rejection is proven by mutation in the same file (C15).",
+      "expires": "2027-10-27",
+      "replacement_test": "tests/false-green-defense.test.js"
+    },
+    {
+      "pattern": "0/0 checks",
+      "path": "tests/verification-binding-contract.test.js",
+      "owner": "arena-m15-01",
+      "reason": "The real-git binding/closure contract suite writes a fixture FALSE_GREEN_ALLOWLIST.json whose entries carry these scanner literals as data (each fixture repository must be self-contained); the literals are never used as assertions in this repository. Named-rule rejection is proven by mutation in the same file (C15).",
+      "expires": "2027-10-27",
+      "replacement_test": "tests/false-green-defense.test.js"
     }
   ]
 }
