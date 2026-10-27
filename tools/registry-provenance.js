@@ -111,13 +111,51 @@ function audit() {
   const head = sh('git rev-parse HEAD') || '(unknown HEAD)';
   const remote = (sh('git ls-remote origin refs/heads/main') || '').split(/\s+/)[0] || '(unreachable)';
 
+  /* EVIDENCE COMMIT — mirror the strict gate exactly (tools/strict-verification-gate.js).
+     A registry cannot store the SHA of the commit that contains it, so the documented
+     protocol binds evidence to the PARENT of a registry-only, single-parent commit.
+     This tool used to compare head_bound against the checkout HEAD only, so on a valid
+     metadata-only landing commit it reported MISMATCH/UNBOUND while the gate correctly
+     reported CONTRACT PASS — the two tools disagreed about the same commit. */
+  let evidenceHead = head;
+  let metadataOnlyBinding = false;
+  let bindingNote = 'checkout HEAD (not a metadata-only commit)';
+  try {
+    const parentLine = cp.execFileSync('git', ['rev-list', '--parents', '-n', '1', 'HEAD'],
+      { cwd: ROOT, encoding: 'utf8' }).trim();
+    const parts = parentLine ? parentLine.split(/\s+/) : [];
+    if (parts.length === 2) {
+      const changed = cp.execFileSync('git', ['diff', '--name-only', '--no-renames', parts[1], 'HEAD'],
+        { cwd: ROOT, encoding: 'utf8' }).split(/\r?\n/).map((s) => s.trim()).filter(Boolean).sort();
+      if (changed.length === 1 && changed[0] === 'docs/verification/VERIFICATION_REGISTRY.json') {
+        evidenceHead = parts[1];
+        metadataOnlyBinding = true;
+        bindingNote = 'metadata-only registry commit; evidence binds parent ' + evidenceHead;
+      }
+    }
+  } catch (e) { bindingNote = 'parent/diff unreadable: ' + String(e.message || e); }
+
   console.log('══ REGISTRY PROVENANCE AUDIT ══');
   console.log('  registry head_bound : ' + reg.head_bound);
   console.log('  local HEAD          : ' + head);
+  console.log('  evidence commit     : ' + evidenceHead + '  (' + bindingNote + ')');
   console.log('  origin/main         : ' + remote);
-  const boundIsAncestor = reg.head_bound && reg.head_bound !== head
-    ? !!(sh('merge-base --is-ancestor ' + reg.head_bound + ' ' + head) === '' ? false : true)
-    : true;
+
+  /* Ancestry, measured properly. The old expression ran a command without the `git`
+     prefix (always throwing) and mapped the throw to "ancestor = true", so it printed
+     the reassuring "STALE, not lost" line for EVERY input, including a SHA that does
+     not exist. spawnSync status is the only trustworthy signal here. */
+  const gitOk = (args) => {
+    const r = cp.spawnSync('git', args, { cwd: ROOT });
+    return r.status === 0;
+  };
+  const boundExists = !!reg.head_bound && gitOk(['cat-file', '-e', reg.head_bound + '^{commit}']);
+  let bindState;
+  if (!boundExists) bindState = 'INVALID (registry cites a SHA that is not a commit in this repository)';
+  else if (reg.head_bound === evidenceHead) bindState = 'MATCH (head_bound equals the evidence commit)';
+  else if (gitOk(['merge-base', '--is-ancestor', reg.head_bound, evidenceHead])) {
+    bindState = 'STALE (evidence was produced on an ancestor of the evidence commit — re-run required)';
+  } else bindState = 'DIVERGED (head_bound is not in the history of the evidence commit — re-verify from scratch)';
 
   let stale = 0;
   let current = 0;
@@ -145,17 +183,31 @@ function audit() {
   console.log('  STALE   : ' + stale + (stale ? '  ← re-run these items\' verification' : ''));
   console.log('  UNBOUND : ' + unbound + (unbound ? '  ← bind with --bind <id>' : ''));
 
-  if (reg.head_bound !== head) {
+  /* A per-item dependency hash is an OPTIONAL second layer (--bind). Its absence is
+     not by itself a contradiction with the gate, which binds whole artifacts by
+     sha256 at the evidence commit; it only means this weaker layer cannot vouch.
+     Say which one it is instead of implying the registry is broken. */
+  if (!metadataOnlyBinding) {
     console.log('');
-    console.log('  V-02 HEAD-BIND: MISMATCH (registry ' + reg.head_bound.slice(0, 10) +
-      ' vs HEAD ' + head.slice(0, 10) + ')');
-    console.log('    ancestor-of-HEAD: ' + (boundIsAncestor ? 'YES (evidence is STALE, not lost)' : 'NO (diverged — re-verify from scratch)'));
+    console.log('  BINDING MODE: checkout HEAD is not a registry-only metadata commit, so the');
+    console.log('    two-phase protocol cannot bind here. Evidence MUST be produced on the');
+    console.log('    parent of such a commit (docs/STRICT_VERIFICATION_GATE.md steps 1-8).');
   }
+  console.log('');
+  console.log('  V-02 HEAD-BIND: ' + bindState.replace('STALE (','MISMATCH — STALE (').replace('DIVERGED (','MISMATCH — DIVERGED (').replace('INVALID (','MISMATCH — INVALID ('));
+  if (!boundExists) console.log('    (the gate reports the same condition as a SHA-binding failure)');
+  else if (reg.head_bound !== evidenceHead) {
+    console.log('    ancestor-of-evidence: ' + (gitOk(['merge-base', '--is-ancestor', reg.head_bound, evidenceHead]) ? 'YES' : 'NO'));
+  }
+  console.log('  EVIDENCE_SHA ' + evidenceHead + (metadataOnlyBinding ? ' (metadata-only registry commit)' : ''));
+  console.log('  AGREES-WITH-GATE: ' + ((boundExists && reg.head_bound === evidenceHead) ? 'YES (same evidence SHA)' : 'NO (gate would also fail V-02)'));
 
-  /* exit 2 = stale or head-mismatch (the gate would be red); exit 3 =
-     unbound items present (registry cannot self-prove provenance at all). */
-  const bad = stale > 0 || reg.head_bound !== head;
-  process.exit(bad ? 2 : (unbound > 0 ? 3 : 0));
+  /* exit 0 = bound to the evidence commit AND no stale item AND nothing unbound.
+     exit 2 = stale / mismatch / diverged / invalid (the gate is red for the same reason).
+     exit 3 = provenance cannot be self-proved: unbound items or no metadata-only binding. */
+  const hardFail = !boundExists || reg.head_bound !== evidenceHead || stale > 0;
+  if (hardFail) process.exit(2);
+  process.exit(unbound > 0 || !metadataOnlyBinding ? 3 : 0);
 }
 
 function bind(itemId) {
