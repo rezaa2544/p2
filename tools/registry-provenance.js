@@ -1,44 +1,50 @@
 #!/usr/bin/env node
-/* ═══════════════════════════════════════════════════════════════════════
+/* ───────────────────────────────────────────────────────────────────────
+
    tools/registry-provenance.js — evidence-bound verification provenance
-   ────────────────────────────────────────────────────────────────────────
-   MISSION 02 / §4 — fix the stale-registry class of defect structurally.
 
-   THE DEFECT (reproduced Mission 01, HEAD 691f8d6):
+   WHAT THIS TOOL IS
+     A per-item ledger (IN-SCOPE / OUT-SCOPE / BLOCKED) plus the binding, the
+     witness and the closure arithmetic: a human-readable second opinion on the
+     same question tools/strict-verification-gate.js answers.
 
-     docs/verification/VERIFICATION_REGISTRY.json carried
-       head_bound: e4584806...
-     while real origin/main was 691f8d6...  The gate's V-02 check compares
-     head_bound to local HEAD, so the mismatch was DETECTED — but only by a
-     human choosing to run the gate. Nothing made the staleness automatic,
-     and a stale registry still parses as a well-formed registry.
+   ONE RULE, ONE IMPLEMENTATION
+     The rule lives in tools/lib/verification-witness.js and is called here, by
+     the gate and by tools/m15-01-build-registry.js. That is not a style choice.
+     Until 2026-10-27 this tool carried its own DEPENDENCY_SETS keyed by legacy
+     ids plus a `provenance.dependency_hash` that no registry item ever carried
+     and that the gate never read. Measured on main fff1beae, one registry gave
 
-   ROOT CAUSE:
+        gate  → 633 pass / 65 fail, exit 1  (every failure V-02/G9 head_bound vs evidence_sha)
+        audit → 29 UNBOUND,         exit 2  (matching a field nothing writes)
 
-     head_bound is a single scalar. Either it matches HEAD (green) or it does
-     not (red). There is no middle state that says "this evidence was
-     produced on an ancestor of HEAD and is therefore STALE-not-INVALID,
-     pending re-run." So the registry can only ever be hand-edited to the new
-     SHA — and a hand edit is exactly the operation that can be skipped.
+     Two implementations of one contract is two contracts, and "which tool is
+     right?" became a question a human had to answer. Now the module decides and
+     both tools report the same verdict.
 
-   DESIGN (see the discussion of binding in §58 Evidence Ledger):
+   WHAT THE BINDING MEANS (docs/STRICT_VERIFICATION_GATE.md § M15-01 RECOVERY)
+     binding_mode "legacy"  head_bound must equal the evidence head (old rule).
+     binding_mode "lineage" head_bound is the immutable SOURCE commit: a real
+                            commit and an ancestor of the checkout, with every
+                            witnessed path byte-identical at the source commit
+                            (blob sha1 in witness.blobs) and at HEAD. Unrelated
+                            docs or dependency commits keep the evidence valid;
+                            an edit to a witnessed file makes it stale, and stale
+                            is rejected, never warned about.
 
-     Evidence should bind to the TREE STATE it was produced against, not to a
-     scalar that must be rewritten by hand. This tool computes a content hash
-     over the source files that an evidence item actually depends on, so:
-
-       * evidence bound to an unchanged dependency set stays valid when the
-         SHA moves but the relevant code did not (no false staleness), and
-       * evidence bound to a changed dependency set is detected as STALE the
-         instant the tree changes (no false freshness).
-
-     That is stronger provenance than a single head_bound: it is stable
-     across unrelated commits and precise about what the evidence covers.
+   EXIT CODES
+     0  binding valid and the closure scope is consistent
+     1  registry file missing — nothing to audit
+     2  binding invalid/stale, or scope arithmetic fails (the gate is red for the
+        same reason and names the same problem)
+     3  the registry declares no closure scope, i.e. it cannot say what it proves
 
    USAGE
-     node tools/registry-provenance.js --audit          audit current registry
-     node tools/registry-provenance.js --bind <item>    emit a provenance block
-   ═══════════════════════════════════════════════════════════════════════ */
+     node tools/registry-provenance.js --audit          audit the current registry
+     node tools/registry-provenance.js --bind <item>    print a dependency-hash block
+                                                        for a legacy id (historical)
+   ───────────────────────────────────────────────────────────────────────
+ */
 'use strict';
 
 const cp = require('child_process');

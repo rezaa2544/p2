@@ -216,6 +216,124 @@ console.log('==== M15-01 BINDING & CLOSURE CONTRACT (real git) ====');
   fs.rmSync(f.dir, { recursive: true, force: true });
 }
 
+/* ── 2b. LANDING STRATEGY (OD-3): what a merge, a squash and a mixed commit do
+   to the binding. The old two-phase rule required the registry to land as a
+   single-parent, exactly-one-path metadata commit — which is why OD-3 existed.
+   Under binding_mode=lineage the rule is ancestry + witness blobs, so the
+   *shape* of the landing commit stops mattering and the *content* starts
+   mattering. That is a testable claim, so it is tested rather than assumed. */
+{
+  /* Build: a main line, then a work branch carrying the evidence commit and the
+     registry-only commit, then land it three different ways. */
+  function landingFixture(name) {
+    const dir = mkFixture(name);
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-qm', 'main: base']);
+    const mainBranch = git(dir, ['rev-parse', '--abbrev-ref', 'HEAD']); /* git may default to master */
+    const base = git(dir, ['rev-parse', 'HEAD']);
+    git(dir, ['checkout', '-q', '-b', 'work']);
+    fs.writeFileSync(path.join(dir, 'docs/verification/evidence/x-positive.log'), 'arena positive runtime proof\nwork branch\n');
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-qm', 'work: evidence produced here']);
+    const sourceSha = git(dir, ['rev-parse', 'HEAD']);
+    const reg = makeRegistry(sourceSha, dir);
+    const w = WITNESS.buildWitness(dir, reg, sourceSha);
+    if (!w.ok) throw new Error('landing fixture: witness build failed: ' + w.missing.join(','));
+    reg.witness = w.witness;
+    fs.writeFileSync(path.join(dir, 'docs/verification/VERIFICATION_REGISTRY.json'), JSON.stringify(reg, null, 2));
+    git(dir, ['add', 'docs/verification/VERIFICATION_REGISTRY.json']);
+    git(dir, ['commit', '-qm', 'registry: bound to ' + sourceSha]);
+    return { dir, base, mainBranch: mainBranch, sourceSha, workHead: git(dir, ['rev-parse', 'HEAD']) };
+  }
+  const finish = (dir) => {
+    const head = git(dir, ['rev-parse', 'HEAD']);
+    git(dir, ['update-ref', 'refs/remotes/origin/main', head]);
+    return head;
+  };
+
+  /* L1 — merge commit landing (--no-ff): lineage must survive it. */
+  {
+    const f = landingFixture('land-merge');
+    git(f.dir, ['checkout', '-q', f.mainBranch]);
+    fs.writeFileSync(path.join(f.dir, 'CHANGELOG.md'), 'unrelated main-line note\n');
+    git(f.dir, ['add', '-A']);
+    git(f.dir, ['commit', '-qm', 'main: concurrent unrelated note']);
+    git(f.dir, ['merge', '-q', '--no-ff', 'work', '-m', 'merge work into main']);
+    const head = finish(f.dir);
+    const parents = git(f.dir, ['rev-list', '--parents', '-n', '1', head]).split(' ').length - 1;
+    const g = runGate(f.dir);
+    chk('L1 a merge-commit landing preserves the lineage binding (2 parents, exit 0)',
+      parents === 2 && g.code === 0,
+      'parents=' + parents + ' exit=' + g.code + ' ' + (g.out.match(/FAIL V-02[^\n]*/) || [''])[0]);
+    fs.rmSync(f.dir, { recursive: true, force: true });
+  }
+
+  /* L2 — squash landing: the source commit stops being an ancestor, so the
+     evidence can no longer be shown to describe this line. Must be rejected. */
+  {
+    const f = landingFixture('land-squash');
+    git(f.dir, ['checkout', '-q', f.mainBranch]);
+    fs.writeFileSync(path.join(f.dir, 'CHANGELOG.md'), 'unrelated main-line note\n');
+    git(f.dir, ['add', '-A']);
+    git(f.dir, ['commit', '-qm', 'main: concurrent unrelated note']);
+    git(f.dir, ['merge', '-q', '--squash', 'work']);
+    git(f.dir, ['commit', '-qm', 'squashed work']);
+    finish(f.dir);
+    const g = runGate(f.dir);
+    chk('L2 a squash landing is rejected (the evidence source is no longer an ancestor)',
+      g.code === 1 && /not an ancestor/.test(g.out),
+      'exit=' + g.code + ' ' + (g.out.match(/witness content changed[^\n]*|not an ancestor[^\n]*/) || [''])[0]);
+    fs.rmSync(f.dir, { recursive: true, force: true });
+  }
+
+  /* L3 — the registry may ride in a commit that also carries files the evidence
+     does not depend on. Under the old rule this was illegal by construction;
+     under lineage it is a non-event, and saying so is what retires OD-3. */
+  {
+    const dir = mkFixture('land-mixed');
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-qm', 'source: evidence produced here']);
+    const sourceSha = git(dir, ['rev-parse', 'HEAD']);
+    const reg = makeRegistry(sourceSha, dir);
+    const w = WITNESS.buildWitness(dir, reg, sourceSha);
+    reg.witness = w.witness;
+    fs.writeFileSync(path.join(dir, 'docs/verification/VERIFICATION_REGISTRY.json'), JSON.stringify(reg, null, 2));
+    fs.writeFileSync(path.join(dir, 'README.md'), 'unrelated documentation riding along\n');
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-qm', 'registry + unrelated docs in one commit']);
+    const head = finish(dir);
+    const changed = git(dir, ['diff', '--name-only', '--no-renames', sourceSha, head]).split('\n').filter(Boolean);
+    const g = runGate(dir);
+    chk('L3 a registry commit that also carries non-witnessed files is accepted (OD-3 retired)',
+      changed.length === 2 && g.code === 0,
+      'changed=' + JSON.stringify(changed) + ' exit=' + g.code + ' ' + (g.out.match(/FAIL V-02[^\n]*/) || [''])[0]);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+
+  /* L4 — but the same mixed commit is refused if the extra file IS witnessed:
+     the rule is not "anything may ride along", it is "nothing the evidence
+     depends on may change". */
+  {
+    const dir = mkFixture('land-mixed-witnessed');
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-qm', 'source: evidence produced here']);
+    const sourceSha = git(dir, ['rev-parse', 'HEAD']);
+    const reg = makeRegistry(sourceSha, dir);
+    const w = WITNESS.buildWitness(dir, reg, sourceSha);
+    reg.witness = w.witness;
+    fs.writeFileSync(path.join(dir, 'docs/verification/VERIFICATION_REGISTRY.json'), JSON.stringify(reg, null, 2));
+    fs.writeFileSync(path.join(dir, 'tests/witnessed-suite.js'), '// fixture witnessed suite v2 (changed)\n');
+    git(dir, ['add', '-A']);
+    git(dir, ['commit', '-qm', 'registry + a changed witnessed suite']);
+    finish(dir);
+    const g = runGate(dir);
+    chk('L4 the same commit is rejected when the extra file is witnessed (control for L3)',
+      g.code === 1 && /stale evidence for\): tests\/witnessed-suite\.js/.test(g.out),
+      'exit=' + g.code + ' ' + (g.out.match(/stale evidence[^\n]*/) || [''])[0]);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 /* ── 3. …and the reason it is not a weakening: a witnessed file changes ──── */
 {
   const f = build('witness-changed', {
@@ -366,7 +484,7 @@ for (const c of scopeCases) {
         git(dir, ['add', '-A']); git(dir, ['commit', '-qm', 'change witnessed test']);
       }
     },
-    { id: 'witness-forged', lib: 'if (declaredBlobs[p] !== atSource.blobs[p]) {', weakened: 'if (false) {', tamper: (reg, dir) => { reg.witness.blobs['tests/witnessed-suite.js'] = 'a'.repeat(40); } },
+    { id: 'witness-forged', lib: 'if (declaredBlobs[p] !== atSource.blobs[p]) {', weakened: 'if (false) {', tamper: (reg) => { reg.witness.blobs['tests/witnessed-suite.js'] = 'a'.repeat(40); } },
     { id: 'witness-shrunk', lib: 'if (JSON.stringify(sortedDeclared) !== JSON.stringify(computed)) {', weakened: 'if (false) {', tamper: (reg) => { reg.witness.paths = reg.witness.paths.filter((p) => p !== 'tests/run.js'); delete reg.witness.blobs['tests/run.js']; } },
     {
       id: 'not-ancestor',
