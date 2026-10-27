@@ -47,7 +47,7 @@ V-06 remote ancestry binding          -> origin/main resolves; on push/main HEAD
 V-07 scanner coverage                 -> G7 walks sh/ts/json + self-skip/self-only/expect-true patterns; G6b allowlist entries must be owned (owner/reason/expiry/replacement) and may be path-scoped
 V-08 self-attested intelligence       -> V-08 self-certification modules may not be the sole evidence source
 V-09 certification input injection    -> V-09 every reviewer PASS needs reviews_recorded + item.reviews + slot-identity corroboration
-V-10 human governance fail-open       -> V-10 human_governance absent keys fail; approver must be human (not an AI reviewer), head-bound
+V-10 human governance fail-open       -> RETIRED (owner ruling 2026-10-27). No check reads human_governance: a per-registry human signature is not a condition for passing this gate, and its absence is not a failure. Oversight is exercised directly on the repository; the retirement is pinned by controls (see § OWNER RULINGS)
 V-11 empty zero-ranking compliance    -> V-11 checks_total >= 1 (no 0/0) and both positive and adversarial evidence present
 V-12 evidence schema                  -> V-12 mandatory schema for evidence/reviewer/run/command/exit/artifact/hash/runtime (docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json, pinned in the gate)
 
@@ -58,15 +58,15 @@ TWO-PHASE REGISTRY BINDING (Issue #472)
 A tracked registry cannot store the SHA of the same commit containing it: changing the registry changes that commit SHA. The gate therefore supports a metadata-only commit protocol:
 1. Run required tests and collect independent evidence against an immutable source SHA.
 2. Commit only `docs/verification/VERIFICATION_REGISTRY.json` in a child commit.
-3. The gate binds registry `head_bound`, item `head_sha`, evidence `head_sha`, and human-governance `head_sha` to the parent source SHA only if HEAD is a single-parent, non-merge commit and `git diff --name-only --no-renames HEAD^ HEAD` contains exactly that registry path. Merge commits are rejected for metadata-only binding.
-4. Any additional changed path, missing parent, mismatched SHA, artifact/hash mismatch, absent human approval, or missing reviewer evidence remains FAIL / NOT VERIFIED.
+3. The gate binds registry `head_bound`, item `head_sha` and evidence `head_sha` to the parent source SHA only if HEAD is a single-parent, non-merge commit and `git diff --name-only --no-renames HEAD^ HEAD` contains exactly that registry path. Merge commits are rejected for metadata-only binding.
+4. Any additional changed path, missing parent, mismatched SHA, artifact/hash mismatch, or missing reviewer evidence remains FAIL / NOT VERIFIED. (Retiring V-10 removed *only* the human-approval condition — it did not soften a single binding or evidence rule.)
 4a. Rejected shapes are pinned by real-git adversarial fixtures in `tests/strict-verification-gate.negative.test.js`: an extra changed path in the metadata commit, a rename whose post-image is the registry path, an empty commit placed right after a valid metadata commit (it must not inherit the privilege), and a parentless commit. Under a deliberate weakening of the sole-path rule (`changed.includes(path)`) those fixtures go red with `ACCEPTED by gate (defect)`, so the contract is mutation-verified rather than asserted.
 5. This protocol resolves SHA self-reference only; it does not create evidence or grant approvals. The registry must not be updated to imply tests/reviews that were not performed on the source SHA.
 
 LANDING MECHANICS (measured on the live gate, 2026-10-24)
 The binding reads the parent of the landed commit, so the merge strategy is part of the contract, not a style choice:
-6. Land the metadata commit with a fast-forward, rebase or squash — a single-parent landing commit. A `--no-ff` merge commit gives the metadata commit two parents, `parent_count != 1`, the metadata-only privilege is refused, `evidenceHead` stays at the landing SHA and every per-item `V-02`, `G9` and the registry-level `V-10` binding fails. Measured with a synthetic conformant registry on the current gate: metadata commit on a branch = exit 1 with 1 FAIL (`V-06`, the expected self-reference while unmerged), fast-forward landing = exit 0 with 0 FAIL, merge-commit landing = exit 1 with 60 FAIL (`V-02` x30 + `G9` x29 + `V-10` x1). Repo policy for `main` may still require a merge commit for ordinary PRs; that is why step 7 exists.
-7. Write `head_bound` (and item, evidence and human-governance `head_sha`) as the exact pre-landing `origin/main` SHA, because that is the parent the landed commit will carry. Collect all evidence against that same SHA: rebase the metadata commit onto a newer `main` only after re-running the gate, the fixtures and re-issuing the review/approval bindings, otherwise `V-06`/`V-02`/`G9` go red and no amount of registry editing repairs it.
+6. Land the metadata commit with a fast-forward, rebase or squash — a single-parent landing commit. A `--no-ff` merge commit gives the metadata commit two parents, `parent_count != 1`, the metadata-only privilege is refused, `evidenceHead` stays at the landing SHA and every per-item `V-02` and `G9` binding fails. Measured with a synthetic conformant registry on the current gate: metadata commit on a branch = exit 1 with 1 FAIL (`V-06`, the expected self-reference while unmerged), fast-forward landing = exit 0 with 0 FAIL, merge-commit landing = exit 1 with 60 FAIL (`V-02` x30 + `G9` x29 + `V-10` x1) — that figure was measured while V-10 still existed; the same shape now yields the `V-02`/`G9` failures only, and it has not been re-measured here. Repo policy for `main` may still require a merge commit for ordinary PRs; that is why step 7 exists.
+7. Write `head_bound` (and item and evidence `head_sha`) as the exact pre-landing `origin/main` SHA, because that is the parent the landed commit will carry. Collect all evidence against that same SHA: rebase the metadata commit onto a newer `main` only after re-running the gate, the fixtures and re-issuing the review/approval bindings, otherwise `V-06`/`V-02`/`G9` go red and no amount of registry editing repairs it.
 8. Pre-flight before pushing (read-only, no ref is moved): `git rev-list --parents -n 1 <candidate>` must print exactly two SHA tokens, and `git diff --name-only --no-renames <pre-landing-main> <candidate>` must print exactly `docs/verification/VERIFICATION_REGISTRY.json`. If either differs, the landing cannot bind and must be rebuilt, not patched afterwards.
 
 
@@ -117,7 +117,7 @@ G13                  replaced a tautology ("not CERTIFIED implies not CERTIFIED"
                      property: a non-certified item may not claim certification
 V-03/G16             structurally vacuous with one reviewer slot — reported as N/A (never counted
                      as a passed check). Independence is not obtainable from AI review under this
-                     model; G5 + V-10 + V-15 + V-17 + V-18 bound it.
+                     model; G5 + V-15 + V-17 + V-18 bound it (V-10 retired 2026-10-27).
 V-17 shared witness  a byte-identical evidence record (artifact + sha256 + command + exit_code +
                      checks_total + checks_passed + kind) may not certify more than one VERIFYING
                      item unless each sharing item declares `scope`, the scopes differ, and every
@@ -131,6 +131,28 @@ V-18 status reach    with fewer than two declared reviewer slots no item may car
                      another reviewer". The gate caps them instead of letting a vacuous V-03/G16
                      pass buy them back. Widening the reviewer contract is an owner decision.
 V-02 ts              an evidence timestamp in the future (beyond a 15-minute skew) is rejected.
+
+OWNER RULINGS
+2026-10-27 — HUMAN APPROVAL IS NOT A GATE CONDITION.
+  The project owner decided that a separate approval recorded inside VERIFICATION_REGISTRY.json
+  must not be required to pass the Strict Verification Gate. Direct owner oversight of the project
+  continues; what ended is the per-registry signature, not the oversight.
+  Removed: the gate's V-10 check, `human_governance` from `REQUIRED_REGISTRY_KEYS`, the schema's
+  `required_registry_keys` entry (the block stays documented as an optional annotation with
+  `policed_by_gate: false`), the builder's forced emission of an unapproved block, and the four
+  fixtures that asserted redness for a missing/false human approval.
+  Unchanged and still enforced: V-02 (SHA + artifact + sha256 + `exit_code == 0` +
+  `checks_passed == checks_total`), V-14/V-06 ancestry, V-11/V-12 schema and evidence
+  completeness, V-01/G14a-d/`expected_ids` completeness, V-17 witness scoping, V-18 status reach,
+  V-13/V-15/V-15b blocked-and-headline discipline, V-16, G7 false-green scanning, and every
+  security guard outside this gate.
+  Pinned by tests, in both directions: `GOOD-NO-HUMAN-GOVERNANCE` and `GOOD-HUMAN-APPROVAL-FALSE`
+  (tests/strict-verification-gate.negative.test.js) must exit 0, and property P3 of
+  tests/m15-01-registry-strict-verification.test.js re-injects a human-approval requirement into a
+  copy of the gate and asserts that exactly those two controls turn red while the valid `GOOD`
+  control stays green. The A-30 contract suite carries the same pair as controls
+  (`absent human_governance block stays green`, `an explicitly unapproved human_governance block
+  also stays green`). A re-added V-10 therefore cannot pass unnoticed.
 
 EVIDENCE HEADER CONTRACT (registry builder)
 Each committed log under `docs/verification/evidence/` starts with a machine-readable header:
@@ -161,15 +183,15 @@ its fixtures, then re-runs the same fixtures against a deliberately weakened cop
 A fixture that cannot go red is not evidence.
 
 OPEN (OWNER DECISION REQUIRED — NOT VERIFIED ON PURPOSE)
-O-1  Human governance. VERIFICATION_REGISTRY.json carries
-     human_governance.human_approved=false with no approver and no decided_at, because no human
-     decision exists. Until an owner records one, V-10 keeps the whole registry NOT VERIFIED.
-     This is not a defect to be worked around; it is the gate working.
+O-1  Human governance — DECIDED 2026-10-27, see § OWNER RULINGS below. The registry no longer
+     carries a human_governance block and the gate no longer asks for one. A registry still cannot
+     become green by that change: main's stays NOT VERIFIED because 29 legacy items are UNKNOWN
+     (V-15) and no item was promoted.
 O-2  .github/workflows/strict-verification.yml triggers on `push` to `arena/**`, while V-06 in
      push context requires HEAD to be an ancestor of origin/main. A branch push can therefore
      never pass V-06. Either the trigger or the ancestry contract must change, and both choices
      alter a security/CI requirement — that is an owner call, not an execution call.
 O-3  Landing mechanics: the metadata-only registry commit must land as a single-parent commit
      (fast-forward or a rebuild after landing). A `--no-ff` merge or a squash makes the registry
-     commit non-metadata-only and V-02/G9/V-10 fail by construction. Known and accepted; the
+     commit non-metadata-only and V-02/G9 fail by construction. Known and accepted; the
      registry is bound to the source SHA it was built from and must be rebuilt if the line moves.

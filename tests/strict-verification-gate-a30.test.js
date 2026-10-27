@@ -161,7 +161,6 @@ const cases = {
     for (const r of REVIEWERS) reg.items[0][r].evidence.forEach((e) => { e.command = sc; });
   },
   'V09-cert-input-injection': () => { reg.items[0][REVIEWERS[0]].evidence[0].reviewer = 'intruder'; },
-  'V10-missing-human-fields': () => { delete reg.human_governance; },
   'V11-zero-ranking': () => { reg.items[0].evidence.forEach((e) => { e.checks_total = 0; e.checks_passed = 0; }); },
   'V12-provenance-missing': () => { delete reg.items[0].evidence[0].runtime; },
   'V02b-stale-artifact-hash': () => { reg.items[0][REVIEWERS[0]].evidence[1].sha256 = 'f'.repeat(64); },
@@ -196,6 +195,26 @@ for (const [name, mut] of Object.entries(cases)) {
   reg = validReg(head); mut(); write();
   chk(name + ' fails closed', run(d).status !== 0);
 }
+
+/* OWNER RULING 2026-10-27 (docs/STRICT_VERIFICATION_GATE.md § OWNER RULINGS): a human decision
+   recorded in the registry is not a gate condition. V10-missing-human-fields used to sit in the
+   must-fail map above; the contract is now the opposite way round, so it is asserted as a control
+   — a registry identical to the accepted baseline except for the human block must stay green.
+   The must-fail cases above are untouched, so this cannot be satisfied by a gate that stopped
+   checking anything: if the human requirement were re-added, exactly these two lines go red. */
+reg = validReg(head); delete reg.human_governance; write();
+const noHuman = run(d);
+chk('absent human_governance block stays green (V-10 retired by owner ruling)', noHuman.status === 0,
+  'exit=' + noHuman.status + (noHuman.status === 0 ? '' :
+    '\n' + noHuman.stdout.split('\n').filter((l) => /FAIL|BLOCKER/.test(l)).join('\n')));
+reg = validReg(head);
+reg.human_governance.human_approved = false;
+reg.human_governance.approver = null;
+reg.human_governance.decided_at = null;
+write();
+const unapproved = run(d);
+chk('an explicitly unapproved human_governance block also stays green', unapproved.status === 0,
+  'exit=' + unapproved.status);
 /* an honestly blocked item must remain recordable and must keep the registry
    non-green: CONTRACT PASS, VERDICT NOT VERIFIED, exit 1 (V-16). */
 reg = validReg(head);

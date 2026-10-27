@@ -63,11 +63,6 @@ const PROPERTIES = [
     note: 'Arena slot deleted, empty reviews_recorded, item.reviews omits the claimant'
   },
   {
-    name: 'P3 missing human approval is not hidden',
-    cases: ['V-10', 'V-10b', 'V-10c', 'V-10d'],
-    note: 'governance absent, approval flag absent, approver is the AI reviewer, approval explicitly false'
-  },
-  {
     name: 'P4 missing/duplicate/undeclared items are detectable',
     cases: ['G14b', 'G14c', 'G14d', 'G8-dup'],
     note: 'declared id absent, undeclared item rides along, duplicate declaration, duplicate item'
@@ -108,6 +103,52 @@ for (const prop of PROPERTIES.concat(CAP_PROPS)) {
   chk(prop.name, r.code === 0 && missing.length === 0,
     (missing.length ? 'not rejected: ' + missing.join(',') + ' ' : '') + 'exit=' + r.code);
   console.log('       ↳ ' + prop.note);
+}
+
+/* ── P3, rewritten by the owner ruling of 2026-10-27 (docs/STRICT_VERIFICATION_GATE.md
+       § OWNER RULINGS): a human decision recorded inside the registry is not a gate
+       condition. Asserted in BOTH directions, because a single "it is accepted now" line
+       would also be satisfied by a gate that stopped checking anything. ────────────────── */
+{
+  const GATE_FILE = path.join(ROOT, 'tools', 'strict-verification-gate.js');
+  const gateSrc = fs.readFileSync(GATE_FILE, 'utf8');
+  chk('P3a no human-governance check is registered in the gate',
+    !/chk\(\s*'V-10/.test(gateSrc) && !/'human_governance'/.test(gateSrc.split('REQUIRED_REGISTRY_KEYS = [')[1].split('];')[0]),
+    'the gate still registers a V-10 check or requires the key');
+
+  const a = runNegativeSuite({ A30_ONLY: 'GOOD,GOOD-NO-HUMAN-GOVERNANCE,GOOD-HUMAN-APPROVAL-FALSE' });
+  const accepted = (a.out.match(/^\s+OK\s+GOOD control accepted/gm) || []).length;
+  chk('P3b a registry with no human decision, or an unapproved one, is accepted (exit 0)',
+    a.code === 0 && accepted === 3, 'accepted=' + accepted + ' exit=' + a.code);
+
+  /* Non-vacuity: re-inject the retired requirement into a COPY of the gate and prove that the
+     two new controls are precisely what turns red — while the fully valid GOOD control stays
+     green under the same gate. This is the mutation-matrix discipline pointed at the deletion
+     itself instead of at a surviving check. */
+  const ANCHOR = "  const top = String(reg.status || '');";
+  const occurrences = gateSrc.split(ANCHOR).length - 1;
+  chk('P3c mutation anchor is unique in the gate', occurrences === 1, 'occurrences=' + occurrences);
+  if (occurrences === 1) {
+    const injected = gateSrc.replace(ANCHOR, ANCHOR +
+      "\n  if (!isObj(reg.human_governance) || reg.human_governance.human_approved !== true || !isStr(reg.human_governance.approver)) { chk('V-10 human governance (re-injected)', false, 'no human approval recorded'); }");
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'm15-01-v10-'));
+    try {
+      const file = path.join(dir, 'gate-with-human-requirement.js');
+      fs.writeFileSync(file, injected);
+      /* One case per run so the verdict is the exit code itself, not a substring of a
+         gate report that prints hundreds of lines. */
+      const inv = (id) => runNegativeSuite({ A30_ONLY: id }, file);
+      const good = inv('GOOD');
+      const gone = inv('GOOD-NO-HUMAN-GOVERNANCE');
+      const no = inv('GOOD-HUMAN-APPROVAL-FALSE');
+      chk('P3d re-adding a human-approval requirement turns EXACTLY the two human controls red',
+        good.code === 0 && gone.code !== 0 && no.code !== 0,
+        'GOOD exit=' + good.code + ' no-block exit=' + gone.code + ' unapproved exit=' + no.code);
+    } finally {
+      try { fs.rmSync(dir, { recursive: true, force: true }); } catch (e) { /* best-effort cleanup */ }
+    }
+  }
+  console.log('       \u21b3 owner oversight continues directly on the repository; a per-registry signature is neither required nor able to raise a status. Independence stays capped by V-18 and the headline by V-15, both still asserted above.');
 }
 
 /* ── 2. controls: the gate must still accept conformant and honestly-blocked
@@ -163,7 +204,6 @@ const MUTATIONS = [
   { id: 'G10 evidence-free verdict (+V-16 also catches it)', fixture: 'G10-no-arena-slot', edits: [["chk('G10 ' + id + ' ' + r + ' verdict + evidence', REVIEWER_VERDICTS.includes(v.status) && evidenceOk,", "chk('G10 ' + id + ' ' + r + ' verdict + evidence', true,"],
     ['process.exit(fail || nothingVerified ? 1 : 0);', 'process.exit(fail ? 1 : 0);']
   ] },
-  { id: 'V-10 human approval', fixture: 'V-10d', edits: [['hg.human_approved === true &&', 'true &&']] },
   { id: 'V-09b retired reviewer slot', fixture: 'V-09d', edits: [["chk('V-09b reviews_recorded only uses known reviewer slots', rrUnknown.length === 0,", "chk('V-09b reviews_recorded only uses known reviewer slots', true,"]] },
   { id: 'V-16 nothing-verified exit', fixture: 'GOOD-BLOCKED', edits: [['process.exit(fail || nothingVerified ? 1 : 0);', 'process.exit(fail ? 1 : 0);']], expect: 'CONTROL' },
   { id: 'G17 uncommitted drift', fixture: 'G17', edits: [["chk('G17 no uncommitted tracked drift outside the registry', drift.length === 0,", "chk('G17 no uncommitted tracked drift outside the registry', true,"]] },
@@ -207,8 +247,11 @@ try {
    `node tools/strict-verification-gate.js` on the committed registry and read its
    per-check verdict (that run is reported with its exit code, never embedded here).
    The two directional invariants that ARE stable are proven on fixtures above:
-   a registry without human approval can never be reported VERIFIED (V-10/V-16),
-   and a blocked item can never carry a raised status (V-13/V-15b). */
+   a registry that verifies nothing can never be reported VERIFIED (V-15/V-16),
+   and a blocked item can never carry a raised status (V-13/V-15b). Human approval is
+   no longer one of the invariants: the owner ruled on 2026-10-27 that it is not a gate
+   condition, and P3 above proves both that its absence is accepted and that re-adding
+   the requirement is caught. */
 
 console.log('CHECKS ' + checks + ' FAIL ' + fail);
 if (fail) {

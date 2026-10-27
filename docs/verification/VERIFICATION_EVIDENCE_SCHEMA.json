@@ -28,7 +28,6 @@
     "required_reviewers",
     "allowed_statuses",
     "reviews_recorded",
-    "human_governance",
     "expected_ids",
     "items"
   ],
@@ -77,7 +76,8 @@
     "ts": "ISO-8601 timestamp"
   },
   "human_governance": {
-    "required": true,
+    "required": false,
+    "policed_by_gate": false,
     "keys": [
       "requires_human_approval",
       "human_approved",
@@ -85,7 +85,7 @@
       "decided_at",
       "head_sha"
     ],
-    "semantics": "requires_human_approval and human_approved must be literally true (absent key = fail, V-10); approver must be a human, not one of the three AI reviewers (V-10); head_sha must equal the immutable evidence SHA. For a registry-only metadata commit, this is the single parent SHA only when the gate rejects merge commits and proves the registry is the sole changed path; checkout ancestry still binds actual HEAD (V-02/V-06)."
+    "semantics": "OPTIONAL annotation; no gate check reads it. Owner ruling 2026-10-27 retired V-10: the project owner exercises oversight directly on the repository and a per-registry signature is not a condition for passing the Strict Verification Gate. A registry MAY still record a decision here, and if it does, head_sha should equal the immutable evidence SHA so the annotation cannot mislead. This changes nothing about evidence: V-02/V-14/V-06 binding, V-11/V-12 schema and completeness, G14/V-01 expected_ids, V-17 witness scoping, V-18 status reach, V-15/V-15b headline ceilings, V-16 and the G7 false-green scanner are all still enforced."
   },
   "false_green_allowlist_entry": {
     "required": [

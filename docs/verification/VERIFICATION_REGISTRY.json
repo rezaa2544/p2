@@ -2,7 +2,7 @@
   "schema_version": 2,
   "policy": "docs/STRICT_VERIFICATION_GATE.md",
   "status": "UNKNOWN",
-  "note": "Arena is the sole required AI reviewer. Legacy A-01..A-29 records are preserved as BLOCKED/UNKNOWN with their Atria-era status quoted verbatim; they are NOT Arena attestations and MUST NOT be read as PASS/CERTIFIED. Only M15-01-A..C carry Arena evidence on this HEAD. The registry headline is UNKNOWN because the weakest recorded item is UNKNOWN, and human approval has not been granted.",
+  "note": "Arena is the sole required AI reviewer. Legacy A-01..A-29 records are preserved as BLOCKED/UNKNOWN with their Atria-era status quoted verbatim; they are NOT Arena attestations and MUST NOT be read as PASS/CERTIFIED. Only M15-01-A..C carry Arena evidence on this HEAD. The registry headline is UNKNOWN because the weakest recorded item is UNKNOWN — the gate caps a headline at its weakest item (V-15) and refuses a registry that verifies nothing (V-16). No human signature is required to change that, and adding one would not (owner ruling 2026-10-27, retired V-10).",
   "head_bound": "f74f3ea99f2c0cb43f3fa96c8a7cc85594fb64b2",
   "head_basis": "Evidence for M15-01-A..C and the legacy inventory was produced on f74f3ea99f2c0cb43f3fa96c8a7cc85594fb64b2, the source commit that this registry-only metadata commit follows. Any code/test change after that SHA invalidates the binding and the tests must be re-run before the registry is rebound.",
   "required_reviewers": [
@@ -21,14 +21,6 @@
     "INDEPENDENTLY_VERIFIED",
     "CERTIFIED"
   ],
-  "human_governance": {
-    "requires_human_approval": true,
-    "human_approved": false,
-    "approver": null,
-    "decided_at": null,
-    "head_sha": "f74f3ea99f2c0cb43f3fa96c8a7cc85594fb64b2",
-    "note": "No human decision has been recorded for this HEAD. This field is deliberately false and the gate is expected to fail V-10 until the project owner records an approval (approver must be a human, not the AI reviewer)."
-  },
   "independence": {
     "model": "arena-only",
     "reviewer_slots": 1,
@@ -36,7 +28,7 @@
     "enforced_instead": [
       "V-17 (one witness cannot certify several claims)",
       "V-18 (no INDEPENDENTLY_VERIFIED/CERTIFIED below two slots)",
-      "V-10 (a human decision is required for any verification claim)"
+      "V-15 (the headline cannot out-claim the weakest item)"
     ],
     "owner_decision_required": true
   },
@@ -85,8 +77,8 @@
     {
       "id": "OD-1",
       "item": "Human approval of the verification registry",
-      "state": "NOT DECIDED",
-      "why_it_blocks": "V-10 is mandatory and unconditional; no amount of automated evidence satisfies it."
+      "state": "DECIDED BY OWNER 2026-10-27",
+      "why_it_blocks": "No longer blocks anything. The owner ruled that direct oversight of the project continues and that a per-registry human signature is not a condition for passing the Strict Verification Gate; V-10 was removed from the gate, from the schema and from the registry builder, and the retirement is pinned by controls in the negative fixtures and by property P3 of the acceptance suite. The registry remains NOT VERIFIED for unrelated, honest reasons: 29 legacy items are UNKNOWN (V-15) and nothing was promoted to satisfy a gate."
     },
     {
       "id": "OD-2",
@@ -98,7 +90,7 @@
       "id": "OD-3",
       "item": "Landing strategy for the registry-only metadata commit",
       "state": "NOT DECIDED",
-      "why_it_blocks": "Only a single-parent landing (fast-forward) preserves the two-phase binding; a merge commit or a squash invalidates V-02/G9/V-10 by construction and the registry must be rebuilt after landing."
+      "why_it_blocks": "Only a single-parent landing (fast-forward) preserves the two-phase binding; a merge commit or a squash invalidates V-02/G9 by construction and the registry must be rebuilt after landing."
     }
   ],
   "false_green_blockers_on_head": [
@@ -1957,7 +1949,7 @@
         "Executed and reviewed by the same Arena session — self-review, not an independent review",
         "Independence is not claimed: the Arena-only model has a single reviewer slot",
         "Evidence logs are shared between the M15-01 items; each item records which checks back it (scope)",
-        "Human approval for the registry as a whole is still absent, so the registry stays NOT VERIFIED"
+        "The registry stays NOT VERIFIED on its own merits: 29 legacy items are UNKNOWN (V-15) and no item was promoted. A human signature is not the reason (owner ruling 2026-10-27)"
       ],
       "scope": "focused-suite P1 + negative fixtures V-02/V-02c/V-02d/V-02e/V-02f/V-02g",
       "evidence": [
@@ -2048,7 +2040,7 @@
         "Executed and reviewed by the same Arena session — self-review, not an independent review",
         "Independence is not claimed: the Arena-only model has a single reviewer slot",
         "Evidence logs are shared between the M15-01 items; each item records which checks back it (scope)",
-        "Human approval for the registry as a whole is still absent, so the registry stays NOT VERIFIED"
+        "The registry stays NOT VERIFIED on its own merits: 29 legacy items are UNKNOWN (V-15) and no item was promoted. A human signature is not the reason (owner ruling 2026-10-27)"
       ],
       "scope": "focused-suite P4 + negative fixtures G14b/G14c/G14d/G8-dup",
       "evidence": [
@@ -2130,7 +2122,7 @@
     {
       "id": "M15-01-C",
       "status": "RUNTIME_VERIFIED",
-      "requirement": "Status discipline: a blocked or unverified item can never be reported as CERTIFIED, the registry headline may not out-claim its weakest item, an absent human decision is never hidden, and a registry that verifies nothing is not a green gate.",
+      "requirement": "Status discipline: a blocked or unverified item can never be reported as CERTIFIED, the registry headline may not out-claim its weakest item, a human decision in the registry is not a gate condition (owner ruling 2026-10-27) and is neither required nor sufficient to raise anything, and a registry that verifies nothing is not a green gate.",
       "head_sha": "f74f3ea99f2c0cb43f3fa96c8a7cc85594fb64b2",
       "reviews": [
         "arena"
@@ -2139,9 +2131,9 @@
         "Executed and reviewed by the same Arena session — self-review, not an independent review",
         "Independence is not claimed: the Arena-only model has a single reviewer slot",
         "Evidence logs are shared between the M15-01 items; each item records which checks back it (scope)",
-        "Human approval for the registry as a whole is still absent, so the registry stays NOT VERIFIED"
+        "The registry stays NOT VERIFIED on its own merits: 29 legacy items are UNKNOWN (V-15) and no item was promoted. A human signature is not the reason (owner ruling 2026-10-27)"
       ],
-      "scope": "focused-suite P2/P3/P5 + contract suite + negative fixtures V-09/V-10/V-13/V-15/V-15b/V-16",
+      "scope": "focused-suite P2/P3/P5 + contract suite + negative fixtures V-09/V-13/V-15/V-15b/V-16",
       "evidence": [
         {
           "reviewer": "arena",

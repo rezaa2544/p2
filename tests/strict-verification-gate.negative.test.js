@@ -242,22 +242,20 @@ addCase('V-02c', 'V-02', 'registry head_bound mismatches HEAD', (r) => { r.head_
    pairwise-distinct check is structurally vacuous. What must NOT be possible is
    re-injecting a retired reviewer slot to manufacture the appearance of an
    independent second opinion — that is now caught by the slot contract (V-12)
-   and by V-03r (an independence claim needs a 2nd reviewer or human corroboration). */
+   and by V-18 (a one-slot contract cannot reach INDEPENDENTLY_VERIFIED/CERTIFIED). Human
+   corroboration is NOT a substitute and is no longer required: the owner ruling of
+   2026-10-27 retired V-10, so an absent or unapproved human_governance block is inert. */
 addCase('V-03', 'V-12', 'retired reviewer slots resurrected to look independent', (r) => {
   const clone = JSON.parse(JSON.stringify(r.items[0].arena.evidence[0]));
   r.items[0].chatgpt = { status: 'PASS', evidence: [{ ...clone, reviewer: 'chatgpt' }] };
   r.items[0].atria = { status: 'PASS', evidence: [{ ...clone, reviewer: 'atria' }] };
   r.items[0].reviews = ['chatgpt', 'arena', 'atria'];
   r.items[0].status = 'INDEPENDENTLY_VERIFIED';
-  r.human_governance.human_approved = false;
 });
-/* V-03b: independence cannot be asserted by the single AI slot. Under the
-   Arena-only model this is enforced by the human-governance gate (V-10), not by a
-   pairwise-distinct rule that one slot makes vacuous — so the fixture asserts V-10. */
-addCase('V-03b', 'V-10', 'independence claimed with no human decision behind it', (r) => {
-  r.items[0].status = 'INDEPENDENTLY_VERIFIED';
-  r.human_governance.human_approved = false;
-});
+/* V-03b (independence claimed with no human decision behind it, asserted against V-10) was
+   REMOVED with the retired check. The claim it guarded against is still refused — by V-18,
+   whose own case sits next to the status-cap block below — and refusing it no longer depends
+   on a human signature existing or being fabricated. */
 
 /* V-04: status machine not enforced */
 addCase('V-04', 'V-04', 'item status outside allowed_statuses', (r) => {
@@ -299,11 +297,6 @@ addCase('V-09', 'V-09', 'reviewer PASS claims while reviews_recorded is empty', 
 addCase('V-09b', 'V-09', 'item.reviews omits the reviewer that claims PASS', (r) => {
   r.items[0].reviews = [];
 });
-
-/* V-10: human governance absent / fail-open on absent fields */
-addCase('V-10', 'V-10', 'human_governance object absent', (r) => { delete r.human_governance; });
-addCase('V-10b', 'V-10', 'human_approved field absent (fail-open on missing key)', (r) => { delete r.human_governance.human_approved; });
-addCase('V-10c', 'V-10', 'human approver is one of the AI reviewers', (r) => { r.human_governance.approver = 'arena'; });
 
 /* V-11: vacuous zero-check compliance / no adversarial evidence */
 addCase('V-11', 'V-11', 'evidence claims 0/0 checks (vacuous pass)', (r) => {
@@ -419,14 +412,12 @@ addCase('G17', 'G17', 'tracked source file modified but never committed', null, 
 /* ── M15-01 acceptance properties, as named fixtures ─────────────────────
    P2: absence of Arena evidence must never read as PASS.
    P4: an item declared but absent must be detectable (G14b).
-   P3: a human decision that did not happen must never be silently satisfied. */
+   P3 was a human-approval case; the owner ruling of 2026-10-27 retired that condition, and
+   the two GOOD controls at the bottom of this file are what pins the new contract. */
 addCase('G10-no-arena-slot', 'G10', 'Arena reviewer slot deleted (no Arena evidence at all)', (r) => {
   delete r.items[0].arena;
   r.items[0].reviews = ['arena'];      /* the record still claims Arena reviewed it */
   r.reviews_recorded = { arena: ['claimed but unattested'] };
-});
-addCase('V-10d', 'V-10', 'human_approved is explicitly false', (r) => {
-  r.human_governance.human_approved = false;
 });
 addCase('G14b', 'G14b', 'a declared item is missing from the registry', null, {
   afterFinish: (dir) => {
@@ -440,6 +431,28 @@ addCase('G14b', 'G14b', 'a declared item is missing from the registry', null, {
 /* GOOD control: must stay accepted in push/main context and PR context. */
 cases.push({ id: 'GOOD', expectFail: null, description: 'fully valid registry stays VERIFIED', mutate: null, extra: {} });
 cases.push({ id: 'GOOD-PR-ANCESTRY', expectFail: null, description: 'valid PR HEAD descends from origin/main', mutate: null, extra: { prContext: true } });
+/* OWNER RULING 2026-10-27 — the negative test that V-10 is really gone. Two states that the
+   retired check used to turn RED must now be accepted with exit 0, and nothing else about the
+   registry changes: (a) no human_governance block at all, (b) one that is explicitly unapproved
+   (the exact shape main's registry carried for this whole mission). These are controls, not
+   rejections: tests/m15-01-registry-strict-verification.test.js property P3 re-injects a
+   human-approval requirement into a copy of the gate and asserts that these two, and only
+   these two, flip to red — so neither a re-added V-10 nor a gate that accepts everything
+   can satisfy them. */
+cases.push({ id: 'GOOD-NO-HUMAN-GOVERNANCE', expectFail: null,
+  description: 'absent human_governance is a legitimate state, not a gate failure',
+  mutate: (r) => { delete r.human_governance; }, extra: {} });
+cases.push({ id: 'GOOD-HUMAN-APPROVAL-FALSE', expectFail: null,
+  description: 'an explicitly unapproved human_governance block is not a gate failure',
+  mutate: (r) => {
+    r.human_governance = {
+      requires_human_approval: true,
+      human_approved: false,
+      approver: null,
+      decided_at: null,
+      head_sha: r.head_bound
+    };
+  }, extra: {} });
 /* GOOD-BLOCKED: an honestly blocked item must remain recordable and must keep the
    whole registry out of the verifying band without failing the gate. If the new
    blocked-state rules made honest blocking impossible, this control goes red. */
