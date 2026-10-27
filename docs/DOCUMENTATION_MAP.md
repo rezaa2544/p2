@@ -16,7 +16,7 @@
 | کل اسناد (لحظهٔ قفل `rc44`) | **۶۰۱** |
 | اسناد ریشهٔ `docs/*.md` (با خود نقشه و قفل) | ۴۸۶ |
 | اسناد زیرپوشه‌ها (`RUNBOOK_CARDS/` + `user-guides/` + `pilot/` + `ARCHITECTURE/` + `GOVERNANCE/` + `audit/` + `control-plane/` + `experience-store/` + `external-memory/` + `roadmaps/`) | ۱۱۵ |
-| توکن در نمایهٔ جستجو (شامل اسناد روزانه) | ۴۰۱۰ |
+| توکن در نمایهٔ جستجو (شامل اسناد روزانه) | ۴۰۱۱ |
 
 **به تفکیک وضعیت:**
 
