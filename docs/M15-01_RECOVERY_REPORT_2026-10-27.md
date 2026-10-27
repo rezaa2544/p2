@@ -517,6 +517,38 @@ exports `NODE_PATH`/`CHROMIUM_PATH`). Its step-level result on the final head is
 and its raw log is subject to the same unreachability documented in §9.2, which is stated there
 rather than glossed over.
 
+### 9.7.1 Re-collect, re-emit, gate — on this head
+
+The two traps documented in the previous mission fired again, both times as designed: the witness
+went stale once when the binding suite gained `L1..L4`, and once when `package.json` changed. Both
+were resolved the legal way — re-collect, commit, re-emit onto the source commit — never by
+touching the contract. The sequence on this head, with real exit codes (captured by redirecting to
+a file, not by piping through `tail`, which is what hid them earlier):
+
+```
+node tools/m15-01-build-registry.js --collect
+  → COLLECT OK (5 runs, all exit 0 with zero failing checks)
+     focused 32, negative 55, contract 21, binding 28, legacy 15 checks
+     (binding went 24 → 28 because L1..L4 were added to the suite it runs)
+commit 5e987ed6  test(verification): re-collect the five evidence logs on this tree
+node tools/m15-01-build-registry.js --emit --head 5e987ed6
+  → EMITTED … head_bound=5e987ed6 mode=lineage items=32 witness=16 paths
+     STATUS RUNTIME_VERIFIED | verified_items=3/32
+commit 6ccef06f  chore(verification): re-emit the registry bound to 5e987ed6
+
+node tools/strict-verification-gate.js                        → exit 1, RESULT 708 pass / 1 fail
+   BLOCKER V-06: HEAD contained in origin/main — head=6ccef06f origin/main=fff1beae
+   (this is the only failure; V-02 is clear again: "WITNESS 16 path(s); 0 changed since 5e987ed6")
+GITHUB_EVENT_NAME=pull_request node tools/strict-verification-gate.js → exit 0, 709 pass / 0 fail
+   CONTRACT PASS, VERIFIED_ITEMS 3/32 (in closure scope 3/3), VERDICT VERIFIED
+node tools/registry-provenance.js --audit                     → exit 0, HEAD-BIND VALID (lineage)
+   WITNESS 16 paths, 0 changed; IN-SCOPE 3, BLOCKED 29; VERDICT PROVENANCE VALID
+```
+
+That pair of results *is* OD-2, measured on the same commit twice with no code difference: the
+push lane fails only because this branch is not yet in `origin/main`, and the PR lane is clean. It
+is also the reason this document does not claim "709/0 green" without saying on which lane.
+
 ### 9.8 CI on the final head
 
 Completed after the push; see the run ids and step conclusions in the table — filled from
