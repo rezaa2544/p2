@@ -583,7 +583,12 @@ never existed in this repository. Quoting the message therefore *created* a refe
 non-existent file. That filename is deliberately **not** reproduced here (nor anywhere else in this
 document): reproducing it is precisely what created the stale reference, and a second copy would
 re-create it. The quote is preserved (it is the evidence), the phrasing no
-longer looks like a repository path, and `docs-refs-check` is back to `۰ ارجاعِ کهنهٔ تازه`.
+longer looks like a repository path, and `docs-refs-check` reports zero fresh references again
+(it prints the count in Persian digits; this document deliberately does not repeat that sentence
+verbatim, because `tests/docs-refs-check.js` scans documents for a stale baseline count and a
+quoted "zero" reads as exactly that claim — the gate catching a *quotation* is still the gate
+working, and the baseline itself is the ۲۵۵ موردِ تاریخی recorded in
+`tools/docs-refs-baseline.json`),
 
 **The second-order finding, and the honest fix.** Every local check I had been running — `npm test`,
 the docs-stats freeze check, the registry, the gate — passed on that tree. `tools/docs-refs-check.js`
@@ -594,7 +599,7 @@ into `tests/run.js`, which is inside `npm test`, so `tests/run.js` is **40/40** 
 with a positive control rather than by asserting success — a deliberately bogus reference (a
 `tests/` path to a file that does not exist, named here only by that description) was appended to
 this document, `npm test` went **red and named both the document and the bogus path**
-(`ارجاعِ کهنهٔ تازه: • docs/M15-01_RECOVERY_REPORT_2026-10-27.md → …`), then the tree was restored
+(the output was `• docs/M15-01_RECOVERY_REPORT_2026-10-27.md → …`), then the tree was restored
 and it went green again. Without that control the new test would be an
 untested claim, which is exactly what this cycle is supposed to stop producing.
 
@@ -607,7 +612,28 @@ passed in CI** for the first time in this cycle — the registry is bound, the w
 PR lane is clean (V-06 does not apply to `pull_request`), so the mission-C contradiction is resolved
 on the very lane that matters.
 
+### 9.8.1 A third catch, of the same family, on the next head (ffd25a5)
+
+The docs-refs fix made the pre-flight pass, the canonical runner then ran, and CI came back with a
+red suite named `docs-refs-check` whose failing check was:
+
+```
+❌ همهٔ شمارهای نوشتهشده با فایلِ خطِ پایه میخوانند
+   — docs/M15-01_RECOVERY_REPORT_2026-10-27.md=0 (درست: 255)
+```
+
+Again mine, again a *quotation*: I had pasted the tool's success line, and that line begins with the
+number zero in Persian digits followed by «ارجاعِ کهنه». The suite scans documents for a stale
+baseline count, so a quoted "zero" reads as a claim that the baseline is zero. The wording now says
+"reports zero fresh references" in words, and the document states the true baseline as
+«۲۵۵ موردِ تاریخی» instead. `tests/docs-refs-check.js` is **29/29**.
+
+Worth saying plainly, because it is the third time in this cycle: the gate that catches *quotations*
+of a tool's own output is still the gate working, and a report that can quote a number without the
+number being checked is how the earlier "698/0" confusion started. The discomfort is the feature.
+
 ### 9.9 What CI said on the corrected head (f93111e8), line by line
+
 
 The same two workflows were re-read after the docs-refs fix was pushed:
 
