@@ -242,8 +242,8 @@ function emit(head, outPath) {
     },
     {
       id: 'M15-01-C',
-      requirement: 'Status discipline: a blocked or unverified item can never be reported as CERTIFIED, the registry headline may not out-claim its weakest item, an absent human decision is never hidden, and a registry that verifies nothing is not a green gate.',
-      scope: 'focused-suite P2/P3/P5 + contract suite + negative fixtures V-09/V-10/V-13/V-15/V-15b/V-16',
+      requirement: 'Status discipline: a blocked or unverified item can never be reported as CERTIFIED, the registry headline may not out-claim its weakest item, a human decision in the registry is not a gate condition (owner ruling 2026-10-27) and is neither required nor sufficient to raise anything, and a registry that verifies nothing is not a green gate.',
+      scope: 'focused-suite P2/P3/P5 + contract suite + negative fixtures V-09/V-13/V-15/V-15b/V-16',
       logs: ['focused', 'contract', 'negative']
     }
   ].map((item) => {
@@ -258,7 +258,7 @@ function emit(head, outPath) {
         'Executed and reviewed by the same Arena session — self-review, not an independent review',
         'Independence is not claimed: the Arena-only model has a single reviewer slot',
         'Evidence logs are shared between the M15-01 items; each item records which checks back it (scope)',
-        'Human approval for the registry as a whole is still absent, so the registry stays NOT VERIFIED'
+        'The registry stays NOT VERIFIED on its own merits: 29 legacy items are UNKNOWN (V-15) and no item was promoted. A human signature is not the reason (owner ruling 2026-10-27)'
       ],
       scope: item.scope,
       evidence: ev,
@@ -312,7 +312,9 @@ function emit(head, outPath) {
     note: 'Arena is the sole required AI reviewer. Legacy A-01..A-29 records are preserved as BLOCKED/UNKNOWN with their ' +
       'Atria-era status quoted verbatim; they are NOT Arena attestations and MUST NOT be read as PASS/CERTIFIED. ' +
       'Only M15-01-A..C carry Arena evidence on this HEAD. The registry headline is UNKNOWN because the weakest ' +
-      'recorded item is UNKNOWN, and human approval has not been granted.',
+      'recorded item is UNKNOWN. That is the whole reason: the gate caps a headline at its weakest item (V-15) and ' +
+      'refuses a registry that verifies nothing (V-16). No human signature is required to change that, and adding ' +
+      'one would not (owner ruling 2026-10-27, retired V-10).',
     head_bound: head,
     head_basis: 'Evidence for M15-01-A..C and the legacy inventory was produced on ' + head +
       ', the source commit that this registry-only metadata commit follows. Any code/test change after that SHA ' +
@@ -326,22 +328,17 @@ function emit(head, outPath) {
       ]
     },
     allowed_statuses: ['UNKNOWN', 'TESTED', 'RUNTIME_VERIFIED', 'ADVERSARIAL_VERIFIED', 'INDEPENDENTLY_VERIFIED', 'CERTIFIED'],
-    human_governance: {
-      requires_human_approval: true,
-      human_approved: false,
-      approver: null,
-      decided_at: null,
-      head_sha: head,
-      note: 'No human decision has been recorded for this HEAD. This field is deliberately false and the gate is ' +
-        'expected to fail V-10 until the project owner records an approval (approver must be a human, not the AI reviewer).'
-    },
+    /* human_governance is deliberately NOT emitted. Owner ruling 2026-10-27 retired the gate's
+       V-10 check (docs/STRICT_VERIFICATION_GATE.md § OWNER RULINGS), and a builder that kept
+       writing an `approved: false` block would re-create a field the gate no longer reads and a
+       note that contradicts the contract. Oversight is exercised directly on the repository. */
     /* Structural bound of the declared reviewer model, stated by the artifact that
        is affected by it (see docs/STRICT_VERIFICATION_GATE.md § V-17/V-18). */
     independence: {
       model: 'arena-only',
       reviewer_slots: 1,
       pairwise_reviewer_independence: 'UNAVAILABLE — V-03/G16 are reported N/A by the gate, not as passes',
-      enforced_instead: ['V-17 (one witness cannot certify several claims)', 'V-18 (no INDEPENDENTLY_VERIFIED/CERTIFIED below two slots)', 'V-10 (a human decision is required for any verification claim)'],
+      enforced_instead: ['V-17 (one witness cannot certify several claims)', 'V-18 (no INDEPENDENTLY_VERIFIED/CERTIFIED below two slots)', 'V-15 (the headline cannot out-claim the weakest item)'],
       owner_decision_required: true
     },
     expected_ids: all.map((i) => i.id),
@@ -360,8 +357,12 @@ function emit(head, outPath) {
       {
         id: 'OD-1',
         item: 'Human approval of the verification registry',
-        state: 'NOT DECIDED',
-        why_it_blocks: 'V-10 is mandatory and unconditional; no amount of automated evidence satisfies it.'
+        state: 'DECIDED BY OWNER 2026-10-27',
+        why_it_blocks: 'No longer blocks anything. The owner ruled that direct oversight of the project continues and ' +
+          'that a per-registry human signature is not a condition for passing the Strict Verification Gate; V-10 was ' +
+          'removed from the gate, from the schema and from this builder, and the retirement is pinned by controls in ' +
+          'the negative fixtures and by property P3 of the acceptance suite. The registry remains NOT VERIFIED for ' +
+          'unrelated, honest reasons: 29 legacy items are UNKNOWN (V-15) and nothing was promoted to satisfy a gate.'
       },
       {
         id: 'OD-2',
@@ -375,7 +376,7 @@ function emit(head, outPath) {
         item: 'Landing strategy for the registry-only metadata commit',
         state: 'NOT DECIDED',
         why_it_blocks: 'Only a single-parent landing (fast-forward) preserves the two-phase binding; a merge commit ' +
-          'or a squash invalidates V-02/G9/V-10 by construction and the registry must be rebuilt after landing.'
+          'or a squash invalidates V-02/G9 by construction and the registry must be rebuilt after landing.'
       }
     ],
     false_green_blockers_on_head: [
@@ -399,8 +400,7 @@ function emit(head, outPath) {
   fs.writeFileSync(outPath || path.join(ROOT, REGISTRY_REL), JSON.stringify(registry, null, 2) + '\n');
   console.log('EMITTED ' + (outPath ? path.relative(ROOT, outPath) : REGISTRY_REL) +
     ' head_bound=' + head + ' items=' + all.length + ' (legacy=' + items.length + ', arena-evidenced=' + m15.length + ')');
-  console.log('STATUS ' + registry.status + ' | human_approved=' + registry.human_governance.human_approved +
-    ' | verified_items=' + m15.length + '/' + all.length);
+  console.log('STATUS ' + registry.status + ' | verified_items=' + m15.length + '/' + all.length);
 }
 
 /* ── CLI ───────────────────────────────────────────────────────────────── */

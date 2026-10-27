@@ -17,7 +17,14 @@ const REVIEWER_VERDICTS = ['PASS', 'FAIL', 'BLOCKED'];
 const EVIDENCE_KINDS = ['positive_test', 'negative_test', 'adversarial_test', 'runtime_evidence', 'failure_recovery_evidence', 'data_evidence', 'review_note'];
 const POSITIVE_KINDS = ['positive_test', 'runtime_evidence', 'data_evidence'];
 const ADVERSARIAL_KINDS = ['negative_test', 'adversarial_test', 'failure_recovery_evidence'];
-const REQUIRED_REGISTRY_KEYS = ['schema_version', 'policy', 'status', 'head_bound', 'required_reviewers', 'allowed_statuses', 'reviews_recorded', 'human_governance', 'expected_ids', 'items'];
+/* OWNER RULING 2026-10-27 (docs/STRICT_VERIFICATION_GATE.md § OWNER RULINGS): a human
+   sign-off recorded inside the registry is NOT a condition for passing this gate — direct
+   owner oversight of the project continues without a per-registry signature. `human_governance`
+   is therefore not a required key and no check reads it; a registry may still record a decision
+   there as an annotation. Everything that rejects a claim stays: V-02 binding + artifact hashes,
+   V-14/V-06 ancestry, V-11/V-12 schema + evidence completeness, G14/V-01 completeness,
+   V-17 witness scoping, V-18 status reach, V-15/V-15b headline ceilings, V-16, G7 false-green. */
+const REQUIRED_REGISTRY_KEYS = ['schema_version', 'policy', 'status', 'head_bound', 'required_reviewers', 'allowed_statuses', 'reviews_recorded', 'expected_ids', 'items'];
 const REQUIRED_ITEM_KEYS = ['id', 'status', 'requirement', 'head_sha', 'reviews', 'known_limitations', 'evidence'];
 const REQUIRED_EVIDENCE_KEYS = ['reviewer', 'kind', 'command', 'exit_code', 'checks_total', 'checks_passed', 'artifact', 'sha256', 'head_sha', 'runtime', 'ts'];
 /* M15-01 addendum: an honestly BLOCKED item must be representable. Without a
@@ -99,14 +106,16 @@ chk('G4 registry valid JSON', !!reg);
 chk('G5 Arena is the sole required AI reviewer', !!reg && norm(reg.required_reviewers) === norm(REVIEWERS));
 /* Honest disclosure, not a check: with a single reviewer slot the pairwise-distinct
    checks (V-03, G16) cannot fail. Independence is therefore not obtainable from AI
-   review under this model; the compensating controls are G5 (one slot only), V-10
-   (no verification claim survives without a human decision), V-15 (the headline
-   cannot out-claim the items), V-17 (one witness cannot certify several claims) and
-   V-18 (no item may claim a status the reviewer contract cannot support). The
-   vacuity is reported as N/A, never as a passed check. */
+   review under this model; the compensating controls are G5 (one slot only), V-15 (the
+   headline cannot out-claim the items), V-17 (one witness cannot certify several claims)
+   and V-18 (no item may claim a status the reviewer contract cannot support). The vacuity
+   is reported as N/A, never as a passed check. Human approval is NOT one of these controls:
+   the owner ruled on 2026-10-27 that oversight is exercised directly on the project and not
+   through a registry signature, so the gate neither requires nor rewards a human_governance
+   block (retired V-10) — independence claims are refused by V-18 alone. */
 if (REVIEWERS.length < 2) {
   console.log('  NOTE V-03/G16 independence checks are vacuous with ' + REVIEWERS.length +
-    ' reviewer slot — reported as N/A (never as a pass) and capped by V-18; bounded additionally by G5/V-10/V-15');
+    ' reviewer slot — reported as N/A (never as a pass) and capped by V-18; bounded additionally by G5/V-15/V-17/V-18');
   console.log('  NOTE cross-ITEM witness copying is not vacuous at N=1 and is policed by V-17');
 }
 let allowed = null; try { allowed = JSON.parse(read(ALLOW)); } catch (e) { }
@@ -260,7 +269,7 @@ function artifactShaAt(rev, rel) {
 }
 
 if (reg && isObj(reg)) {
-  /* ── registry-level machine: V-01, V-04a, V-05, V-02, V-10 ── */
+  /* ── registry-level machine: V-01, V-04a, V-05, V-02 ── */
   chk('V-01 registry declares a non-empty items array', Array.isArray(reg.items) && reg.items.length > 0,
     Array.isArray(reg.items) ? 'items=' + reg.items.length : 'items=' + typeof reg.items);
   chk('V-04 allowed_statuses is the canonical status machine', norm(reg.allowed_statuses) === norm(CANONICAL_STATUSES),
@@ -268,14 +277,17 @@ if (reg && isObj(reg)) {
   const top = String(reg.status || '');
   chk('V-05 top-level status in machine & not BLOCKED*', CANONICAL_STATUSES.includes(top) && !/^BLOCKED/i.test(top), top || '(absent)');
   chk('V-02 registry head_bound matches immutable evidence SHA', reg.head_bound === evidenceHead, 'head_bound=' + reg.head_bound + ' evidence_sha=' + evidenceHead + ' checkout_head=' + head + (metadataOnlyBinding ? ' [metadata-only]' : ''));
-  const hg = reg.human_governance;
-  const hgOk = isObj(hg) &&
-    hg.requires_human_approval === true &&          /* absent key must NOT pass (V-10) */
-    hg.human_approved === true &&                   /* absent key must NOT pass (V-10) */
-    isStr(hg.approver) && !REVIEWERS.includes(String(hg.approver).toLowerCase()) &&
-    isDate(hg.decided_at) && hg.head_sha === evidenceHead;
-  chk('V-10 human governance present, approved, human (not AI reviewer), head-bound', hgOk,
-    isObj(hg) ? JSON.stringify({ r: hg.requires_human_approval, a: hg.human_approved, approver: hg.approver, head: hg.head_sha, evidence_sha: evidenceHead }) : 'absent');
+  /* V-10 (human governance) retired here by the owner ruling of 2026-10-27 — see the note on
+     REQUIRED_REGISTRY_KEYS and docs/STRICT_VERIFICATION_GATE.md. No check reads human_governance
+     any more, so neither its absence nor an unapproved block can redden the gate, and equally:
+     nothing here is unlocked by it. The registry still cannot become green by claiming less —
+     V-16 refuses a registry that verifies nothing and V-15 caps the headline at its weakest item
+     (main's registry is UNKNOWN with 29 legacy items, so it stays NOT VERIFIED on its own merits).
+     The controls GOOD-NO-HUMAN-GOVERNANCE / GOOD-HUMAN-APPROVAL-FALSE in
+     tests/strict-verification-gate.negative.test.js, plus property P3 of
+     tests/m15-01-registry-strict-verification.test.js (which re-injects a human-approval
+     requirement into a copy of this file and asserts EXACTLY those controls go red), keep this
+     retirement from silently reverting. */
   chk('V-12 registry has all required keys', REQUIRED_REGISTRY_KEYS.every((k) => k in reg),
     REQUIRED_REGISTRY_KEYS.filter((k) => !(k in reg)).join(',') || 'complete');
 
