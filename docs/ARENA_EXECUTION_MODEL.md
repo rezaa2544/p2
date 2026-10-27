@@ -175,3 +175,12 @@ National status remains **NO-GO** until canonical P0 gates are independently clo
 ## 15. Principle
 
 **No Arena is a single point of failure. No Mission is a fleet-wide lock. Parallelize safe work, take over failed sessions, preserve evidence, and integrate deliberately.**
+
+
+## 16. Owner intervention is exceptional, not a work handoff
+
+The owner is not the manual operator, log analyst, test runner, cross-agent coordinator, or routine approval bottleneck. Agents own end-to-end execution and must use existing authorized tools to investigate, repair, test, independently verify, integrate, document, and synchronize their work.
+
+A request to the owner is permitted only for a proven owner-exclusive action (e.g. external account registration/acceptance, interactive identity verification unavailable to agents, payment, granting a permission only the owner can grant, or provisioning an account/infrastructure unavailable to the team). Before requesting it, the agent must record actual error/evidence, exhaust safe authorized alternatives, explain why team-side execution is impossible, and specify the smallest exact owner action and expected result. Never ask for credentials/secrets in chat; owner enters them only through the official secure UI.
+
+Only the dependent task may be marked BLOCKED_OWNER_ACTION_REQUIRED; continue unrelated work. Lack of access does not justify a false PASS or a weakened gate. The default is autonomous team execution, with owner intervention only for a demonstrated owner-exclusive dependency.
