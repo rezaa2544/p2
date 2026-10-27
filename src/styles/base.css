@@ -526,7 +526,13 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 @keyframes hgtFillUp{ from{ opacity:0; transform:translateY(8px); } }
 .hgt-fill{ animation:hgtFillUp .85s cubic-bezier(.25,.8,.3,1); }
 @media (prefers-reduced-motion:reduce){
-  .hgt-needle,.hgt-dot,.hgt-fill{ animation:none; }
+  *,*::before,*::after{
+    animation-duration:.001ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;
+    scroll-behavior:auto !important;
+  }
+  .hgt-needle,.hgt-dot,.hgt-fill,.toast,.modal,.filter-body,.sync-chip.pend .dot,.att-btn-running,.spinner,.skeleton,.input.has-error{ animation:none !important; transition:none !important; }
 }
 
 /* ── سوییچر فرزندان ثابت (بند ۱.۷) ── */

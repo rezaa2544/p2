@@ -1,3 +1,20 @@
+# M15-01 بازیابی نهایی، رفع عیوب فنی مخزن و تفکیک موانع انحصاری مالک — ۲۰۲۶-۱۰-۲۷
+
+**Mission:** بازیابی و جمع‌بندی نهایی M15-01 بدون آغاز M15-02 (`Issue #468`) · **شاخه:** `arena/2747c2ff-p2` (کانال ۴ تیم ۵کانالهٔ Arena) · **مرجع `origin/main` پیش از بازیابی:** `fff1beae09ff45d69e554f8c000a9d15b75d968c`.
+
+## خلاصهٔ عیوب ریشه‌یابی و رفع‌شده در مخزن
+
+- **بازیابی دو شکست روی `origin/main`:** کامیت `fff1beae` (`PR #494`) با ارتقای `@opentelemetry/resources` به `3.0.0` موجب تضاد `ERESOLVE` با `@opentelemetry/api@^1.9.1` و ازکارافتادن `npm ci` در تمام گردش‌کارهای CI شده بود (بازگردانی به `^2.11.0` / `2.12.0` و تأیید `npm ci` با خروجی صفر). همچنین کامیت `1b2375a1` (`PR #497`) بدون اجرای `node tools/docs-stats-sync.js --freeze` ادغام شده بود که خطای `exit 5` در رانر کانونیک و شکست هم‌زمان پیوند `VERIFICATION_REGISTRY.json` را رقم زده بود. کامیت محلی ادعاشدهٔ `78b65ce2` هرگز به `origin` پوش نشده بود و لاگ‌های خام ران `40491800409` (`0` آرتیفکت + خطای `EOF` در تغییرمسیر مخزن لاگ) غیرقابل‌بازیابی تأیید شدند.
+- **رفع دائمی شکست متناوب دسترس‌پذیری (`tests/a11y-runtime.js` — `[serious] color-contrast — 1 node`):** فراخوانی `finishLogin(u)` در `src/js/19-actions-core.js` اعلان خوش‌آمد `.toast.ok` را با انیمیشن `pop .18s ease` (`180ms` از `opacity: 0` تا `1`) می‌ساخت در حالی که `@media (prefers-reduced-motion: reduce)` در `src/styles/base.css` شامل `.toast`، `.modal`، `.filter-body` و `.sync-chip.pend .dot` نبود و مهلت `150ms` پیش از اسکن نخستین نمای هر نقش باعث شکار متناوب `.toast.ok` در `opacity < 0.854` (کنتراست زیر `4.5:1`) می‌شد. قانون `prefers-reduced-motion` در `src/styles/base.css` و باندل‌های ساخته‌شده (`index.html` و `dist/payesh.html`) کامل شد، صبر قطعی فونت و انیمیشن‌های متناهی + گزارش تشخیصی دقیق گره در `tests/a11y-runtime.js` افزوده شد (بدون هیچ‌گونه حذف/تضعیف قانون)، و تست‌های قطعی و جهش‌سنجی‌شده در `tests/a11y-regressions.js` (`64/64`) و `tests/a11y-reduced-motion-contrast.test.js` (`14/14`) به‌همراه اجرای چندبارهٔ Chromium در `.github/workflows/node.js.yml` ثبت شدند.
+- **هم‌راستاسازی پیوند دوگانهٔ SHA در `tools/strict-verification-gate.js` و `tools/registry-provenance.js`:** منطق تشخیص کامیت تک‌والدِ صرفاً رجیستری (`100644` بدون تغییرنام و همسانی درخت غیررجیستری)، باگ دوگانهٔ `git merge-base --is-ancestor` و خودارجاعی `A-12` در `tools/registry-provenance.js` اصلاح شد و ۱۸ چک گیت واقعی مثبت و منفی در `tests/two-phase-provenance-consistency.test.js` و ۵۸ چک در `tests/strict-verification-gate.negative.test.js` هر دو ابزار را هم‌زمان راستی‌آزمایی می‌کنند. حذف `V-10` طبق حکم مالک حفظ شد.
+- **حذف پرش `Production truth gate` و اصلاح توصیف‌های کهنهٔ رجیستری:** سرویس‌های `postgres:17` و `redis:8` به `.github/workflows/strict-verification.yml` افزوده شد تا `npm run truth-gate` بدون پرش اجرا شود؛ وضعیت `OD-3` و توصیف‌های `FG-1` و `FG-2` در `tools/m15-01-build-registry.js` بدون ارتقای کاذب هیچ آیتم `UNKNOWN/BLOCKED` به‌روز شدند.
+
+## تصمیم نهایی وضعیت
+
+- **M15-01: BLOCKED — OWNER/INFRASTRUCTURE ACTION PROVEN NECESSARY (OPEN)** — تمامی عیوب فنی داخل مخزن رفع شدند، اما زیرساخت چندگره‌ای عملیاتی `E4-01..E4-07` (`node tools/m15-01-e4-verify.js` خروجی `2` / `0/7`)، اسرار و پیکربندی اسکنرهای بیرونی (`Fortify`، `APIsec`، `Jscrambler`)، تصمیم‌های قراردادی مالک روی `OD-2`، `OD-4` و تعیین‌تکلیف `A-01..A-29`، چرخش بیرونی/پاک‌سازی تاریخچهٔ `SI-013`، اتصال Notion (`disconnected`) و بازبینی مستقل روی SHA نهایی باقی مانده‌اند. **M15-02 (`Issue #468`): NOT STARTED.**
+
+---
+
 # M15-01 current-head revalidation — مستندات و شواهد محلی — ۲۰۲۶-۱۰-۱۹
 
 **Mission:** اجرای ترتیبِ صریحِ مالک، M15-01 سپس M15-02 · **HEAD مبنا:** `8f6e7d5f0a823a70a58f85f7803a4d956db350ab` · **شاخه:** `arena/c33a022c-p2`.

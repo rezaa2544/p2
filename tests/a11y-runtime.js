@@ -105,6 +105,34 @@ function startStaticServer() {
     catch (e) { return false; }
   }, null, { timeout: 60000 });
 
+  /* صبرِ قطعی برایِ بارگذاریِ فونت‌ها، اتمامِ انیمیشن‌هایِ متناهیِ CSS (مانند pop روی .toast پس از ورود)،
+     و دو فریمِ کاملِ نقاشی پیش از اجرای axe-core تا هیچ عنصری در میانهٔ انیمیشنِ opacity اسکن نشود. */
+  async function settleBeforeScan() {
+    await page.evaluate(async () => {
+      if (document.fonts && document.fonts.ready) {
+        try { await document.fonts.ready; } catch (e) { /* فونت از پیش آماده */ }
+      }
+      if (typeof document.getAnimations === 'function') {
+        const finite = document.getAnimations({ subtree: true }).filter((a) => {
+          try {
+            const t = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : null;
+            return t && t.iterations !== Infinity;
+          } catch (e) {
+            return false;
+          }
+        });
+        if (finite.length) {
+          await Promise.race([
+            Promise.allSettled(finite.map((a) => a.finished)),
+            new Promise((resolve) => setTimeout(resolve, 1000))
+          ]);
+        }
+      }
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    });
+    await page.waitForTimeout(150); /* بگذار paint تمام شود */
+  }
+
   /* ۱) خودِ صفحهٔ ورود هم اسکن می‌شود (نمایِ مشترکِ همهٔ نقش‌ها) */
   const results = [];   /* {role, route, critical, serious, moderate, minor, items:[]} */
   async function scan(role, route) {
@@ -116,14 +144,30 @@ function startStaticServer() {
     for (const v of r.violations) {
       const sev = v.impact || 'minor';
       bySev[sev] = (bySev[sev] || 0) + v.nodes.length;
+      const nodeDetails = v.nodes.slice(0, 5).map((n) => ({
+        target: Array.isArray(n.target) ? n.target.map(String).join(' > ').slice(0, 140) : '',
+        html: String(n.html || '').replace(/\s+/g, ' ').slice(0, 180),
+        summary: String(n.failureSummary || '').replace(/\s+/g, ' ').slice(0, 220),
+        data: (n.any && n.any[0] && n.any[0].data) || null
+      }));
       items.push({ id: v.id, impact: sev, help: v.help, nodes: v.nodes.length,
-        sample: (v.nodes[0] && v.nodes[0].target && String(v.nodes[0].target[0]).slice(0, 90)) || '' });
+        sample: (nodeDetails[0] && nodeDetails[0].target.slice(0, 90)) || '',
+        details: nodeDetails });
     }
     results.push({ role, route, ...bySev, items });
     const flag = (bySev.critical || bySev.serious) ? '❌' : '✅';
     console.log(`  ${flag} ${role.padEnd(10)} ${route.padEnd(15)} critical:${bySev.critical} serious:${bySev.serious} moderate:${bySev.moderate} minor:${bySev.minor}`);
+    if (bySev.critical || bySev.serious) {
+      for (const it of items) {
+        if (it.impact !== 'critical' && it.impact !== 'serious') continue;
+        for (const d of (it.details || [])) {
+          console.log(`     ↳ [${it.impact}] ${it.id} target=${d.target} data=${JSON.stringify(d.data)} html=${d.html}`);
+        }
+      }
+    }
   }
 
+  await settleBeforeScan();
   await scan('(login)', 'login');
 
   /* ۲) پنج نقش × تا ۱۰ نمایِ اصلی — نمای هر نقش از PANELS خودِ برنامه */
@@ -158,8 +202,7 @@ function startStaticServer() {
         if (typeof closeModal === 'function') closeModal();
         render();
       }, route);
-      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-      await page.waitForTimeout(150); /* بگذار paint تمام شود */
+      await settleBeforeScan();
       await scan(R.role, route);
     }
   }

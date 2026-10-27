@@ -374,25 +374,27 @@ function emit(head, outPath) {
       {
         id: 'OD-3',
         item: 'Landing strategy for the registry-only metadata commit',
-        state: 'NOT DECIDED',
-        why_it_blocks: 'Only a single-parent landing (fast-forward) preserves the two-phase binding; a merge commit ' +
-          'or a squash invalidates V-02/G9 by construction and the registry must be rebuilt after landing.'
+        state: 'DECIDED BY OWNER MERGE PR #480 (2026-10-26)',
+        why_it_blocks: 'Resolved in docs/STRICT_VERIFICATION_GATE.md (e71e0e14b6): the registry-only metadata commit ' +
+          'must land as a single-parent commit (fast-forward / rebase-merge without a merge commit). If a squash or ' +
+          'merge commit lands on main instead, evidence must be re-collected on the resulting main SHA and followed ' +
+          'by a fresh single-parent registry-only commit.'
       }
     ],
     false_green_blockers_on_head: [
       {
         id: 'FG-1',
-        item: 'tests/api/* suites are outside npm test and outside the strict gate inventory',
-        classification: 'REAL but UNEXECUTED BY ANY GATE (A-13/FG-1 carry-over)',
+        item: 'tests/api/* suites execute via tests/api/runner.js in npm test + test:all (31 top-level wired; 1 nested phase5-pilot/index.test.js tracked separately), while strict-verification-gate.js audits committed registry evidence logs rather than executing tests/api/* directly',
+        classification: 'WIRED IN NPM TEST & CANONICAL CI; LEGACY A-13 RECORD AWAITS OWNER CONTRACT DISPOSITION',
         owner_needed: true,
-        state: 'NOT RE-VERIFIED in M15-01; no evidence was produced for it and no status is claimed'
+        state: 'Legacy A-13 carry-over remains UNKNOWN/BLOCKED pending owner disposition of A-01..A-29; no status promotion is claimed'
       },
       {
         id: 'FG-2',
-        item: 'npm test index.html build bit-identity check never reaches 35/35 on current HEAD',
-        classification: 'LEGITIMATE RED (honestly failing), known pre-existing',
+        item: 'Historical Atria-era A-07/A-09 carry-over noted an older index.html build bit-identity failure; on current HEAD npm run build:check and npm test (39/39 main, 31/31 API, 547/547 smoke) pass',
+        classification: 'HISTORICAL CARRY-OVER RESOLVED IN ACTIVE TREE; LEGACY A-07/A-09 RECORDS AWAIT OWNER DISPOSITION',
         owner_needed: true,
-        state: 'NOT RE-VERIFIED in M15-01; no status is claimed'
+        state: 'Active build:check passes on HEAD; legacy A-07/A-09 items remain UNKNOWN/BLOCKED pending owner disposition of A-01..A-29'
       }
     ],
     items: all

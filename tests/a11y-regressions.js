@@ -239,5 +239,22 @@ console.log('▸ زیرساختِ ناوبریِ صفحه‌کلید');
   ok(/\.nav-item:focus-visible\{outline/.test(css), 'nav-item نشانگرِ فوکوسِ مرئی دارد (WCAG 2.4.7)');
 }
 
+/* ── ۷) کاهش حرکت (WCAG 2.3.3 / prefers-reduced-motion) و پایداریِ کنتراستِ انیمیشن‌هایِ opacity ── */
+console.log('▸ مهارِ انیمیشن‌هایِ opacity در prefers-reduced-motion:reduce');
+{
+  const css = read('src/styles/base.css');
+  const rmMatch = css.match(/@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)\s*\{([\s\S]*?)\n\}/);
+  const rmBody = rmMatch ? rmMatch[1] : '';
+  ok(!!rmMatch, 'بلوک @media (prefers-reduced-motion:reduce) در base.css موجود است');
+  for (const sel of ['.toast', '.modal', '.filter-body', '.sync-chip.pend .dot', '.hgt-needle', '.hgt-dot', '.hgt-fill']) {
+    ok(rmBody.includes(sel) && /animation\s*:\s*none/.test(rmBody),
+      `prefers-reduced-motion انیمیشنِ ${sel} را خنثی می‌کند (جلوگیری از افتِ موقتِ opacity و شکستِ متناوبِ color-contrast)`);
+  }
+  const rt = read('tests/a11y-runtime.js');
+  ok(/document\.fonts\s*&&\s*document\.fonts\.ready/.test(rt) && /document\.getAnimations/.test(rt),
+     'tests/a11y-runtime.js پیش از اسکنِ axe منتظرِ آماده شدنِ فونت و پایانِ انیمیشن‌هایِ متناهی می‌ماند');
+  ok(!/disableRules/.test(rt), 'tests/a11y-runtime.js هیچ قانونِ axe (از جمله color-contrast) را غیرفعال نکرده است');
+}
+
 console.log(`\nجمع: ${pass} قبول، ${fail} رد`);
 process.exit(fail ? 1 : 0);
