@@ -703,11 +703,45 @@ function runBindingShapeFixture(shape) {
       git(dir, ['checkout', '--orphan', 'orphan-metadata']);
       git(dir, ['add', '-A']);
       git(dir, ['commit', '-qm', 'parentless metadata commit']);
+    } else if (shape === 'unrelated-sha') {
+      const tree = git(dir, ['rev-parse', sourceSha + '^{tree}']);
+      const unrelatedSha = git(dir, ['commit-tree', tree, '-m', 'unrelated foreign commit']);
+      reg.head_bound = unrelatedSha;
+      for (const it of reg.items) {
+        it.head_sha = unrelatedSha;
+        for (const e of it.evidence) e.head_sha = unrelatedSha;
+        for (const r of TRIO) for (const e of it[r].evidence) e.head_sha = unrelatedSha;
+      }
+      writeReg();
+      git(dir, ['add', REG_PATH]);
+      git(dir, ['commit', '-qm', 'registry-only commit bound to unrelated SHA']);
+    } else if (shape === 'post-gen-tamper') {
+      reg.items[0].evidence[0].sha256 = 'f'.repeat(64);
+      writeReg();
+      git(dir, ['add', REG_PATH]);
+      git(dir, ['commit', '-qm', 'registry-only commit with tampered sha256']);
+    } else if (shape === 'stale-evidence-commit') {
+      writeReg();
+      git(dir, ['add', REG_PATH]);
+      git(dir, ['commit', '-qm', 'registry-only metadata commit']);
+      fs.writeFileSync(path.join(dir, 'docs', 'STRICT_VERIFICATION_GATE.md'),
+        fs.readFileSync(path.join(dir, 'docs', 'STRICT_VERIFICATION_GATE.md'), 'utf8') + '\n<!-- post-registry edit -->\n');
+      git(dir, ['add', 'docs/STRICT_VERIFICATION_GATE.md']);
+      git(dir, ['commit', '-qm', 'follow-up doc commit making evidence stale']);
     }
 
     const result = runGate(dir, 'pull_request');
-    const expectMsg = shape === 'root-no-parent' ? 'parent_count=0' : 'expected registry only';
-    const rejected = result.code !== 0 && result.out.includes(expectMsg) && result.out.indexOf('[metadata-only]') === -1;
+    let rejected = false;
+    if (shape === 'unrelated-sha') {
+      rejected = result.code !== 0 && /FAIL\s+V-02 registry head_bound matches immutable evidence SHA/.test(result.out);
+    } else if (shape === 'post-gen-tamper') {
+      rejected = result.code !== 0 && /FAIL\s+V-02 A-30-DEMO evidence binds immutable SHA\+artifact\+hash\+exit0/.test(result.out);
+    } else if (shape === 'stale-evidence-commit') {
+      rejected = result.code !== 0 && result.out.includes('expected registry only') && result.out.indexOf('[metadata-only]') === -1;
+    } else {
+      const expectMsg = shape === 'root-no-parent' ? 'parent_count=0' : 'expected registry only';
+      rejected = result.code !== 0 && result.out.includes(expectMsg) && result.out.indexOf('[metadata-only]') === -1;
+    }
     rec('Issue #472 ' + shape + ' commit fails closed for metadata binding', rejected,
       'exit=' + result.code + (rejected ? '' : ' — ACCEPTED by gate (defect)'));
   } catch (e) {
@@ -717,7 +751,7 @@ function runBindingShapeFixture(shape) {
   }
 }
 if (!ONLY.length) {
-  for (const shape of ['extra-path', 'rename-into-registry', 'empty-metadata', 'root-no-parent']) {
+  for (const shape of ['extra-path', 'rename-into-registry', 'empty-metadata', 'root-no-parent', 'unrelated-sha', 'post-gen-tamper', 'stale-evidence-commit']) {
     runBindingShapeFixture(shape);
   }
 }

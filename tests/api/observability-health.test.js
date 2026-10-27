@@ -30,6 +30,15 @@ process.env.PAYESH_DEMO_CODE = '1';
 process.env.PAYESH_ALLOW_DEV_MEMORY_AUTHORITY = '1';
 
 const { server, store } = require('../../server/index.js');
+const { globalCanaryEngine } = require('../../server/infrastructure/phase6-canary-engine');
+
+function resetLiveTelemetry() {
+  globalCanaryEngine.metrics.clear();
+  for (const [, c] of globalCanaryEngine.clusters) {
+    c.circuitBreakerOpen = false;
+    c.errorStreak = 0;
+  }
+}
 
 let BASE = '';
 let pass = 0, fail = 0;
@@ -94,6 +103,12 @@ async function run() {
     pass++;
 
     // ۳. دسترسی مدیر مدرسه به تابلوی سلامت رصدپذیری مدرسه خود
+    /* Setup loginAs() calls write the 5.67 MB JSON fixture synchronously; on a
+       busy CI runner a single >300ms setup write records live canary telemetry
+       and flips api_gateway to 'degraded'. Clear setup telemetry so OBS3 tests
+       the deterministic N-11 unmeasured baseline; OBS7/OBS8 below test live
+       healthy and degraded telemetry explicitly. */
+    resetLiveTelemetry();
     const mgrOwnRes = await req('GET', '/api/v1/system/observability-health?school_id=1', { cookie: managerCookie });
     assert.strictEqual(mgrOwnRes.status, 200, 'Manager accessing own school observability health must return 200');
     assert.strictEqual(mgrOwnRes.json.ok, true);
@@ -109,6 +124,7 @@ async function run() {
     assert.strictEqual(mgrOwnRes.json.observability_health.services.database, 'unknown');
     assert.strictEqual(mgrOwnRes.json.observability_health.services.redis, 'unknown');
     assert.strictEqual(mgrOwnRes.json.observability_health.services.event_queue, 'unknown');
+    assert.strictEqual(mgrOwnRes.json.observability_health.services.api_gateway, 'unknown');
     assert.ok(mgrOwnRes.json.observability_health.capacity);
     assert.strictEqual(mgrOwnRes.json.observability_health.governance_and_invariants.human_decision_sovereignty.enforced, true);
     assert.strictEqual(mgrOwnRes.json.observability_health.governance_and_invariants.zero_ranking_guarantee.enforced, true);
@@ -134,12 +150,35 @@ async function run() {
     // ۶. نمای منطقه‌ای رصدپذیری بدون رتبه‌بندی مدارس
     const superAdmin = store.users.find(u => u.role === 'superadmin' || u.role === 'admin') || manager;
     const adminCookie = await loginAs(superAdmin);
+    resetLiveTelemetry();
     const regRes = await req('GET', '/api/v1/system/observability-health?region_id=1', { cookie: adminCookie });
     assert.strictEqual(regRes.status, 200, 'Admin accessing regional observability health must return 200');
     assert.strictEqual(regRes.json.ok, true);
     assert.strictEqual(regRes.json.regional_observability_health.zero_ranking, true);
     assert.strictEqual(regRes.json.regional_observability_health.status, 'unknown');
     console.log('  ✅ OBS6: Regional observability overview strictly enforces zero-ranking policy');
+    pass++;
+
+    // ۷. N-11: تله‌متری سالم گیت‌وی نباید سرویس‌های اندازه‌گیری‌نشده را سبز جلوه دهد
+    const primaryClusterId = [...globalCanaryEngine.clusters.keys()][0];
+    resetLiveTelemetry();
+    globalCanaryEngine.recordTelemetry(primaryClusterId, { latencyMs: 42, errorOccurred: false });
+    const healthyGwRes = await req('GET', '/api/v1/system/observability-health?school_id=1', { cookie: managerCookie });
+    assert.strictEqual(healthyGwRes.status, 200);
+    assert.strictEqual(healthyGwRes.json.observability_health.services.api_gateway, 'healthy');
+    assert.strictEqual(healthyGwRes.json.observability_health.status, 'unknown');
+    console.log('  ✅ OBS7: Healthy gateway sample keeps overall status unknown while DB/Redis/Queue are unmeasured');
+    pass++;
+
+    // ۸. N-11: افت واقعی گیت‌وی (p99 > 300ms) نباید پشت وضعیت unknown پنهان شود
+    resetLiveTelemetry();
+    globalCanaryEngine.recordTelemetry(primaryClusterId, { latencyMs: 420, errorOccurred: false });
+    const degradedGwRes = await req('GET', '/api/v1/system/observability-health?school_id=1', { cookie: managerCookie });
+    assert.strictEqual(degradedGwRes.status, 200);
+    assert.strictEqual(degradedGwRes.json.observability_health.services.api_gateway, 'degraded');
+    assert.strictEqual(degradedGwRes.json.observability_health.status, 'degraded');
+    resetLiveTelemetry();
+    console.log('  ✅ OBS8: Degraded gateway sample (p99 > 300ms) surfaces overall status degraded');
     pass++;
 
   } catch (err) {

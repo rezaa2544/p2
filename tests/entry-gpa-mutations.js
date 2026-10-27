@@ -66,8 +66,18 @@ for (const m of MUTS) {
   console.log('  ' + (killedThis ? 'KILLED' : 'SURVIVED!') + ' ' + m.name);
   if (killedThis) killed++;
 }
-let backGreen = false;
-try { execFileSync('node', ['--max-old-space-size=1500', SUITE], { stdio: 'pipe', timeout: 120000 }); backGreen = true; }
-catch (e) { backGreen = false; }
+if (prevFile) kit.clear(prevFile);
+let backGreen = false, finalOut = '';
+try {
+  finalOut = execFileSync('node', ['--max-old-space-size=1500', SUITE], { stdio: 'pipe', timeout: 120000 }).toString();
+  backGreen = true;
+} catch (e) {
+  finalOut = String((e && e.stdout) || '') + String((e && e.stderr) || '');
+  backGreen = false;
+}
 console.log('entry-gpa-mutations: ' + killed + '/' + MUTS.length + ' killed, baseline-green=' + backGreen + ', env-fail=' + envFails);
+if (!backGreen) {
+  console.log('baseline diagnostic tail:');
+  console.log(finalOut.split('\n').slice(-15).join('\n'));
+}
 process.exit(killed === MUTS.length && backGreen && envFails === 0 ? 0 : 1);

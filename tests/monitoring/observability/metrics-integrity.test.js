@@ -12,16 +12,30 @@ const {
 function runMetricsIntegrityTests() {
   console.log('▸ تست ۲: تمامیت محاسبات شاخص‌های عملکردی و ظرفیت (metrics-integrity)');
 
-  // ۱. ارزیابی شاخص‌های پیش‌فرض اپلیکیشن
+  // ۱. نبود اندازه‌گیری سلامت نیست (N-11): خروجی بدون نمونه باید unknown و یخ‌زده باشد
   const defaultApp = collectApplicationMetrics();
-  assert.strictEqual(defaultApp.status, 'healthy');
-  assert.strictEqual(defaultApp.request_rate_per_sec, 250);
-  assert.strictEqual(defaultApp.error_rate, 0.0001);
-  assert.strictEqual(defaultApp.latency_ms.p50, 18);
-  assert.strictEqual(defaultApp.latency_ms.p95, 65);
-  assert.strictEqual(defaultApp.latency_ms.p99, 140);
-  assert.strictEqual(defaultApp.slo_compliance.p99_under_1s, true);
-  assert.strictEqual(defaultApp.slo_compliance.error_rate_under_point_one_pct, true);
+  assert.strictEqual(defaultApp.status, 'unknown');
+  assert.strictEqual(defaultApp.is_live, false);
+  assert.strictEqual(defaultApp.samples, 0);
+  assert.strictEqual(defaultApp.total_requests, 0);
+  assert.strictEqual(defaultApp.request_rate_per_sec, null);
+  assert.strictEqual(defaultApp.error_rate, null);
+  assert.deepStrictEqual(defaultApp.latency_ms, { p50: null, p95: null, p99: null });
+  assert.strictEqual(defaultApp.slo_compliance.p99_under_1s, false);
+  assert.strictEqual(defaultApp.slo_compliance.error_rate_under_point_one_pct, false);
+  assert.strictEqual(defaultApp.slo_compliance.not_verified, true);
+  assert.throws(() => { defaultApp.status = 'healthy'; }, TypeError);
+
+  const healthyMeasuredApp = collectApplicationMetrics({
+    latency_p50_ms: 18,
+    latency_p95_ms: 65,
+    latency_p99_ms: 140,
+    total_requests: 1000,
+    error_count: 0
+  });
+  assert.strictEqual(healthyMeasuredApp.status, 'healthy');
+  assert.strictEqual(healthyMeasuredApp.slo_compliance.p99_under_1s, true);
+  assert.strictEqual(healthyMeasuredApp.slo_compliance.error_rate_under_point_one_pct, true);
 
   // ۲. ارزیابی تاخیر بالا و تغییر وضعیت به بحرانی
   const degradedApp = collectApplicationMetrics({

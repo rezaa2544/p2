@@ -116,6 +116,103 @@ for (const [cls, bg] of [['b-gray', '#eef1f6'], ['b-cyan', '#e2f4fb']]) {
   ok(m && contrast('#ffffff', m[1]) >= 4.5, '.toast.err: ' + (m ? contrast('#ffffff', m[1]).toFixed(2) + ':1' : 'پیدا نشد'));
 }
 
+/* ── ۲ب) کنتراستِ توکن‌ها و سایدبار در هر سه تم (theme-1/2/3) ── */
+console.log('▸ کنتراستِ توکن‌ها در هر سه تم (theme-1/2/3)');
+{
+  const rootTokens = () => {
+    const rootMatch = css.match(/:root\{([\s\S]*?)\}/);
+    const b = rootMatch ? rootMatch[1] : '';
+    const t = {};
+    for (const m of b.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3})\b/g)) t[m[1]] = m[2];
+    return t;
+  };
+  const themeTokens = (theme) => {
+    const t = Object.assign({}, rootTokens());
+    const re = new RegExp('\\[data-theme="' + theme + '"\\]\\s*\\{([\\s\\S]*?)\\}');
+    const themeMatch = css.match(re);
+    const b = themeMatch ? themeMatch[1] : '';
+    for (const m of b.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3})\b/g)) t[m[1]] = m[2];
+    return t;
+  };
+  const norm = (h) => (h && h.length === 4 ? '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3] : h);
+  const ratio = (fg, bg) => contrast(norm(fg), norm(bg));
+  const samePairs = (t) => [
+    ['--green رویِ سفید', t.green, '#ffffff'],
+    ['--red رویِ سفید', t.red, '#ffffff'],
+    ['--amber رویِ سفید', t.amber, '#ffffff'],
+    ['--green-text رویِ --green-soft', t['green-text'], t['green-soft']],
+    ['--red-text رویِ --red-soft', t['red-text'], t['red-soft']],
+    ['--amber-text رویِ --amber-soft', t['amber-text'], t['amber-soft']],
+    ['--muted رویِ سفید', t.muted, '#ffffff'],
+    ['--muted رویِ --surface-2', t.muted, t['surface-2']],
+    ['--text رویِ --surface', t.text, t.surface],
+  ];
+  for (const theme of ['theme-1', 'theme-2', 'theme-3']) {
+    const t = themeTokens(theme);
+    for (const [name, fg, bg] of samePairs(t)) {
+      if (!fg || !bg) { ok(false, `${theme}: ${name} — توکن پیدا نشد`); continue; }
+      const r = ratio(fg, bg);
+      ok(r >= 4.5, `${theme}: ${name}: ${r.toFixed(2)}:1 (نیاز ≥ 4.5)`);
+    }
+  }
+  const nav = (css.match(/\.nav-group\{[^}]*color:(#[0-9a-fA-F]{6})/) || [])[1];
+  const brandSub = (css.match(/\.brand span\{[^}]*color:(#[0-9a-fA-F]{6})/) || [])[1];
+  const t2sidebar = (css.match(/\[data-theme="theme-2"\]\s*\.sidebar\s*\{\s*background:\s*(#[0-9a-fA-F]{6})/) || [])[1];
+  ok(!!(nav && t2sidebar) && ratio(nav, t2sidebar) >= 4.5,
+    `.nav-group رویِ .sidebar تم ۲ (${nav} رویِ ${t2sidebar}): ${nav && t2sidebar ? ratio(nav, t2sidebar).toFixed(2) : '?'}:1`);
+  ok(!!brandSub && ratio(brandSub, '#14225a') >= 4.5,
+    `.brand span رویِ .sidebar تم ۱/۳ (${brandSub} رویِ #14225a): ${brandSub ? ratio(brandSub, '#14225a').toFixed(2) : '?'}:1`);
+}
+
+/* ── ۲ج) هر قاعده‌ای که هم color و هم background می‌دهد باید AA بدهد ── */
+console.log('▸ هر قاعده با color+background باید AA بدهد');
+{
+  const tokenTable = (theme) => {
+    const t = {};
+    for (const m of css.matchAll(/:root\s*\{([\s\S]*?)\}/g)) {
+      for (const d of m[1].matchAll(/--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})/g)) t[d[1]] = d[2];
+    }
+    if (theme) {
+      const re = new RegExp('\\[data-theme="' + theme + '"\\]\\s*\\{([\\s\\S]*?)\\}', 'g');
+      for (const m of css.matchAll(re)) {
+        for (const d of m[1].matchAll(/--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})/g)) t[d[1]] = d[2];
+      }
+    }
+    return t;
+  };
+  const norm = (h) => {
+    if (!h) return null;
+    h = String(h).trim();
+    if (!/^#[0-9a-fA-F]{3,8}$/.test(h)) return null;
+    if (h.length === 4) return '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3];
+    return h.length === 7 ? h.toLowerCase() : null;
+  };
+  const resolve = (v, tk) => {
+    if (!v) return null;
+    const m = String(v).trim().match(/^var\(\s*--([a-z0-9-]+)\s*(?:,\s*([^)]+))?\)$/);
+    if (m) return norm(tk[m[1]]) || norm(m[2]);
+    return norm(v);
+  };
+  const bad = [];
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+  for (const theme of ['root', 'theme-1', 'theme-2', 'theme-3']) {
+    const tk = tokenTable(theme === 'root' ? null : theme);
+    for (const r of rules) {
+      const sel = r[1].replace(/\/\*[\s\S]*?\*\//g, '').trim().split('\n').pop().trim();
+      if (!sel || sel.startsWith('@')) continue;
+      const fgM = r[2].match(/(?:^|;)\s*color\s*:\s*([^;]+)/);
+      const bgM = r[2].match(/(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)/);
+      if (!fgM || !bgM) continue;
+      const fg = resolve(fgM[1], tk);
+      const bg = resolve(bgM[1], tk);
+      if (!fg || !bg) continue;
+      const rt = contrast(fg, bg);
+      if (rt < 4.5) bad.push(theme + ' ' + sel.slice(0, 60) + ' = ' + rt.toFixed(2) + ':1 (' + fg + ' on ' + bg + ')');
+    }
+  }
+  ok(bad.length === 0, 'هیچ قاعدهٔ color+background زیرِ 4.5:1 نیست' + (bad.length ? ' — نقض: ' + bad.slice(0, 6).join(' | ') : ''));
+}
+
 /* ── ۳) opacity رویِ متنِ muted ممنوع (کنتراستِ مؤثر را می‌شکند) ── */
 console.log('▸ opacity رویِ متنِ muted ممنوع');
 {
@@ -237,6 +334,28 @@ console.log('▸ زیرساختِ ناوبریِ صفحه‌کلید');
   const css = read('src/styles/base.css');
   ok(/\.skip-link:focus\{top:0/.test(css), 'skip-link تا فوکوس نگیرد مخفی است و با فوکوس دیده می‌شود');
   ok(/\.nav-item:focus-visible\{outline/.test(css), 'nav-item نشانگرِ فوکوسِ مرئی دارد (WCAG 2.4.7)');
+}
+
+/* ── ۷) کاهش حرکت (WCAG 2.3.3 / prefers-reduced-motion) و پایداریِ کنتراستِ انیمیشن‌هایِ opacity ── */
+console.log('▸ مهارِ انیمیشن‌هایِ opacity در prefers-reduced-motion:reduce');
+{
+  const css = read('src/styles/base.css');
+  const rmMatch = css.match(/@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)\s*\{([\s\S]*?)\n\}/);
+  const rmBody = rmMatch ? rmMatch[1] : '';
+  ok(!!rmMatch, 'بلوک @media (prefers-reduced-motion:reduce) در base.css موجود است');
+  for (const sel of ['.toast', '.modal', '.filter-body', '.sync-chip.pend .dot', '.hgt-needle', '.hgt-dot', '.hgt-fill']) {
+    ok(rmBody.includes(sel) && /animation\s*:\s*none/.test(rmBody),
+      `prefers-reduced-motion انیمیشنِ ${sel} را خنثی می‌کند (جلوگیری از افتِ موقتِ opacity و شکستِ متناوبِ color-contrast)`);
+  }
+  const rt = read('tests/a11y-runtime.js');
+  ok(/document\.fonts\s*&&\s*document\.fonts\.ready/.test(rt) && /document\.getAnimations/.test(rt),
+     'tests/a11y-runtime.js پیش از اسکنِ axe منتظرِ آماده شدنِ فونت و پایانِ انیمیشن‌هایِ متناهی می‌ماند');
+  ok(!/disableRules/.test(rt), 'tests/a11y-runtime.js هیچ قانونِ axe (از جمله color-contrast) را غیرفعال نکرده است');
+  ok(/\.tab\.active\{color:var\(--primary-dark\);border-color:var\(--primary-dark\)\}/.test(css),
+     '.tab.active از --primary-dark استفاده می‌کند تا روی .card-head (--surface-2 در theme-3: #e8f0fe) کنتراست >= 6.0:1 بدهد');
+  const src10 = read('src/js/10-users.js');
+  ok(!/background:var\(--primary-soft\);color:var\(--primary\)/.test(src10),
+     '10-users.js روی پس‌زمینهٔ --primary-soft از --primary-dark استفاده می‌کند (>= 6.0:1 در هر سه تم)');
 }
 
 console.log(`\nجمع: ${pass} قبول، ${fail} رد`);

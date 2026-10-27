@@ -191,7 +191,25 @@ O-2  .github/workflows/strict-verification.yml triggers on `push` to `arena/**`,
      push context requires HEAD to be an ancestor of origin/main. A branch push can therefore
      never pass V-06. Either the trigger or the ancestry contract must change, and both choices
      alter a security/CI requirement — that is an owner call, not an execution call.
-O-3  Landing mechanics: the metadata-only registry commit must land as a single-parent commit
-     (fast-forward or a rebuild after landing). A `--no-ff` merge or a squash makes the registry
-     commit non-metadata-only and V-02/G9 fail by construction. Known and accepted; the
-     registry is bound to the source SHA it was built from and must be rebuilt if the line moves.
+O-3  Landing mechanics: DECIDED BY MERGED POLICY PR #480 (`e71e0e14b6`, 2026-10-26). The
+     metadata-only registry commit must land as a single-parent commit (`100644` regular file,
+     `--no-renames`, sole changed path `docs/verification/VERIFICATION_REGISTRY.json`). A `--no-ff`
+     merge, squash, or subsequent non-registry commit (for example a post-registry docs commit)
+     makes `HEAD` non-metadata-only so `evidenceHead` reverts to `HEAD` and `V-02`/`G9` fail by
+     construction (`632 pass / 66 fail` in branch/local push mode; `exit 2` in
+     `tools/registry-provenance.js --audit`); if the line moves, evidence must be re-collected on
+     the new source SHA and followed by a fresh single-parent registry-only commit.
+O-4  Expected IDs & legacy inventory (`OD-4` / `A-01..A-29`): `expected_ids` declares 32 items
+     (29 inherited `A-01..A-29` records preserved honestly as `UNKNOWN`/`BLOCKED` + 3 `M15-01-A..C`
+     Arena-evidenced items). Ratifying 29 vs 32 vs 39 items and deciding the disposition of
+     `A-01..A-29` (re-verify with dedicated suites, accept risk with owner+expiry, or retire) and
+     whether to widen `VERIFICATION_EVIDENCE_SCHEMA.json` `reviewers[]` beyond 1 slot (`V-18`) are
+     owner contract rulings.
+
+TWO-PHASE PROVENANCE PARITY (`tools/strict-verification-gate.js` + `tools/registry-provenance.js`)
+Both tools resolve `evidenceHead` identically: single-parent commit (`parent_count=1`), regular-file
+`100644` `[AM]` diff on `docs/verification/VERIFICATION_REGISTRY.json` only (`--no-renames`), and
+matching non-registry subtree digest. Real-git positive and negative fixtures in
+`tests/two-phase-provenance-consistency.test.js` and `tests/strict-verification-gate.negative.test.js`
+verify valid registry-only binding, tree mismatch, unrelated SHA, invalid parent count / merge shape,
+post-generation tampering, and stale post-registry commits across both tools simultaneously.

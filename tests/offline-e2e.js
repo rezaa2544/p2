@@ -134,7 +134,22 @@ async function bootBrowser(sharedStorage, server, opts) {
       };
     }
   });
-  await sleep(1700);   /* بوتِ کاملِ باندل (الگوی سوئیت‌های موجود) */
+  const deadline = Date.now() + 15000;
+  while (Date.now() < deadline) {
+    try {
+      const ready = dom.window.eval(
+        'typeof db !== "undefined" && Array.isArray(db.schools) && db.schools.length > 0 && ' +
+        (net.online ? 'typeof SERVER_DETECTED !== "undefined" && SERVER_DETECTED === true' : 'typeof _QUEUE_LOADED !== "undefined" && _QUEUE_LOADED === true')
+      );
+      if (ready) {
+        dom.window.eval('if (typeof SYNC !== "undefined" && SYNC.autoTimer) { clearTimeout(SYNC.autoTimer); SYNC.autoTimer = null; } 0;');
+        break;
+      }
+    } catch (_) {}
+    await sleep(25);
+  }
+  await sleep(60);   /* تثبیتِ ریزکارِ /api/auth/me پس از detectServer */
+  dom.window.eval('if (typeof SYNC !== "undefined" && SYNC.autoTimer) { clearTimeout(SYNC.autoTimer); SYNC.autoTimer = null; } 0;');
   const W = (c) => dom.window.eval(c);
   return { dom, W, net, close: () => dom.window.close() };
 }

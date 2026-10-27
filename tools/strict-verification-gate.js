@@ -67,9 +67,15 @@ try {
     metadataBindingReason = 'metadata-only binding requires a non-merge commit with exactly one parent; parent_count=' + Math.max(0, commitAndParents.length - 1);
   } else {
     const parent = commitAndParents[1];
-    const changed = cp.execFileSync('git', ['diff', '--name-only', '--no-renames', parent, 'HEAD'], { cwd: ROOT, encoding: 'utf8' })
-      .split(/\r?\n/).map((s) => s.trim()).filter(Boolean).sort();
-    if (isSha1(parent) && changed.length === 1 && changed[0] === 'docs/verification/VERIFICATION_REGISTRY.json') {
+    const rawDiff = cp.execFileSync('git', ['diff-tree', '--no-commit-id', '--raw', '--no-renames', '-r', parent, 'HEAD'], { cwd: ROOT, encoding: 'utf8' })
+      .split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+    const changed = rawDiff.map((line) => {
+      const tab = line.indexOf('\t');
+      return tab >= 0 ? line.slice(tab + 1).trim() : line;
+    }).sort();
+    const regOnlyRegularFile = rawDiff.length === 1
+      && /^:[0-7]{6}\s+100644\s+[0-9a-f]+\s+[0-9a-f]+\s+[AM]\tdocs\/verification\/VERIFICATION_REGISTRY\.json$/i.test(rawDiff[0]);
+    if (isSha1(parent) && changed.length === 1 && changed[0] === 'docs/verification/VERIFICATION_REGISTRY.json' && regOnlyRegularFile) {
       evidenceHead = parent;
       metadataOnlyBinding = true;
       metadataBindingReason = 'single-parent registry-only metadata commit; evidence binds parent ' + parent;
@@ -553,7 +559,7 @@ if (reg && isObj(reg)) {
       }
       chk('V-02 ' + id + ' evidence binds immutable SHA+artifact+hash+exit0', bindErrs.length === 0, bindErrs.slice(0, 4).join(' | '));
 
-      /* V-03: the three reviewers' evidence must be independent (not byte-clones) */
+      /* V-03: declared reviewer slots' evidence must be independent (not byte-clones) */
       const reviewerSlots = REVIEWERS.map((r) => ({ r, entries: slots.find((s) => s.slot === r).entries }));
       const hashes = reviewerSlots.map((s) => norm(s.entries));
       const distinct = new Set(hashes).size === hashes.length;
@@ -607,7 +613,7 @@ if (reg && isObj(reg)) {
       const sch = [];
       const missingItem = REQUIRED_ITEM_KEYS.filter((k) => !(k in item));
       if (missingItem.length) sch.push('item missing: ' + missingItem.join(','));
-      if (!Array.isArray(item.reviews) || !REVIEWERS.every((r) => item.reviews.includes(r))) sch.push('reviews must cover the three reviewers');
+      if (!Array.isArray(item.reviews) || !REVIEWERS.every((r) => item.reviews.includes(r))) sch.push('reviews must cover all required_reviewers');
       if (Array.isArray(item.reviews)) {
         const unknownSlots = item.reviews.filter((r) => !REVIEWERS.includes(r));
         if (unknownSlots.length) sch.push('unknown reviewer slot(s) in item.reviews: ' + unknownSlots.join(','));
@@ -622,7 +628,7 @@ if (reg && isObj(reg)) {
         if (!isObj(e)) { sch.push(f.where + ': evidence not an object'); continue; }
         const miss = REQUIRED_EVIDENCE_KEYS.filter((k) => !(k in e));
         if (miss.length) { sch.push(f.where + ': missing ' + miss.join(',')); continue; }
-        if (!REVIEWERS.includes(e.reviewer)) sch.push(f.where + ': reviewer not in trio');
+        if (!REVIEWERS.includes(e.reviewer)) sch.push(f.where + ': reviewer not in required_reviewers');
         if (!EVIDENCE_KINDS.includes(e.kind)) sch.push(f.where + ': bad kind ' + e.kind);
         if (!isStr(e.command)) sch.push(f.where + ': command');
         if (typeof e.exit_code !== 'number') sch.push(f.where + ': exit_code');

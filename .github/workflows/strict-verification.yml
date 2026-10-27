@@ -11,7 +11,30 @@ jobs:
   strict-verification:
     name: STRICT — 3-AI Evidence Gate
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: payesh
+          POSTGRES_PASSWORD: payesh
+          POSTGRES_DB: payesh_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U payesh"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     steps:
       - name: Checkout intended main commit
         uses: actions/checkout@v4
@@ -23,6 +46,16 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Ensure PostgreSQL client and redis-server binary for truth-gate chaos checks
+        run: |
+          mkdir -p /tmp/m15-01-strict-evidence
+          if [ ! -x /usr/bin/psql ] || [ ! -x /usr/bin/redis-server ]; then
+            sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq postgresql-client redis-server
+            if sudo systemctl is-active --quiet redis-server; then
+              sudo systemctl stop redis-server
+            fi
+          fi
       - name: Install dependencies
         run: npm ci
       - name: A-30 V-01..V-12 negative gate fixtures
@@ -33,8 +66,19 @@ jobs:
       # property is unproven or a fixture is vacuous, not that a check was unavailable.
       - name: M15-01 registry & strict-verification acceptance properties
         run: node tests/m15-01-registry-strict-verification.test.js
+      - name: M15-01 two-phase SHA binding & provenance consistency fixtures
+        run: node tests/two-phase-provenance-consistency.test.js
       - name: Strict verification contract
-        run: node tools/strict-verification-gate.js
+        run: |
+          set -o pipefail
+          mkdir -p /tmp/m15-01-strict-evidence
+          node tools/strict-verification-gate.js 2>&1 | tee /tmp/m15-01-strict-evidence/strict-verification-gate.log
+      - name: Registry provenance audit
+        if: always()
+        run: |
+          set -o pipefail
+          mkdir -p /tmp/m15-01-strict-evidence
+          node tools/registry-provenance.js --audit 2>&1 | tee /tmp/m15-01-strict-evidence/registry-provenance-audit.log
       # Issue #454 item 2: a failing step must not erase the evidence of the steps
       # below it. `if: always()` keeps Core tests and the Production truth gate
       # running and surfacing their OWN verdict; the job still fails if any step
@@ -43,8 +87,26 @@ jobs:
         if: always()
         run: npm test
       - name: Production truth gate
-        if: ${{ always() && env.DATABASE_URL != '' }}
+        if: always()
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: postgres://payesh:payesh@127.0.0.1:5432/payesh_ci
+          REDIS_URL: redis://127.0.0.1:6379
           GATE_REQUIRE_CLEAN: "1"
-        run: npm run truth-gate
+        run: |
+          set -o pipefail
+          mkdir -p /tmp/m15-01-strict-evidence
+          npm run truth-gate 2>&1 | tee /tmp/m15-01-strict-evidence/production-truth-gate.log
+      - name: Record SHA-256 digests of strict-verification logs
+        if: always()
+        run: |
+          mkdir -p /tmp/m15-01-strict-evidence
+          (cd /tmp/m15-01-strict-evidence && sha256sum *.log > SHA256SUMS.txt)
+          SUMMARY=$(tr '\n' ';' < /tmp/m15-01-strict-evidence/SHA256SUMS.txt)
+          echo "::notice title=M15-01 Strict Evidence SHA256::sha=${GITHUB_SHA} ${SUMMARY}"
+      - name: Upload strict-verification raw logs and SHA-256 manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m15-01-strict-gate-evidence-${{ github.sha }}
+          path: /tmp/m15-01-strict-evidence/
+          retention-days: 30
