@@ -607,9 +607,74 @@ passed in CI** for the first time in this cycle — the registry is bound, the w
 PR lane is clean (V-06 does not apply to `pull_request`), so the mission-C contradiction is resolved
 on the very lane that matters.
 
-### 9.9 Re-run on the corrected head
+### 9.9 What CI said on the corrected head (f93111e8), line by line
 
-To be filled from `gh run view` — not from intent — after the fix is pushed.
+The same two workflows were re-read after the docs-refs fix was pushed:
+
+| Workflow (pull_request) | Result |
+|---|---|
+| `Payesh Strict Verification Gate` — run 40554919515 | **success**, every step green, including `Strict verification contract` |
+| `Node.js CI` — run 40551919596, job `build (22.x)` | **failure**, and only one check inside the canonical runner was red: `FAIL live repository secret-scan passes with exit 0` (annotation on the job; `Process completed with exit code 1`) |
+| every live-PostgreSQL, live-Redis, chaos, a11y and migration step above it | **success** — `Live-PG suites (fail without a database — P1-GAP-01)`, `Live-Redis suite (otp-redis)`, `Migration chain … 001 → latest`, `Rollback chain`, the five `Critical orphan — B-PG …` batteries, `Phase 6.5 Runtime Truth`, `Production Truth Gate`, `Phase 7 verifier T1–T7`, `npm test`, `Lint (N-23)` |
+
+**What that single red proves, in both directions.** It is not a product red — it is *my own
+manifest*: I wrote three bare 64-hex digests into `m15-01-canonical-run-MANIFEST.md`, and a bare long
+hex is a credential candidate by design. The fix was to label them (`sha256:<hex>`) — the honest
+description, and the form the rule already accepts; nothing was added to any allowlist. And the
+inverse is the important half: because every live-PG, live-Redis, chaos and a11y step **passed on
+this head**, the 62 local reds of §9.7 are now *confirmed environmental* by CI rather than asserted
+by me. That is the cross-check the local run could never give.
+
+### 9.10 SI-013-B — the secret scanner's own blind spot, found while fixing that
+
+Chasing the manifest hit exposed something worse than the manifest. `tests/secret-scan.js`
+exempted a long hex whenever the line merely *contained* one of
+`0x|digest|sha256|example|dummy|test|fixture|deadbeef`, anywhere on the line. Measured, not
+theorised — a fresh random 64-hex value appended to a document as
+
+```
+const testApiKey = "<64 random hex>"
+```
+
+left the scan at `13/13 سبز ✅`. A planted key named after "test" was invisible. That is a
+false-green *in the control that is supposed to catch false greens*, so it is a defect of the same
+class as everything else this cycle has been about.
+
+Repaired by narrowing the exemption from "the line mentions a word" to "a digest label sits next
+to the value, or the value is a `0x`/`deadbeef` sentinel", deleting the ambiguous words, and making
+the existing FT-METRIC-01 ledger exception name the artifacts it hashes (`mutation-test.sh`,
+`metric-v2-partial-report.json`) instead of leaning on the word "test" inside those filenames.
+One narrow, documented exception remains and is stated as such in the code: the ARENA6 audit
+report quotes the `PAYESH_JWT_SECRET=` value it found at `.env.example:38` as the evidence of its
+own finding — that file is historical evidence and is not rewritten here, and whether that value
+is still live is the SI-013 rotation question, i.e. the owner's.
+
+Proof, in both directions:
+
+| Check | Before | After |
+|---|---|---|
+| plant `const testApiKey = "<fresh 64 hex>"` in a doc | 13/13 green (**hole**) | **12 green / 1 red, 1 hit** |
+| remove the planted value | 13/13 | **13/13** |
+| `HEXCASES` negative controls | 22 cases | **27 cases** (5 added: `testApiKey`, `fixtureToken`, a fixture-dir module, plus two positives that must stay allowed: `sha256:` and `"lockfile_sha256": "`) |
+| `node tests/si013-secret-scan.js` (the suite that asserts the live scan exits 0) | 18/18 | **18/18** |
+| `npm test` | 40/40 + 31/31 + smoke 547/547 | **40/40 + 31/31 + smoke 547/547, exit 0** |
+
+### 9.11 One environment event worth recording
+
+Mid-mission the sandbox's git metadata was reset to the base clone (`git reflog` shows only
+`clone` + `checkout`, HEAD back at `fff1beae`) while the working tree kept its files. Nothing was
+lost, because every step had already been pushed: recovery was `git fetch origin
+arena/f75d9f00-p2` + `git reset --hard origin/arena/f75d9f00-p2`, after which `git log` showed the
+mission's commits intact and the tree differed from the pushed head only by the edit in progress.
+This is recorded because it is exactly why the mission insists on pushing evidence commits as they
+are produced instead of at the end.
+
+### 9.12 Re-run on the corrected head after the SI-013-B fix
+
+Head `c859d31`. `node tools/strict-verification-gate.js` → **exit 1, 708 pass / 1 fail** — the single
+failure is V-06 (`HEAD contained in origin/main`, `origin/main=fff1beae`), i.e. the unmerged-branch
+condition of OD-2 and nothing else. CI rows for this head are recorded in the table below once the
+runs complete; the run ids are cited, and no row is written from intent.
 
 ### SI-013 — active-tree classification, measured rather than asserted
 
