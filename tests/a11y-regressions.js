@@ -174,6 +174,69 @@ console.log('▸ کنتراستِ توکن‌ها در هر سه تم (theme-1/2
   }
 }
 
+/* ── ۲ج) هر قاعده‌ای که هم color و هم background می‌دهد باید AA بدهد ──────
+   چرا: بررسی‌های بالا جفت‌های *فهرست‌شده* را می‌سنجند، پس هر جفتِ تازه‌ای که
+   در CSS اضافه شود از سنجه فرار می‌کند. این بلوک دقیقاً همان دسته را می‌بندد:
+   قاعده‌ای که در یک بلوک هم `color` و هم `background`/`background-color` دارد،
+   با توکن‌های همان تم حل می‌شود و باید ≥ 4.5 بدهد (متنِ بزرگ به‌صورت جداگانه
+   مستثنی می‌شود؛ امروز هیچ موردِ متن‌بزرگی در این دسته نیست).
+
+   این سنجه چهار نقصِ واقعی را پیدا کرد که پیش‌تر دیده نمی‌شدند و در اسکنِ
+   axe به‌صورتِ «متناوب» ظاهر می‌شدند، چون حضورشان به مسیر/وضعیت بستگی دارد:
+       .avatar        #fff روی #2f6bff  = 4.499  (زیرِ آستانه، دقیقاً رویِ مرز)
+       .back-btn      primary روی primary-soft = 4.28 (root) و 4.17 (theme-3)
+       .sync-chip.off  #64748b روی #eef2f7 = 4.23
+       .sync-chip.busy primary روی primary-soft = 4.28 (root) و 4.17 (theme-3)
+   `.sync-chip` فقط وقتی busy/off است رندر می‌شود و `.back-btn` فقط در
+   مسیرهایِ غیرِ خانه — یعنی همان الگویِ «گاهی قرمز، گاهی سبز». */
+console.log('▸ هر قاعده با color+background باید AA بدهد');
+{
+  const tokenTable = (theme) => {
+    const t = {};
+    for (const m of css.matchAll(/:root\s*\{([\s\S]*?)\}/g)) {
+      for (const d of m[1].matchAll(/--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})/g)) t[d[1]] = d[2];
+    }
+    if (theme) {
+      const re = new RegExp('\\[data-theme="' + theme + '"\\]\\s*\\{([\\s\\S]*?)\\}', 'g');
+      for (const m of css.matchAll(re)) {
+        for (const d of m[1].matchAll(/--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})/g)) t[d[1]] = d[2];
+      }
+    }
+    return t;
+  };
+  const norm = (h) => {
+    if (!h) return null;
+    h = String(h).trim();
+    if (!/^#[0-9a-fA-F]{3,8}$/.test(h)) return null;
+    if (h.length === 4) return '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3];
+    return h.length === 7 ? h.toLowerCase() : null;
+  };
+  const resolve = (v, tk) => {
+    if (!v) return null;
+    const m = String(v).trim().match(/^var\(\s*--([a-z0-9-]+)\s*(?:,\s*([^)]+))?\)$/);
+    if (m) return norm(tk[m[1]]) || norm(m[2]);
+    return norm(v);
+  };
+  const bad = [];
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+  for (const theme of ['root', 'theme-1', 'theme-2', 'theme-3']) {
+    const tk = tokenTable(theme === 'root' ? null : theme);
+    for (const r of rules) {
+      const sel = r[1].replace(/\/\*[\s\S]*?\*\//g, '').trim().split('\n').pop().trim();
+      if (!sel || sel.startsWith('@')) continue;
+      const fgM = r[2].match(/(?:^|;)\s*color\s*:\s*([^;]+)/);
+      const bgM = r[2].match(/(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)/);
+      if (!fgM || !bgM) continue;
+      const fg = resolve(fgM[1], tk);
+      const bg = resolve(bgM[1], tk);
+      if (!fg || !bg) continue;
+      const rt = contrast(fg, bg);
+      if (rt < 4.5) bad.push(theme + ' ' + sel.slice(0, 60) + ' = ' + rt.toFixed(2) + ':1 (' + fg + ' on ' + bg + ')');
+    }
+  }
+  ok(bad.length === 0, 'هیچ قاعدهٔ color+background زیرِ 4.5:1 نیست' + (bad.length ? ' — نقض: ' + bad.slice(0, 6).join(' | ') : ''));
+}
+
 /* ── ۳) opacity رویِ متنِ muted ممنوع (کنتراستِ مؤثر را می‌شکند) ── */
 console.log('▸ opacity رویِ متنِ muted ممنوع');
 {
