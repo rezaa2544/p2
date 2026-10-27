@@ -1,0 +1,54 @@
+M15-01 execution mission 2 — local battery evidence
+HEAD   : 46c45041cd2aef2ee69860aca2f04ba667ce4e0d
+TREE   : cebaa0e625818d578771870bfe0e9f48c46b3c23
+NODE   : v22.22.3
+COLLECTED: 2026-10-27T20:15:15Z
+
+LOG                                EXIT   COMMAND
+--------------------------------------------------------------------------------------------------------------
+api-runner.log                     0      node tests/api/runner.js
+docs-consistency.log               0      node tests/docs-consistency.js
+docs-health.log                    0      node tests/docs-health.js
+docs-metadata.log                  0      node tests/docs-metadata.js
+docs-metrics.log                   0      node tests/docs-metrics.js
+documentation-maintenance-coverage.log 0      node tests/documentation-maintenance-coverage.js
+documentation-map-coverage.log     0      node tests/documentation-map-coverage.js
+e4.log                             2      node tools/m15-01-e4-verify.js
+                                          2  (BLOCKED WITH PROOF — expected: 0/7 PASS, 7/7 BLOCKED)
+fz3.log                            0      node tests/docs-freeze-marker.js
+gate.log                           1      node tools/strict-verification-gate.js
+                                          1  (VERDICT NOT VERIFIED — expected on a branch head: evidence binds bf263bf2, checkout HEAD is the branch tip)
+lint2.log                          0      npx eslint server/ tools/ tests/ --max-warnings 411
+refs3.log                          0      node tools/docs-refs-check.js
+si.log                             0      node tests/si013-secret-scan.js
+smoke.log                          0      node --expose-gc --max-old-space-size=2048 tests/smoke.js
+ss.log                             0      node tests/secret-scan.js
+tests-run.log                      0      node tests/run.js
+version.log                        0      node tests/release-version-contract.js
+
+Two non-zero exits are CORRECT behaviour and are documented in the report:
+  e4.log   exit 2 — the seven E4 drills are BLOCKED on multi-host infrastructure;
+                    the tool is designed to fail closed rather than report a pass.
+  gate.log exit 1 — VERDICT NOT VERIFIED; on a branch head the registry evidence
+                    cannot bind the checkout HEAD (V-02/G9), which is structural.
+Neither is counted as PASS anywhere, and neither was modified to become green.
+
+LOG                                SHA256
+--------------------------------------------------------------------------------------------------------------
+api-runner.log                     66095c765ae98fa65b18dc44213c6afaeb106e8eb50f52ac3108b631bbbefd15
+docs-consistency.log               05e400b308d7a1af777800998555183457e77dc4ca11d30449df5c149afd81c4
+docs-health.log                    9f84356578722702c6d339ca70c4eedf8c1d85f2f0400ba1fe4b2d92e21264a0
+docs-metadata.log                  b909e99eda5b04fa6aac526ef9bab6dd6a73b9e27a60e25f1ac9374541a44b9f
+docs-metrics.log                   472b5fa07fb0ed0608481b143caa0c79cd354f8e60bdf2b1ef7784671facd042
+documentation-maintenance-coverage.log 330b4544837f99eaafc6398e6d10e126eba4d302346d9247037542fa9044b777
+documentation-map-coverage.log     10973f0096bf44ecfa479e4fb6296dacc72b8f778246484bb6d26a5353ef6c38
+e4.log                             a27ed5fe021f56584784de0a4d585e28fb75ca74d03b93f751f0026035f8fc57
+fz3.log                            5d1b98d69cc732d670545bd2cfcb30e981764fb34eb6d2c8731d6342e9e52f63
+gate.log                           7d7e4d26a87467b341b43df17fd0d298977b1cdcccebe27dfb403fd35a060305
+lint2.log                          838145e2d48d1dcdd6fc5093f9a50ebb2e99d45774863a9c92dfa9d7403a5240
+refs3.log                          102ee4459191f914e8e28f7be52388afa69014221768918dbf37df48eca6ed62
+si.log                             b0b6d10861ce4529fd06f2b14cd7927d1d6fb4e23fb60b922a487871514e193e
+smoke.log                          0c618fd22dfcbdca6187d695bbe43d763ef354533de6d3cabd43b835cd057e17
+ss.log                             13ae17d8fb1f42703931570b0846ec710b6aa4018e92deb6c4d7c09165f309a7
+tests-run.log                      4c552b2a8b63dd3cbcc6ad636540ca66bdc220b1c556470eba1fa3293408cdf2
+version.log                        e8c9fefd243931ae6cb788109764ce9614bcf7d2e97028e05b8aed0eb4bb4f6c

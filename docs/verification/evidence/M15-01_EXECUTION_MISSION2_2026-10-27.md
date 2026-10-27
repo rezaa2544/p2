@@ -384,6 +384,33 @@ missing = FAIL)` **fail-closed** می‌شود. پس گاردِ `env.DATABASE_UR
 
 ---
 
+## ۹-الف. خروجیِ خامِ باتریِ محلی (شاهدِ ماندگار)
+
+خروجیِ کاملِ هر سنجه، به‌همراهِ `EXIT` و `sha256`، در
+`docs/verification/evidence/m15-01-mission2-2026-10-27/EXITCODES.txt` و در همان
+پوشه به‌صورتِ فایل‌های `*.log` ثبت شده است. اجرا روی `HEAD = 46c45041`، `TREE = cebaa0e6`،
+Node `v22.22.3`، در `2026-10-27T20:15:15Z`.
+
+| سنجه | EXIT | یادداشت |
+|---|---:|---|
+| `tests/run.js` | 0 | ۳۹/۳۹ |
+| `tests/api/runner.js` | 0 | همهٔ سوئیت‌های API |
+| `tests/smoke.js` | 0 | — |
+| `tests/release-version-contract.js` | 0 | — |
+| `eslint server/ tools/ tests/ --max-warnings 411` | 0 | ۰ خطا |
+| `tests/docs-freeze-marker.js` | 0 | ۱۴/۱۴ |
+| `tools/docs-refs-check.js` | 0 | ۰ ارجاعِ کهنهٔ تازه |
+| `tests/docs-health|consistency|metrics|metadata` | 0 | چهار سنجهٔ مستندات |
+| `documentation-map-coverage` / `documentation-maintenance-coverage` | 0 | — |
+| `tests/secret-scan.js` | 0 | ۱۳/۱۳ |
+| `tests/si013-secret-scan.js` | 0 | ۱۸/۱۸ |
+| `tools/m15-01-e4-verify.js` | **2** | BLOCKED WITH PROOF — خروجیِ درست، نه خطا |
+| `tools/strict-verification-gate.js` | **1** | NOT VERIFIED — ساختاری روی گردنِ شاخه |
+
+دو خروجیِ غیرِصفر عمداً غیرِصفرند؛ هیچ‌کدام PASS حساب نشده و هیچ‌کدام تغییر نکرد تا سبز شود.
+
+---
+
 ## ۹-ب. هم‌پوشانی با PR #499 (کشفِ این نشست — نیازمندِ تصمیمِ مالک)
 
 PR `#499` (شاخهٔ `arena/2747c2ff-p2`، head `ead79671`) به‌طورِ مستقل همین مأموریت را
