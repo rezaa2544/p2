@@ -116,6 +116,64 @@ for (const [cls, bg] of [['b-gray', '#eef1f6'], ['b-cyan', '#e2f4fb']]) {
   ok(m && contrast('#ffffff', m[1]) >= 4.5, '.toast.err: ' + (m ? contrast('#ffffff', m[1]).toFixed(2) + ':1' : 'پیدا نشد'));
 }
 
+/* ── ۲ب) کنتراستِ توکن‌ها در هر سه تم (M15-01 / Chat 2، ۲۰۲۶-۱۰-۲۷) ──
+   چرا لازم شد: بلوکِ بالا فقط توکن‌هایِ ریشه (`:root`) را می‌سنجد. اما
+   [`data-theme="theme-1|2|3"]` در همـان base.css توکن‌ها را بازنویسی می‌کند
+   (`--surface-2`, `--muted`, `--text`, ...) و `.sidebar` در theme-2 پس‌زمینهٔ
+   صریحِ `#0f172a` می‌گیرد. تمِ پیش‌فرض برنامه `theme-2` است (99-theme-loader.js)
+   و کاربر می‌تواند تم را ذخیره کند؛ بنابراین یک نقضِ کنتراست می‌توانست فقط در
+   یک تم وجود داشته باشد، در اسکنِ زمان‌اجرا ظاهر شود و در این گاردِ استاتیک
+   هرگز دیده نشود. این بلوک همان جفت‌های رنگ را برایِ هر سه تم می‌سنجد.
+   (این دقیقاً یک سنجهٔ *افزوده* است: هیچ جفت یا آستانه‌ای حذف نشده.) */
+console.log('▸ کنتراستِ توکن‌ها در هر سه تم (theme-1/2/3)');
+{
+  const rootTokens = () => {
+    const rootMatch = css.match(/:root\{([\s\S]*?)\}/);
+    const b = rootMatch ? rootMatch[1] : '';
+    const t = {};
+    for (const m of b.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3})\b/g)) t[m[1]] = m[2];
+    return t;
+  };
+  const themeTokens = (theme) => {
+    const t = Object.assign({}, rootTokens());
+    const re = new RegExp('\\[data-theme="' + theme + '"\\]\\s*\\{([\\s\\S]*?)\\}');
+    const themeMatch = css.match(re);
+    const b = themeMatch ? themeMatch[1] : '';
+    for (const m of b.matchAll(/--([a-z0-9-]+):\s*(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3})\b/g)) t[m[1]] = m[2];
+    return t;
+  };
+  const norm = (h) => (h && h.length === 4 ? '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3] : h);
+  const ratio = (fg, bg) => contrast(norm(fg), norm(bg));
+  const samePairs = (t) => [
+    ['--green رویِ سفید', t.green, '#ffffff'],
+    ['--red رویِ سفید', t.red, '#ffffff'],
+    ['--amber رویِ سفید', t.amber, '#ffffff'],
+    ['--green-text رویِ --green-soft', t['green-text'], t['green-soft']],
+    ['--red-text رویِ --red-soft', t['red-text'], t['red-soft']],
+    ['--amber-text رویِ --amber-soft', t['amber-text'], t['amber-soft']],
+    ['--muted رویِ سفید', t.muted, '#ffffff'],
+    ['--muted رویِ --surface-2', t.muted, t['surface-2']],
+    ['--text رویِ --surface', t.text, t.surface],
+  ];
+  for (const theme of ['theme-1', 'theme-2', 'theme-3']) {
+    const t = themeTokens(theme);
+    for (const [name, fg, bg] of samePairs(t)) {
+      if (!fg || !bg) { ok(false, `${theme}: ${name} — توکن پیدا نشد`); continue; }
+      const r = ratio(fg, bg);
+      ok(r >= 4.5, `${theme}: ${name}: ${r.toFixed(2)}:1 (نیاز ≥ 4.5)`);
+    }
+  }
+  /* theme-2 پس‌زمینهٔ صریحِ سایدبار را عوض می‌کند؛ .nav-group باید رویِ آن هم AA بدهد. */
+  const nav = (css.match(/\.nav-group\{[^}]*color:(#[0-9a-fA-F]{6})/) || [])[1];
+  const t2sidebar = (css.match(/\[data-theme="theme-2"\]\s*\.sidebar\s*\{\s*background:\s*(#[0-9a-fA-F]{6})/) || [])[1];
+  if (nav && t2sidebar) {
+    const r = ratio(nav, t2sidebar);
+    ok(r >= 4.5, `.nav-group رویِ .sidebar تم ۲ (${nav} رویِ ${t2sidebar}): ${r.toFixed(2)}:1`);
+  } else {
+    ok(false, 'رنگِ .nav-group یا پس‌زمینهٔ .sidebar تم ۲ پیدا نشد');
+  }
+}
+
 /* ── ۳) opacity رویِ متنِ muted ممنوع (کنتراستِ مؤثر را می‌شکند) ── */
 console.log('▸ opacity رویِ متنِ muted ممنوع');
 {

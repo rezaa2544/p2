@@ -5,6 +5,42 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const TESTS = path.join(ROOT, 'tests');
 const WF = path.join(ROOT, '.github', 'workflows');
+const { execFileSync } = require('child_process');
+
+/* ── inventory source (deterministic) ─────────────────────────────────────
+   CI run 40437692287 (PR #484, 2026-10-27) failed this contract on a tree
+   where every suite was green, because the inventory read the DISK: an
+   isolated-copy/mutation suite leaves transient .js residue under tests/,
+   the parallel lanes rebuild it at different moments, and any untracked
+   scratch file shifts P6/P19b. A gate must not depend on that. The inventory
+   now comes from `git ls-files tests` — the same source tools/docs-stats-sync.js
+   and tests/run.js already use — so a committed addition still drifts the
+   register (real detection) while untracked build residue cannot (false red).
+   Fallback to disk only when git is unavailable, and say so out loud. */
+function trackedTestFiles() {
+  const out = execFileSync('git', ['ls-files', 'tests'], { cwd: ROOT, encoding: 'utf8' });
+  return out.split('\n').filter(Boolean).map((rel) => rel.split(path.sep).join('/'));
+}
+const TRACKED = (() => {
+  try { return { ok: true, files: trackedTestFiles(), source: 'git ls-files tests' }; }
+  catch (e) { return { ok: false, files: null, source: 'disk fallback (git unavailable: ' + String(e.message).slice(0, 80) + ')' }; }
+})();
+process.stdout.write('\n  ℹ inventory source: ' + TRACKED.source + (TRACKED.ok ? ' (' + TRACKED.files.length + ' tracked files under tests/)' : '') + '\n');
+function diskJsUnder(relDir) {
+  const abs = path.join(ROOT, relDir);
+  if (!fs.existsSync(abs)) return [];
+  return fs.readdirSync(abs, { withFileTypes: true }).reduce((acc, e) => {
+    const rel = relDir + '/' + e.name;
+    if (e.isDirectory()) return acc.concat(diskJsUnder(rel));
+    return acc.concat(e.name.endsWith('.js') ? [rel] : []);
+  }, []);
+}
+function jsUnder(relDir) {
+  const norm = relDir.replace(/\/$/, '');
+  if (TRACKED.ok) return TRACKED.files.filter((f) => f.startsWith(norm + '/') && f.endsWith('.js'));
+  return diskJsUnder(relDir);
+}
+
 let pass = 0, fail = 0; const failures = [];
 function chk(name, cond, detail) { if (cond) { pass++; console.log(`  ✅ ${name}`); } else { fail++; failures.push({name, detail}); console.log(`  ❌ ${name}${detail ? `\n     ${detail}` : ''}`); } }
 const NPM_TEST_ENTRYPOINTS = ['tests/run.js', 'tests/smoke.js', 'tests/api/runner.js'];
@@ -84,32 +120,30 @@ const DECLARED_SKIP_TOLERANT_SUITES = [
 
 function readWorkflows() { if (!fs.existsSync(WF)) return []; return fs.readdirSync(WF).filter(f => f.endsWith('.yml') || f.endsWith('.yaml')).map(f => fs.readFileSync(path.join(WF,f),'utf8')); }
 function referencedTests(workflows) { const out = new Set(), re = /tests\/[-A-Za-z0-9_./]+\.js/g; for (const wf of workflows) for (const hit of wf.match(re) || []) out.add(hit); return out; }
-function walkTestApi(dir) {
-  /* Recursive: flat readdirSync missed tests/api/phase5-pilot/index.test.js. */
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
-    const full = path.join(dir, e.name);
-    if (e.isDirectory()) return walkTestApi(full);
-    return e.name.endsWith('.test.js')
-      ? [path.relative(path.join(ROOT, 'tests', 'api'), full).split(path.sep).join('/')]
-      : [];
-  }).sort();
+function walkTestApi() {
+  /* Recursive and git-tracked: flat readdirSync missed
+     tests/api/phase5-pilot/index.test.js, and disk reads added false drift. */
+  return jsUnder('tests/api')
+    .filter((f) => f.endsWith('.test.js'))
+    .map((f) => f.replace(/^tests\/api\//, ''))
+    .sort();
 }
-function walkNestedAggregators(dir) {
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
-    const full = path.join(dir, e.name);
-    if (e.isDirectory()) return walkNestedAggregators(full);
-    if (path.dirname(full) === TESTS) return [];              // top level is covered by P6
-    if (/^index\.test\.js$/.test(e.name)) return [path.relative(ROOT, full).split(path.sep).join('/')];
-    if (path.relative(ROOT, full).split(path.sep).join('/') === 'tests/semantic-layer/runner.js') return ['tests/semantic-layer/runner.js'];
-    return [];
-  }).sort();
+function walkNestedAggregators() {
+  const semanticRunner = 'tests/semantic-layer/runner.js';
+  const out = [];
+  for (const rel of jsUnder('tests')) {
+    if (path.posix.dirname(rel) === 'tests') continue;      // top level is covered by P6
+    if (/^index\.test\.js$/.test(path.posix.basename(rel))) out.push(rel);
+    else if (rel === semanticRunner) out.push(rel);
+  }
+  return out.sort();
 }
 function aggregatorChildren(relPath) {
   /* Registry strings inside a wired aggregator make its children reachable:
-     tests/semantic-layer/runner.js enumerates its 20 index.test.js suites,
-     so those aggregators are executed by CI even though no workflow names
-     them individually. Reachability is derived from the file itself, not
-     from a hand-maintained duplicate list. */
+     tests/semantic-layer/runner.js enumerates its index.test.js suites, so
+     those aggregators are executed by CI even though no workflow names them
+     individually. Reachability is derived from the file itself, not from a
+     hand-maintained duplicate list. */
   const src = fs.readFileSync(path.join(ROOT, relPath), 'utf8');
   const dir = path.posix.dirname(relPath);
   const out = new Set();
@@ -135,9 +169,11 @@ function reachableAggregators(roots) {
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT,'package.json'),'utf8'));
 const workflows = readWorkflows();
 const referenced = referencedTests(workflows);
-const topLevelTests = fs.readdirSync(TESTS).filter(f => f.endsWith('.js')).map(f => 'tests/' + f).sort();
+const topLevelTests = (TRACKED.ok
+  ? TRACKED.files.filter((f) => /^tests\/[^/]+\.js$/.test(f))
+  : fs.readdirSync(TESTS).filter((f) => f.endsWith('.js')).map((f) => 'tests/' + f)).sort();
 const apiDir = path.join(TESTS, 'api');
-const apiTests = fs.existsSync(apiDir) ? walkTestApi(apiDir) : [];
+const apiTests = fs.existsSync(apiDir) ? walkTestApi() : [];
 const apiRunnerPath = 'tests/api/runner.js';
 /* The API runner owns its suite registry. Compare that registry with the
    actual tests/api recursive inventory instead of pinning a stale count
@@ -190,7 +226,7 @@ for (const t of CRITICAL_ORPHANS_LEGACY()) { chk(`P7 critical orphan exists: ${t
 for (const t of EXTRA_GATES) { chk(`P9 false-green gate exists: ${t}`, fs.existsSync(path.join(ROOT,t))); chk(`P10 false-green gate wired: ${t}`, referenced.has(t)); }
 
 /* ── P14–P16: nested-suite register ─────────────────────────────────────── */
-const nestedDiscovered = walkNestedAggregators(TESTS);
+const nestedDiscovered = walkNestedAggregators();
 const nestedAggregatorSet = new Set(nestedDiscovered);
 const nestedDeclared = [...WIRED_NESTED_AGGREGATORS, ...DECLARED_UNWIRED_NESTED_AGGREGATORS].sort();
 const apiRegistryAggregators = apiRegistry
@@ -243,13 +279,7 @@ const undeclaredTrees = treeDirs.filter((d) => !declaredTreePaths.includes(d));
 const staleTrees = declaredTreePaths.filter((d) => !treeDirs.includes(d) || !fs.existsSync(path.join(ROOT, d)));
 chk('P19a every subdirectory of tests/ is declared in the nested-tree register', undeclaredTrees.length === 0 && staleTrees.length === 0,
   'undeclared=' + JSON.stringify(undeclaredTrees) + ' stale=' + JSON.stringify(staleTrees));
-function countJsFiles(relDir) {
-  const abs = path.join(ROOT, relDir);
-  return fs.readdirSync(abs, { withFileTypes: true }).reduce((n, e) => {
-    if (e.isDirectory()) return n + countJsFiles(path.posix.join(relDir, e.name));
-    return n + (e.name.endsWith('.js') ? 1 : 0);
-  }, 0);
-}
+function countJsFiles(relDir) { return jsUnder(relDir).length; }
 const countDrift = NESTED_TREE_REGISTER.map((r) => ({ path: r.path, declared: r.js, actual: countJsFiles(r.path) }))
   .filter((r) => r.declared !== r.actual);
 chk('P19b declared nested-tree file counts match disk', countDrift.length === 0,
@@ -262,7 +292,7 @@ chk('P19c wired trees are referenced by a gate and unwired trees are not', wired
   'wiredButUnreferenced=' + JSON.stringify(wiredTreeUnreferenced.map((r) => r.path)) +
   ' unwiredButReferenced=' + JSON.stringify(unwiredTreeReferenced.map((r) => r.path)));
 
-const skipTolerantDiscovered = fs.readdirSync(TESTS).filter((f) => f.endsWith('.js')).filter((f) => {
+const skipTolerantDiscovered = topLevelTests.map((f) => f.replace(/^tests\//, '')).filter((f) => {
   const src = fs.readFileSync(path.join(TESTS, f), 'utf8');
   const incrementsSkip = /(?:skipped|skip)\s*\+\+/.test(src) || /function\s+(?:skip|skipped)\s*\(/.test(src);
   if (!incrementsSkip) return false;
