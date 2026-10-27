@@ -695,6 +695,48 @@ mission's commits intact and the tree differed from the pushed head only by the 
 This is recorded because it is exactly why the mission insists on pushing evidence commits as they
 are produced instead of at the end.
 
+### 9.13 The canonical suite is GREEN in CI — on the lane that gates the merge (995f871)
+
+This is the evidence the local sandbox could never produce — the full suite on a runner that has
+PostgreSQL, Redis, Chromium and the container runtime:
+
+| Lane | Workflow | Run | Result |
+|---|---|---|---|
+| `pull_request` | **Node.js CI** (`build (22.x)`, the canonical `npm run test:all`) | [40587219437](https://github.com/rezaa2544/p2/actions/runs/40587219437) | **success** — every step, including all live-PG / live-Redis / chaos / migration / a11y / `npm test` / lint steps |
+| `pull_request` | Payesh Strict Verification Gate | [40587219500](https://github.com/rezaa2544/p2/actions/runs/40587219500) | **success** (`Strict verification contract` green) |
+| `pull_request` | Security Program (SAST · SCA · SBOM · DAST · Secret) | [40587219554](https://github.com/rezaa2544/p2/actions/runs/40587219554) | **success** — including `Secret scan`, i.e. the SI-013-B repair verified in CI |
+| `pull_request` | M15-01 E3 Runtime Evidence, Runtime Reliability, observability-regression, Codacy, SecurityCodeScan, Defender | 40587219571, 40587219565, 40587219616, 40587219547, 40587219577, 40587219429 | success |
+| `pull_request` | APIsec / Fortify AST / Jscrambler | 40587219440, 40587219626, 40587219449 | failure — credential guards (§9.6), unchanged |
+| `pull_request` | Payesh Watch — Autonomous Monitoring | 40587219658 | failure — its single step is the Notion write; the connector is `auth_error` |
+| `push` | Node.js CI | [40587212154](https://github.com/rezaa2544/p2/actions/runs/40587212154) | **failure** — two suites: `strict-verification-gate-a30` (its V-06 assertion, i.e. the OD-2 footprint of an unmerged branch) and `offline-e2e` |
+| `push` | Payesh Strict Verification Gate | 40587212150 | failure — V-06 only, same reason |
+
+**The `offline-e2e` red deserves its own paragraph, because it is the honest open item.** Same tree,
+same commit, and it is green in the `pull_request` lane and green locally (23 checks, 0 failures,
+exit 0). Its annotation is truncated by Actions at the point where the failing check would be named,
+and the log is unreachable (§9.2), so I will not guess which check it was. What can be said
+without guessing: it is not a product regression introduced by this mission's changes (the same
+tree passes the stricter lane and passes locally), and it is either a flake or an order/landscape
+difference between the two lanes — exactly the class the mission asked to root-cause. It is
+recorded as **OPEN** with one concrete next action rather than closed by a re-run.
+
+### 9.14 The reason logs keep being unreachable — and the mechanism that fixes it
+
+Three separate times in this mission a claim had to be argued from step conclusions instead of from
+a log, and the cause was the same each time: the transcript of the canonical runner existed only on
+the runner's disk and disappeared with it. That is a *structural* evidence gap, not bad luck, so it
+is now repaired at the mechanism level: `.github/workflows/node.js.yml` publishes
+`/tmp/all-tests.log` and every `/tmp/at-<suite>.log` as an artifact named
+`canonical-runner-log-<event>-<sha>-<attempt>` on **every** outcome (`if: always()`), readable
+through `api.github.com` — which *is* reachable from this environment, unlike
+`results-receiver.actions.githubusercontent.com`. The verdict is untouched: the runner step still
+fails the job exactly as before, and `if-no-files-found: warn` so a missing file can never be
+mistaken for a pass.
+
+The very first run after this change is expected to make the `offline-e2e` question answerable
+without a guess; the run id is recorded in §9.15 when it lands, and until then this section claims
+nothing about it.
+
 ### 9.12 Re-run on the corrected head after the SI-013-B fix
 
 Head `c859d31`. `node tools/strict-verification-gate.js` → **exit 1, 708 pass / 1 fail** — the single
