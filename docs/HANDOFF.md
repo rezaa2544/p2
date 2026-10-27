@@ -1,3 +1,28 @@
+# M15-01 mission 2 — evidence recovery & gate reconciliation — 2026-10-27 (later)
+
+**Binding:** branch `arena/f75d9f00-p2`, PR **#498**. `origin/main` re-read at mission start: `fff1beae09ff45d69e554f8c000a9d15b75d968c` (tree `07979cd4`). PR #497 merged (owner-intervention policy); PR #495 closed unmerged; PR #484 moved during the session (`34c654d1` → `5741249d`) and was left untouched. Candidate `78b65ce2…` **does not exist** (GitHub 422; no local object, no branch contains it). Full matrix: `docs/M15-01_RECOVERY_REPORT_2026-10-27.md` §9.
+
+## Closed with measurements in this mission
+
+- **The "698/0 but exit 1" contradiction, explained to the line.** `fff1beae:tools/strict-verification-gate.js:654` refused the verdict when the registry *headline* sat below the verifying band (`nothingVerified`), even with `fail === 0`, and the blocker text it printed named the wrong cause. The companion `exit 2` was the audit's own retired rule (29 UNBOUND). One module now decides; the audit's header no longer describes the retired design; the two tools agree on every case in `verification-binding-contract.test.js`.
+- **OD-3 retired by protocol, with real-git evidence (L1..L4):** merge-commit landing keeps the binding (2 parents, exit 0); a squash landing is rejected because the source stops being an ancestor (re-run + re-emit); a registry commit may carry non-witnessed files; the same commit is rejected when the extra file is witnessed.
+- **A real defect of mine, caught by the canonical runner:** `false-green-defense` C6 asserted the *live* registry was stale, so it went red the moment the registry became correctly bound. It now builds its own stale fixture **and** an accept-control (a defense must not pass by rejecting everything).
+- **A second real defect:** the dependency repair invalidated the tracked SPDX SBOM / license inventory / drift baseline (`SC-01`, `SC-05`). Regenerated with `tools/supply-chain-audit.js --write`; `tests/supply-chain.js` is 7/7 with the simulated-drift detector still firing.
+- **Raw-log recovery attempts recorded, not skipped:** run `40491800409` → 0 artifacts, run-level and job-level log endpoints both `EOF`, step conclusions only (77/77). A fresh canonical run was executed locally instead.
+
+## Still open / blocked
+
+- **Canonical suite:** local run = **565 GREEN / 62 RED** in 5 896 s, every red classified from its own log (37 PostgreSQL, 15 Redis, 3 browser, 1 Docker, 22 honest NOT-RUN, 1 real defect now fixed). A local run cannot exceed 626/627 here because the sandbox has no PostgreSQL, Redis or Chromium; the authoritative job is `Node.js CI / build (22.x)`.
+- **E4-01..E4-07: 0/7 BLOCKED** — per-criterion table with inputs/commands/expected evidence in the report §9.5; probe `exit 2`, `report_sha256` recorded. E3 is never substituted.
+- **Fortify / APIsec / Jscrambler:** each fails inside its own "fail closed when credentials are missing" step (workflow line cited in the report §9.6); no credential exists in this environment and the token cannot even list secrets (403).
+- **Independent review:** unavailable — the model declares one `arena` slot, so `CERTIFIED` is unreachable (V-18). Recorded as a blocker, not replaced by a bot comment.
+- **Notion:** connector returns `auth_error` ("connection is no longer valid"); `notion-sync.yml` still reconciles status into Notion with a built-in read-back.
+- **OD-2** (push trigger vs V-06; measured 1/709 fail on push, 0/709 on PR) and **OD-4** (ratify 32 recommended) remain owner decisions. **SI-013**: active tree 13/13 and 0 unclassified long-hex strings; the history/rotation question remains the owner's. **Production truth gate**: skipped because `secrets.DATABASE_URL` is absent.
+
+**Decision: M15-01 BLOCKED — OWNER/INFRASTRUCTURE ACTION PROVEN NECESSARY.** M15-02 / Issue #468 untouched.
+
+---
+
 # M15-01 recovery — 2026-10-27
 
 **Binding:** branch `arena/f75d9f00-p2`, PR **#498**, head `06ba3da3a16f8cc60e0c4ec9039f1029b65f91cb`, registry evidence produced on `523b6d366157c202335ff385ed1808f241798389` (single-parent registry-only commit on top of it). Full matrix: `docs/M15-01_RECOVERY_REPORT_2026-10-27.md`.

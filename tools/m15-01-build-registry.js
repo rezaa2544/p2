@@ -366,11 +366,18 @@ function emit(head, outPath) {
       {
         id: 'OD-4',
         item: 'expected_ids declares 32 items (29 official + 3 M15-01 addendum) while the official contract count is undecided between 29 and 39',
-        state: 'NOT DECIDED',
+        state: 'NOT DECIDED (ratification only; the mechanical consequence of each option is now measured)',
         why_it_blocks: 'G14b/G14c make the declaration binding. M15-01 recovery removed this from the mechanical path ' +
           '(closure is now measured against closure_scope, so the official count no longer decides the gate verdict), ' +
           'but the OFFICIAL contract count is still the owner\'s to ratify: 29 (drop A/B/C), 32 (ratify the addendum) ' +
-          'or 39 (extend the contract). No number may be chosen by the chats.'
+          'or 39 (extend the contract). No number may be chosen by the chats. ' +
+          'MEASURED 2026-10-27: the gate no longer reads the count, so all three options leave the verdict ' +
+          'unchanged (709/0 in scope 3/3 either way). What changes is the work behind them: ratifying 29 means ' +
+          'deleting M15-01-A/B/C from closure_scope and from expected_ids together (V-19a rejects a scope that names ' +
+          'an undeclared id — fixture C-scope-blocked-member and the V-19a negative fixtures pin this), i.e. dropping ' +
+          'the three items that currently carry evidence; ratifying 32 is a no-op (already emitted); ratifying 39 ' +
+          'requires seven new items with their own evidence and scope entries. Recommendation from the evidence: ' +
+          'ratify 32, because it is the only option that describes what was actually executed.'
       },
       {
         id: 'OD-1',
@@ -385,16 +392,32 @@ function emit(head, outPath) {
       {
         id: 'OD-2',
         item: 'strict-verification.yml runs on push to arena/** while V-06 push mode requires HEAD to be an ancestor of origin/main',
-        state: 'NOT DECIDED',
+        state: 'NOT DECIDED (measured; both remedies remain owner decisions)',
         why_it_blocks: 'A branch push can never satisfy V-06. Changing the trigger drops CI coverage; changing V-06 ' +
-          'alters a security contract. Both are owner decisions.'
+          'alters a security contract. Both are owner decisions. MEASURED 2026-10-27 on this exact head: the ' +
+          'push-triggered run fails with exactly ONE failure out of 709 (V-06), and the pull_request run of the same ' +
+          'commit passes 709/0, so the two runs together say "all 708 checks hold; the containment claim is not yet ' +
+          'true because the branch is unmerged". The remedies, both still owner calls: (a) narrow the workflow trigger ' +
+          'to pull_request + push:main (coverage of the pushed branch is then provided by the PR run of the same SHA — ' +
+          'measured, not assumed: both runs execute against the same checkout), or (b) scope V-06 push mode to ' +
+          'refs/heads/main and report the branch-push case as N/A-with-reason. (b) is a change to a security contract ' +
+          'and must not be made by a chat; (a) is a CI-config change that moves, not removes, the enforcement point. ' +
+          'Neither was applied: the failing step is left visible rather than silenced.'
       },
       {
         id: 'OD-3',
         item: 'Landing strategy for the registry-only metadata commit',
-        state: 'NOT DECIDED',
-        why_it_blocks: 'Only a single-parent landing (fast-forward) preserves the two-phase binding; a merge commit ' +
-          'or a squash invalidates V-02/G9 by construction and the registry must be rebuilt after landing.'
+        state: 'RESOLVED BY PROTOCOL 2026-10-27 (evidence: tests/verification-binding-contract.test.js L1..L4)',
+        why_it_blocks: 'No longer blocks. Under binding_mode=lineage the rule is ancestry + witness blobs, not the ' +
+          'shape of the landing commit, and that was measured on real topologies rather than argued: L1 a --no-ff ' +
+          'merge commit (2 parents) keeps the binding valid (exit 0); L2 a squash landing is REJECTED because the ' +
+          'evidence source stops being an ancestor (exit 1, "not an ancestor of the checkout") — so after a squash ' +
+          'the evidence must be re-run and the registry re-emitted, which is a scheduling rule, not a rebind rule; ' +
+          'L3 a commit that carries the registry AND files the evidence does not depend on is accepted; L4 the same ' +
+          'commit is rejected when the extra file is witnessed. Practical consequence: merge, rebase and fast-forward ' +
+          'are all legal landings now, squash is legal only with a re-emit, and the registry may ride with unrelated ' +
+          'documentation. What remains the owner\'s is ordinary branch policy (which button the reviewer presses), ' +
+          'not a gate constraint.'
       }
     ],
     false_green_blockers_on_head: [
@@ -403,14 +426,25 @@ function emit(head, outPath) {
         item: 'tests/api/* suites are outside npm test and outside the strict gate inventory',
         classification: 'REAL but UNEXECUTED BY ANY GATE (A-13/FG-1 carry-over)',
         owner_needed: true,
-        state: 'NOT RE-VERIFIED in M15-01; no evidence was produced for it and no status is claimed'
+        state: 'NOT REPRODUCIBLE AS WRITTEN on 2026-10-27. package.json.test is now "node tests/run.js && ' +
+          'node tests/api/runner.js && node --expose-gc tests/smoke.js", and scripts/run-all-tests.sh appends ' +
+          'tests/api/runner.js to its suite list when the file exists. Measured in this session: ' +
+          '"node tests/api/runner.js" -> 31/31 suites green, and the canonical runner reports it as a GREEN suite. ' +
+          'The remaining half of the original claim — that the strict gate inventory does not enumerate the API ' +
+          'suites — is still true and still unaddressed; it needs a decision (add 31 items to expected_ids, or ' +
+          'declare the API layer out of the verification contract), which is OD-4 territory and therefore not ' +
+          'resolved here.'
       },
       {
         id: 'FG-2',
         item: 'npm test index.html build bit-identity check never reaches 35/35 on current HEAD',
         classification: 'LEGITIMATE RED (honestly failing), known pre-existing',
         owner_needed: true,
-        state: 'NOT RE-VERIFIED in M15-01; no status is claimed'
+        state: 'NOT REPRODUCED on 2026-10-27. Measured: "node build.js --check" prints "build output is ' +
+          'byte-identical to index.html" and the guide/authz sync checks pass; "npm test" is green with ' +
+          'tests/run.js 39/39 (including "خروجی build با index.html بیت‌به‌بیت یکسان است"), API 31/31 and smoke 547/547; the canonical runner ' +
+          'reports the same. The historical 35/35 figure does not describe this head, so the item is closed as ' +
+          'not-reproducible rather than as fixed — nothing was changed to make it pass.'
       }
     ],
     items: all
