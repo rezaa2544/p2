@@ -185,7 +185,7 @@ GitHub Actions, commit `06ba3da3`, PR lane (`pull_request` → `main`), read via
 | Codacy / CodeQL / SecurityCodeScan / WAF & nginx / outbox-lease / static-and-promtool | **PASS** | PR #498 check list |
 | Node.js CI `build (22.x)` | **NOT RUN (in progress at snapshot)** | run `40521544408` — not yet concluded when this snapshot was taken |
 | Current-head PITR + HA failover + Redis Sentinel failover (single-runner E3/DR, **not** E4) | **PASS** | run `40521544368`, job "Current-head PostgreSQL PITR and HA failover plus Redis Sentinel failover" |
-| Isolated E3 runtime run a/b | **NOT RUN (in progress at snapshot)** | same run `40521544368` |
+| Isolated E3 runtime run a/b + independent artifact ZIP checksum/content audit (single-runner **E3**, not E4) | **PASS** | run `40521544368` — all three jobs success on `06ba3da3` |
 | Fortify AST Scan | **FAIL — BLOCKED (owner credential)** | see §5 |
 | APIsec | **FAIL — BLOCKED (owner credential)** | see §5 |
 | Jscrambler Code Integrity | **FAIL — BLOCKED (owner credential)** | see §5 |
