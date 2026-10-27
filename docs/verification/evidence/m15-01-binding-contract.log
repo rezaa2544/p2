@@ -1,9 +1,13 @@
-# M15-01-EVIDENCE name=binding ts=2026-10-27T14:25:40.172Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tests/verification-binding-contract.test.js"
+# M15-01-EVIDENCE name=binding ts=2026-10-27T17:33:57.869Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tests/verification-binding-contract.test.js"
 ==== M15-01 BINDING & CLOSURE CONTRACT (real git) ====
   OK   C1 lineage binding accepts a registry-only commit (exit 0) — exit=0
   OK   C2 provenance audit agrees with the gate (exit 0) — exit=0
   OK   C3 binding survives an unrelated documentation commit — exit=0
   OK   C4 provenance audit agrees after the unrelated commit — exit=0
+  OK   L1 a merge-commit landing preserves the lineage binding (2 parents, exit 0) — parents=2 exit=0 
+  OK   L2 a squash landing is rejected (the evidence source is no longer an ancestor) — exit=1 not an ancestor of the checkout: 1ce06783966e765e2bf3e92e4604e171832a192b
+  OK   L3 a registry commit that also carries non-witnessed files is accepted (OD-3 retired) — changed=["README.md","docs/verification/VERIFICATION_REGISTRY.json"] exit=0 
+  OK   L4 the same commit is rejected when the extra file is witnessed (control for L3) — exit=1 stale evidence for): tests/witnessed-suite.js
   OK   C5 changing a witnessed test makes the evidence stale (rejected) — exit=1
   OK   C6 the rejection names the stale path — witness content changed after the evidence commit (stale evidence for): tests/witnessed-suite.js
   OK   C7 provenance audit agrees that the binding is invalid (exit 2) — exit=2
@@ -23,5 +27,5 @@
   OK   C15 witness-changed the rule is what rejects it (real=false, weakened=true) — real=false weakened=true why=witness content changed after the evidence commit (stale evidence for): tests/wi
   OK   C15 witness-forged the rule is what rejects it (real=false, weakened=true) — real=false weakened=true why=witness blob does not match the evidence commit: tests/witnessed-suite.js
   OK   C15 witness-shrunk the rule is what rejects it (real=false, weakened=true) — real=false weakened=true why=witness.paths must equal the set the registry implies; missing=["tests/run.js"] 
-  OK   C15 not-ancestor the rule is what rejects it (real=false, weakened=true) — real=false weakened=true why=head_bound is not an ancestor of the checkout: 9d87947cd036f2267ca501c444b4a2e59
-CHECKS 24 FAIL 0
+  OK   C15 not-ancestor the rule is what rejects it (real=false, weakened=true) — real=false weakened=true why=head_bound is not an ancestor of the checkout: f91c55df6744bb9e2a66db036e92d3c73
+CHECKS 28 FAIL 0

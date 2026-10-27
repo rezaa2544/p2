@@ -1,4 +1,4 @@
-# M15-01-EVIDENCE name=focused ts=2026-10-27T14:25:29.689Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tests/m15-01-registry-strict-verification.test.js"
+# M15-01-EVIDENCE name=focused ts=2026-10-27T17:33:43.451Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tests/m15-01-registry-strict-verification.test.js"
 ==== M15-01 REGISTRY & STRICT VERIFICATION — ACCEPTANCE PROPERTIES ====
   OK   P1 stale/foreign-SHA evidence is rejected — exit=0
        ↳ forged evidence head_sha, registry head_bound mismatch, artifact edited after the commit, artifact never committed
