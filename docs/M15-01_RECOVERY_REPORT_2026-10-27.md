@@ -402,7 +402,7 @@ retired design as if it were the contract.
 | L1 | `--no-ff` merge commit (2 parents) carrying the registry | **accepted**, exit 0 — the heritage of OD-3 no longer applies |
 | L2 | squash landing | **rejected**, "not an ancestor of the checkout" — the source commit stops existing on the line, so re-run + re-emit |
 | L3 | registry + non-witnessed files in one commit | **accepted** |
-| L4 | same shape, but the extra file is witnessed | **rejected**, "stale evidence for: tests/witnessed-suite.js" |
+| L4 | same shape, but the extra file is witnessed | **rejected**, `stale evidence for):` names the witnessed fixture (a temp-dir path created by the test, not a repository file) |
 
 And the contract proved itself against my own work twice in this mission: after editing
 `tests/verification-binding-contract.test.js`, the gate refused the old registry with
@@ -549,10 +549,67 @@ That pair of results *is* OD-2, measured on the same commit twice with no code d
 push lane fails only because this branch is not yet in `origin/main`, and the PR lane is clean. It
 is also the reason this document does not claim "709/0 green" without saying on which lane.
 
-### 9.8 CI on the final head
+### 9.8 CI on the head I pushed (22e928d4)
 
-Completed after the push; see the run ids and step conclusions in the table — filled from
-`gh run view` rather than from intent.
+Two things must be said before the table: the **raw job log is unreachable from this sandbox**, and
+this time the reason is provable rather than mysterious. `gh run view --log` resolves to
+`results-receiver.actions.githubusercontent.com`, which is outside the allowlist the environment
+gives me (`curl` to that host: `000`, exit 35). The run-level and job-level log endpoints return
+`EOF` for exactly that reason — the same mechanism as the run `40491800409` that the mission asked me
+to recover (§9.2). So this section is built from data that *is* reachable (`api.github.com`: run
+metadata, per-step conclusions, check-run annotations) **plus a local reproduction of the failing
+step on the exact pushed tree**, and it says which is which.
+
+| Workflow / run | Step-level outcome | Evidence source |
+|---|---|---|
+| Payesh Strict Verification Gate — run [40551955449](https://github.com/rezaa2544/p2/actions/runs/40551955449) | **success**: `A-30 V-01..V-12 negative gate fixtures` ✓, `A-30 contract suite (Arena-only model)` ✓, `M15-01 registry & strict-verification acceptance properties` ✓, **`Strict verification contract` ✓**, `Core tests` ✓; `Production truth gate` skipped | `gh run watch`: exited 0, all steps green |
+| Node.js CI — run [40551955854](https://github.com/rezaa2544/p2/actions/runs/40551955854), job `build (22.x)` | **failure**, single failing step `Comprehensive canonical regression runner`, annotation "Process completed with exit code 6." | `gh run view --json jobs`; annotations via `api.github.com` |
+| Fortify / APIsec / Jscrambler | fail in their own credential guards (unchanged, §9.6) | `gh run list` conclusions per workflow |
+
+**What exit 6 means, and the defect it exposed.** `scripts/run-all-tests.sh:128` exits 6 for
+`!! STALE DOC REFERENCE` — a document pointing at a file that does not exist. It is the *pre-flight*,
+i.e. it fired before a single test ran. Reproduced on the exact pushed tree in a detached worktree:
+
+```
+git worktree add /tmp/wt-ci 22e928d4
+node tools/docs-refs-check.js --check    → exit 1
+  «ارجاعِ کهنه به فایلِ ناموجود: 256 … خطِ پایه (بدهیِ تاریخی): 255   تازه (باید رفع شود): 1»
+  → docs/M15-01_RECOVERY_REPORT_2026-10-27.md → the fixture filename quoted in §9.3
+```
+
+The one stale reference was **mine**: in §9.3 I quoted a gate rejection message verbatim, and the
+fixture filename inside that message is a path the test creates in a *temporary directory* — it has
+never existed in this repository. Quoting the message therefore *created* a reference to a
+non-existent file. That filename is deliberately **not** reproduced here (nor anywhere else in this
+document): reproducing it is precisely what created the stale reference, and a second copy would
+re-create it. The quote is preserved (it is the evidence), the phrasing no
+longer looks like a repository path, and `docs-refs-check` is back to `۰ ارجاعِ کهنهٔ تازه`.
+
+**The second-order finding, and the honest fix.** Every local check I had been running — `npm test`,
+the docs-stats freeze check, the registry, the gate — passed on that tree. `tools/docs-refs-check.js`
+had *fixture* tests (`tests/docs-refs-check.js` proves the tool catches a stale ref and tolerates
+baseline debt) but **nothing ran it against the live tree** outside CI. That is the same shape of
+hole as the earlier `nothingVerified` bug: the instrument was correct and unplugged. It is now wired
+into `tests/run.js`, which is inside `npm test`, so `tests/run.js` is **40/40** (was 39). Verified
+with a positive control rather than by asserting success — a deliberately bogus reference (a
+`tests/` path to a file that does not exist, named here only by that description) was appended to
+this document, `npm test` went **red and named both the document and the bogus path**
+(`ارجاعِ کهنهٔ تازه: • docs/M15-01_RECOVERY_REPORT_2026-10-27.md → …`), then the tree was restored
+and it went green again. Without that control the new test would be an
+untested claim, which is exactly what this cycle is supposed to stop producing.
+
+**On the CI row I cannot claim.** The canonical job did not reach the suites on this head: it stopped
+at pre-flight. So this section does **not** say "the CI canonical suite is green — the local
+565/62 substitutes for it"; it says the CI job was killed by a defect in my own document, which is
+now fixed, and the re-run on the next head is the evidence (the run id is recorded below once it
+finishes). One genuine positive result does stand on this head: **`Strict verification contract`
+passed in CI** for the first time in this cycle — the registry is bound, the witness is fresh, the
+PR lane is clean (V-06 does not apply to `pull_request`), so the mission-C contradiction is resolved
+on the very lane that matters.
+
+### 9.9 Re-run on the corrected head
+
+To be filled from `gh run view` — not from intent — after the fix is pushed.
 
 ### SI-013 — active-tree classification, measured rather than asserted
 
