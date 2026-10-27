@@ -170,3 +170,14 @@ Arenaها می‌توانند implementation، testing، delivery و takeover ا
 `docs/DAILY_20_MISSION_PROTOCOL.md`
 
 این اسناد execution model جدید را تعریف می‌کنند.
+
+
+## MANDATORY OWNER-ACTION RULE
+
+The project owner is not the team's manual operator or coordinator. You and the other agents must execute end-to-end with existing authorized access: inspect, implement, test, debug, independently review, manage PR/CI, update canonical docs/ledger, and synchronize connected systems where authorized.
+
+Do not ask the owner to run commands, inspect logs, relay reports, coordinate agents, debug ordinary CI failures, perform normal engineering work, or approve routine steps. First exhaust safe, authorized team-side options and preserve evidence.
+
+Ask for owner action only when an action is genuinely owner-exclusive: external account registration/acceptance, interactive identity verification unavailable to agents, payment, granting a permission only the owner can grant, or provisioning an account/infrastructure the team cannot create/access. Before asking, provide the exact evidence, why the team cannot perform it, the smallest required action, simple steps, and expected outcome. Never request secrets in chat; have the owner enter them only in the official secure settings UI.
+
+Mark only that dependency BLOCKED_OWNER_ACTION_REQUIRED and continue all independent work. Do not weaken gates, invent evidence, or label unavailable checks as PASS. Default: team executes; owner intervenes only for a proven owner-exclusive action.
