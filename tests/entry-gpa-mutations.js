@@ -66,8 +66,23 @@ for (const m of MUTS) {
   console.log('  ' + (killedThis ? 'KILLED' : 'SURVIVED!') + ' ' + m.name);
   if (killedThis) killed++;
 }
-let backGreen = false;
-try { execFileSync('node', ['--max-old-space-size=1500', SUITE], { stdio: 'pipe', timeout: 120000 }); backGreen = true; }
-catch (e) { backGreen = false; }
+let backGreen = false, finalOut = '';
+try {
+  finalOut = execFileSync('node', ['--max-old-space-size=1500', SUITE], { stdio: 'pipe', timeout: 120000 }).toString();
+  backGreen = true;
+} catch (e) {
+  /* M15-01 / 2026-10-27: پیش‌تر خروجیِ اجرایِ پایانی دور ریخته می‌شد و
+     suite فقط «baseline-green=false» می‌گفت. در اجرایِ کانونیک این پکیج
+     قرمز شد و هیچ شاهدی برایِ تفکیکِ «نقصِ محصول» از «تصادمِ پورت/محیط»
+     نماند (base suite در همان اجرا ۱۹/۱۹ سبز بود). الگویِ جاافتادهٔ بقیهٔ
+     سوئیت‌هایِ جهش (att2-mutations و …) نگه‌داشتن و چاپِ همین خروجی است؛
+     همان کار این‌جا انجام می‌شود. هیچ آستانه‌ای عوض نشد: exit همچنان
+     غیرصفر است وقتی baseline سبز نباشد. */
+  finalOut = String(e.stdout || '') + String(e.stderr || '');
+}
 console.log('entry-gpa-mutations: ' + killed + '/' + MUTS.length + ' killed, baseline-green=' + backGreen + ', env-fail=' + envFails);
+if (!backGreen) {
+  console.log('خروجیِ اجرای پایانی (baseline) — برای تفکیکِ محیط از محصول:');
+  console.log(finalOut.split('\n').slice(-15).join('\n'));
+}
 process.exit(killed === MUTS.length && backGreen && envFails === 0 ? 0 : 1);

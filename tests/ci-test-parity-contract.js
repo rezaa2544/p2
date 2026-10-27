@@ -272,8 +272,24 @@ const NESTED_TREE_REGISTER = [
   { path: 'tests/helpers', status: 'support', js: 6, by: 'shared helpers, not suites' },
   { path: 'tests/performance', status: 'support', js: 19, by: 'k6 load harness, manual by design' }
 ];
-const treeDirs = fs.readdirSync(TESTS, { withFileTypes: true })
-  .filter((e) => e.isDirectory()).map((e) => 'tests/' + e.name).sort();
+/* M15-01 / Chat 2 (2026-10-27): measured false-red in CI run 40437692287.
+   `tests/tracing-integration.js` downloads the Jaeger bundle into
+   `tests/.cache-jaeger/` (gitignored). Because the canonical runner executes
+   that suite before this contract, `tests/.cache-jaeger` existed on disk and
+   P19a reported it as an undeclared nested suite tree — the gate failed on its
+   own runtime cache, which is why the dedicated CI step exited 1 in the same
+   second it started (03:45:53 -> 03:45:53) and why the canonical runner also
+   logged `RED suite ci-test-parity-contract`. Reproduced locally: create the
+   cache dir and P19a fails; delete it and the contract is 47/47.
+   The register describes SOURCE trees, so it is derived from tracked files
+   (`git ls-files tests`); a committed new subdirectory still fails P19a — real
+   detection is unchanged — while a gitignored runtime cache cannot. */
+const treeDirs = (TRACKED.ok
+  ? [...new Set(TRACKED.files
+      .filter((f) => f.startsWith('tests/') && f.split('/').length > 2)
+      .map((f) => 'tests/' + f.split('/')[1]))]
+  : fs.readdirSync(TESTS, { withFileTypes: true })
+      .filter((e) => e.isDirectory()).map((e) => 'tests/' + e.name)).sort();
 const declaredTreePaths = NESTED_TREE_REGISTER.map((r) => r.path).sort();
 const undeclaredTrees = treeDirs.filter((d) => !declaredTreePaths.includes(d));
 const staleTrees = declaredTreePaths.filter((d) => !treeDirs.includes(d) || !fs.existsSync(path.join(ROOT, d)));
