@@ -1,3 +1,27 @@
+# M15-01 recovery — 2026-10-27
+
+**Binding:** branch `arena/f75d9f00-p2`, PR **#498**, head `06ba3da3a16f8cc60e0c4ec9039f1029b65f91cb`, registry evidence produced on `523b6d366157c202335ff385ed1808f241798389` (single-parent registry-only commit on top of it). Full matrix: `docs/M15-01_RECOVERY_REPORT_2026-10-27.md`.
+
+## Closed by engineering, with measurements
+
+- **Strict gate + provenance audit now share one rule** (`tools/lib/verification-witness.js`). Before: gate `633 pass / 65 fail` exit 1 on a clean `fff1beae`, audit `29 UNBOUND` exit 2 on the same file, from two different implementations. After: gate `709 pass / 0 fail` exit 0, audit `VALID (lineage)` exit 0, and a README-only commit on top keeps 709/0 instead of re-breaking 65 checks. Binding modes: `legacy` (unchanged) and `lineage` (source SHA must be an ancestor; witness path set recomputed from the registry so it cannot be shrunk; blob sha1 must match at the source commit and at HEAD).
+- **V-15 vs V-16 joint unsatisfiability removed** by measuring closure against an explicit `closure_scope` (V-19a..V-19e) with an honest `blocked_items` count. The 29 legacy `A-01..A-29` records stay blocked and are counted; only `M15-01-A/B/C` are `RUNTIME_VERIFIED`, inside the declared scope, as self-review (`CERTIFIED 0`).
+- **`main` unbuildable since `fff1beae`** — `npm ci` failed with ERESOLVE (`@opentelemetry/resources@3.0.0` peers vs `context-async-hooks@2.12.0`/`sdk-trace-node@2.12.0`). Restoring the last resolvable line repaired `npm ci`; on CI the STRICT gate now passes (run `40521544265`) and `Runtime Reliability`, `Security Program`, `observability-regression` are green. Finishing the OTel major upgrade remains separate work.
+- **a11y `serious: color-contrast` flake root-caused to motion**, not colour: `reducedMotion:'reduce'` neutralised only 3 `.hgt-*` rules out of 12 keyframes and 38 transitions, and the login scan had no settle wait while the rest used a `150 ms` magic wait shorter than `pop`/`fslide`. Full reduced-motion guard + fail-closed motion barrier (`tests/helpers/a11y-quiescence.js`) before every scan; `tests/a11y-motion-determinism.js` 46 checks with 12 in-process mutations. **The real-browser run is NOT RUN** — playwright/axe are not dependencies, so the harness exits 3 everywhere.
+
+## Still blocked (owner / infrastructure), with the proof attached
+
+- **E4-01..E4-07: 0/7 BLOCKED** — `node tools/m15-01-e4-verify.js` on `06ba3da3` → exit 2, `counts {total:7, pass:0, blocked:7}`, `report_sha256=562832b2c3b3dba3332e1eb1fe4db3e61c053748777a1a5c1a8a62c18c4de98b`. Multi-host staging + secrets do not exist here.
+- **Fortify / APIsec / Jscrambler** fail in their own "fail closed when credentials are missing" steps (secrets `FOD_*`, `apisec_*`, `JSCRAMBLER_*`). No code change substitutes.
+- **OD-2** (gate on `push: arena/**` vs V-06 push-mode ancestry): measured that a branch push fails *only* on V-06, which cannot hold for an unmerged head; the PR lane passes. Deliberately untouched — it is an owner decision between dropping a trigger and altering a security contract. **OD-3** (single-parent landing) satisfied for this branch but still unratified repo-wide. **OD-4** (official count 29/32/39) still open; closure no longer depends on it.
+- **SI-013**: `tests/secret-scan.js` 13/13 on this SHA (the single exception is the mutation-tested `"checksum"`-only skip inside `docs/arena-evidence/**`); the history/rotation/notification question is still the owner's.
+- **Independent review**: `reviews_recorded.arena` is self-review; with one reviewer slot `INDEPENDENTLY_VERIFIED`/`CERTIFIED` are unreachable (V-18). **PR #484** remains OPEN/UNSTABLE at `b31e2bdb` on its own branch — not modified, not merged, not closed here.
+- **Raw CI logs remain unreachable from this sandbox** (`EOF` from `results-receiver.actions.githubusercontent.com` / `productionresultssa17.blob.core.windows.net`); the readable layer is step-level conclusions, and suite-level numbers quoted come from the same commit run locally and committed as `docs/verification/evidence/*.log` (hashed into the registry witness). Run `40491800409` has zero artifacts and is 4 commits behind `main`.
+
+**Decision: M15-01 BLOCKED — OWNER/INFRASTRUCTURE ACTION PROVEN NECESSARY.** M15-02 / Issue #468 untouched.
+
+---
+
 # M15-01 current-head revalidation — مستندات و شواهد محلی — ۲۰۲۶-۱۰-۱۹
 
 **Mission:** اجرای ترتیبِ صریحِ مالک، M15-01 سپس M15-02 · **HEAD مبنا:** `8f6e7d5f0a823a70a58f85f7803a4d956db350ab` · **شاخه:** `arena/c33a022c-p2`.
