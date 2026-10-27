@@ -24,7 +24,7 @@ function viewUsers(){
      ${u.role==='superadmin'?`<select class="select" style="width:170px" data-f="school"><option value="">همه مدارس</option>${db.schools.map(s=>`<option value="${escAttr(s.id)}" ${sch==String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`:''}
      <select class="select" style="width:130px" data-f="uactive"><option value="">همه وضعیت‌ها</option><option value="1" ${act==='1'?'selected':''}>فعال</option><option value="0" ${act==='0'?'selected':''}>غیرفعال</option></select>`)}
    ${slice.length?`<div class="table-wrap"><table><thead><tr><th>نام و نام خانوادگی</th><th>نقش</th><th>نام کاربری</th><th>مدرسه</th><th>کلاس</th><th>تلفن</th><th>وضعیت</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
-    ${slice.map(x=>`<tr><td><div class="row" style="flex-wrap:nowrap;gap:8px"><div class="avatar" style="width:30px;height:30px;font-size:12px;background:var(--primary-soft);color:var(--primary)">${esc(x.full_name[0])}</div>
+    ${slice.map(x=>`<tr><td><div class="row" style="flex-wrap:nowrap;gap:8px"><div class="avatar" style="width:30px;height:30px;font-size:12px;background:var(--primary-soft);color:var(--primary-dark)">${esc(x.full_name[0])}</div>
       <div><b>${esc(x.full_name)}</b><div class="small muted">${esc(x.national_id||'—')}</div></div></div></td>
       <td><span class="badge ${ROLE_BADGE[x.role]}">${ROLE_FA[x.role]}</span></td><td class="muted">${esc(x.username)}</td>
       <td class="muted">${esc(x.school_id?byId('schools',x.school_id).name:'—')}</td><td>${esc(x.role==='student'?((classOf(x.id)||{}).name||'—'):'—')}</td>

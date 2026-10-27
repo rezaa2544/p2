@@ -201,7 +201,21 @@ const a11yRuntime = fs.readFileSync(path.join(ROOT, 'tests', 'a11y-runtime.js'),
       && /if\s*\(\s*tot\.critical\s*\|\|\s*tot\.serious\s*\)/.test(a11yRuntime));
 }
 
-/* 5. Non-vacuity mutation verification: stripping .toast from prefers-reduced-motion MUST fail */
+/* 5. Multi-theme .tab.active + primary-soft foreground contrast (>= 4.5:1 across theme-1/2/3) */
+{
+  const tabActiveUsesDark = /\.tab\.active\{color:var\(--primary-dark\);border-color:var\(--primary-dark\)\}/.test(baseCss);
+  const t3OldRatio = contrastRatio(hexToRgb('#1668f0'), hexToRgb('#e4edfe'));
+  const t1NewRatio = contrastRatio(hexToRgb('#0f4fc4'), hexToRgb('#f6f8fc'));
+  const t2NewRatio = contrastRatio(hexToRgb('#1d4ed8'), hexToRgb('#f1f5f9'));
+  const t3NewRatio = contrastRatio(hexToRgb('#0f4dc0'), hexToRgb('#e4edfe'));
+  chk('theme-3 .tab.active old --primary (#1668f0 on #e4edfe) reproduced < 4.5:1 violation',
+    t3OldRatio < 4.5, 'old=' + t3OldRatio.toFixed(2) + ':1');
+  chk('.tab.active uses --primary-dark and achieves >= 4.5:1 across theme-1, theme-2, theme-3',
+    tabActiveUsesDark && t1NewRatio >= 4.5 && t2NewRatio >= 4.5 && t3NewRatio >= 4.5,
+    't1=' + t1NewRatio.toFixed(2) + ':1, t2=' + t2NewRatio.toFixed(2) + ':1, t3=' + t3NewRatio.toFixed(2) + ':1');
+}
+
+/* 6. Non-vacuity mutation verification: stripping .toast from prefers-reduced-motion MUST fail */
 {
   const mutated = baseCss.replace('.toast,', '');
   const mutRes = verifyReducedMotionCoverage(mutated);

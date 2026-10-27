@@ -2,7 +2,7 @@
    داشبورد
    نمای کلی هر نقش. هر نقش تابع خودش را دارد؛ داده از ایندکس می‌آید.
    ═══════════════════════════════════════════════════════════════════ */
-function statCard(icon,val,label,tone){const m={blue:['var(--primary-soft)','var(--primary)'],green:['var(--green-soft)','var(--green)'],red:['var(--red-soft)','var(--red)'],amber:['var(--amber-soft)','var(--amber)'],purple:['var(--purple-soft)','var(--purple)']}[tone||'blue'];
+function statCard(icon,val,label,tone){const m={blue:['var(--primary-soft)','var(--primary-dark)'],green:['var(--green-soft)','var(--green)'],red:['var(--red-soft)','var(--red)'],amber:['var(--amber-soft)','var(--amber)'],purple:['var(--purple-soft)','var(--purple)']}[tone||'blue'];
  return `<div class="card stat"><div class="stat-icon" style="background:${m[0]};color:${m[1]}">${icon}</div><div><b>${val}</b><span>${esc(label)}</span></div></div>`;}
 
 function annCard(){

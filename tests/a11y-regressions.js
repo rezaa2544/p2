@@ -351,6 +351,11 @@ console.log('▸ مهارِ انیمیشن‌هایِ opacity در prefers-reduc
   ok(/document\.fonts\s*&&\s*document\.fonts\.ready/.test(rt) && /document\.getAnimations/.test(rt),
      'tests/a11y-runtime.js پیش از اسکنِ axe منتظرِ آماده شدنِ فونت و پایانِ انیمیشن‌هایِ متناهی می‌ماند');
   ok(!/disableRules/.test(rt), 'tests/a11y-runtime.js هیچ قانونِ axe (از جمله color-contrast) را غیرفعال نکرده است');
+  ok(/\.tab\.active\{color:var\(--primary-dark\);border-color:var\(--primary-dark\)\}/.test(css),
+     '.tab.active از --primary-dark استفاده می‌کند تا روی .card-head (--surface-2 در theme-3: #e8f0fe) کنتراست >= 6.0:1 بدهد');
+  const src10 = read('src/js/10-users.js');
+  ok(!/background:var\(--primary-soft\);color:var\(--primary\)/.test(src10),
+     '10-users.js روی پس‌زمینهٔ --primary-soft از --primary-dark استفاده می‌کند (>= 6.0:1 در هر سه تم)');
 }
 
 console.log(`\nجمع: ${pass} قبول، ${fail} رد`);

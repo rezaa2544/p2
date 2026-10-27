@@ -153,7 +153,7 @@ tbody tr:hover{background:#eef4ff}
 .chart .col span{font-size:10px;color:var(--muted);flex:none}
 .tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);overflow-x:auto;width:100%}
 .tab{padding:9px 14px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);white-space:nowrap}
-.tab.active{color:var(--primary);border-color:var(--primary)}
+.tab.active{color:var(--primary-dark);border-color:var(--primary-dark)}
 
 .att-btn{border:1px solid var(--border);background:#fff;padding:4px 8px;border-radius:8px;cursor:pointer;font-size:12px;line-height:1.1;margin-left:3px;white-space:nowrap}
 .att-btn.on-present{background:var(--green);color:#fff;border-color:var(--green)}
@@ -4902,7 +4902,7 @@ if(btn){ try{ btn.focus(); }catch(e){
 if(typeof window.addEventListener === 'function') window.addEventListener('resize', themeSegApply);
 })();
 
-function statCard(icon,val,label,tone){const m={blue:['var(--primary-soft)','var(--primary)'],green:['var(--green-soft)','var(--green)'],red:['var(--red-soft)','var(--red)'],amber:['var(--amber-soft)','var(--amber)'],purple:['var(--purple-soft)','var(--purple)']}[tone||'blue'];
+function statCard(icon,val,label,tone){const m={blue:['var(--primary-soft)','var(--primary-dark)'],green:['var(--green-soft)','var(--green)'],red:['var(--red-soft)','var(--red)'],amber:['var(--amber-soft)','var(--amber)'],purple:['var(--purple-soft)','var(--purple)']}[tone||'blue'];
 return `<div class="card stat"><div class="stat-icon" style="background:${m[0]};color:${m[1]}">${icon}</div><div><b>${val}</b><span>${esc(label)}</span></div></div>`;}
 function annCard(){
 const list=myAnnouncements().slice(0,3);
@@ -5515,7 +5515,7 @@ return `<div class="card"><div class="card-head">
      ${u.role==='superadmin'?`<select class="select" style="width:170px" data-f="school"><option value="">همه مدارس</option>${db.schools.map(s=>`<option value="${escAttr(s.id)}" ${sch==String(s.id)?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`:''}
      <select class="select" style="width:130px" data-f="uactive"><option value="">همه وضعیت‌ها</option><option value="1" ${act==='1'?'selected':''}>فعال</option><option value="0" ${act==='0'?'selected':''}>غیرفعال</option></select>`)}
    ${slice.length?`<div class="table-wrap"><table><thead><tr><th>نام و نام خانوادگی</th><th>نقش</th><th>نام کاربری</th><th>مدرسه</th><th>کلاس</th><th>تلفن</th><th>وضعیت</th>${canEdit?'<th></th>':''}</tr></thead><tbody>
-    ${slice.map(x=>`<tr><td><div class="row" style="flex-wrap:nowrap;gap:8px"><div class="avatar" style="width:30px;height:30px;font-size:12px;background:var(--primary-soft);color:var(--primary)">${esc(x.full_name[0])}</div>
+    ${slice.map(x=>`<tr><td><div class="row" style="flex-wrap:nowrap;gap:8px"><div class="avatar" style="width:30px;height:30px;font-size:12px;background:var(--primary-soft);color:var(--primary-dark)">${esc(x.full_name[0])}</div>
       <div><b>${esc(x.full_name)}</b><div class="small muted">${esc(x.national_id||'—')}</div></div></div></td>
       <td><span class="badge ${ROLE_BADGE[x.role]}">${ROLE_FA[x.role]}</span></td><td class="muted">${esc(x.username)}</td>
       <td class="muted">${esc(x.school_id?byId('schools',x.school_id).name:'—')}</td><td>${esc(x.role==='student'?((classOf(x.id)||{}).name||'—'):'—')}</td>
