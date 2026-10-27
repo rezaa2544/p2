@@ -14,7 +14,15 @@ const http = require('http');
 const ROOT = path.join(__dirname, '..');
 const SERVER = path.join(ROOT, 'server', 'index.js');
 const JAEGER_VERSION = 'v2.20.0';
-const JAEGER_CACHE = path.join(__dirname, '.cache-jaeger');
+/* M15-01 / Chat 2 (2026-10-27): this cache used to live INSIDE the repo at
+   `tests/.cache-jaeger` (gitignored). It is downloaded tooling, not test
+   source, and its presence made `tests/ci-test-parity-contract.js` P19a read
+   it as an undeclared nested suite tree — a gate failing on a cache it
+   created itself. Cache moved to the OS temp dir so a test run cannot make
+   the working tree look like a source change. Nothing about the assertions
+   changes: the same binary is still required for Part B, which still skips
+   honestly when it is unavailable. */
+const JAEGER_CACHE = path.join(os.tmpdir(), 'payesh-jaeger-cache');
 
 let pass = 0, fail = 0, skip = 0;
 const failures = [];
