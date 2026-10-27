@@ -1,4 +1,4 @@
-# M15-01-EVIDENCE name=binding ts=2026-10-27T14:22:02.096Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tests/verification-binding-contract.test.js"
+# M15-01-EVIDENCE name=binding ts=2026-10-27T14:25:40.172Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tests/verification-binding-contract.test.js"
 ==== M15-01 BINDING & CLOSURE CONTRACT (real git) ====
   OK   C1 lineage binding accepts a registry-only commit (exit 0) — exit=0
   OK   C2 provenance audit agrees with the gate (exit 0) — exit=0
@@ -23,5 +23,5 @@
   OK   C15 witness-changed the rule is what rejects it (real=false, weakened=true) — real=false weakened=true why=witness content changed after the evidence commit (stale evidence for): tests/wi
   OK   C15 witness-forged the rule is what rejects it (real=false, weakened=true) — real=false weakened=true why=witness blob does not match the evidence commit: tests/witnessed-suite.js
   OK   C15 witness-shrunk the rule is what rejects it (real=false, weakened=true) — real=false weakened=true why=witness.paths must equal the set the registry implies; missing=["tests/run.js"] 
-  OK   C15 not-ancestor the rule is what rejects it (real=false, weakened=true) — real=false weakened=true why=head_bound is not an ancestor of the checkout: 6e235ebf1062e00e9df957c571d9e93ce
+  OK   C15 not-ancestor the rule is what rejects it (real=false, weakened=true) — real=false weakened=true why=head_bound is not an ancestor of the checkout: 9d87947cd036f2267ca501c444b4a2e59
 CHECKS 24 FAIL 0
