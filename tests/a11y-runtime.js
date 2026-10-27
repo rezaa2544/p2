@@ -235,7 +235,24 @@ async function settle(page) {
   console.log(`  گزارشِ JSON: out/a11y-runtime.json (${results.length} اسکن)`);
 
   if (tot.critical || tot.serious) {
-    console.log('\n  ❌ قبولی نگرفت: critical/serious باید صفر باشند.');
+    /* شاهدِ فشرده، در جایِ قابلِ دیدن.
+       چرا padding: در این محیط لاگِ خامِ Actions قابلِ دانلود نیست و تنها شاهدِ
+       ماشینی، annotationی است که ورک‌فلو با
+       `tail -n 12 <log> | tr '\n' ' ' | cut -c1-400`
+       می‌سازد — یعنی فقط ۴۰۰ کاراکترِ اولِ ۱۲ خطِ آخر. اگر خطِ شاهد آخر باشد،
+       بیرون از این پنجره می‌افتد و دقیقاً همان چیزی گم می‌شود که این تست برایِ
+       ثبتش اصلاح شد. پس خطِ شاهد اولِ پنجره چاپ و با خطوطِ خالی تا لبهٔ آن
+       هل داده می‌شود؛ هیچ آستانه‌ای عوض نمی‌شود و exit همچنان ۱ است. */
+    const first = results
+      .filter((r) => r.critical || r.serious)
+      .flatMap((r) => r.items.filter((i) => i.impact === 'critical' || i.impact === 'serious')
+        .slice(0, 1).map((i) => ({
+          theme: r.theme, role: r.role, route: r.route, rule: i.id, impact: i.impact,
+          node: i.detail && i.detail[0] ? { target: i.detail[0].target, html: i.detail[0].html, contrast: i.detail[0].contrast } : null
+        })));
+    console.log('A11Y-EVIDENCE ' + JSON.stringify({ totals: tot, first_failures: first.slice(0, 3) }));
+    for (let i = 0; i < 11; i++) console.log('');
+    console.log('  ❌ قبولی نگرفت: critical/serious باید صفر باشند (شاهد: خطِ A11Y-EVIDENCE بالا).');
     process.exit(1);
   }
   console.log('\n  ✅ قبول: صفر critical، صفر serious.');
