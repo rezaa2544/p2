@@ -237,6 +237,109 @@ console.log('▸ هر قاعده با color+background باید AA بدهد');
   ok(bad.length === 0, 'هیچ قاعدهٔ color+background زیرِ 4.5:1 نیست' + (bad.length ? ' — نقض: ' + bad.slice(0, 6).join(' | ') : ''));
 }
 
+/* ── ۲د) توکنِ برند هرگز به‌عنوانِ رنگِ متن — کلاسِ کاملِ نقصِ تبِ فعال ──
+   چرا این شکل، و نه «هر قاعده رویِ هر سطح»: سنجیدنِ یک قاعده در برابرِ *همهٔ*
+   سطوح، منفیِ کاذب می‌سازد، چون `.brand b` و `.nav-group` و `.user-chip` رویِ
+   سایدبارِ تیره می‌نشینند نه رویِ این سطوحِ روشن (سنجهٔ جدا در همین فایل
+   سایدبار را با پس‌زمینهٔ واقعی‌اش می‌سنجد). و سنجیدنِ *خودِ توکن* هم منفیِ
+   کاذب است: `--primary` به‌درستی رنگِ قاب و پس‌زمینه است.
+
+   چیزی که واقعاً شکسته بود این بود: `--primary` به‌عنوانِ **رنگِ متن** به کار
+   رفت. این توکن در هر سه تم رویِ سطوحِ نرمAA نمی‌دهد (اندازه‌گیری: root 4.28
+   رویِ --primary-soft، theme-3 4.17 رویِ --e3edff و 4.18 رویِ #e4edfe که axe
+   دید) و رویِ white هم فقط 4.92 است — یعنی حاشیهٔ امن ندارد. پس قاعدهٔ
+   ساختاریِ درست این است: **هیچ اعلانی با نامِ دقیقِ `color` نباید مقدارِ
+   `var(--primary)` یا `var(--purple)` بگیرد.** این قاعده کلِ دسته را می‌بندد
+   (هر قاعدهٔ آینده هم)، بدونِ مسدودکردنِ استفادهٔ درستِ همین توکن‌ها در
+   border/background، و بدونِ استثناها.
+   نقصِ واقعی: `.tab.active{color:var(--primary)}` → theme-3/student/record/
+   `div[data-t="grades"]` با fg #1668f0 روی bg #e4edfe = 4.176:1 < 4.5. */
+console.log('▸ توکنِ برند نباید رنگِ متن باشد (color: var(--primary|--purple))');
+{
+  const offenders = [];
+  for (const r of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const sel = r[1].replace(/\/\*[\s\S]*?\*\//g, '').trim().split('\n').pop().trim();
+    if (!sel || sel.startsWith('@')) continue;
+    for (const decl of r[2].split(';')) {
+      const i = decl.indexOf(':');
+      if (i < 0) continue;
+      const prop = decl.slice(0, i).trim().toLowerCase();
+      const val = decl.slice(i + 1).trim();
+      if (prop !== 'color') continue;                       /* border-color/accent-color مجازند */
+      const m = val.match(/^var\(\s*--(primary|purple)\s*\)$/);
+      if (m) offenders.push(sel.slice(0, 60) + ' { color: var(--' + m[1] + ') }');
+    }
+  }
+  ok(offenders.length === 0,
+    'هیچ اعلانِ color با var(--primary/--purple)' +
+    (offenders.length ? ' — نقض: ' + offenders.slice(0, 5).join(' | ') : ''));
+
+  /* همان توکن رویِ سطوحِ هر سه تم باید واقعاً شکسته باشد — تا این قاعده
+     «سخت‌گیریِ بی‌دلیل» نباشد بلکه دلیلِ اندازه‌گیری‌شده داشته باشد. */
+  const tokenTable = (theme) => {
+    const t = {};
+    for (const m of css.matchAll(/:root\s*\{([\s\S]*?)\}/g)) {
+      for (const d of m[1].matchAll(/--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})/g)) t[d[1]] = d[2];
+    }
+    if (theme) {
+      const re = new RegExp('\\[data-theme="' + theme + '"\\]\\s*\\{([\\s\\S]*?)\\}', 'g');
+      for (const m of css.matchAll(re)) {
+        for (const d of m[1].matchAll(/--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})/g)) t[d[1]] = d[2];
+      }
+    }
+    return t;
+  };
+  const failing = [];
+  for (const theme of ['theme-1', 'theme-2', 'theme-3']) {
+    const tk = tokenTable(theme);
+    const fg = tk['primary'];
+    const bg = tk['primary-soft'];
+    if (fg && bg && contrast(fg, bg) < 4.5) failing.push(theme + ' ' + contrast(fg, bg).toFixed(2));
+  }
+  /* theme-1 و theme-3 شکستنِ واقعی‌اند (4.28 و 4.17)؛ theme-2 با #2563eb رویِ
+     #eff6ff = 4.75 سالم است. پس ادعا «دستِ‌کم دو تم از سه» است، نه سه از سه —
+     نوشتنِ ۳ این‌جا یک سنجهٔ غلط بود که خودش را قرمز می‌کرد. */
+  ok(failing.length >= 2,
+    'دلیلِ قاعده اندازه‌گیری‌شده است: --primary رویِ --primary-soft در ≥۲ تم < 4.5 (' + failing.join('، ') + ')');
+}
+
+/* ── ۲ه) رگرسیونِ نقطه‌ای: تبِ فعال در حالتِ theme-3/student/record/grades ──
+   این همان نودی است که axe در CI گزارش کرد (div[data-t="grades"], fg #1668f0
+   روی bg #e4edfe). سنجهٔ کلی بالا کلاس را می‌بندد؛ این یکی خودِ آن نود را
+   پین می‌کند تا اگر روزی `color:` از `.tab.active` حذف/عوض شود، تست آن را
+   به‌عنوان «سنجهٔ بی‌ربط» از دست ندهد. */
+console.log('▸ نقطهٔ دقیقِ تبِ فعال (theme-3 / grades)');
+{
+  const norm = (h) => {
+    h = String(h).trim();
+    if (h.length === 4) return '#' + h[1] + h[1] + h[2] + h[2] + h[3] + h[3];
+    return h.toLowerCase();
+  };
+  const t3 = {};
+  for (const m of css.matchAll(/:root\s*\{([\s\S]*?)\}/g)) {
+    for (const d of m[1].matchAll(/--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})/g)) t3[d[1]] = d[2];
+  }
+  for (const m of css.matchAll(/\[data-theme="theme-3"\]\s*\{([\s\S]*?)\}/g)) {
+    for (const d of m[1].matchAll(/--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})/g)) t3[d[1]] = d[2];
+  }
+  const rule = (css.match(/\.tab\.active\s*\{([^}]*)\}/) || [])[1] || '';
+  const colorM = rule.match(/color\s*:\s*([^;]+)/);
+  const activeFg = colorM ? norm(colorM[1].trim().replace(/^var\(\s*--([a-z0-9-]+)\s*\)$/, (_, n) => t3[n] || '')) : null;
+  /* پس‌زمینهٔ واقعیِ نود: card-head → --surface-2 در theme-3 */
+  ok(!!activeFg, '.tab.active یک رنگِ متنِ قابلِ‌حل دارد', rule.slice(0, 80));
+  const bg = norm(t3['surface-2']);
+  const r = activeFg && bg ? contrast(activeFg, bg) : 0;
+  ok(r >= 4.5,
+    'تبِ فعال رویِ پس‌زمینهٔ theme-3 (grades) ≥ 4.5:1 — ' + (activeFg && bg ? activeFg + ' on ' + bg + ' = ' + r.toFixed(3) : 'حل نشد'));
+  /* همان مقدار رویِ سطوحِ دیگر theme-3 هم باید بدهد */
+  for (const s of ['surface', 'primary-soft', 'bg']) {
+    const b = norm(t3[s]);
+    if (!b || !activeFg) continue;
+    ok(contrast(activeFg, b) >= 4.5,
+      '.tab.active theme-3 رویِ --' + s + ' ≥ 4.5:1 — ' + contrast(activeFg, b).toFixed(3));
+  }
+}
+
 /* ── ۳) opacity رویِ متنِ muted ممنوع (کنتراستِ مؤثر را می‌شکند) ── */
 console.log('▸ opacity رویِ متنِ muted ممنوع');
 {

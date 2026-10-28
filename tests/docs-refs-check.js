@@ -154,25 +154,58 @@ grp('RC-DOC — شمارِ خطِ پایه در مستندات کهنه نمی�
    ۹۹ تا داشت. هیچ گیتی نگرفتشان. پس شمار را از خودِ فایل می‌خوانیم و هر سندی
    که آن را به عدد نوشته می‌سنجیم — طبقِ §۵.۱ یا ابزار عدد را می‌سازد یا عدد
    نباید در سند باشد. */
-const FA = '۰۱۲۳۴۵۶۷۸۹';
-const unfa = (str) => parseInt(String(str).split('').map((c) => {
-  const i = FA.indexOf(c); return i >= 0 ? String(i) : c;
-}).join(''), 10);
-const fa = (n) => String(n).split('').map((c) => FA[+c]).join('');
-const COUNT_RE = /([۰-۹0-9]+)\s*(?:ارجاعِ کهنه|موردِ تاریخی)/g;
-const claims = [];
+/* اعدادِ فارسی از خودِ ابزار می‌آیند (mod.faNum) تا جدولِ ارقام دو نسخه نشود. */
+const fa = (n) => mod.faNum(n);
+/* دامنهٔ شمارش — از **خودِ ابزار** می‌آید، نه از یک regexِ محلی.
+   چرا عوض شد: matcher پیش‌تر فقط همین‌جا بود و از کارِ خودش منحرف شده بود —
+   هر «N ارجاعِ کهنه» را می‌گرفت، از جمله «۰ ارجاعِ کهنهٔ تازه» که شمارِ
+   **تازه** را می‌گوید. نتیجه: سندی که صادقانه «۰ تازه» می‌نوشت با countِ خطِ
+   پایه (۲۵۵) مقایسه و قرمز می‌شد. اکنون regex در ابزار است (mod.countClaims)
+   تا یک منبعِ حقیقت باشد و مستقیماً آزمودنی. */
 const docTexts = mod.allDocs().map((d) => ({ rel: path.relative(ROOT, d).split(path.sep).join('/'), text: fs.readFileSync(d, 'utf8') }));
 const isHistoricalLog = (rel) => rel.startsWith('docs/daily-') || rel.startsWith('docs/audit/history/') || /^docs\/DOCS_FREEZE_v1\.0\.0-rc(?!44)/.test(rel);
+const claims = [];
 for (const d of docTexts.filter((x) => !isHistoricalLog(x.rel))) {
-  for (const m of d.text.matchAll(COUNT_RE)) claims.push({ doc: d.rel, n: unfa(m[1]) });
+  for (const c of mod.countClaims(d.text)) claims.push({ doc: d.rel, n: c.n });
 }
 chk('دستِ‌کم یک سند شمارِ خطِ پایه را نوشته', claims.length > 0, String(claims.length));
 const wrong = claims.filter((c) => base && c.n !== base.count);
-chk('همهٔ شمارهای نوشته‌شده با فایلِ خطِ پایه می‌خوانند',
+chk('هر شمارِ خطِ پایه که نوشته شده با فایلِ خطِ پایه می‌خواند',
   wrong.length === 0 && !!base, wrong.map((c) => `${c.doc}=${c.n}`).join('، ') + ` (درست: ${base && base.count})`);
 chk('شمارِ درست با رقمِ فارسی در سند نوشته شده',
   !!base && docTexts.some((d) => d.text.includes(fa(base.count) + ' ارجاعِ کهنه') || d.text.includes(fa(base.count) + ' موردِ تاریخی')),
   base ? fa(base.count) : '—');
+
+/* ── RC-DOC2 — رگرسیونِ خودِ سنجهٔ شمارش (دامنهٔ matcher) ─────────────────
+   چرا لازم است: اصلاحِ matcher می‌توانست دو شکل خراب شود و هر دو در سکوت به
+   «سبزِ جعلی» برسند —
+     (۱) چنان سخت شود که هیچ ادعایی را نگیرد ⇒ baselineِ غلط بی‌جریمه بمانَد.
+     (۲) چنان شل بمانَد که «تازه» را هم ادعایِ خطِ پایه بداند ⇒ همان باگِ قبلی.
+   این‌جا هر دو سویِ مرز بر روی متنِ خام سنجیده می‌شود (بدونِ ساختِ فایل). */
+grp('RC-DOC2 — matcherِ شمارش: دامنهٔ دقیق');
+{
+  const cases = [
+    ['خطِ پایه ۲۵۵ ارجاعِ کهنه دارد', 1, 255, 'ادعایِ درستِ خطِ پایه گرفته می‌شود'],
+    ['خطِ پایه ۱۱۸ ارجاعِ کهنه دارد', 1, 118, 'ادعایِ غلطِ خطِ پایه هم گرفته می‌شود'],
+    ['نتیجه: ۰ ارجاعِ کهنهٔ تازه ✅', 0, null, '«۰ ... تازه» ادعایِ خطِ پایه نیست'],
+    ['۴۱ ارجاعِ کهنهٔ تازه = خطِ پایهٔ main', 0, null, 'عددِ تازه با تازه‌بودن، نه خطِ پایه'],
+    ['سند ۲ ارجاعِ کهنهٔ **تازه** ساخت', 0, null, 'تأکیدِ مارک‌داون دامنه را نمی‌شکند'],
+    ['۳ موردِ تاریخی ثبت شد', 1, 3, '«موردِ تاریخی» هنوز در دامنه است'],
+    ['۲۵۵ ارجاعِ کهنه و ۰ ارجاعِ کهنهٔ تازه', 1, 255, 'در یک خط، فقط baseline شمرده می‌شود']
+  ];
+  for (const [text, wantLen, wantN, label] of cases) {
+    const got = mod.countClaims(text);
+    const okLen = got.length === wantLen;
+    const okN = wantN === null || (got[0] && got[0].n === wantN);
+    chk('RC-MATCH: ' + label + ' («' + text + '»)', okLen && okN,
+      'گرفت: ' + JSON.stringify(got));
+  }
+  /* کنترلِ منفی رویِ خودِ سنجه: اگر matcher عمداً خاموش شود، گروه بالا باید قرمز شود.
+     این هم یک سنجهٔ «سنجه» است: ثابت می‌کند تست توانِ گرفتنِ خطا را دارد. */
+  const wouldCatch = mod.countClaims('خطِ پایه ۱۱۸ ارجاعِ کهنه دارد').some((c) => c.n !== (base && base.count));
+  chk('RC-MATCH: ادعایِ غلط در برابر countِ واقعی اختلاف دارد (سنجه بی‌دندان نیست)',
+    wouldCatch, base ? 'count=' + base.count : '—');
+}
 
 grp('RC-SCOPE — دامنهٔ پویش');
 const docs = mod.allDocs();

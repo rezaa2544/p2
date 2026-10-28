@@ -2,7 +2,7 @@
 
 > Generated from `package-lock.json` by `node tools/supply-chain-audit.js --write`. Do not hand-edit.
 
-Lockfile SHA256: `1d98b3ffc6c96177b8e81720969793edc43a0548948175a117243511d5937a10`  
+Lockfile SHA256: `b7b13ed2d02121de6b12db576f0acd200449cc3706aa2bcded2d1b346334f701`  
 Inventory date: 2026-09-11  
 Packages inventoried: **194**
 
