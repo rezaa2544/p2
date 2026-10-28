@@ -8,7 +8,7 @@
 
 **نسخهٔ قفل:** ۱.۰.۰-rc44 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۳ | **مالک:** همگراییِ قفل پس از بازپایه روی main — چت ۶ (Arena)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۴۸۴ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۴۸۵ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
@@ -69,7 +69,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۴۸۴)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۴۸۵)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -205,11 +205,11 @@
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:36bf496d42732300a7872e76e6a3ce64dca6d52ed20eb1d9621fdce63f3d4169` |
 | `DOCS_INDEX.md` | `sha256:a0be83cbed08790898496bcfbee34e142f8c1eeb7ba53ddcf86b043e39631337` |
-| `DOCS_METRICS.md` | `sha256:43c01e499b718b1131788effced17077c5418659ae13a38d8a7411d37278707b` |
+| `DOCS_METRICS.md` | `sha256:3efce2a4399459ea7bf7f5045ab1131d3daea409611ed7af790b23fd72b4ccf7` |
 | `DOCUMENTATION_GOVERNANCE.md` | `sha256:01a5156c69ff0572f2b49dc2ce31453fdf59bfe30cec1a17f2d70a1dd4cfd3fd` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:dff12b6227b14b69e66d38bbe813d5365688ff8ce482a6fc9bbb2f12f855036e` |
-| `DOCUMENTATION_MAP.md` | `sha256:4abbfd2b6ffc1749a357e065a7424b36020c7ceeee162e995927426d70fa2242` |
+| `DOCUMENTATION_MAP.md` | `sha256:aced173f7c73f04a8b074246e59060721308cb955e7bcd3779a95d9e31885760` |
 | `DR_RUNBOOK.md` | `sha256:eba33f0ad562941cf8aea2087dae1318628708cb37b1330aa0bc1cb34c81cc89` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
@@ -261,6 +261,7 @@
 | `LOAD_TEST_RESULTS.md` | `sha256:7a4ea6f04fda9095bf4e3cee7c9fef6d06dfaf1620113e598f63ada5f7d06604` |
 | `LONGITUDINAL_INTELLIGENCE_MONITORING_AUDIT.md` | `sha256:6d8ce291f1cc972d3b0adf0455531136ff8d394fa0f20be850e67df076d01254` |
 | `LONGITUDINAL_INTELLIGENCE_MONITORING_MODEL.md` | `sha256:bddbb16e7b0be5228ae57906b062452962be684f404a367f1da4f9428ccedb66` |
+| `M15-01_COORDINATION_MATRIX_2026-10-28.md` | `sha256:8b969d761c7c658bdb2efcc8c5f465392190986dec8922c7dcaca2580df64d10` |
 | `M15-01_RECOVERY_REPORT_2026-10-27.md` | `sha256:721b808dc3c25e4abaeb0f11a216320cb6fd811061b2ae9e072be8de81cb3e59` |
 | `MASTER_ONBOARDING_PATH.md` | `sha256:bcb1d796003687a1c219af76199ee1de2c45f3244a27f9da307f61b7777503be` |
 | `MASTER_PROJECT_HANDOVER_PROMPT.md` | `sha256:1e833bbccaea9ef4df4b60037284076196daa6d591aa168bb3f11becd8e12c86` |
@@ -508,7 +509,7 @@
 | `TEACHER_EVIDENCE_MODEL.md` | `sha256:125498ab231ac993c3c6deab55356594b4b1a7d37478f076bc76a51d20943c24` |
 | `TESTING_GUIDE.md` | `sha256:a825d5bfda2d0704f0df539d17926ffac13eb788080083eb5e8f9b8ceeee6e65` |
 | `TEST_CI_PARITY_CONTRACT.md` | `sha256:d8e124cf28619b06f6e019c408830e2e74f59c07aa91a30a0b721c5c7ef7af8f` |
-| `TEST_COVERAGE_REPORT.md` | `sha256:97cc5ae113226c4f8d9c1e8225b3165b386b552a8a2892574f4180b88ec36939` |
+| `TEST_COVERAGE_REPORT.md` | `sha256:32fa9f4b94eb051e17a12c21814e1e9d2cd9e7da3d399241944aa8f1a453031b` |
 | `THIRD_PARTY_LICENSES.md` | `sha256:ea09b9e6abaafa360c4c697f56692d0c97e0d444339868c0f08489775564091e` |
 | `THREAT_MODEL.md` | `sha256:2d93966da760fec407778e27e9ef85033f95efffe71d1135dd849f6780d966f0` |
 | `TRACING_SETUP.md` | `sha256:6d17e75b8cc28763db6d7d7c9310d587fb3419c15a2d1dbf2f9e938881040099` |
