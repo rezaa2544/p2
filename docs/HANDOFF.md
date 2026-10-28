@@ -1,5 +1,17 @@
 # M15-01 mission 2 — evidence recovery & gate reconciliation — 2026-10-27 (later)
 
+**Final measured head of mission 2:** `fe2edfd` (tree `aef00aee`), PR #498. `pull_request` lane:
+**Node.js CI success** ([40609644397](https://github.com/rezaa2544/p2/actions/runs/40609644397)),
+**Strict Verification Gate success** ([40609644208](https://github.com/rezaa2544/p2/actions/runs/40609644208)),
+**Security Program success** ([40609644424](https://github.com/rezaa2544/p2/actions/runs/40609644424)) —
+i.e. the canonical suite is green on a runner that has PostgreSQL, Redis and Chromium, which is what
+makes the 62 local reds provably environmental. Local on the same head: gate 708/1 push (V-06 only),
+709/0 `pull_request`, provenance VALID, `npm test` 40/40 + 31/31 + smoke 547/547, docs-refs 29/29,
+handoff-integrity 4/4. Verdict unchanged: **M15-01 BLOCKED — OWNER/INFRASTRUCTURE ACTION PROVEN
+NECESSARY**; OD-3 is now closed by protocol (no owner action), and three defects of this mission's
+own making (docs-refs stale reference, SI-013-B scanner blind spot, `server1` cleanup race) were
+found and fixed with controls. Full matrix: `docs/M15-01_RECOVERY_REPORT_2026-10-27.md` §9–§10.
+
 **Binding:** branch `arena/f75d9f00-p2`, PR **#498**. `origin/main` re-read at mission start: `fff1beae09ff45d69e554f8c000a9d15b75d968c` (tree `07979cd4`). PR #497 merged (owner-intervention policy); PR #495 closed unmerged; PR #484 moved during the session (`34c654d1` → `5741249d`) and was left untouched. Candidate `78b65ce2…` **does not exist** (GitHub 422; no local object, no branch contains it). Full matrix: `docs/M15-01_RECOVERY_REPORT_2026-10-27.md` §9.
 
 ## Closed with measurements in this mission

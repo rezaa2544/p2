@@ -788,6 +788,39 @@ same suite until it passes would have been the wrong response and is explicitly 
 `995f871`, red once in the `push` lane, and with the artifact now attached the next occurrence will
 be diagnosable — by someone who can download it, which this environment still cannot.
 
+### 9.16 Final measured head `fe2edfd` — the canonical suite is green in CI
+
+`pull_request` lane, the lane that gates the merge:
+
+| Workflow | Run | Result |
+|---|---|---|
+| **Node.js CI** (canonical `npm run test:all`) | [40609644397](https://github.com/rezaa2544/p2/actions/runs/40609644397) | **success** — zero failing steps, `Upload the canonical runner transcript` also success |
+| Payesh Strict Verification Gate | [40609644208](https://github.com/rezaa2544/p2/actions/runs/40609644208) | **success** |
+| Security Program (SAST · SCA · SBOM · DAST · Secret) | [40609644424](https://github.com/rezaa2544/p2/actions/runs/40609644424) | **success** |
+
+That is the chain this mission was sent to obtain, and it is worth naming what each link proves:
+
+* the canonical suite — PostgreSQL, Redis, Chromium, chaos, migrations, a11y, `npm test`, lint — is
+  **green on a runner that has those services**, so the 62 local reds of §9.7 are environmental
+  (confirmed, not asserted);
+* the strict verification contract **passes on the PR lane** for a registry bound to `d09cf257`, so
+  the "698 pass / 0 fail yet NOT VERIFIED" contradiction of §9.3 is resolved in the artifact and in
+  the CI, on the lane that matters;
+* the secret scan passes **with the tightened rules of §9.10**, so SI-013-B is fixed rather than
+  silenced;
+* the transcript of that run is attached to it as an artifact, per §9.14/§9.15.
+
+Local, on the same head: `node tools/strict-verification-gate.js` → 708 pass / 1 fail (V-06 only,
+unmerged branch), `GITHUB_EVENT_NAME=pull_request` → 709/0 VERIFIED,
+`node tools/registry-provenance.js --audit` → PROVENANCE VALID, `npm test` → 40/40 + 31/31 +
+smoke 547/547, `docs-refs-check` 29/29, `handoff-integrity` 4/4.
+
+**What is still not green, and is not mine to make green:** APIsec / Fortify / Jscrambler fail in
+their own credential guards (§9.6); `Payesh Watch` cannot write to Notion (`auth_error`); E4-01..07 are
+0/7 (§9.5); the `push` lane still fails V-06 and its `offline-e2e` (§9.13, OPEN); OD-2 and OD-4
+are owner decisions; SI-013's rotation question is the owner's; there is one reviewer slot, so
+`CERTIFIED` is unreachable (V-18). The verdict is unchanged and is stated in §10.
+
 ### 9.12 Re-run on the corrected head after the SI-013-B fix
 
 Head `c859d31`. `node tools/strict-verification-gate.js` → **exit 1, 708 pass / 1 fail** — the single
@@ -861,3 +894,58 @@ listed as a closure blocker rather than papered over with a bot's comment.
 PATCH-then-GET read-back (§3). The interactive Notion connector returned
 `auth_error — "the connection to this app is no longer valid"`; per its own contract it was not
 retried. Reconnecting the connector is an owner action in the Arena UI.
+
+---
+
+## 10. Mission 2 decision
+
+**M15-01 BLOCKED — OWNER/INFRASTRUCTURE ACTION PROVEN NECESSARY**
+
+Final measured head at the time of writing: `fe2edfd16ecdaefefff63593410a717a57865ec1`, tree
+`aef00aeee64586796739796bc2ce99c357645eeb`, branch `arena/f75d9f00-p2`, PR #498. The commit that
+carries this paragraph is documentation-only; its own CI row is reported when it lands, and the
+table above (\u00a79.16) is the last row measured on an identical *code* tree.
+
+### What changed in this mission, and what it cost to establish
+
+| # | Finding | Status |
+|---|---|---|
+| 1 | Run `40491800409`'s raw log is unrecoverable (0 artifacts, run- and job-level endpoints `EOF`); replaced by a fresh canonical run committed to the repo with a hash manifest | **CLOSED (evidence replaced, honestly labelled)** |
+| 2 | "698 pass / 0 fail yet exit 1 / audit exit 2" \u2014 explained to the line (`fff1beae:tools/strict-verification-gate.js:654` `nothingVerified`, and the audit's retired 29-UNBOUND rule) | **CLOSED** |
+| 3 | OD-3 (when is a registry metadata commit legal) \u2014 settled by protocol with four real-git proofs L1..L4 | **CLOSED \u2014 no owner action needed** |
+| 4 | `supply-chain` red (stale SBOM / drift baseline after the dependency repair) \u2014 regenerated, 7/7 with the simulated-drift detector still firing | **CLOSED** |
+| 5 | `docs-refs` pre-flight: my own report quoted a fixture path and created a stale reference; the live check was not part of `npm test`, so local runs could not see it | **CLOSED** \u2014 live check wired into `tests/run.js` (40/40) with a positive control |
+| 6 | `docs-refs` suite then caught a *quoted number* (my "zero" read as a baseline claim) | **CLOSED** \u2014 29/29 |
+| 7 | **SI-013-B**: the secret scanner excused any 64-hex value on a line containing "test"/"fixture"/"example"; a planted `const testApiKey = "<random hex>"` stayed green | **CLOSED** \u2014 rules narrowed, 5 new controls, planted key now red |
+| 8 | `server1` went RED after 31/31 green because its temp-dir cleanup raced `server.close()` without a callback | **CLOSED** \u2014 awaited close + retrying `rm`; 31/31, exit 0 |
+| 9 | Canonical runner transcripts vanished with the runner, three times | **CLOSED (mechanism)** \u2014 artifact on every outcome; artifact `12781811796` exists; download still blocked from this sandbox only |
+| 10 | `offline-e2e` red once in the `push` lane, green in `pull_request` and locally 23/23 | **OPEN** \u2014 recorded, not re-run into silence |
+| 11 | E4-01..E4-07 (seven drills) | **0/7 BLOCKED** \u2014 needs seven targets/secrets |
+| 12 | Fortify / APIsec / Jscrambler | **BLOCKED** \u2014 each fails its own credential guard |
+| 13 | SI-013 rotation/history | **OPEN** \u2014 owner ruling; active tree is clean (0 unclassified long-hex, 13/13 scanner, 18/18 si013 suite) |
+| 14 | OD-2 (push trigger vs V-06), OD-4 (official item count 29/32/39) | **OPEN \u2014 owner**, both measured |
+| 15 | Independent review / `CERTIFIED` | **NOT DONE** \u2014 one reviewer slot (V-18); not simulated |
+| 16 | Notion narrative mirror | **BLOCKED** \u2014 connector `auth_error`; `notion-sync.yml` writes still succeed |
+
+### Owner actions, smallest form, with the proof that they are owner-exclusive
+
+1. **Add the vendor/DB secrets** (`JSCRAMBLER_*`, `FOD_*`/`SSC_TOKEN`, `apisec_username`/`password`,
+   `DATABASE_URL`). Proof of exclusivity: each workflow's own fail-closed guard is the failing step
+   (\u00a79.6), `gh api .../actions/secrets` returns 403 for this token, and no such variable exists in
+   the environment. Effect: three vendor rows get a real verdict; the Production truth gate stops
+   being skipped.
+2. **Provision the seven E4 targets or rule them out of scope** (\u00a79.5 lists every variable and the
+   exact evidence each drill must produce). Nothing in this environment can reach a second host,
+   region or on-call roster.
+3. **Rule on OD-2 and OD-4** (\u00a79.7.1 and the OD table). OD-2 is now measured on the same commit
+   twice: push lane 708/1 (V-06 only), `pull_request` lane 709/0 VERIFIED.
+4. **Decide the SI-013 history disposition.** The active tree is clean; what cannot be decided from
+   inside the repository is whether the value quoted in the 2026 audit report was ever live.
+5. **Reconnect the Notion connector, and provide a second reviewer slot** if `CERTIFIED` is ever to
+   be reachable.
+
+No item above asks the owner to run a command, read a log, inspect code, or write documentation:
+every engineering step in this mission \u2014 diagnosis, repair, re-measure, evidence capture, CI
+follow-up, document sync \u2014 was performed and pushed from here.
+
+اقدام مالک: موارد ۱–۵ در بالا (فقط مواردی که واقعاً انحصاریِ مالک‌اند؛ هیچ‌کدام کارِ مهندسی نیست).
