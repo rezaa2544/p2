@@ -737,6 +737,57 @@ The very first run after this change is expected to make the `offline-e2e` quest
 without a guess; the run id is recorded in §9.15 when it lands, and until then this section claims
 nothing about it.
 
+### 9.15 The artifact mechanism works — and the next red it exposed
+
+The first run after §9.14 is [40598616783](https://github.com/rezaa2544/p2/actions/runs/40598616783)
+(`pull_request`, head `16d1fc3`). Two facts, in the order they matter:
+
+1. **The upload step succeeded** and an artifact exists: id `12781811796`, name
+   `canonical-runner-log-pull_request-32064b64…-1`, `size_in_bytes` 507 067 — i.e. the transcript of
+   this run is now a downloadable object attached to the run, for anyone who can reach GitHub.
+2. **It is still not readable from *this* environment**, and now the reason is precise: the
+   authorized download URL redirects to `productionresultssa30.blob.core.windows.net`, which (like
+   `results-receiver.actions.githubusercontent.com`) is outside the allowlist this sandbox runs
+   under; `curl -L` returns `302`/0 bytes. So the mechanism is proven, the access path from here
+   is not. That is stated rather than papered over — and it means the fix in §9.14 helps the
+   reviewer and any environment with normal network access, not this one.
+
+**And that run went red on a different suite, which is the useful part.** The Actions *annotation*
+(names the suite, quoted verbatim) says:
+
+```
+RED suite server1 (exit 1)
+  سرور (مرحلهٔ اول): 31/31 موفق  —  بدون خطا ✅  FATAL Error: ENOTEMPTY: directory not empty, rmdir '/tmp/payesh-srv-...
+```
+
+Read it literally: **every one of the 31 checks passed**, the summary line was printed, and then the
+suite died on its own temp-directory cleanup and exited 1. A suite can therefore be RED for a reason
+that has nothing to do with the product — the mirror image of a false-green, and precisely the
+"environment/order/data" instability the mission asked to root-cause rather than re-run away from.
+
+Root cause, in `tests/server1.js`: `server.close()` was called **without its callback**, so it
+returned before the server's handlers finished, and then `fs.rmSync(TMP, {recursive:true, force:true})`
+ran with no retry while audit-log appends could still be landing in that directory. `force` does not
+retry; `maxRetries`/`retryDelay` are Node's documented remedy for `ENOTEMPTY`/`EBUSY` during a
+recursive delete. Both halves are fixed:
+
+| Change | Why |
+|---|---|
+| `await new Promise((r) => server.close(r))` | the actual root fix: no handler can still be writing when the delete starts |
+| `maxRetries: 10, retryDelay: 100` on all four `rmSync` sites in the file | the belt: a delete that still races retries instead of crashing the suite |
+| the cleanup is wrapped so a failure prints `(cleanup of … skipped: <code>)` instead of `FATAL` | cleanup is not an assertion; it must not be able to decide the verdict |
+
+**What I will not claim:** that I reproduced `ENOTEMPTY` locally. Two probe scripts (a writer process
+racing a parent `rmSync`, 40 iterations, with and without retries) never produced it on this kernel
+— `rm -r` won every time. The evidence for the *defect* is the CI annotation above; the evidence
+for the *fix* is that it removes the race by construction (awaited close) and adds the documented
+retry, and that `node tests/server1.js` is still **31/31, exit 0** after the change. Re-running the
+same suite until it passes would have been the wrong response and is explicitly not what happened.
+
+`offline-e2e` (§9.13) stays **OPEN**: it is green locally and green in the `pull_request` lane on
+`995f871`, red once in the `push` lane, and with the artifact now attached the next occurrence will
+be diagnosable — by someone who can download it, which this environment still cannot.
+
 ### 9.12 Re-run on the corrected head after the SI-013-B fix
 
 Head `c859d31`. `node tools/strict-verification-gate.js` → **exit 1, 708 pass / 1 fail** — the single
