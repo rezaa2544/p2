@@ -190,6 +190,35 @@ function cmpPair(a, b) { return pairSortKey(a).localeCompare(pairSortKey(b)); }
    از بیرون در کار نیست. */
 function cmpByCount(a, b) { return b[1].size - a[1].size; }
 
+/* ── ادعاهایِ شمارِ «ارجاعِ کهنه» در متنِ اسناد ────────────────────────
+   این matcher پیش‌تر فقط داخلِ tests/docs-refs-check.js بود و همین باعث شد
+   بی‌آن‌که کسی ببیند از کارِ خودش منحرف شود: هر «N ارجاعِ کهنه» را می‌گرفت،
+   از جمله جملهٔ «۰ ارجاعِ کهنهٔ تازه» که شمارِ **تازه** را می‌گوید نه خطِ پایه.
+   نتیجه: سندی که صادقانه «۰ تازه» می‌نوشت با countِ خطِ پایه (۲۵۵) مقایسه و
+   قرمز می‌شد. اکنون در خودِ ابزار تعریف و export می‌شود تا یک منبعِ حقیقت
+   داشته باشد و مستقیماً آزمودنی باشد.
+
+   دامنه: فقط ادعایِ **خطِ پایه**. صفتِ «تازه/fresh/جدید» (با یا بدونِ همزه،
+   با یا بدونِ تأکیدِ مارک‌داون) ادعایِ شمارِ تازه است و از دامنه خارج می‌شود. */
+const FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
+function unfa(str) {
+  return parseInt(String(str).split('').map((c) => {
+    const i = FA_DIGITS.indexOf(c); return i >= 0 ? String(i) : c;
+  }).join(''), 10);
+}
+function faNum(n) { return String(n).split('').map((c) => FA_DIGITS[+c]).join(''); }
+/* نکتهٔ eslint: \u0654 (همزهٔ بالا) در یک character class با حروفِ دیگر،
+   «combined character» تلقی می‌شود؛ به‌صورتِ escapeِ جدا نوشته می‌شود. */
+const COUNT_RE = /([۰-۹0-9]+)\s*(?:ارجاعِ کهنه|موردِ تاریخی)((?:[\s*_]|\u0654)*(?:تازه|fresh|جدید))?/gu;
+function countClaims(text) {
+  const out = [];
+  for (const m of String(text).matchAll(COUNT_RE)) {
+    if (m[2]) continue;                       /* صفتِ «تازه» ⇒ شمارِ تازه، نه خطِ پایه */
+    out.push({ n: unfa(m[1]), phrase: m[0] });
+  }
+  return out;
+}
+
 function run({ check, baseline, json }) {
   const { byDoc, byRef, gen } = findRefs();
 
@@ -291,4 +320,4 @@ if (require.main === module) {
   } catch (e) { console.error('❌ ' + e.message); process.exit(2); }
 }
 
-module.exports = { findRefs, allDocs, loadBaseline, keyOf, isGenerated, ignoreRegex, readIgnorePatterns };
+module.exports = { findRefs, allDocs, loadBaseline, keyOf, isGenerated, ignoreRegex, readIgnorePatterns, countClaims, COUNT_RE, faNum, unfa };
