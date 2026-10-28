@@ -178,37 +178,49 @@ const MUTATIONS = [
   { id: 'V-02 artifact bytes at the evidence SHA', fixture: 'V-02e', edits: [['const atSha = artifactShaAt(evidenceHead, e.artifact);', 'const atSha = e.sha256;']] },
   { id: 'V-02 exit_code', fixture: 'V-02f', edits: [['if (e.exit_code !== 0) bindErrs.push(', 'if (false) bindErrs.push(']] },
   { id: 'V-02 checks_passed == checks_total', fixture: 'V-02g', edits: [['if (isInt(e.checks_total) && isInt(e.checks_passed) && e.checks_passed !== e.checks_total) {', 'if (false) {']] },
-  { id: 'V-13 blocked state (+V-15b also catches it)', fixture: 'V-13a', edits: [
+  { id: 'V-13 blocked state (+V-15b/V-19b/V-19d/V-19e also catch it)', fixture: 'V-13a', edits: [
     ['if (blockedFlag) {', 'if (false) {'],
-    ["chk('V-15b blocked items cap the registry below the verifying band', blockedItems.length === 0 || topRank <= STATUS_RANK.TESTED,", "chk('V-15b blocked items cap the registry below the verifying band', true,"]
+    ["chk('V-19b every in-scope item is verified with an Arena PASS', inScopeUnverified.length === 0 && inScopeBlocked.length === 0 && scopeMissing.length === 0,", "chk('V-19b every in-scope item is verified with an Arena PASS', true,"],
+    ["chk('V-19d blocked items are outside closure_scope', blockedInScope.length === 0,", "chk('V-19d blocked items are outside closure_scope', true,"],
+    ["chk('V-19e declared blocked_items count matches the registry', reg.blocked_items === blockedItems.length,", "chk('V-19e declared blocked_items count matches the registry', true,"],
+    ["chk('V-15b a registry with blocked items cannot be CERTIFIED', blockedItems.length === 0 || topRank < STATUS_RANK.CERTIFIED,", "chk('V-15b a registry with blocked items cannot be CERTIFIED', true,"]
   ] },
-  { id: 'V-13 non-PASS ceiling (+V-15b and V-16 also catch it)', fixture: 'V-13c', edits: [
+  { id: 'V-13 non-PASS ceiling (+V-15b/V-19b/V-19d/V-19e also catch it)', fixture: 'V-13c', edits: [
+    ["chk('V-19b every in-scope item is verified with an Arena PASS', inScopeUnverified.length === 0 && inScopeBlocked.length === 0 && scopeMissing.length === 0,", "chk('V-19b every in-scope item is verified with an Arena PASS', true,"],
+    ["chk('V-19d blocked items are outside closure_scope', blockedInScope.length === 0,", "chk('V-19d blocked items are outside closure_scope', true,"],
+    ["chk('V-19e declared blocked_items count matches the registry', reg.blocked_items === blockedItems.length,", "chk('V-19e declared blocked_items count matches the registry', true,"],
     ["if (arenaVerdict && arenaVerdict !== 'PASS' && itemRank >= VERIFYING_MIN_RANK) {", 'if (false) {'],
     ["} else if (arenaVerdict === 'BLOCKED') {", '} else if (false) {'],
-    ["chk('V-15b blocked items cap the registry below the verifying band', blockedItems.length === 0 || topRank <= STATUS_RANK.TESTED,", "chk('V-15b blocked items cap the registry below the verifying band', true,"],
+    ["chk('V-15b a registry with blocked items cannot be CERTIFIED', blockedItems.length === 0 || topRank < STATUS_RANK.CERTIFIED,", "chk('V-15b a registry with blocked items cannot be CERTIFIED', true,"],
     ['process.exit(fail || nothingVerified ? 1 : 0);', 'process.exit(fail ? 1 : 0);']
   ] },
-  { id: 'V-15 headline ceiling', fixture: 'V-15', edits: [["chk('V-15 registry status is bounded by its weakest item', topRank >= 0 && minItemRank >= 0 && topRank <= minItemRank,", "chk('V-15 registry status is bounded by its weakest item', true,"]] },
+  { id: 'V-15 headline ceiling', fixture: 'V-15', edits: [["chk('V-15 registry status is bounded by its weakest in-scope item', topRank >= 0 && (scope.length === 0 ? topRank === 0 : topRank <= minScopeRank),", "chk('V-15 registry status is bounded by its weakest in-scope item', true,"]] },
   { id: 'V-15b blocked headline (+V-15 and V-16 also catch it)', fixture: 'V-15b', edits: [
-    ["chk('V-15b blocked items cap the registry below the verifying band', blockedItems.length === 0 || topRank <= STATUS_RANK.TESTED,", "chk('V-15b blocked items cap the registry below the verifying band', true,"],
-    ["chk('V-15 registry status is bounded by its weakest item', topRank >= 0 && minItemRank >= 0 && topRank <= minItemRank,", "chk('V-15 registry status is bounded by its weakest item', true,"],
+    ["chk('V-15b a registry with blocked items cannot be CERTIFIED', blockedItems.length === 0 || topRank < STATUS_RANK.CERTIFIED,", "chk('V-15b a registry with blocked items cannot be CERTIFIED', true,"],
+    ["chk('V-15 registry status is bounded by its weakest in-scope item', topRank >= 0 && (scope.length === 0 ? topRank === 0 : topRank <= minScopeRank),", "chk('V-15 registry status is bounded by its weakest in-scope item', true,"],
     ['process.exit(fail || nothingVerified ? 1 : 0);', 'process.exit(fail ? 1 : 0);']
   ] },
   { id: 'V-11 adversarial coverage', fixture: 'V-11b', edits: [["if (needsCoverage && !hasAdv) vac.push('no negative/adversarial evidence for a verifying status');", '']] },
-  { id: 'G14c undeclared items (+V-17 also catches the cloned rider)', fixture: 'G14c', edits: [
-    ["chk('G14c no undeclared/unknown items', undeclared.length === 0,", "chk('G14c no undeclared/unknown items', true,"],
-    ["chk('V-17 ' + id + ' shared witness is scoped per item, not copied', v17.length === 0,", "chk('V-17 ' + id + ' shared witness is scoped per item, not copied', true,"]
+  { id: 'G14c undeclared items (+V-19c and V-17 also catch the cloned rider)', fixture: 'G14c', edits: [
+    ["chk('V-19c no item claims a verifying status outside closure_scope', offScopeClaims.length === 0,", "chk('V-19c no item claims a verifying status outside closure_scope', true,"],
+    ["chk('V-17 ' + id + ' shared witness is scoped per item, not copied', v17.length === 0,", "chk('V-17 ' + id + ' shared witness is scoped per item, not copied', true,"],
+    ["chk('G14c no undeclared/unknown items', undeclared.length === 0,", "chk('G14c no undeclared/unknown items', true,"]
   ] },
   { id: 'G14d duplicate declarations', fixture: 'G14d', edits: [["chk('G14d expected_ids has no duplicate entries', dupExpected.length === 0,", "chk('G14d expected_ids has no duplicate entries', true,"]] },
   { id: 'G14b missing declared item', fixture: 'G14b', edits: [["chk('G14b all declared items present (' + expected.length + ')', missing.length === 0,", "chk('G14b all declared items present (' + expected.length + ')', true,"]] },
-  { id: 'G10 evidence-free verdict (+V-16 also catches it)', fixture: 'G10-no-arena-slot', edits: [["chk('G10 ' + id + ' ' + r + ' verdict + evidence', REVIEWER_VERDICTS.includes(v.status) && evidenceOk,", "chk('G10 ' + id + ' ' + r + ' verdict + evidence', true,"],
+  { id: 'G10 evidence-free verdict (+V-16 and V-19b also catch it)', fixture: 'G10-no-arena-slot', edits: [["chk('G10 ' + id + ' ' + r + ' verdict + evidence', REVIEWER_VERDICTS.includes(v.status) && evidenceOk,", "chk('G10 ' + id + ' ' + r + ' verdict + evidence', true,"],
+    ["chk('V-19b every in-scope item is verified with an Arena PASS', inScopeUnverified.length === 0 && inScopeBlocked.length === 0 && scopeMissing.length === 0,", "chk('V-19b every in-scope item is verified with an Arena PASS', true,"],
     ['process.exit(fail || nothingVerified ? 1 : 0);', 'process.exit(fail ? 1 : 0);']
   ] },
   { id: 'V-09b retired reviewer slot', fixture: 'V-09d', edits: [["chk('V-09b reviews_recorded only uses known reviewer slots', rrUnknown.length === 0,", "chk('V-09b reviews_recorded only uses known reviewer slots', true,"]] },
   { id: 'V-16 nothing-verified exit', fixture: 'GOOD-BLOCKED', edits: [['process.exit(fail || nothingVerified ? 1 : 0);', 'process.exit(fail ? 1 : 0);']], expect: 'CONTROL' },
   { id: 'G17 uncommitted drift', fixture: 'G17', edits: [["chk('G17 no uncommitted tracked drift outside the registry', drift.length === 0,", "chk('G17 no uncommitted tracked drift outside the registry', true,"]] },
-  { id: 'V-17 cross-item witness scoping', fixture: 'V-17', edits: [["chk('V-17 ' + id + ' shared witness is scoped per item, not copied', v17.length === 0,", "chk('V-17 ' + id + ' shared witness is scoped per item, not copied', true,"]] },
-  { id: 'V-17 scope-token verification (fabricated citation)', fixture: 'V-17c', edits: [["const absent = tokens.filter((t) => !myText.includes(t));", "const absent = [];"]] },
+  { id: 'V-17 cross-item witness scoping (+V-19c also catches the clone)', fixture: 'V-17', edits: [["chk('V-17 ' + id + ' shared witness is scoped per item, not copied', v17.length === 0,", "chk('V-17 ' + id + ' shared witness is scoped per item, not copied', true,"],
+    ["chk('V-19c no item claims a verifying status outside closure_scope', offScopeClaims.length === 0,", "chk('V-19c no item claims a verifying status outside closure_scope', true,"]] },
+  { id: 'V-17 scope-token verification (fabricated citation) (+V-19c also catches the clone)', fixture: 'V-17c', edits: [
+    ["const absent = tokens.filter((t) => !myText.includes(t));", "const absent = [];"],
+    ["chk('V-19c no item claims a verifying status outside closure_scope', offScopeClaims.length === 0,", "chk('V-19c no item claims a verifying status outside closure_scope', true,"]
+  ] },
   { id: 'V-18 status cap under a one-slot contract', fixture: 'V-18', edits: [["itemRank < 0 || itemRank <= capRank,", "true,"]] },
   { id: 'V-02 future timestamp', fixture: 'V-02h', edits: [["if (isDate(e.ts) && new Date(e.ts).getTime() > Date.now() + 15 * 60 * 1000) bindErrs.push(f.where + ': ts is in the future');", '']] }
 ];

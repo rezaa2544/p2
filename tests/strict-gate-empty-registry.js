@@ -4,7 +4,12 @@ const fs=require('fs'),os=require('os'),path=require('path'),cp=require('child_p
 const root=fs.mkdtempSync(path.join(os.tmpdir(),'strict-gate-fixture-'));
 try {
  fs.mkdirSync(path.join(root,'tools'));fs.mkdirSync(path.join(root,'docs/verification'),{recursive:true});
+ fs.mkdirSync(path.join(root,'tools/lib'),{recursive:true});
  fs.copyFileSync(path.join(__dirname,'../tools/strict-verification-gate.js'),path.join(root,'tools/strict-verification-gate.js'));
+ /* M15-01 recovery: the gate no longer owns the binding rule — it requires the
+    shared module. A fixture that copies only the gate would crash on require and
+    "pass" the exit-1 assertion for the wrong reason, so the module is copied too. */
+ fs.copyFileSync(path.join(__dirname,'../tools/lib/verification-witness.js'),path.join(root,'tools/lib/verification-witness.js'));
  fs.writeFileSync(path.join(root,'docs/STRICT_VERIFICATION_GATE.md'),'Fixture policy only.');
  fs.writeFileSync(path.join(root,'docs/verification/FALSE_GREEN_ALLOWLIST.json'),JSON.stringify({items:[]}));
  fs.copyFileSync(path.join(__dirname,'../docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json'),path.join(root,'docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json'));

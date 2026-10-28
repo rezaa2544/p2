@@ -1,4 +1,4 @@
-# M15-01-EVIDENCE name=focused ts=2026-10-27T05:44:57.193Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tests/m15-01-registry-strict-verification.test.js"
+# M15-01-EVIDENCE name=focused ts=2026-10-27T17:53:44.881Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tests/m15-01-registry-strict-verification.test.js"
 ==== M15-01 REGISTRY & STRICT VERIFICATION — ACCEPTANCE PROPERTIES ====
   OK   P1 stale/foreign-SHA evidence is rejected — exit=0
        ↳ forged evidence head_sha, registry head_bound mismatch, artifact edited after the commit, artifact never committed
@@ -24,20 +24,20 @@
   OK   M V-02 artifact bytes at the evidence SHA → fixture V-02e is not vacuous — weakened gate accepted the exploit
   OK   M V-02 exit_code → fixture V-02f is not vacuous — weakened gate accepted the exploit
   OK   M V-02 checks_passed == checks_total → fixture V-02g is not vacuous — weakened gate accepted the exploit
-  OK   M V-13 blocked state (+V-15b also catches it) → fixture V-13a is not vacuous — weakened gate accepted the exploit
-  OK   M V-13 non-PASS ceiling (+V-15b and V-16 also catch it) → fixture V-13c is not vacuous — weakened gate accepted the exploit
+  OK   M V-13 blocked state (+V-15b/V-19b/V-19d/V-19e also catch it) → fixture V-13a is not vacuous — weakened gate accepted the exploit
+  OK   M V-13 non-PASS ceiling (+V-15b/V-19b/V-19d/V-19e also catch it) → fixture V-13c is not vacuous — weakened gate accepted the exploit
   OK   M V-15 headline ceiling → fixture V-15 is not vacuous — weakened gate accepted the exploit
   OK   M V-15b blocked headline (+V-15 and V-16 also catch it) → fixture V-15b is not vacuous — weakened gate accepted the exploit
   OK   M V-11 adversarial coverage → fixture V-11b is not vacuous — weakened gate accepted the exploit
-  OK   M G14c undeclared items (+V-17 also catches the cloned rider) → fixture G14c is not vacuous — weakened gate accepted the exploit
+  OK   M G14c undeclared items (+V-19c and V-17 also catch the cloned rider) → fixture G14c is not vacuous — weakened gate accepted the exploit
   OK   M G14d duplicate declarations → fixture G14d is not vacuous — weakened gate accepted the exploit
   OK   M G14b missing declared item → fixture G14b is not vacuous — weakened gate accepted the exploit
-  OK   M G10 evidence-free verdict (+V-16 also catches it) → fixture G10-no-arena-slot is not vacuous — weakened gate accepted the exploit
+  OK   M G10 evidence-free verdict (+V-16 and V-19b also catch it) → fixture G10-no-arena-slot is not vacuous — weakened gate accepted the exploit
   OK   M V-09b retired reviewer slot → fixture V-09d is not vacuous — weakened gate accepted the exploit
   OK   M V-16 nothing-verified exit → fixture GOOD-BLOCKED is not vacuous — weakened gate accepted the exploit
   OK   M G17 uncommitted drift → fixture G17 is not vacuous — weakened gate accepted the exploit
-  OK   M V-17 cross-item witness scoping → fixture V-17 is not vacuous — weakened gate accepted the exploit
-  OK   M V-17 scope-token verification (fabricated citation) → fixture V-17c is not vacuous — weakened gate accepted the exploit
+  OK   M V-17 cross-item witness scoping (+V-19c also catches the clone) → fixture V-17 is not vacuous — weakened gate accepted the exploit
+  OK   M V-17 scope-token verification (fabricated citation) (+V-19c also catches the clone) → fixture V-17c is not vacuous — weakened gate accepted the exploit
   OK   M V-18 status cap under a one-slot contract → fixture V-18 is not vacuous — weakened gate accepted the exploit
   OK   M V-02 future timestamp → fixture V-02h is not vacuous — weakened gate accepted the exploit
 CHECKS 32 FAIL 0

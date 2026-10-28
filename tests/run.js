@@ -317,6 +317,28 @@ test('تعداد فایل‌های تست با مانیفست قفل برابر 
   assert(unfa(m[3]) === apiN, `قفل ${m[3]} می‌گوید ولی ${apiN} فایل در tests/api/ است`);
 });
 
+/* چرا این تست هست: tools/docs-refs-check.js در pre-flightِ
+   scripts/run-all-tests.sh اجرا می‌شود (exit 6 = «ارجاعِ کهنهٔ تازه»)،
+   ولی `npm test` آن را اجرا نمی‌کرد — پس یک سند می‌توانست به فایلی اشاره
+   کند که وجود ندارد و همهٔ بررسی‌های محلی سبز بمانند تا CI قرمز شود.
+   دقیقاً همین اتفاق در M15-01 افتاد. ابزار خودش تستِ fixture دارد
+   (tests/docs-refs-check.js)؛ آنچه کم بود اجرایِ آن روی درختِ زنده بود. */
+test('هیچ سندی به فایلِ ناموجود اشاره نمی‌کند (همان pre-flightِ CI)', () => {
+  let out;
+  try {
+    out = execFileSync(process.execPath, [path.join(ROOT, 'tools/docs-refs-check.js'), '--check'],
+      { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (e) {
+    const txt = (e.stdout || '') + (e.stderr || '');
+    const stale = (txt.match(/•\s+\S+\s+→\s+\S+/g) || []).join(' | ');
+    assert(false, 'ارجاعِ کهنهٔ تازه: ' + (stale || String(e.message).slice(0, 160)) +
+      ' — یا فایل را برگردان یا ارجاع را درست کن (خطِ پایه فقط برای سندِ تاریخی)');
+    return;
+  }
+  assert(/۰ ارجاعِ کهنهٔ تازه|0 ارجاعِ کهنهٔ تازه/.test(out),
+    'خروجیِ docs-refs-check غیرمنتظره است: ' + out.slice(0, 200));
+});
+
 // ───────────────────────────── یکپارچگی دفترچهٔ تحویل
 group('یکپارچگی handoff');
 test('دفترچهٔ canonical سالم و فقط-افزودنی است', () => {

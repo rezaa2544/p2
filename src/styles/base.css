@@ -1,6 +1,12 @@
 
 
 /* اعداد: ارقام هم‌عرض و خوانا برای جدول‌ها و آمار */
+/* ── قاعدهٔ توکنِ متن (M15-01 / Chat1، ۲۰۲۶-۱۰-۲۷) ─────────────────────
+   --primary رنگِ «پرکردن» است: #fff رویِ آن AA می‌دهد، ولی خودش رویِ
+   سطوحِ رنگیِ تم (--primary-soft / --surface-2) به ۴٫۵ نمی‌رسد
+   (theme-3: #1668f0 روی #e3edff = ۴٫۱۷). هر جا --primary رنگِ **متن** بود،
+   توکنِ --primary-dark جایگزین شد تا متن در همهٔ تم‌ها AA بماند.
+   گاردِ خودکار: tests/a11y-contrast-tokens.js (بدونِ مرورگر، قطعی). */
 :root{--bg:#f2f6fd;--surface:#fff;--surface-2:#f6f9ff;--border:#c2cee4;--border-strong:#a9b8d4;--text:#10203a;--muted:#556074;--primary:#1668f0;--primary-dark:#0f4fc4;--primary-soft:#e7f0ff;--brand-cyan:#16b3f0;--brand-orange:#f7941d;--brand-green:#5cb531;--brand-navy:#14225a;--green:#0a6f46;--green-soft:#e6f7f0;--red:#b7253f;--red-soft:#fdecef;--amber:#96590a;--amber-soft:#fdf3e2;--green-text:#0a6f46;--red-text:#b7253f;--amber-text:#96590a;--purple:#7b5cf0;--purple-soft:#f0ecff;--radius:16px;--shadow:0 1px 3px rgba(16,34,90,.10),0 10px 28px -16px rgba(16,34,90,.22);--shadow-lg:0 20px 50px -22px rgba(16,34,90,.35)}
 *{box-sizing:border-box}html,body{height:100%;margin:0;max-width:100%;overflow-x:hidden}
 img{max-width:100%}
@@ -68,7 +74,7 @@ a{color:inherit;text-decoration:none}
 .jd.sel{background:var(--primary);color:#fff;font-weight:800}
 .jdate-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;border-top:1px solid var(--border);padding-top:8px}
 .sec-title{font-size:13.5px;font-weight:800;color:var(--primary-dark);background:var(--primary-soft);padding:7px 11px;border-radius:9px;margin:14px 0 10px}
-.back-btn{font-size:18px;line-height:1;padding:6px 12px;font-weight:800;color:var(--primary);border-color:var(--primary-soft);background:var(--primary-soft)}
+.back-btn{font-size:18px;line-height:1;padding:6px 12px;font-weight:800;color:var(--primary-dark);border-color:var(--primary-soft);background:var(--primary-soft)}
 .back-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
 .imp-bar{background:linear-gradient(90deg,#f7941d,#f5b942);color:#3a2400;padding:9px 16px;display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:700;flex-wrap:wrap}
 .imp-bar button{background:#14225a;color:#fff;border:none;border-radius:9px;padding:7px 14px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px}
@@ -140,7 +146,7 @@ tbody tr:hover{background:#eef4ff}
 .chart .col span{font-size:10px;color:var(--muted);flex:none}
 .tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);overflow-x:auto;width:100%}
 .tab{padding:9px 14px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);white-space:nowrap}
-.tab.active{color:var(--primary);border-color:var(--primary)}
+.tab.active{color:var(--primary-dark);border-color:var(--primary-dark)}
 /* Round 77: compact buttons — designed for a standard phone screen.
    Row = [حاضر][غایب][تاخیر] + visual gap + [🚪 خروج از کلاس].
    No button shows an active state before anything is marked. */
@@ -213,7 +219,7 @@ tbody tr:hover{background:#eef4ff}
 .sync-chip.warn{color:var(--red-text);border-color:var(--red-soft);background:var(--red-soft)}
 .sync-chip.off{color:#64748b;background:#eef2f7;border-color:#dbe3ee}
 .sync-chip.off .dot{background:#94a3b8}
-.sync-chip.busy{color:var(--primary);border-color:var(--primary-soft);background:var(--primary-soft)}
+.sync-chip.busy{color:var(--primary-dark);border-color:var(--primary-soft);background:var(--primary-soft)}
 .sync-chip .spin{width:11px;height:11px;border-radius:50%;flex:none;
   border:2px solid var(--primary-soft);border-top-color:var(--primary);animation:spin .7s linear infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -525,7 +531,26 @@ body::-webkit-scrollbar-thumb:hover{ background:#a8b4c8 }
 /* پرشدگی میلهٔ عمودی با درخشش بالا می‌آید */
 @keyframes hgtFillUp{ from{ opacity:0; transform:translateY(8px); } }
 .hgt-fill{ animation:hgtFillUp .85s cubic-bezier(.25,.8,.3,1); }
+/* ── prefers-reduced-motion: reduce — خاموشیِ کاملِ حرکت (WCAG 2.3.3) ──
+   پیش از این فقط سه انیمیشنِ .hgt-* خاموش می‌شد و ۹ keyframe + ۳۸ transitionِ
+   دیگر (pop/fslide/pulse/spin/sh/att-pulse/fieldShake و transitionهایِ
+   background/color رویِ nav-item، att-btn، btn، tab، pager …) همچنان اجرا
+   می‌شدند. axe-core رنگِ «محاسبه‌شده» را در لحظهٔ نمونه‌برداری می‌خواند؛ پس
+   یک اسکن که وسطِ یک fade/transition بیفتد رنگِ آمیخته (مثلاً toast با
+   opacity≈۰٫۳ یا رنگی میانِ --muted و --green-text) می‌بیند و color-contrast
+   به‌صورتِ متناوب serious می‌شود. قاعدهٔ زیر همهٔ آن‌ها را قطع می‌کند:
+   مدت‌زمان عملاً صفر و تک‌تکرار ⇒ عنصر بلافاصله در حالتِ نهایی رنگ می‌شود
+   (نه در وضعیتِ نیمه‌کاره) و انیمیشنِ بی‌پایان (pulse/spin/sh) هم تمام
+   می‌شود. این یک بهبودِ واقعیِ دسترس‌پذیری است، نه خفه‌کردنِ آزمون. */
 @media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms !important;
+    animation-delay:0ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;
+    transition-delay:0ms !important;
+    scroll-behavior:auto !important;
+  }
   .hgt-needle,.hgt-dot,.hgt-fill{ animation:none; }
 }
 

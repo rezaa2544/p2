@@ -1,3 +1,64 @@
+# M15-01 mission 2 — evidence recovery & gate reconciliation — 2026-10-27 (later)
+
+**Final measured head of mission 2:** `fe2edfd` (tree `aef00aee`), PR #498. `pull_request` lane:
+**Node.js CI success** ([40609644397](https://github.com/rezaa2544/p2/actions/runs/40609644397)),
+**Strict Verification Gate success** ([40609644208](https://github.com/rezaa2544/p2/actions/runs/40609644208)),
+**Security Program success** ([40609644424](https://github.com/rezaa2544/p2/actions/runs/40609644424)) —
+i.e. the canonical suite is green on a runner that has PostgreSQL, Redis and Chromium, which is what
+makes the 62 local reds provably environmental. Local on the same head: gate 708/1 push (V-06 only),
+709/0 `pull_request`, provenance VALID, `npm test` 40/40 + 31/31 + smoke 547/547, docs-refs 29/29,
+handoff-integrity 4/4. Verdict unchanged: **M15-01 BLOCKED — OWNER/INFRASTRUCTURE ACTION PROVEN
+NECESSARY**; OD-3 is now closed by protocol (no owner action), and three defects of this mission's
+own making (docs-refs stale reference, SI-013-B scanner blind spot, `server1` cleanup race) were
+found and fixed with controls. Full matrix: `docs/M15-01_RECOVERY_REPORT_2026-10-27.md` §9–§10.
+
+**Binding:** branch `arena/f75d9f00-p2`, PR **#498**. `origin/main` re-read at mission start: `fff1beae09ff45d69e554f8c000a9d15b75d968c` (tree `07979cd4`). PR #497 merged (owner-intervention policy); PR #495 closed unmerged; PR #484 moved during the session (`34c654d1` → `5741249d`) and was left untouched. Candidate `78b65ce2…` **does not exist** (GitHub 422; no local object, no branch contains it). Full matrix: `docs/M15-01_RECOVERY_REPORT_2026-10-27.md` §9.
+
+## Closed with measurements in this mission
+
+- **The "698/0 but exit 1" contradiction, explained to the line.** `fff1beae:tools/strict-verification-gate.js:654` refused the verdict when the registry *headline* sat below the verifying band (`nothingVerified`), even with `fail === 0`, and the blocker text it printed named the wrong cause. The companion `exit 2` was the audit's own retired rule (29 UNBOUND). One module now decides; the audit's header no longer describes the retired design; the two tools agree on every case in `verification-binding-contract.test.js`.
+- **OD-3 retired by protocol, with real-git evidence (L1..L4):** merge-commit landing keeps the binding (2 parents, exit 0); a squash landing is rejected because the source stops being an ancestor (re-run + re-emit); a registry commit may carry non-witnessed files; the same commit is rejected when the extra file is witnessed.
+- **A real defect of mine, caught by the canonical runner:** `false-green-defense` C6 asserted the *live* registry was stale, so it went red the moment the registry became correctly bound. It now builds its own stale fixture **and** an accept-control (a defense must not pass by rejecting everything).
+- **A second real defect:** the dependency repair invalidated the tracked SPDX SBOM / license inventory / drift baseline (`SC-01`, `SC-05`). Regenerated with `tools/supply-chain-audit.js --write`; `tests/supply-chain.js` is 7/7 with the simulated-drift detector still firing.
+- **Raw-log recovery attempts recorded, not skipped:** run `40491800409` → 0 artifacts, run-level and job-level log endpoints both `EOF`, step conclusions only (77/77). A fresh canonical run was executed locally instead.
+
+## Still open / blocked
+
+- **Canonical suite:** local run = **565 GREEN / 62 RED** in 5 896 s, every red classified from its own log (37 PostgreSQL, 15 Redis, 3 browser, 1 Docker, 22 honest NOT-RUN, 1 real defect now fixed). A local run cannot exceed 626/627 here because the sandbox has no PostgreSQL, Redis or Chromium; the authoritative job is `Node.js CI / build (22.x)`.
+- **E4-01..E4-07: 0/7 BLOCKED** — per-criterion table with inputs/commands/expected evidence in the report §9.5; probe `exit 2`, `report_sha256` recorded. E3 is never substituted.
+- **Fortify / APIsec / Jscrambler:** each fails inside its own "fail closed when credentials are missing" step (workflow line cited in the report §9.6); no credential exists in this environment and the token cannot even list secrets (403).
+- **Independent review:** unavailable — the model declares one `arena` slot, so `CERTIFIED` is unreachable (V-18). Recorded as a blocker, not replaced by a bot comment.
+- **Notion:** connector returns `auth_error` ("connection is no longer valid"); `notion-sync.yml` still reconciles status into Notion with a built-in read-back.
+- **OD-2** (push trigger vs V-06; measured 1/709 fail on push, 0/709 on PR) and **OD-4** (ratify 32 recommended) remain owner decisions. **SI-013**: active tree 13/13 and 0 unclassified long-hex strings; the history/rotation question remains the owner's. **Production truth gate**: skipped because `secrets.DATABASE_URL` is absent.
+
+**Decision: M15-01 BLOCKED — OWNER/INFRASTRUCTURE ACTION PROVEN NECESSARY.** M15-02 / Issue #468 untouched.
+
+---
+
+# M15-01 recovery — 2026-10-27
+
+**Binding:** branch `arena/f75d9f00-p2`, PR **#498**, head `06ba3da3a16f8cc60e0c4ec9039f1029b65f91cb`, registry evidence produced on `523b6d366157c202335ff385ed1808f241798389` (single-parent registry-only commit on top of it). Full matrix: `docs/M15-01_RECOVERY_REPORT_2026-10-27.md`.
+
+## Closed by engineering, with measurements
+
+- **Strict gate + provenance audit now share one rule** (`tools/lib/verification-witness.js`). Before: gate `633 pass / 65 fail` exit 1 on a clean `fff1beae`, audit `29 UNBOUND` exit 2 on the same file, from two different implementations. After: gate `709 pass / 0 fail` exit 0, audit `VALID (lineage)` exit 0, and a README-only commit on top keeps 709/0 instead of re-breaking 65 checks. Binding modes: `legacy` (unchanged) and `lineage` (source SHA must be an ancestor; witness path set recomputed from the registry so it cannot be shrunk; blob sha1 must match at the source commit and at HEAD).
+- **V-15 vs V-16 joint unsatisfiability removed** by measuring closure against an explicit `closure_scope` (V-19a..V-19e) with an honest `blocked_items` count. The 29 legacy `A-01..A-29` records stay blocked and are counted; only `M15-01-A/B/C` are `RUNTIME_VERIFIED`, inside the declared scope, as self-review (`CERTIFIED 0`).
+- **`main` unbuildable since `fff1beae`** — `npm ci` failed with ERESOLVE (`@opentelemetry/resources@3.0.0` peers vs `context-async-hooks@2.12.0`/`sdk-trace-node@2.12.0`). Restoring the last resolvable line repaired `npm ci`; on CI the STRICT gate now passes (run `40521544265`) and `Runtime Reliability`, `Security Program`, `observability-regression` are green. Finishing the OTel major upgrade remains separate work.
+- **a11y `serious: color-contrast` flake root-caused to motion**, not colour: `reducedMotion:'reduce'` neutralised only 3 `.hgt-*` rules out of 12 keyframes and 38 transitions, and the login scan had no settle wait while the rest used a `150 ms` magic wait shorter than `pop`/`fslide`. Full reduced-motion guard + fail-closed motion barrier (`tests/helpers/a11y-quiescence.js`) before every scan; `tests/a11y-motion-determinism.js` 46 checks with 12 in-process mutations. **The real-browser run is NOT RUN** — playwright/axe are not dependencies, so the harness exits 3 everywhere.
+
+## Still blocked (owner / infrastructure), with the proof attached
+
+- **E4-01..E4-07: 0/7 BLOCKED** — `node tools/m15-01-e4-verify.js` on `06ba3da3` → exit 2, `counts {total:7, pass:0, blocked:7}`, `report_sha256=562832b2c3b3dba3332e1eb1fe4db3e61c053748777a1a5c1a8a62c18c4de98b`. Multi-host staging + secrets do not exist here.
+- **Fortify / APIsec / Jscrambler** fail in their own "fail closed when credentials are missing" steps (secrets `FOD_*`, `apisec_*`, `JSCRAMBLER_*`). No code change substitutes.
+- **OD-2** (gate on `push: arena/**` vs V-06 push-mode ancestry): measured that a branch push fails *only* on V-06, which cannot hold for an unmerged head; the PR lane passes. Deliberately untouched — it is an owner decision between dropping a trigger and altering a security contract. **OD-3** (single-parent landing) satisfied for this branch but still unratified repo-wide. **OD-4** (official count 29/32/39) still open; closure no longer depends on it.
+- **SI-013**: `tests/secret-scan.js` 13/13 on this SHA (the single exception is the mutation-tested `"checksum"`-only skip inside `docs/arena-evidence/**`); the history/rotation/notification question is still the owner's.
+- **Independent review**: `reviews_recorded.arena` is self-review; with one reviewer slot `INDEPENDENTLY_VERIFIED`/`CERTIFIED` are unreachable (V-18). **PR #484** remains OPEN/UNSTABLE at `b31e2bdb` on its own branch — not modified, not merged, not closed here.
+- **Raw CI logs remain unreachable from this sandbox** (`EOF` from `results-receiver.actions.githubusercontent.com` / `productionresultssa17.blob.core.windows.net`); the readable layer is step-level conclusions, and suite-level numbers quoted come from the same commit run locally and committed as `docs/verification/evidence/*.log` (hashed into the registry witness). Run `40491800409` has zero artifacts and is 4 commits behind `main`.
+
+**Decision: M15-01 BLOCKED — OWNER/INFRASTRUCTURE ACTION PROVEN NECESSARY.** M15-02 / Issue #468 untouched.
+
+---
+
 # M15-01 current-head revalidation — مستندات و شواهد محلی — ۲۰۲۶-۱۰-۱۹
 
 **Mission:** اجرای ترتیبِ صریحِ مالک، M15-01 سپس M15-02 · **HEAD مبنا:** `8f6e7d5f0a823a70a58f85f7803a4d956db350ab` · **شاخه:** `arena/c33a022c-p2`.

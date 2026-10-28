@@ -159,7 +159,20 @@ const unfa = (str) => parseInt(String(str).split('').map((c) => {
   const i = FA.indexOf(c); return i >= 0 ? String(i) : c;
 }).join(''), 10);
 const fa = (n) => String(n).split('').map((c) => FA[+c]).join('');
-const COUNT_RE = /([۰-۹0-9]+)\s*(?:ارجاعِ کهنه|موردِ تاریخی)/g;
+/* ── M15-01 mission 2 (Chat1) — false positive that hit three different chats ──
+   The phrase «ارجاعِ کهنه» appears in TWO different numbers that the tool prints:
+     • «۲۵۵ ارجاعِ کهنه … خطِ پایه (بدهیِ تاریخی)»   → a claim about the baseline
+     • «۰ ارجاعِ کهنهٔ تازه»                            → a claim about FRESH refs
+   Any document that quotes the tool's own success line therefore looked like it
+   was asserting "the baseline is 0" and went red — measured on
+   docs/verification/evidence/M15-01_EXECUTION_MISSION2_2026-10-27.md:402
+   (`| tools/docs-refs-check.js | 0 | ۰ ارجاعِ کهنهٔ تازه |`) and twice in my own
+   report before that. The number is checked; the *phrase* is what is wrong, so
+   the rule now requires the count to be a baseline claim: the fresh-reference
+   phrasing («… ارجاعِ کهنهٔ تازه») is excluded by lookahead. Nothing is
+   weakened — a document that asserts a wrong baseline still fails, as the
+   control below proves with ۱۱۸ (the original bug this group exists for). */
+const COUNT_RE = /([۰-۹0-9]+)\s*(?:ارجاعِ کهنه|موردِ تاریخی)(?!ٔ?\s*تازه)/g;
 const claims = [];
 const docTexts = mod.allDocs().map((d) => ({ rel: path.relative(ROOT, d).split(path.sep).join('/'), text: fs.readFileSync(d, 'utf8') }));
 const isHistoricalLog = (rel) => rel.startsWith('docs/daily-') || rel.startsWith('docs/audit/history/') || /^docs\/DOCS_FREEZE_v1\.0\.0-rc(?!44)/.test(rel);
@@ -170,6 +183,26 @@ chk('دستِ‌کم یک سند شمارِ خطِ پایه را نوشته', cl
 const wrong = claims.filter((c) => base && c.n !== base.count);
 chk('همهٔ شمارهای نوشته‌شده با فایلِ خطِ پایه می‌خوانند',
   wrong.length === 0 && !!base, wrong.map((c) => `${c.doc}=${c.n}`).join('، ') + ` (درست: ${base && base.count})`);
+/* ── کنترلِ مثبت/منفی برایِ همان قاعده (M15-01 mission 2) ─────────────────
+   بدونِ این کنترل، «اصلاحِ» بالا می‌توانست خودش بی‌صدا کردنِ گیت باشد. */
+const claimOf = (text) => {
+  const out = [];
+  const re = new RegExp(COUNT_RE.source, 'g');
+  let m;
+  while ((m = re.exec(String(text)))) out.push(unfa(m[1]));
+  return out;
+};
+const CTRL = [
+  ['| `tools/docs-refs-check.js` | 0 | ۰ ارجاعِ کهنهٔ تازه |', [], 'نقلِ خروجیِ ابزار («تازه») ادعایِ خطِ پایه نیست'],
+  ['۰ ارجاعِ کهنهٔ تازه', [], 'همان عبارت بدونِ جدول'],
+  ['سند می‌گوید ۱۱۸ ارجاعِ کهنه در مخزن', [118], 'ادعایِ غلطِ خطِ پایه همچنان گرفته می‌شود'],
+  ['۲۵۵ موردِ تاریخی ثبت شده است', [255], 'ادعایِ درست خوانده می‌شود'],
+  ['ارجاعِ کهنهٔ تازه: ۰', [], 'ترتیبِ برعکس هم ادعا نیست']
+];
+const ctrlBad = CTRL.filter(([txt, want]) => JSON.stringify(claimOf(txt)) !== JSON.stringify(want));
+chk('کنترلِ مثبت/منفیِ شمارشِ خطِ پایه (۴ منفی، ۱ مثبت)', ctrlBad.length === 0,
+  ctrlBad.map(([txt]) => JSON.stringify(txt).slice(0, 60) + ' → ' + JSON.stringify(claimOf(txt))).join(' | '));
+
 chk('شمارِ درست با رقمِ فارسی در سند نوشته شده',
   !!base && docTexts.some((d) => d.text.includes(fa(base.count) + ' ارجاعِ کهنه') || d.text.includes(fa(base.count) + ' موردِ تاریخی')),
   base ? fa(base.count) : '—');

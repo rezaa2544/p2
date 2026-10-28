@@ -9,6 +9,10 @@ const REG = path.join(ROOT, 'docs', 'verification', 'VERIFICATION_REGISTRY.json'
 const ALLOW = path.join(ROOT, 'docs', 'verification', 'FALSE_GREEN_ALLOWLIST.json');
 const SCHEMA = path.join(ROOT, 'docs', 'verification', 'VERIFICATION_EVIDENCE_SCHEMA.json');
 const ALERT_RULES = path.join(ROOT, 'infra', 'observability', 'alert-rules.yml');
+/* ONE binding rule, shared with tools/registry-provenance.js and the builder — see
+   tools/lib/verification-witness.js. Two tools disagreeing about what "bound" means is
+   exactly the M15-01 defect this indirection removes. */
+const WITNESS = require('./lib/verification-witness');
 
 /* canonical contracts (pinned — must equal the schema file, see V-12 below) */
 const CANONICAL_STATUSES = ['UNKNOWN', 'TESTED', 'RUNTIME_VERIFIED', 'ADVERSARIAL_VERIFIED', 'INDEPENDENTLY_VERIFIED', 'CERTIFIED'];
@@ -24,7 +28,7 @@ const ADVERSARIAL_KINDS = ['negative_test', 'adversarial_test', 'failure_recover
    there as an annotation. Everything that rejects a claim stays: V-02 binding + artifact hashes,
    V-14/V-06 ancestry, V-11/V-12 schema + evidence completeness, G14/V-01 completeness,
    V-17 witness scoping, V-18 status reach, V-15/V-15b headline ceilings, V-16, G7 false-green. */
-const REQUIRED_REGISTRY_KEYS = ['schema_version', 'policy', 'status', 'head_bound', 'required_reviewers', 'allowed_statuses', 'reviews_recorded', 'expected_ids', 'items'];
+const REQUIRED_REGISTRY_KEYS = ['schema_version', 'policy', 'status', 'head_bound', 'binding_mode', 'witness', 'closure_scope', 'required_reviewers', 'allowed_statuses', 'reviews_recorded', 'expected_ids', 'items'];
 const REQUIRED_ITEM_KEYS = ['id', 'status', 'requirement', 'head_sha', 'reviews', 'known_limitations', 'evidence'];
 const REQUIRED_EVIDENCE_KEYS = ['reviewer', 'kind', 'command', 'exit_code', 'checks_total', 'checks_passed', 'artifact', 'sha256', 'head_sha', 'runtime', 'ts'];
 /* M15-01 addendum: an honestly BLOCKED item must be representable. Without a
@@ -84,26 +88,34 @@ console.log('==== PAYESH STRICT VERIFICATION GATE ====');
 chk('G1 current HEAD known', /^[0-9a-f]{40}$/.test(head), head);
 chk('V-02 evidence binding mode explicit', !metadataOnlyBinding || evidenceHead !== head, metadataBindingReason);
 
-/* ── V-14: the evidence SHA must be a real commit on THIS history line.
-   A registry may not point its binding at a SHA that does not exist here (fetched
-   or not), or at a commit that is not an ancestor of the checkout. Without this,
-   the only defence against a foreign/stale SHA is the V-02 equality test, which
-   reports "mismatch" but cannot distinguish a typo from an old release line. */
-let evidenceShaIsCommit = false;
-if (isSha1(evidenceHead)) {
-  const isCommit = cp.spawnSync('git', ['cat-file', '-e', evidenceHead + '^{commit}'], { cwd: ROOT });
-  const isAncestor = isCommit.status === 0
-    ? cp.spawnSync('git', ['merge-base', '--is-ancestor', evidenceHead, head], { cwd: ROOT })
-    : { status: 1 };
-  evidenceShaIsCommit = isCommit.status === 0 && isAncestor.status === 0;
-}
-chk('V-14 evidence SHA is a commit in this history line', evidenceShaIsCommit,
-  'evidence_sha=' + (evidenceHead || '(none)') + ' checkout_head=' + (head || '(none)'));
+/* V-14 and the registry-level V-02 binding are computed AFTER the registry is parsed,
+   because both now depend on the registry's own binding mode and witness set. */
 chk('G2 mandatory policy exists', fs.existsSync(path.join(ROOT, 'docs', 'STRICT_VERIFICATION_GATE.md')));
 chk('G3 registry exists', fs.existsSync(REG));
 let reg = null; try { reg = JSON.parse(read(REG)); } catch (e) { }
 chk('G4 registry valid JSON', !!reg);
 chk('G5 Arena is the sole required AI reviewer', !!reg && norm(reg.required_reviewers) === norm(REVIEWERS));
+/* ── V-14 + V-02 (binding): one rule, computed by the shared witness module.
+   legacy  : head_bound must equal the evidence head (checkout HEAD, or the parent of
+             a registry-only metadata commit) — the pre-M15-01 rule, unchanged.
+   lineage : head_bound is a source commit whose WITNESS SET is still byte-identical at
+             the checkout; the set is recomputed from the registry so it cannot be
+             shrunk, and any witness path that changed makes the evidence stale. */
+let binding = { mode: 'none', evidenceSha: '', ok: false, problems: ['registry absent'], witness: null };
+if (reg && isObj(reg)) binding = WITNESS.verifyBinding(ROOT, reg, head, evidenceHead, metadataOnlyBinding);
+if (binding.evidenceSha) evidenceHead = binding.evidenceSha;
+chk('V-14 evidence SHA is a commit on this history line',
+  /^[0-9a-f]{40}$/.test(binding.evidenceSha) && WITNESS.ancestry(ROOT, binding.evidenceSha, head).isAncestor,
+  'evidence_sha=' + (binding.evidenceSha || '(none)') + ' checkout_head=' + (head || '(none)'));
+chk('V-02 registry binding valid (' + binding.mode + ' mode)',
+  binding.ok, binding.problems.slice(0, 4).join(' | ') ||
+  (binding.mode === 'lineage'
+    ? 'witness ' + (binding.witness ? binding.witness.paths.length : 0) + ' paths identical at ' + String(binding.evidenceSha).slice(0, 12) + ' and HEAD'
+    : 'head_bound === ' + String(binding.evidenceSha).slice(0, 12)));
+if (binding.mode === 'lineage' && binding.witness) {
+  console.log('  NOTE witness scope: ' + binding.witness.paths.length + ' path(s) recomputed from the registry; ' +
+    binding.witness.changedSinceSource.length + ' changed since the evidence commit');
+}
 /* Honest disclosure, not a check: with a single reviewer slot the pairwise-distinct
    checks (V-03, G16) cannot fail. Independence is therefore not obtainable from AI
    review under this model; the compensating controls are G5 (one slot only), V-15 (the
@@ -276,7 +288,6 @@ if (reg && isObj(reg)) {
     norm(reg.allowed_statuses));
   const top = String(reg.status || '');
   chk('V-05 top-level status in machine & not BLOCKED*', CANONICAL_STATUSES.includes(top) && !/^BLOCKED/i.test(top), top || '(absent)');
-  chk('V-02 registry head_bound matches immutable evidence SHA', reg.head_bound === evidenceHead, 'head_bound=' + reg.head_bound + ' evidence_sha=' + evidenceHead + ' checkout_head=' + head + (metadataOnlyBinding ? ' [metadata-only]' : ''));
   /* V-10 (human governance) retired here by the owner ruling of 2026-10-27 — see the note on
      REQUIRED_REGISTRY_KEYS and docs/STRICT_VERIFICATION_GATE.md. No check reads human_governance
      any more, so neither its absence nor an unapproved block can redden the gate, and equally:
@@ -317,21 +328,73 @@ if (reg && isObj(reg)) {
     }
   }
 
-  /* ── V-15: the registry may not out-claim its own items.
-     Without this, a registry whose 29 items are all UNKNOWN could still carry
-     status CERTIFIED at the top, and a single blocked item could be buried under
-     a green headline. The headline is bounded by the weakest recorded item. */
+  /* ── V-19 + V-15/V-15b (M15-01 recovery): the headline is bounded by the CLOSURE SCOPE.
+     The pre-recovery rules were jointly unsatisfiable, and that is why main could never be
+     green: V-15 required status <= the weakest of ALL items (29 legacy items are honestly
+     UNKNOWN), while V-16 required status >= RUNTIME_VERIFIED. A registry that refused to
+     promote blocked items therefore had no legal headline — the gate punished honesty and
+     invited exactly the invention the policy forbids.
+     The fix is not a relaxation: the registry must now NAME the ids whose verification
+     constitutes closure (closure_scope). The headline is bounded by the weakest in-scope
+     item (V-15), every in-scope item must really be verified with an Arena PASS (V-19b),
+     no item may claim a verifying status outside the scope (V-19c), no blocked item may be
+     smuggled into the scope (V-19d), and the count of blocked items must be declared
+     (V-19e) so a blockage cannot be hidden by omitting it from a summary. */
   const rankOf = (s) => (Object.prototype.hasOwnProperty.call(STATUS_RANK, String(s)) ? STATUS_RANK[String(s)] : -1);
   const topRank = rankOf(reg.status);
-  const itemRanks = Array.isArray(reg.items) ? reg.items.map((it) => rankOf(isObj(it) ? it.status : undefined)) : [];
-  const minItemRank = itemRanks.length ? Math.min(...itemRanks) : -1;
-  chk('V-15 registry status is bounded by its weakest item', topRank >= 0 && minItemRank >= 0 && topRank <= minItemRank,
-    'top=' + reg.status + '(' + topRank + ') weakest_item_rank=' + minItemRank);
   const blockedItems = Array.isArray(reg.items)
     ? reg.items.filter((it) => isObj(it) && (it.blocked === true || (isObj(it.arena) && it.arena.status === 'BLOCKED')))
     : [];
-  chk('V-15b blocked items cap the registry below the verifying band', blockedItems.length === 0 || topRank <= STATUS_RANK.TESTED,
+  const itemList19 = Array.isArray(reg.items) ? reg.items : [];
+  const scope = Array.isArray(reg.closure_scope) ? reg.closure_scope.map(String) : [];
+  const scopeProblems = [];
+  /* an EMPTY scope is legal and honest ("nothing is verified yet"); V-16 then refuses the
+     green verdict. What is not legal is a scope that lies about what it contains. */
+  if (!Array.isArray(reg.closure_scope)) scopeProblems.push('closure_scope must be an array');
+  if (new Set(scope).size !== scope.length) scopeProblems.push('closure_scope has duplicate ids');
+  const expected19 = Array.isArray(reg.expected_ids) ? reg.expected_ids.map(String) : [];
+  const scopeUndeclared = scope.filter((id) => !expected19.includes(id));
+  if (scopeUndeclared.length) scopeProblems.push('closure_scope names ids outside expected_ids: ' + scopeUndeclared.join(','));
+  const byId = new Map(itemList19.filter((it) => isObj(it)).map((it) => [String(it.id), it]));
+  const scopeMissing = scope.filter((id) => !byId.has(id));
+  chk('V-19a closure_scope is a declared, unique subset of expected_ids', scopeProblems.length === 0,
+    scopeProblems.join(' | ') || scope.length + ' id(s) in scope');
+
+  const inScopeUnverified = [];
+  const inScopeBlocked = [];
+  for (const id of scope) {
+    const it = byId.get(id);
+    if (!it) continue;
+    if (it.blocked === true) { inScopeBlocked.push(id); continue; }
+    const okRank = rankOf(it.status) >= VERIFYING_MIN_RANK;
+    const okPass = isObj(it.arena) && it.arena.status === 'PASS';
+    if (!okRank || !okPass) inScopeUnverified.push(id + '(' + String(it.status) + (okPass ? '' : '/no-arena-pass') + ')');
+  }
+  chk('V-19b every in-scope item is verified with an Arena PASS', inScopeUnverified.length === 0 && inScopeBlocked.length === 0 && scopeMissing.length === 0,
+    [inScopeUnverified.length ? 'unverified: ' + inScopeUnverified.join(',') : '',
+     inScopeBlocked.length ? 'blocked in scope: ' + inScopeBlocked.join(',') : '',
+     scopeMissing.length ? 'absent: ' + scopeMissing.join(',') : ''].filter(Boolean).join(' | ') || 'all ' + scope.length + ' verified');
+
+  const offScopeClaims = itemList19.filter((it) => isObj(it) && rankOf(it.status) >= VERIFYING_MIN_RANK && !scope.includes(String(it.id))).map((it) => String(it.id));
+  chk('V-19c no item claims a verifying status outside closure_scope', offScopeClaims.length === 0,
+    offScopeClaims.length ? 'declare them in closure_scope or drop the claim: ' + offScopeClaims.join(',') : '');
+
+  const blockedInScope = blockedItems.filter((it) => scope.includes(String(it.id))).map((it) => String(it.id));
+  chk('V-19d blocked items are outside closure_scope', blockedInScope.length === 0,
+    blockedInScope.length ? 'blocked items cannot be in the closure scope: ' + blockedInScope.join(',') : blockedItems.length + ' blocked item(s), all out of scope');
+
+  chk('V-19e declared blocked_items count matches the registry', reg.blocked_items === blockedItems.length,
+    'declared=' + reg.blocked_items + ' actual=' + blockedItems.length);
+
+  const scopeRanks = scope.map((id) => rankOf(byId.has(id) ? byId.get(id).status : undefined)).filter((r) => r >= 0);
+  const minScopeRank = scopeRanks.length ? Math.min.apply(null, scopeRanks) : -1;
+  /* with an empty scope there is no weakest item to be bounded by, so the headline must
+     stay at UNKNOWN — that is the honest "we verify nothing" headline (V-16 then refuses green) */
+  chk('V-15 registry status is bounded by its weakest in-scope item', topRank >= 0 && (scope.length === 0 ? topRank === 0 : topRank <= minScopeRank),
+    'top=' + reg.status + '(' + topRank + ') weakest_in_scope_rank=' + minScopeRank + ' scope=' + scope.length);
+  chk('V-15b a registry with blocked items cannot be CERTIFIED', blockedItems.length === 0 || topRank < STATUS_RANK.CERTIFIED,
     'blocked_items=' + blockedItems.length + ' top=' + reg.status);
+  console.log('  INFO scope: ' + scope.length + ' verified / ' + blockedItems.length + ' blocked / ' + itemList19.length + ' items total');
 
   /* ── V-09b/V-09c: recorded reviews must be attributable to a known slot and be
      real, distinct records. A reviewer slot invented in reviews_recorded (the
@@ -648,17 +711,27 @@ const certified = reg && Array.isArray(reg.items) ? reg.items.filter((x) => x &&
    least one item is in the verifying band and carries an Arena PASS. */
 const itemList = reg && Array.isArray(reg.items) ? reg.items : [];
 const rankOfStatus = (s) => (Object.prototype.hasOwnProperty.call(STATUS_RANK, String(s)) ? STATUS_RANK[String(s)] : -1);
-const verifiedItems = itemList.filter((x) => isObj(x) &&
-  rankOfStatus(x.status) >= VERIFYING_MIN_RANK && isObj(x.arena) && x.arena.status === 'PASS');
+const scopeIds = reg && Array.isArray(reg.closure_scope) ? reg.closure_scope.map(String) : [];
+const isVerified = (x) => isObj(x) && rankOfStatus(x.status) >= VERIFYING_MIN_RANK && isObj(x.arena) && x.arena.status === 'PASS';
+const scopeItems = itemList.filter((x) => isObj(x) && scopeIds.includes(String(x.id)));
+const verifiedInScope = scopeItems.filter(isVerified);
+const verifiedItems = itemList.filter(isVerified); void verifiedItems;
+const blockedCount = itemList.filter((x) => isObj(x) && (x.blocked === true || (isObj(x.arena) && x.arena.status === 'BLOCKED'))).length;
 const registryRank = reg ? rankOfStatus(reg.status) : -1;
-const nothingVerified = fail === 0 && (verifiedItems.length === 0 || registryRank < VERIFYING_MIN_RANK);
+/* V-16 (unchanged in intent): a conformant registry that verifies nothing is not a green
+   gate. What changed is that "verifies nothing" is now measured against the DECLARED
+   closure scope, so an honest registry can be green for what it verified while its
+   blocked items stay visible and counted. */
+const nothingVerified = fail === 0 &&
+  (scopeIds.length === 0 || verifiedInScope.length !== scopeItems.length || verifiedInScope.length === 0 || registryRank < VERIFYING_MIN_RANK);
 console.log('RESULT ' + pass + ' pass / ' + fail + ' fail');
 console.log('HEAD ' + head);
 console.log('EVIDENCE_SHA ' + evidenceHead + (metadataOnlyBinding ? ' (metadata-only registry commit)' : ''));
 console.log('CERTIFIED ' + certified);
 console.log('CONTRACT ' + (fail ? 'FAIL' : 'PASS'));
-console.log('VERIFIED_ITEMS ' + verifiedItems.length + '/' + itemList.length + ' at registry status ' + String(reg && reg.status));
+console.log('VERIFIED_ITEMS ' + verifiedInScope.length + '/' + itemList.length + ' (in closure scope: ' + verifiedInScope.length + '/' + scopeItems.length +
+  ', blocked: ' + blockedCount + ') at registry status ' + String(reg && reg.status));
 console.log('VERDICT ' + (fail || nothingVerified ? 'NOT VERIFIED' : 'VERIFIED'));
 if (fail) { console.log('BLOCKERS'); failures.forEach((x) => console.log(' - ' + x.n + (x.d ? ' — ' + x.d : ''))); }
-if (nothingVerified) console.log('BLOCKER — V-16 registry conforms to the schema but verifies nothing (no item in the verifying band)');
+if (nothingVerified) console.log('BLOCKER — V-16 registry conforms to the schema but verifies nothing in its declared closure scope');
 process.exit(fail || nothingVerified ? 1 : 0);

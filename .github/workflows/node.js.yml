@@ -129,8 +129,26 @@ jobs:
     # and its verdicts are always surfaced; the lint failure still fails the
     # job exactly as before (no continue-on-error, no gate weakening).
     - name: Comprehensive canonical regression runner
+      id: canonical
       timeout-minutes: 120
       run: npm run test:all
+    # M15-01 mission 2: the canonical runner's own log was unreachable twice from
+    # the evidence environment (run 40491800409 had zero artifacts; the run- and
+    # job-level log endpoints returned EOF), which left "step conclusions only"
+    # as the entire record of an 8-hour run. The runner already writes the whole
+    # transcript to /tmp/all-tests.log plus one /tmp/at-<suite>.log per suite, so
+    # this step publishes exactly those files as an artifact on every outcome.
+    # It does not touch the verdict: the step above still fails the job.
+    - name: Upload the canonical runner transcript (evidence, always)
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: canonical-runner-log-${{ github.event_name }}-${{ github.sha }}-${{ github.run_attempt }}
+        path: |
+          /tmp/all-tests.log
+          /tmp/at-*.log
+        if-no-files-found: warn
+        retention-days: 30
     - name: Reset shared test ports, Redis state, and clean payesh_ci schema after canonical runner
       if: always()
       run: |

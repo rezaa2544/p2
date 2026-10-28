@@ -39,7 +39,7 @@ Registry exploits below must be rejected by tools/strict-verification-gate.js wi
 Negative fixtures: tests/strict-verification-gate.negative.test.js (wired in .github/workflows/strict-verification.yml).
 
 V-01 empty-registry bypass            -> V-01 registry declares a non-empty items array
-V-02 evidence binding            -> V-02 binds immutable evidence SHA + artifact + hash; normally checkout HEAD, or the parent SHA only when a metadata-only commit changes exactly docs/verification/VERIFICATION_REGISTRY.json (ancestry still checks checkout HEAD)
+V-02 evidence binding            -> V-02 binds immutable evidence SHA + artifact + hash; `binding_mode` selects the rule: `legacy` (checkout HEAD, or the parent SHA only when a metadata-only commit changes exactly docs/verification/VERIFICATION_REGISTRY.json) or `lineage` (source SHA must be an ancestor of the checkout and every witnessed path must be byte-identical to it). Both modes also check artifact existence + hash in that commit. See M15-01 RECOVERY ADDENDUM (R-1/R-2) and tools/lib/verification-witness.js — the gate, the provenance audit and the registry builder share this one implementation.
 V-03 reviewer independence            -> V-03 reviewer evidence pairwise distinct (no byte-cloned PASS)
 V-04 status machine                   -> V-04 allowed_statuses == canonical machine; item/verdict membership enforced
 V-05 BLOCKED_UNTIL ignored            -> V-05 top-level status must be in the machine and not BLOCKED*
@@ -131,6 +131,89 @@ V-18 status reach    with fewer than two declared reviewer slots no item may car
                      another reviewer". The gate caps them instead of letting a vacuous V-03/G16
                      pass buy them back. Widening the reviewer contract is an owner decision.
 V-02 ts              an evidence timestamp in the future (beyond a 15-minute skew) is rejected.
+
+M15-01 RECOVERY ADDENDUM (2026-10-27) — WHY `main` WAS PERMANENTLY RED, AND THE FIX
+
+R-1  THE BINDING WAS A SCALAR, SO IT EXPIRED ON THE NEXT COMMIT.
+     V-02 (and the provenance audit's head-bind) required `head_bound == evidence head`.
+     The evidence head was the *checkout* HEAD unless HEAD happened to be a single-parent
+     registry-only metadata commit. Any later commit — a docs commit, a Dependabot bump —
+     therefore turned every item red forever, and the only repair was to re-run the full
+     suite and re-emit the registry after *every* commit. Measured on `fff1beae` (clean
+     checkout, no local change): gate `633 pass / 65 fail`, exit 1, every failure being
+     `V-02`/`G9` `head_bound=bf263bf2 vs evidence_sha=fff1beae`. The evidence was not wrong;
+     the rule could not express "this evidence still describes the code that is here".
+
+R-2  THE AUDIT USED A DIFFERENT RULE THAN THE GATE. `tools/registry-provenance.js` matched
+     evidence through `DEPENDENCY_SETS` + `provenance.dependency_hash`, a field no item
+     carries, so on the same file it reported 29 UNBOUND rows and exit 2 while the gate
+     reported 65 fails. Two implementations of one contract is two contracts.
+
+R-3  V-15 AND V-16 WERE JOINTLY UNSATISFIABLE. V-15 capped the headline at the weakest item
+     (29 UNKNOWN legacy records ⇒ UNKNOWN) while V-16 refused a green verdict when no item
+     was in the verifying band. With honest legacy records both fire, so no registry of this
+     repository could ever pass — a permanent red that encouraged exactly the fabrication the
+     gate exists to detect.
+
+THE SHARED RULE (one implementation, three consumers)
+`tools/lib/verification-witness.js` is now the only place the binding is defined; the gate,
+`tools/registry-provenance.js` and `tools/m15-01-build-registry.js` all call it.
+
+  binding_mode: "legacy"   `head_bound` must equal the evidence head (checkout HEAD, or the
+                           parent of a single-parent registry-only metadata commit). The
+                           pre-recovery rule, unchanged, still available for old registries.
+  binding_mode: "lineage"  `head_bound` is the immutable SOURCE commit: it must be a real
+                           commit AND an ancestor of the checkout. The registry carries
+                           `witness.paths` and `witness.blobs`.
+                           * `witness.paths` must equal the set RECOMPUTED FROM THE REGISTRY
+                             (every evidence `artifact`, every repo path cited in an evidence
+                             `command`, plus the always-witnessed policy, schema, gate,
+                             witness lib, package.json and tests/run.js). A witness can
+                             therefore not be shrunk after the fact to hide a changed file,
+                             and an inflated one is rejected too.
+                           * `witness.blobs[p]` is the git blob sha1 at the source commit; it
+                             must equal the blob at the source commit AND the blob at HEAD.
+                           Consequence, in both directions: an unrelated docs or dependency
+                             commit leaves the evidence valid, while any edit to a witnessed
+                             test, tool, policy, schema or evidence log makes the evidence
+                             stale and requires a re-run and a re-emit. Stale evidence is
+                             rejected, never warned about.
+
+CLOSURE SCOPE (what the headline is allowed to mean)
+`closure_scope` names the item ids that define closure; `blocked_items` declares how many
+items claim nothing. The checks:
+V-19a  `closure_scope` present, duplicate-free and a subset of `expected_ids`
+V-19b  every in-scope item is in the verifying band, carries an Arena PASS and is not blocked
+V-19c  no item OUTSIDE the scope claims a verifying status (the scope cannot be widened by
+       smuggling a verifying item in beside it)
+V-19d  no blocked item is inside the scope
+V-19e  `blocked_items` equals the real number of blocked items
+V-15   rewritten: the headline is bounded by the weakest IN-SCOPE item; an empty scope is
+       legal but then the headline must be UNKNOWN
+V-15b  a registry with blocked items can never be CERTIFIED
+V-16   refuses the green verdict when the scope verifies nothing
+This is what makes R-3 satisfiable without lying: 29 honest UNKNOWN legacy records sit
+outside the scope and are counted, while the in-scope items are bounded on their own merits.
+
+PINNED BY REAL-GIT FIXTURES
+`tests/verification-binding-contract.test.js` (24 checks, `CHECKS 24 FAIL 0`) builds real
+repositories and asserts, in both directions, every rule above: a registry-only landing
+binds; an unrelated documentation commit does not break the binding; editing a witnessed
+file does (and the rejection names it); a shrunk, inflated or forged witness and a
+non-ancestor `head_bound` are rejected; legacy mode keeps its strictness; six closure-scope
+violations are each rejected; gate and provenance audit agree on valid and on invalid input;
+and an in-process mutation matrix proves the *named* rule — not some other check — is what
+rejects each case. `tests/strict-verification-gate.negative.test.js` (55/0) and
+`tests/strict-verification-gate-a30.test.js` (21/0) were rewritten onto the shared rule;
+`tools/lib/verification-witness.js` being inside every witness set is what makes a
+commit-based mutation of the rule impossible, which is why the mutation proof is in-process.
+
+DOCUMENTED CONSEQUENCE FOR LANDING
+Steps 1–8 above still describe the landing mechanics, but with `binding_mode: "lineage"` the
+registry-only commit must carry a witness computed from the source commit, and the source
+commit must contain the evidence logs the witness hashes. Re-emitting the registry without
+re-running the suite is therefore not a way to clear a red gate: the witness blobs of a
+changed test will not match.
 
 OWNER RULINGS
 2026-10-27 — HUMAN APPROVAL IS NOT A GATE CONDITION.

@@ -78,7 +78,20 @@ const CREDENTIAL_KEY_RE = /\b(?:secret|token|password|passwd|cookie|authorizatio
 function hexAllowed(f, line, hex, fullLine) {
   const normFile = String(f || '').split('\\').join('/');
   const whole = fullLine === undefined ? String(line || '') + String(hex || '') : String(fullLine);
-  if (/0x|digest|sha256|example|dummy|test|fixture|deadbeef/i.test(line)) return true;
+  /* ── SI-013-B (mission 2): the blanket keyword exemption was a blind spot.
+     The previous line here was
+       if (/0x|digest|sha256|example|dummy|test|fixture|deadbeef/i.test(line)) return true;
+     i.e. any line that merely *mentioned* "test", "example" or "fixture" ANYWHERE excused a
+     64-hex value. Measured on this tree before the fix: appending
+     `const testApiKey = "<fresh random 64 hex>"` to a doc still printed `13/13 سبز`.
+     A label only excuses the value it labels, and only for the words that actually denote a
+     digest -- the ambiguous words ("test", "fixture", "example", "dummy") are gone, so they
+     can no longer be borrowed by a planted key. The keyword near the value is not by itself
+     enough for files the explicit rules above reject: those run first. */
+  const tail = String(line).slice(-70);
+  /* No leading \b: labels are commonly glued to an underscore ("lockfile_sha256",
+     "before_sha256"), and a word boundary there would skip exactly the labels we mean. */
+  if (/sha-?256|sha-?512|digest|0x|deadbeef/i.test(tail)) return true;
   /* SPDX package checksums are public supply-chain integrity metadata,
      not credentials. Allow only the exact standardized checksum field;
      other long hexadecimal strings in documentation remain findings. */
@@ -89,8 +102,11 @@ function hexAllowed(f, line, hex, fullLine) {
      non-64-char hex, or production/source paths. */
   if (/^[0-9a-f]{64}$/.test(hex) && !CREDENTIAL_KEY_RE.test(whole)) {
     if (/^docs\/arena-evidence\/.+\.json$/.test(normFile) && /\\"checksum\\"\s*:\s*\\"$/.test(line)) return true;
+    /* SI-013-B: the ledgers also hash `mutation-test.sh` and the partial-report JSON.
+       Those tables were previously excused only by the word "test" inside
+       "mutation-test.sh", i.e. by the blind spot; they are named here instead. */
     if (/^tools\/ft\/FT-METRIC-01-[A-Za-z0-9-]+\.md$/.test(normFile)
-        && /(?:metric-v2(?:\.test)?\.js|benchmark\.js|source (?:hash|untouched))/.test(whole)) return true;
+        && /(?:metric-v2(?:\.test)?\.js|benchmark\.js|mutation-test\.sh|metric-v2-partial-report\.json|source (?:hash|untouched))/.test(whole)) return true;
   }
   /* stats.json دیتاستِ ملی: همان الگو. T7d در tests/wave18-load-test.js
      «checksums» را در این فایل الزامی می‌داند و مقدارها sha256 خودِ
@@ -100,6 +116,13 @@ function hexAllowed(f, line, hex, fullLine) {
   if (hexAllow[f] || hexAllow[normFile]) return true;
   /* padding/dummy ثابت (مثلاً ۶۴ صفر برایِ timing-safe-equal) */
   if (/^(.)\1+$/.test(hex)) return true;
+  /* Narrow, documented, file+field-specific exception: the ARENA6 audit report quotes the
+     `PAYESH_JWT_SECRET=` value it found at `.env.example:38` as the evidence of its own
+     finding. That file is historical evidence and is not rewritten (preserve cycle logs).
+     Whether that value is still live is the SI-013 rotation question -- the owner's -- so
+     this names the exact file and field instead of passing the whole file. */
+  if (normFile === 'docs/audit/ARENA6_SECURITY_AUDIT_REPORT_ecc8b40b.md'
+      && /PAYESH_JWT_SECRET=/.test(whole)) return true;
   return false;
 }
 
@@ -181,7 +204,21 @@ const HEXCASES = [
   ['tools/ft/FT-METRIC-01-VERIFICATION-PACKAGE.md', 'api_secret = ', H64('a', 'b'), false,
     'SI-013 منفی: مقدارِ رازگونه درونِ tools/ft همچنان رد می‌شود'],
   ['tools/ft/other.js', '| `tools/ft/metric-v2.js` | `',             H64('a', 'b'), false,
-    'SI-013 منفی: فایلِ اجراییِ جاوااسکریپت درونِ tools/ft مستثنا نیست']
+    'SI-013 منفی: فایلِ اجراییِ جاوااسکریپت درونِ tools/ft مستثنا نیست'],
+  /* ── SI-013-B: the keyword exemption must not be borrowable by a planted key.
+     These four are the regression locks for the hole measured in mission 2: with the old
+     rule, `const testApiKey = "<64 hex>"` was silently accepted (13/13 green). A value is
+     excused only by a digest label next to it, never by the word "test" on the line. */
+  ['docs/NOTES.md', 'const testApiKey = "',                          H64('a', 'b'), false,
+    'SI-013-B منفی: نامِ متغیرِ حاویِ test کلیدِ ۶۴hex را نمی‌پوشاند'],
+  ['docs/NOTES.md', 'const fixtureToken = "',                        H64('a', 'b'), false,
+    'SI-013-B منفی: واژهٔ fixture در نامِ متغیر پوشش نیست'],
+  ['tests/fixtures/sample.js', 'module.exports.dummy = "',            H64('a', 'b'), false,
+    'SI-013-B منفی: حتی در فایلِ fixture خودِ مخزن، dummy پوشش نیست'],
+  ['docs/NOTES.md', '- seal: `sha256:',                               H64('a', 'b'), true,
+    'SI-013-B مثبت: برچسبِ sha256 چسبیده به مقدار همچنان مجاز است'],
+  ['docs/NOTES.md', '  "lockfile_sha256": "',                        H64('a', 'b'), true,
+    'SI-013-B مثبت: برچسبِ چسبیده با آندرلاین هم مجاز است']
 ];
 let hexBad = 0;
 for (const [f, line, hex, want, label] of HEXCASES) {

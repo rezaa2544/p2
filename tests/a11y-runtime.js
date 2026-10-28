@@ -26,6 +26,9 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+/* سدِ قطعیِ حرکت (A11Y-MOTION-01): پیش از هر اسکن، انیمیشن/گذارها به
+   حالتِ نهایی می‌روند تا axe رنگِ نیمه‌کاره نخواند. جزئیات: همان فایل. */
+const { quiesce } = require('./helpers/a11y-quiescence');
 
 /* 🔴 بدونِ eval: db/S/NAV/finishLogin/closeModal/render متغیرهایِ lexicalِ
    سراسریِ برنامهٔ مرورگر هستند و رویِ window نیستند، ولی توابعِ واقعی را
@@ -108,6 +111,10 @@ function startStaticServer() {
   /* ۱) خودِ صفحهٔ ورود هم اسکن می‌شود (نمایِ مشترکِ همهٔ نقش‌ها) */
   const results = [];   /* {role, route, critical, serious, moderate, minor, items:[]} */
   async function scan(role, route) {
+    /* هر اسکن بی‌استثنا بعد از آرام‌شدنِ حرکت. شکستِ سد = شکستِ تست (نه skip):
+       اگر چیزی آرام نشود، رنگِ خوانده‌شده غیرقطعی است و یافتهٔ color-contrast
+       معنایی ندارد. */
+    await quiesce(page, role + ':' + route);
     const axe = new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']);
     const r = await axe.analyze();
@@ -124,6 +131,11 @@ function startStaticServer() {
     console.log(`  ${flag} ${role.padEnd(10)} ${route.padEnd(15)} critical:${bySev.critical} serious:${bySev.serious} moderate:${bySev.moderate} minor:${bySev.minor}`);
   }
 
+  /* صفحهٔ ورود: پیش از این هیچ انتظاری نداشت — waitForFunction فقط
+     «db ساخته شد» را می‌گفت، نه «رنگ‌ها نشستند». سدِ حرکت این شکاف را
+     می‌بندد (scan خودش هم سد را صدا می‌زند؛ این‌جا صریح است تا در گزارش
+     دیده شود). */
+  await quiesce(page, 'login');
   await scan('(login)', 'login');
 
   /* ۲) پنج نقش × تا ۱۰ نمایِ اصلی — نمای هر نقش از PANELS خودِ برنامه */
@@ -158,8 +170,9 @@ function startStaticServer() {
         if (typeof closeModal === 'function') closeModal();
         render();
       }, route);
-      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-      await page.waitForTimeout(150); /* بگذار paint تمام شود */
+      /* انتظارِ جادوییِ ۱۵۰ms حذف شد: کوتاه‌تر از pop .18s / fslide .16s /
+         sh 1.3s بود و به سرعتِ ماشین وابسته. خودِ scan سدِ حرکت را می‌زند،
+         پس فاصلهٔ render→نمونه‌برداری دیگر عددی جادویی نیست. */
       await scan(R.role, route);
     }
   }

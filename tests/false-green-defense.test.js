@@ -192,23 +192,83 @@ function tmpDir(name) {
     }
   }
 
-  /* ── C6: a registry whose head_bound is not the current HEAD ────── */
+  /* ── C6: a registry whose head_bound is not the current HEAD ──────
+     M15-01 recovery note. Until 2026-10-27 this case ran the audit against the
+     LIVE registry and relied on that registry happening to be stale. That made
+     the defense depend on the defect it was defending against: the moment the
+     registry became correctly bound (lineage, 0 changed witnessed paths), the
+     audit legitimately exited 0 and this case went red — a real red, reported
+     by the canonical runner on 06ba3da3, not a flake. The defense now builds
+     the stale registry itself, so it proves the rule instead of hoping for a
+     stale file, and a separate control proves the audit can still say VALID. */
   {
-    const r = run('"' + NODE + '" tools/registry-provenance.js --audit');
-    /* The audit exits 2 when head_bound ≠ HEAD (stale), 3 when items are
-       unbound, 0 only when provenance is current AND bound. A stale registry
-       must NOT produce exit 0 — that is the whole defense. */
-    chk('C6 registry provenance audit does not exit 0 against a stale registry',
-      r.code !== 0, 'audit exited 0 on a stale registry — defense failed');
-    if (r.code === 2) {
-      chk('C6 audit specifically reports the head_bound mismatch', /MISMATCH/i.test(r.out), r.out.split('\n').filter((l) => /MISMATCH/.test(l))[0] || '');
+    function fixtureRegistry(over) {
+      const d = tmpDir('c6');
+      fs.mkdirSync(path.join(d, 'tools', 'lib'), { recursive: true });
+      fs.mkdirSync(path.join(d, 'docs', 'verification'), { recursive: true });
+      fs.mkdirSync(path.join(d, 'tests'), { recursive: true });
+      fs.copyFileSync(path.join(ROOT, 'tools', 'registry-provenance.js'), path.join(d, 'tools', 'registry-provenance.js'));
+      fs.copyFileSync(path.join(ROOT, 'tools', 'lib', 'verification-witness.js'), path.join(d, 'tools', 'lib', 'verification-witness.js'));
+      fs.writeFileSync(path.join(d, 'docs', 'STRICT_VERIFICATION_GATE.md'), '# fixture policy\n');
+      fs.writeFileSync(path.join(d, 'docs', 'verification', 'VERIFICATION_EVIDENCE_SCHEMA.json'), '{}\n');
+      fs.writeFileSync(path.join(d, 'tests', 'run.js'), '// fixture runner\n');
+      fs.writeFileSync(path.join(d, 'package.json'), '{}\n');
+      run('git init -q .', { cwd: d });
+      run('git config user.email fg@test.local && git config user.name fg', { cwd: d });
+      run('git add -A && git commit -qm one', { cwd: d });
+      const first = run('git rev-parse HEAD', { cwd: d }).out.trim();
+      fs.writeFileSync(path.join(d, 'later.txt'), 'second commit changes the tree\n');
+      run('git add -A && git commit -qm two', { cwd: d });
+      const second = run('git rev-parse HEAD', { cwd: d }).out.trim();
+      const reg = Object.assign({
+        schema_version: 2,
+        status: 'RUNTIME_VERIFIED',
+        binding_mode: 'legacy',
+        head_bound: second,
+        closure_scope: ['X-1'],
+        blocked_items: 0,
+        items: [{ id: 'X-1', status: 'RUNTIME_VERIFIED', reviews: ['arena'], arena: { status: 'PASS' }, evidence: [] }]
+      }, over || {});
+      fs.writeFileSync(path.join(d, 'docs', 'verification', 'VERIFICATION_REGISTRY.json'), JSON.stringify(reg, null, 2));
+      return { dir: d, first: first, second: second };
     }
-    /* And the canonical gate's own V-02 check must agree. */
-    const head = run('git rev-parse HEAD').out.trim();
+
+    /* 1) stale: evidence belongs to the parent, checkout has moved on. */
+    const stale = fixtureRegistry({ head_bound: null });
+    const regPath = path.join(stale.dir, 'docs', 'verification', 'VERIFICATION_REGISTRY.json');
+    const regJson = JSON.parse(fs.readFileSync(regPath, 'utf8'));
+    regJson.head_bound = stale.first;
+    fs.writeFileSync(regPath, JSON.stringify(regJson, null, 2));
+    const r = run('"' + NODE + '" tools/registry-provenance.js --audit', { cwd: stale.dir });
+    chk('C6 a stale legacy registry is rejected by the audit (exit != 0)',
+      r.code !== 0, 'audit exited 0 on a stale registry — defense failed');
+    chk('C6 the audit names it as a head_bound mismatch, not a generic failure',
+      /MISMATCH/i.test(r.out), r.out.split('\n').filter((l) => /MISMATCH/.test(l))[0] || r.out.slice(0, 160));
+
+    /* 2) control: the same fixture, correctly bound, must be ACCEPTED — otherwise
+       case 1 could pass by rejecting everything. */
+    const fresh = fixtureRegistry({ head_bound: null });
+    const freshPath = path.join(fresh.dir, 'docs', 'verification', 'VERIFICATION_REGISTRY.json');
+    const freshJson = JSON.parse(fs.readFileSync(freshPath, 'utf8'));
+    freshJson.head_bound = fresh.second;
+    fs.writeFileSync(freshPath, JSON.stringify(freshJson, null, 2));
+    const rOk = run('"' + NODE + '" tools/registry-provenance.js --audit', { cwd: fresh.dir });
+    chk('C6 CONTROL a correctly bound registry is accepted (exit 0, PROVENANCE VALID)',
+      rOk.code === 0 && /PROVENANCE VALID/.test(rOk.out), 'code=' + rOk.code + ' ' + rOk.out.slice(-160));
+
+    /* 3) the gate and the audit must never disagree about the LIVE repository —
+       asserted as an invariant, not against an assumed registry state. */
+    const live = run('"' + NODE + '" tools/registry-provenance.js --audit');
     const reg = JSON.parse(fs.readFileSync(path.join(ROOT, 'docs', 'verification', 'VERIFICATION_REGISTRY.json'), 'utf8'));
-    chk('C6 registry head_bound vs live HEAD are comparable (not equal → stale, not green)',
-      typeof reg.head_bound === 'string' && typeof head === 'string',
+    const head = run('git rev-parse HEAD').out.trim();
+    chk('C6 live registry carries a comparable head_bound and binding mode',
+      typeof reg.head_bound === 'string' && /^[0-9a-f]{40}$/.test(reg.head_bound) && typeof head === 'string',
       'head_bound=' + reg.head_bound + ' head=' + head);
+    chk('C6 the live audit verdict is one of the defined codes (0 valid / 2 invalid or stale / 3 no scope)',
+      [0, 2, 3].indexOf(live.code) !== -1, 'code=' + live.code);
+    chk('C6 a valid live binding is never reported as MISMATCH (and vice versa)',
+      /PROVENANCE VALID/.test(live.out) ? live.code === 0 : live.code !== 0,
+      'code=' + live.code + ' verdict=' + (live.out.match(/VERDICT\s*:\s*(.+)/) || [])[1]);
   }
 
   /* ── C7: a suite silently skipped by a missing env var ──────────── */

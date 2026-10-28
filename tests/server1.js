@@ -19,7 +19,7 @@ if(!fs.existsSync(REAL_STORE)){
 
 /* ── isolated data files for this run ─────────────────────────────── */
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-srv-'));
-process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} }); /* پاک‌سازیِ tmp تا /tmp پر نشود */
+process.on('exit', () => { try { fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); } catch (e) {/* intentional no-op */} }); /* پاک‌سازیِ tmp تا /tmp پر نشود */
 const T_STORE = path.join(TMP, 'store.json');
 const T_AUDIT = path.join(TMP, 'audit.log');
 const T_KEY   = path.join(TMP, 'jwt.key');
@@ -197,7 +197,7 @@ async function main(){
         last = { status: res.status, json: await res.json() };
       }
       assert(last.status === 429 && last.json.code === 'rate_limited', 'got ' + last.status);
-      try { fs.rmSync(cTMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */}
+      try { fs.rmSync(cTMP, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); } catch (e) {/* intentional no-op */}
     } finally {
       proc.kill('SIGKILL');
     }
@@ -455,7 +455,7 @@ async function main(){
   test('S31 child server without PAYESH_DEMO_CODE → send-code has no demo_code', async () => {
     const { spawn } = require('child_process');
     const cTMP = fs.mkdtempSync(path.join(os.tmpdir(), 'payesh-s31-'));
-    process.on('exit', () => { try { fs.rmSync(cTMP, { recursive: true, force: true }); } catch (e) {/* intentional no-op */} });
+    process.on('exit', () => { try { fs.rmSync(cTMP, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); } catch (e) {/* intentional no-op */} });
     const cStore = path.join(cTMP, 'store.json');
     fs.copyFileSync(REAL_STORE, cStore);
     let port = null, proc = null;
@@ -492,11 +492,26 @@ async function main(){
 
   await seq;
   await sleep(10);
-  server.close();
+  /* Await the close callback rather than firing it: `server.close()` without its
+     callback returns immediately, so the app's own handlers (and the audit-log
+     appends they write into TMP) can still be running when the temp directory is
+     removed below. Awaiting it is the actual root fix for the ENOTEMPTY cleanup
+     race seen in CI; the retrying rm below is the belt to this braces. */
+  await new Promise((resolve) => server.close(resolve));
   console.log('\n' + '─'.repeat(52));
   console.log(`سرور (مرحلهٔ اول): ${pass}/${pass + fail} موفق` + (fail ? `  —  ${fail} ناموفق ❌` : '  —  بدون خطا ✅'));
   errors.slice(0, 8).forEach(e => console.log('   ' + e));
-  fs.rmSync(TMP, { recursive: true, force: true });
+  /* CI run 40598616783 (suite `server1`, pull_request on 16d1fc3) reported
+     31/31 green and then died with `FATAL Error: ENOTEMPTY: directory not empty,
+     rmdir '/tmp/payesh-srv-...'`, exiting 1 — a RED suite whose assertions all
+     passed. Cause: the child server is closed but its audit/append writes can
+     still be landing in TMP, and rm -r can see a directory gain an entry between
+     listing it and rmdir-ing it. `force` does not retry; `maxRetries` does
+     (Node's documented remedy for exactly ENOTEMPTY/EBUSY). Cleanup is not an
+     assertion, so retrying it cannot hide a failure — the verdict above is
+     already computed and passed to process.exit below. */
+  const rmTmp = () => fs.rmSync(TMP, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  try { rmTmp(); } catch (e) { console.log('   (cleanup of ' + TMP + ' skipped: ' + e.code + ')'); }
   process.exit(fail ? 1 : 0);
 }
 main().catch(e => { console.error('FATAL', e); process.exit(1); });
