@@ -4,6 +4,16 @@
    Fail-closed: incomplete registry, wrong SHA, missing Arena review/evidence, vacuous/self-attested/injectable claims, or
    inability to prove an assertion => NOT VERIFIED + exit 1. No green fallback. */
 const fs = require('fs'), path = require('path'), cp = require('child_process'), crypto = require('crypto');
+
+/* Synchronous stdout (M15-01, 2026-10-29).
+   Why: `console.log` to a PIPE is asynchronous in Node, so process.exit() discarded
+   writes still queued in libuv and truncated this gate's own verdict output mid-print
+   (reproduced at G6c allowlist entry 158, exactly 10,903 B, empty stderr, under load).
+   Consumers assert on the printed CONTRACT PASS / VERDICT NOT VERIFIED lines, so a lost
+   tail made a *passing* gate look like it printed no verdict — 10/40 runs red at 10-way
+   concurrency, 0/40 with this writer. fs.writeSync on fd 1 is unbuffered, so the exit
+   path stays exactly as before and the evidence is complete. */
+const say = (s) => { try { fs.writeSync(1, s + '\n'); } catch (e) { /* stdout gone: nothing to do */ } };
 const ROOT = path.join(__dirname, '..');
 const REG = path.join(ROOT, 'docs', 'verification', 'VERIFICATION_REGISTRY.json');
 const ALLOW = path.join(ROOT, 'docs', 'verification', 'FALSE_GREEN_ALLOWLIST.json');
@@ -37,7 +47,7 @@ const VERIFYING_MIN_RANK = 2; /* RUNTIME_VERIFIED and above */
 const SELF_CERT_SOURCES = /(?:^|\s)(?:server\/analytics\/intelligence-release-certification\.js|server\/infrastructure\/phase4-release-certification\.js)(?=\s|$)/;
 
 let pass = 0, fail = 0, failures = [];
-function chk(n, ok, d) { if (ok) { pass++; console.log('  OK ' + n + (d ? ' — ' + d : '')); } else { fail++; failures.push({ n: n, d: d }); console.log('  FAIL ' + n + (d ? ' — ' + d : '')); } }
+function chk(n, ok, d) { if (ok) { pass++; say('  OK ' + n + (d ? ' — ' + d : '')); } else { fail++; failures.push({ n: n, d: d }); say('  FAIL ' + n + (d ? ' — ' + d : '')); } }
 function read(p) { return fs.readFileSync(p, 'utf8'); }
 function isObj(v) { return !!v && typeof v === 'object' && !Array.isArray(v); }
 function isStr(v) { return typeof v === 'string' && v.trim().length > 0; }
@@ -80,7 +90,7 @@ try {
 } catch (e) {
   metadataBindingReason = 'no verifiable parent/diff: ' + String(e.message || e);
 }
-console.log('==== PAYESH STRICT VERIFICATION GATE ====');
+say('==== PAYESH STRICT VERIFICATION GATE ====');
 chk('G1 current HEAD known', /^[0-9a-f]{40}$/.test(head), head);
 chk('V-02 evidence binding mode explicit', !metadataOnlyBinding || evidenceHead !== head, metadataBindingReason);
 
@@ -114,9 +124,9 @@ chk('G5 Arena is the sole required AI reviewer', !!reg && norm(reg.required_revi
    through a registry signature, so the gate neither requires nor rewards a human_governance
    block (retired V-10) — independence claims are refused by V-18 alone. */
 if (REVIEWERS.length < 2) {
-  console.log('  NOTE V-03/G16 independence checks are vacuous with ' + REVIEWERS.length +
+  say('  NOTE V-03/G16 independence checks are vacuous with ' + REVIEWERS.length +
     ' reviewer slot — reported as N/A (never as a pass) and capped by V-18; bounded additionally by G5/V-15/V-17/V-18');
-  console.log('  NOTE cross-ITEM witness copying is not vacuous at N=1 and is policed by V-17');
+  say('  NOTE cross-ITEM witness copying is not vacuous at N=1 and is policed by V-17');
 }
 let allowed = null; try { allowed = JSON.parse(read(ALLOW)); } catch (e) { }
 chk('G6 explicit false-green allowlist exists', !!allowed && Array.isArray(allowed.items));
@@ -470,7 +480,7 @@ if (reg && isObj(reg)) {
       if (REVIEWERS.length >= 2) {
         chk('G16 ' + id + ' reviewer evidence is not duplicated', dupes.length === 0,
           dupes.length ? 'identical evidence across reviewers' : '');
-      } else console.log('  N/A  G16 ' + id + ' cross-reviewer duplication — vacuous at ' + REVIEWERS.length + ' reviewer slot');
+      } else say('  N/A  G16 ' + id + ' cross-reviewer duplication — vacuous at ' + REVIEWERS.length + ' reviewer slot');
 
       /* evidence slots: item-level + per reviewer */
       const slots = [{ slot: 'item', entries: Array.isArray(item.evidence) ? item.evidence : null }];
@@ -559,7 +569,7 @@ if (reg && isObj(reg)) {
       const distinct = new Set(hashes).size === hashes.length;
       if (REVIEWERS.length >= 2) {
         chk('V-03 ' + id + ' reviewer evidence independent (pairwise distinct)', distinct, reviewerSlots.map((s) => s.r + ':' + (Array.isArray(s.entries) ? s.entries.length : 'none')).join(' '));
-      } else console.log('  N/A  V-03 ' + id + ' pairwise reviewer independence — vacuous at ' + REVIEWERS.length + ' reviewer slot; V-17/V-18 apply instead');
+      } else say('  N/A  V-03 ' + id + ' pairwise reviewer independence — vacuous at ' + REVIEWERS.length + ' reviewer slot; V-17/V-18 apply instead');
 
       /* V-08: self-attesting certification modules may not be the sole evidence source */
       const cmds = flat.filter((f) => isObj(f.e) && isStr(f.e.command)).map((f) => String(f.e.command));
@@ -652,22 +662,13 @@ const verifiedItems = itemList.filter((x) => isObj(x) &&
   rankOfStatus(x.status) >= VERIFYING_MIN_RANK && isObj(x.arena) && x.arena.status === 'PASS');
 const registryRank = reg ? rankOfStatus(reg.status) : -1;
 const nothingVerified = fail === 0 && (verifiedItems.length === 0 || registryRank < VERIFYING_MIN_RANK);
-console.log('RESULT ' + pass + ' pass / ' + fail + ' fail');
-console.log('HEAD ' + head);
-console.log('EVIDENCE_SHA ' + evidenceHead + (metadataOnlyBinding ? ' (metadata-only registry commit)' : ''));
-console.log('CERTIFIED ' + certified);
-console.log('CONTRACT ' + (fail ? 'FAIL' : 'PASS'));
-console.log('VERIFIED_ITEMS ' + verifiedItems.length + '/' + itemList.length + ' at registry status ' + String(reg && reg.status));
-console.log('VERDICT ' + (fail || nothingVerified ? 'NOT VERIFIED' : 'VERIFIED'));
-if (fail) { console.log('BLOCKERS'); failures.forEach((x) => console.log(' - ' + x.n + (x.d ? ' — ' + x.d : ''))); }
-if (nothingVerified) console.log('BLOCKER — V-16 registry conforms to the schema but verifies nothing (no item in the verifying band)');
-/* Exit code, not process.exit() (M15-01, 2026-10-29).
-   Why: stdout to a PIPE is asynchronous in Node, so process.exit() discards writes
-   still queued in libuv. Under load this truncated the gate's own verdict output
-   mid-print — reproducibly at G6c allowlist entry 158, exactly 10,903 B, with empty
-   stderr — while the gate had in fact reached this line and computed the verdict.
-   Consumers that assert on the printed CONTRACT PASS / VERDICT NOT VERIFIED lines
-   (`tests/strict-verification-gate-a30.test.js`) then saw a "missing" verdict and
-   went red: 10/40 runs at 10-way concurrency before, 0/40 after. Setting exitCode
-   lets the loop drain and preserves the exit status exactly (1 = fail / not verified). */
-process.exitCode = (fail || nothingVerified ? 1 : 0);
+say('RESULT ' + pass + ' pass / ' + fail + ' fail');
+say('HEAD ' + head);
+say('EVIDENCE_SHA ' + evidenceHead + (metadataOnlyBinding ? ' (metadata-only registry commit)' : ''));
+say('CERTIFIED ' + certified);
+say('CONTRACT ' + (fail ? 'FAIL' : 'PASS'));
+say('VERIFIED_ITEMS ' + verifiedItems.length + '/' + itemList.length + ' at registry status ' + String(reg && reg.status));
+say('VERDICT ' + (fail || nothingVerified ? 'NOT VERIFIED' : 'VERIFIED'));
+if (fail) { say('BLOCKERS'); failures.forEach((x) => say(' - ' + x.n + (x.d ? ' — ' + x.d : ''))); }
+if (nothingVerified) say('BLOCKER — V-16 registry conforms to the schema but verifies nothing (no item in the verifying band)');
+process.exit(fail || nothingVerified ? 1 : 0);
