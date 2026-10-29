@@ -8,6 +8,9 @@ data/backups/
 # so the gate's V-02 artifact-at-SHA check can read the bytes out of git.
 !docs/verification/evidence/
 !docs/verification/evidence/*.log
+# …و همان دلیل برایِ پسوندهایِ زیرپوشه‌ای (M15-01: logs درونِ
+# m15-01-chat2-2026-10-28/ بی‌صدا نادیده گرفته می‌شدند و در commit نبودند).
+!docs/verification/evidence/**/*.log
 .DS_Store
 Thumbs.db
 .env

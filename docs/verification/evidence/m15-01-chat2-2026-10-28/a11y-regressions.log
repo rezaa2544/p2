@@ -1,0 +1,102 @@
+▸ کنترل‌هایِ فرم باید نامِ دسترس‌پذیر داشته باشند (axe: select-name/label)
+  ✅ src/js/06-login.js :: data-f="pubschool" → aria-label دارد
+  ✅ src/js/32-atrisk-meetings-growth.js :: data-f="riskDays" → aria-label دارد
+  ✅ src/js/56-sida-diff.js :: data-f="term" → aria-label دارد
+  ✅ src/js/12-attendance.js :: data-f="class" → aria-label دارد
+  ✅ src/js/13-grades.js :: data-f="class" → aria-label دارد
+  ✅ src/js/15-schedule.js :: data-f="homepick" → aria-label دارد
+  ✅ src/js/17-student-record.js :: id="cert_term" → aria-label دارد
+  ✅ src/js/17-student-record.js :: id="cert_tpl" → aria-label دارد
+  ✅ src/js/12-attendance.js :: type="date" data-f="date" → aria-label دارد
+  ✅ src/js/08-dashboard.js :: data-act="tomorrow-check" → aria-label دارد
+  ✅ src/js/51-homework.js :: id="hwfile_ → aria-label دارد
+▸ توکن‌هایِ رنگی باید AA بدهند (axe: color-contrast)
+  ✅ --green رویِ سفید (متنِ درون‌خطی مثل «۰ ریال»): 6.22:1 (نیاز ≥ 4.5)
+  ✅ --red رویِ سفید (متنِ درون‌خطی مثل «▼ ۰٫۵۶»): 6.27:1 (نیاز ≥ 4.5)
+  ✅ --amber رویِ سفید: 5.63:1 (نیاز ≥ 4.5)
+  ✅ سفید رویِ --green (toast.ok): 6.22:1 (نیاز ≥ 4.5)
+  ✅ سفید رویِ --red (toast.err پایه): 6.27:1 (نیاز ≥ 4.5)
+  ✅ --green-text رویِ --green-soft (badge/sync-chip): 5.61:1 (نیاز ≥ 4.5)
+  ✅ --red-text رویِ --red-soft: 5.50:1 (نیاز ≥ 4.5)
+  ✅ --amber-text رویِ --amber-soft: 5.12:1 (نیاز ≥ 4.5)
+  ✅ --muted رویِ سفید: 6.34:1 (نیاز ≥ 4.5)
+  ✅ --muted رویِ --surface-2: 6.01:1 (نیاز ≥ 4.5)
+  ✅ .nav-group رویِ گرادیانِ سایدبار (هر دو سرِ گرادیان ≥ 4.5) — #8b9ab8
+  ✅ .b-gray: 5.60:1
+  ✅ .b-cyan: 5.59:1
+  ✅ .b-purple: 5.97:1
+  ✅ .toast.warn: 5.63:1
+  ✅ .toast.err: 6.27:1
+▸ کنتراستِ توکن‌ها در هر سه تم (theme-1/2/3)
+  ✅ theme-1: --green رویِ سفید: 6.22:1 (نیاز ≥ 4.5)
+  ✅ theme-1: --red رویِ سفید: 6.27:1 (نیاز ≥ 4.5)
+  ✅ theme-1: --amber رویِ سفید: 5.63:1 (نیاز ≥ 4.5)
+  ✅ theme-1: --green-text رویِ --green-soft: 5.61:1 (نیاز ≥ 4.5)
+  ✅ theme-1: --red-text رویِ --red-soft: 5.50:1 (نیاز ≥ 4.5)
+  ✅ theme-1: --amber-text رویِ --amber-soft: 5.12:1 (نیاز ≥ 4.5)
+  ✅ theme-1: --muted رویِ سفید: 6.34:1 (نیاز ≥ 4.5)
+  ✅ theme-1: --muted رویِ --surface-2: 6.01:1 (نیاز ≥ 4.5)
+  ✅ theme-1: --text رویِ --surface: 16.28:1 (نیاز ≥ 4.5)
+  ✅ theme-2: --green رویِ سفید: 6.22:1 (نیاز ≥ 4.5)
+  ✅ theme-2: --red رویِ سفید: 6.27:1 (نیاز ≥ 4.5)
+  ✅ theme-2: --amber رویِ سفید: 5.63:1 (نیاز ≥ 4.5)
+  ✅ theme-2: --green-text رویِ --green-soft: 5.61:1 (نیاز ≥ 4.5)
+  ✅ theme-2: --red-text رویِ --red-soft: 5.50:1 (نیاز ≥ 4.5)
+  ✅ theme-2: --amber-text رویِ --amber-soft: 5.12:1 (نیاز ≥ 4.5)
+  ✅ theme-2: --muted رویِ سفید: 6.34:1 (نیاز ≥ 4.5)
+  ✅ theme-2: --muted رویِ --surface-2: 5.79:1 (نیاز ≥ 4.5)
+  ✅ theme-2: --text رویِ --surface: 17.85:1 (نیاز ≥ 4.5)
+  ✅ theme-3: --green رویِ سفید: 6.22:1 (نیاز ≥ 4.5)
+  ✅ theme-3: --red رویِ سفید: 6.27:1 (نیاز ≥ 4.5)
+  ✅ theme-3: --amber رویِ سفید: 5.63:1 (نیاز ≥ 4.5)
+  ✅ theme-3: --green-text رویِ --green-soft: 5.61:1 (نیاز ≥ 4.5)
+  ✅ theme-3: --red-text رویِ --red-soft: 5.50:1 (نیاز ≥ 4.5)
+  ✅ theme-3: --amber-text رویِ --amber-soft: 5.12:1 (نیاز ≥ 4.5)
+  ✅ theme-3: --muted رویِ سفید: 6.11:1 (نیاز ≥ 4.5)
+  ✅ theme-3: --muted رویِ --surface-2: 5.33:1 (نیاز ≥ 4.5)
+  ✅ theme-3: --text رویِ --surface: 16.53:1 (نیاز ≥ 4.5)
+  ✅ .nav-group رویِ .sidebar تم ۲ (#8b9ab8 رویِ #0f172a): 6.30:1
+▸ هر قاعده با color+background باید AA بدهد
+  ✅ هیچ قاعدهٔ color+background زیرِ 4.5:1 نیست
+▸ توکنِ برند نباید رنگِ متن باشد (color: var(--primary|--purple))
+  ✅ هیچ اعلانِ color با var(--primary/--purple)
+  ✅ دلیلِ قاعده اندازه‌گیری‌شده است: --primary رویِ --primary-soft در ≥۲ تم < 4.5 (theme-1 4.28، theme-3 4.17)
+▸ نقطهٔ دقیقِ تبِ فعال (theme-3 / grades)
+  ✅ .tab.active یک رنگِ متنِ قابلِ‌حل دارد
+  ✅ تبِ فعال رویِ پس‌زمینهٔ theme-3 (grades) ≥ 4.5:1 — #0f4dc0 on #e8f0fe = 6.446
+  ✅ .tab.active theme-3 رویِ --surface ≥ 4.5:1 — 7.387
+  ✅ .tab.active theme-3 رویِ --primary-soft ≥ 4.5:1 — 6.269
+  ✅ .tab.active theme-3 رویِ --bg ≥ 4.5:1 — 6.701
+▸ opacity رویِ متنِ muted ممنوع
+  ✅ هیچ opacity<0.9 رویِ متنِ muted — پاک
+▸ هلپرِ f() در 18-modals: label دسترس‌پذیر (رفتاری)
+  ✅ escAttr در 01-helpers.js پیدا شد
+  ✅ هلپرِ f() در 18-modals.js وجود دارد
+  ✅ f() قابل استخراج و اجراست
+  ✅ f() برایِ کنترلِ id-دار <label for=…> می‌سازد
+  ✅ مقدارِ for= از escAttr رد می‌شود (a&b<c → a&amp;b&lt;c)
+  ✅ id خام و پاک‌سازی‌نشده در for= نمی‌نشیند
+  ✅ f() برای jdate برچسب را به دکمهٔ دیداری گره می‌زند
+  ✅ f() برایِ کنترلِ بی‌id متنِ برچسب را aria-label می‌کند
+  ✅ ساختارِ div.field > label + کنترل حفظ می‌شود
+  ✅ aria-label تکراری ساخته نمی‌شود
+  ✅ نسخهٔ قدیمیِ بی‌label برنگشته
+▸ پاسِ scrollable-region-focusable
+  ✅ a11yScrollablePass در 01-helpers تعریف شده
+  ✅ پاس tabindex=0 به .table-wrap/.vscroll سرریزدار می‌دهد
+  ✅ openModal پاس را صدا می‌زند
+  ✅ render() پاس را صدا می‌زند
+▸ زیرساختِ ناوبریِ صفحه‌کلید
+  ✅ مودال: trap تعریف شده (_modalTrap/_modalFocusables)
+  ✅ مودال: role=dialog + aria-modal
+  ✅ مودال: بازگشتِ focus به بازکننده در closeModal
+  ✅ مودال: trap به #modal بسته می‌شود
+  ✅ پوسته: skip-link در renderShell
+  ✅ پوسته: nav-item با tabindex=0 و role=link
+  ✅ dropdown پوسته: ArrowDown/ArrowUp/Escape پیاده شده
+  ✅ اکشنِ skip-to-main موجود است
+  ✅ Enter/Space رویِ data-act غیربومی فعال‌سازی می‌کند
+  ✅ skip-link تا فوکوس نگیرد مخفی است و با فوکوس دیده می‌شود
+  ✅ nav-item نشانگرِ فوکوسِ مرئی دارد (WCAG 2.4.7)
+
+جمع: 90 قبول، 0 رد
