@@ -1,0 +1,20 @@
+
+❌ API runner: 0/1 suites green — run aborted at zero-execution.test.js (fail-closed).
+
+❌ API runner: 0/1 suites green — run aborted at skip-only.test.js (fail-closed).
+
+❌ API runner: 0/1 suites green — run aborted at swallowed-fail.test.js (fail-closed).
+
+❌ API runner: 0/1 suites green — run aborted at zero-pass.test.js (fail-closed).
+
+❌ API runner: 0/1 suites green — run aborted at inflated-evidence.test.js (fail-closed).
+
+❌ API runner: 0/1 suites green — run aborted at hanging.test.js (fail-closed).
+
+❌ API runner: 0/1 suites green — run aborted at duplicate-marker.test.js (fail-closed).
+
+❌ API runner: 0/1 suites green — run aborted at stolen-witness.test.js (fail-closed).
+
+❌ API runner: 1/2 suites green — run aborted at twin-b.test.js (fail-closed).
+
+❌ API runner: 0/1 suites green — run aborted at corrupt-marker.test.js (fail-closed).

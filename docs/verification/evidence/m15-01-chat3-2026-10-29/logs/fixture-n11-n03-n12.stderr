@@ -1,0 +1,4 @@
+  ❌ N03-1: longitudinal snapshots derive from real records and match recomputation
+     Cannot find module '../server/data/payesh.json'
+Require stack:
+- /tmp/wt-src/tests/n03-n11-n12-fabricated-metrics.test.js

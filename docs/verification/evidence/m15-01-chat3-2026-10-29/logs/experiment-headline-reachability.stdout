@@ -1,0 +1,18 @@
+
+▸ registry headline reachability with an honestly blocked item (synthetic)
+  OK A fixture really is a single-parent registry-only landing
+  OK A every structural check passes — binding is satisfied, not bypassed
+  OK A V-15b already caps the headline at UNKNOWN under a blocked item
+  OK A is still refused by V-16 (schema-valid registry that verifies nothing)
+  OK A exits 1
+  OK B fixture really is a single-parent registry-only landing
+  OK B (no blocked item) reaches VERDICT VERIFIED
+  OK B exits 0 — the harness can be green, so the experiment is not always-red
+  OK C fixture really is a single-parent registry-only landing
+  OK C raising the headline is refused (V-15/V-15b out-claim)
+  OK C exits 1
+
+──────────────────────────────────────────
+reachability experiment: 11 successful / 0 failed (11 total)
+Conclusion reproduced: while any item is blocked/UNKNOWN, the legal headline
+ceiling is TESTED, which V-16 refuses — exit 0 is unreachable for such a registry.

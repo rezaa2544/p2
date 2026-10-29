@@ -1,0 +1,50 @@
+══ REGISTRY PROVENANCE AUDIT ══
+  registry head_bound : bf263bf253696d3afac2057332eb29c7dd7820a5
+  local HEAD          : 344a9dbf82fe9dafc0b8bf9fa5ed2b5334998272
+  evidence commit     : 344a9dbf82fe9dafc0b8bf9fa5ed2b5334998272  (checkout HEAD (not a metadata-only commit))
+  origin/main         : fff1beae09ff45d69e554f8c000a9d15b75d968c
+  UNBOUND      A-01 — hash 7f511bec470c0782
+  UNBOUND      A-02 — hash b99276222a320b6d
+  UNBOUND      A-03 — hash 19200717c3dab371
+  UNBOUND      A-04 — hash f19091e77377b9c4
+  UNBOUND      A-05 — hash 41874db189f47ef6
+  UNBOUND      A-06 — hash 5faf77d486f20fe1
+  UNBOUND      A-07 — hash 36c2c96d155efcb0
+  UNBOUND      A-08 — hash 49c0c99c59752bb1
+  UNBOUND      A-09 — hash 9f8a0b2499f9e600
+  UNBOUND      A-10 — hash 08b52166bbb6e49e
+  UNBOUND      A-11 — hash 3c9f83ad10ae8e25
+  UNBOUND      A-12 — hash dd15c26708ef76b5
+  NO_DEP_SET   A-13 — add a dependency set
+  NO_DEP_SET   A-14 — add a dependency set
+  NO_DEP_SET   A-15 — add a dependency set
+  NO_DEP_SET   A-16 — add a dependency set
+  NO_DEP_SET   A-17 — add a dependency set
+  UNBOUND      A-18 — hash a1bf33b797999f13
+  UNBOUND      A-19 — hash 7e0f79808ed95345
+  UNBOUND      A-20 — hash c1b529c549191bbc
+  NO_DEP_SET   A-21 — add a dependency set
+  UNBOUND      A-22 — hash 400ab161ad428146
+  NO_DEP_SET   A-23 — add a dependency set
+  UNBOUND      A-24 — hash a52be2c2ec0866cb
+  NO_DEP_SET   A-25 — add a dependency set
+  UNBOUND      A-26 — hash 4420bf37486efb28
+  UNBOUND      A-27 — hash 4420bf37486efb28
+  UNBOUND      A-28 — hash 4420bf37486efb28
+  UNBOUND      A-29 — hash 4420bf37486efb28
+  NO_DEP_SET   M15-01-A — add a dependency set
+  NO_DEP_SET   M15-01-B — add a dependency set
+  NO_DEP_SET   M15-01-C — add a dependency set
+────────────────────────────────────────
+  CURRENT : 0
+  STALE   : 0
+  UNBOUND : 32  ← bind with --bind <id>
+
+  BINDING MODE: checkout HEAD is not a registry-only metadata commit, so the
+    two-phase protocol cannot bind here. Evidence MUST be produced on the
+    parent of such a commit (docs/STRICT_VERIFICATION_GATE.md steps 1-8).
+
+  V-02 HEAD-BIND: MISMATCH — DIVERGED (head_bound is not in the history of the evidence commit — re-verify from scratch)
+    ancestor-of-evidence: NO
+  EVIDENCE_SHA 344a9dbf82fe9dafc0b8bf9fa5ed2b5334998272
+  AGREES-WITH-GATE: NO (gate would also fail V-02)

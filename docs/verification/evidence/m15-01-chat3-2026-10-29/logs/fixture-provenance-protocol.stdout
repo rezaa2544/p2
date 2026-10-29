@@ -1,0 +1,22 @@
+
+▸ registry-provenance: two-phase protocol agreement (real git)
+  OK A fixture really is a single-parent registry-only commit
+  OK A audit exits 0-or-3, never 2, on a valid binding
+  OK A evidence commit is the parent, not the landing commit
+  OK A reports MATCH rather than MISMATCH
+  OK A states agreement with the gate
+  OK B a nonexistent head_bound is reported INVALID
+  OK B never prints the reassuring ancestor line for a fake SHA
+  OK B exits 2
+  OK C an ancestor binding is reported STALE with a measured reason
+  OK C exits 2
+  OK D an unrelated SHA is reported DIVERGED, not STALE
+  OK D exits 2
+  OK D the fixture base is not an ancestor of the bound SHA
+  OK E a non-metadata commit is named as such
+  OK E does not claim agreement with the gate
+  OK E does not exit 0
+
+──────────────────────────────────────────
+نتیجه: 16 موفق / 0 ناموفق (از 16)
+✅ قرارداد provenance با گیت هم‌خوان است.

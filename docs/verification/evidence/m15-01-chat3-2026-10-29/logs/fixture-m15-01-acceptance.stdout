@@ -1,0 +1,42 @@
+==== M15-01 REGISTRY & STRICT VERIFICATION — ACCEPTANCE PROPERTIES ====
+  OK   P1 stale/foreign-SHA evidence is rejected — exit=0
+       ↳ forged evidence head_sha, registry head_bound mismatch, artifact edited after the commit, artifact never committed
+  OK   P2 absence of Arena evidence is not PASS — exit=0
+       ↳ Arena slot deleted, empty reviews_recorded, item.reviews omits the claimant
+  OK   P4 missing/duplicate/undeclared items are detectable — exit=0
+       ↳ declared id absent, undeclared item rides along, duplicate declaration, duplicate item
+  OK   P5 BLOCKED/NOT VERIFIED cannot become CERTIFIED — exit=0
+       ↳ blocked item keeps a verifying status, BLOCKED verdict with verifying status, headline out-claims items, block buried under a green headline
+  OK   P6 one witness cannot certify several claims — exit=0
+       ↳ a byte-identical evidence record reused under another item id, the same tactic under an identical scope, and scopes citing check identifiers no cited log contains; the GOOD-SCOPED-SHARED control proves distinct scoped citations stay admissible
+  OK   P7 a failing or empty run is never evidence (falsified in the A-30 fixtures) — exit=0
+       ↳ exit_code != 0, checks_passed != checks_total, zero-total and zero-passed evidence — the false-green path that made main report VERIFIED for a registry whose every run had failed
+  OK   P8 independence the reviewer contract cannot support is unreachable — exit=0
+       ↳ INDEPENDENTLY_VERIFIED/CERTIFIED require a second reviewer slot; with one slot the gate caps them (V-18) and reports the vacuous V-03/G16 as N/A instead of counting them as passes
+  OK   P3a no human-governance check is registered in the gate — the gate still registers a V-10 check or requires the key
+  OK   P3b a registry with no human decision, or an unapproved one, is accepted (exit 0) — accepted=3 exit=0
+  OK   P3c mutation anchor is unique in the gate — occurrences=1
+  OK   P3d re-adding a human-approval requirement turns EXACTLY the two human controls red — GOOD exit=0 no-block exit=1 unapproved exit=1
+       ↳ owner oversight continues directly on the repository; a per-registry signature is neither required nor able to raise a status. Independence stays capped by V-18 and the headline by V-15, both still asserted above.
+  OK   C1 conformant registries are accepted (verifying + PR ancestry) — accepted=2 exit=0
+  OK   C2 a registry that verifies nothing is not reported VERIFIED (V-16) — exit=0
+  OK   M V-02 artifact bytes at the evidence SHA → fixture V-02e is not vacuous — weakened gate accepted the exploit
+  OK   M V-02 exit_code → fixture V-02f is not vacuous — weakened gate accepted the exploit
+  OK   M V-02 checks_passed == checks_total → fixture V-02g is not vacuous — weakened gate accepted the exploit
+  OK   M V-13 blocked state (+V-15b also catches it) → fixture V-13a is not vacuous — weakened gate accepted the exploit
+  OK   M V-13 non-PASS ceiling (+V-15b and V-16 also catch it) → fixture V-13c is not vacuous — weakened gate accepted the exploit
+  OK   M V-15 headline ceiling → fixture V-15 is not vacuous — weakened gate accepted the exploit
+  OK   M V-15b blocked headline (+V-15 and V-16 also catch it) → fixture V-15b is not vacuous — weakened gate accepted the exploit
+  OK   M V-11 adversarial coverage → fixture V-11b is not vacuous — weakened gate accepted the exploit
+  OK   M G14c undeclared items (+V-17 also catches the cloned rider) → fixture G14c is not vacuous — weakened gate accepted the exploit
+  OK   M G14d duplicate declarations → fixture G14d is not vacuous — weakened gate accepted the exploit
+  OK   M G14b missing declared item → fixture G14b is not vacuous — weakened gate accepted the exploit
+  OK   M G10 evidence-free verdict (+V-16 also catches it) → fixture G10-no-arena-slot is not vacuous — weakened gate accepted the exploit
+  OK   M V-09b retired reviewer slot → fixture V-09d is not vacuous — weakened gate accepted the exploit
+  OK   M V-16 nothing-verified exit → fixture GOOD-BLOCKED is not vacuous — weakened gate accepted the exploit
+  OK   M G17 uncommitted drift → fixture G17 is not vacuous — weakened gate accepted the exploit
+  OK   M V-17 cross-item witness scoping → fixture V-17 is not vacuous — weakened gate accepted the exploit
+  OK   M V-17 scope-token verification (fabricated citation) → fixture V-17c is not vacuous — weakened gate accepted the exploit
+  OK   M V-18 status cap under a one-slot contract → fixture V-18 is not vacuous — weakened gate accepted the exploit
+  OK   M V-02 future timestamp → fixture V-02h is not vacuous — weakened gate accepted the exploit
+CHECKS 32 FAIL 0

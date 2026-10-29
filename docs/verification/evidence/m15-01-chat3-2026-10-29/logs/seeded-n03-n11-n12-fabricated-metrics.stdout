@@ -1,0 +1,11 @@
+
+🔍 N-03/N-11/N-12 regression: no fabricated metrics
+  ✅ N03-1: longitudinal snapshots derive from real records and match recomputation
+  ✅ N03-2: a school with zero records yields zero periods and no fabricated trend
+  ✅ N03-3: outcome/policy/decision engines report honest empties on no input
+  ✅ N03-4: execution dashboard reports null SLA for zero tasks and no default workflow
+  ✅ N11-1: observability collectors report UNKNOWN with null metrics when nothing is measured
+  ✅ N11-2: observability collectors report real values when measurements are supplied
+  ✅ N12-1: zero-trust snapshot derives fields from live probes
+
+N-03/N-11/N-12 regression tests: 7/7 passed

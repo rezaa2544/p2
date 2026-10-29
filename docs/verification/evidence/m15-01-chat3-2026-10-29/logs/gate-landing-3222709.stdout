@@ -1,0 +1,839 @@
+==== PAYESH STRICT VERIFICATION GATE ====
+  OK G1 current HEAD known — 3222709cfd96abf94bd5902b31d489b169e6d860
+  OK V-02 evidence binding mode explicit — metadata-only binding requires a non-merge commit with exactly one parent; parent_count=2
+  OK V-14 evidence SHA is a commit in this history line — evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G2 mandatory policy exists
+  OK G3 registry exists
+  OK G4 registry valid JSON
+  OK G5 Arena is the sole required AI reviewer
+  NOTE V-03/G16 independence checks are vacuous with 1 reviewer slot — reported as N/A (never as a pass) and capped by V-18; bounded additionally by G5/V-15/V-17/V-18
+  NOTE cross-ITEM witness copying is not vacuous at N=1 and is policed by V-17
+  OK G6 explicit false-green allowlist exists
+  OK G6a canonical alert rules exists — infra/observability/alert-rules.yml
+  OK V-12 schema file exists & valid JSON — docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json
+  OK V-12 schema matches canonical contract
+  OK G6b allowlist entries carry owner+reason+valid expiry
+  OK G6c allowlist entry 0 complete & owned — assert(true
+  OK G6c allowlist entry 1 complete & owned — process.exit(0)
+  OK G6c allowlist entry 2 complete & owned — || true
+  OK G6c allowlist entry 3 complete & owned — 0/0 checks
+  OK G6c allowlist entry 4 complete & owned — assert(true
+  OK G6c allowlist entry 5 complete & owned — assert(true
+  OK G6c allowlist entry 6 complete & owned — assert(true
+  OK G6c allowlist entry 7 complete & owned — assert(true
+  OK G6c allowlist entry 8 complete & owned — assert(true
+  OK G6c allowlist entry 9 complete & owned — assert(true
+  OK G6c allowlist entry 10 complete & owned — assert(true
+  OK G6c allowlist entry 11 complete & owned — assert(true
+  OK G6c allowlist entry 12 complete & owned — process.exit(0)
+  OK G6c allowlist entry 13 complete & owned — process.exit(0)
+  OK G6c allowlist entry 14 complete & owned — process.exit(0)
+  OK G6c allowlist entry 15 complete & owned — process.exit(0)
+  OK G6c allowlist entry 16 complete & owned — process.exit(0)
+  OK G6c allowlist entry 17 complete & owned — process.exit(0)
+  OK G6c allowlist entry 18 complete & owned — process.exit(0)
+  OK G6c allowlist entry 19 complete & owned — process.exit(0)
+  OK G6c allowlist entry 20 complete & owned — process.exit(0)
+  OK G6c allowlist entry 21 complete & owned — process.exit(0)
+  OK G6c allowlist entry 22 complete & owned — process.exit(0)
+  OK G6c allowlist entry 23 complete & owned — process.exit(0)
+  OK G6c allowlist entry 24 complete & owned — process.exit(0)
+  OK G6c allowlist entry 25 complete & owned — process.exit(0)
+  OK G6c allowlist entry 26 complete & owned — process.exit(0)
+  OK G6c allowlist entry 27 complete & owned — process.exit(0)
+  OK G6c allowlist entry 28 complete & owned — process.exit(0)
+  OK G6c allowlist entry 29 complete & owned — process.exit(0)
+  OK G6c allowlist entry 30 complete & owned — process.exit(0)
+  OK G6c allowlist entry 31 complete & owned — process.exit(0)
+  OK G6c allowlist entry 32 complete & owned — process.exit(0)
+  OK G6c allowlist entry 33 complete & owned — process.exit(0)
+  OK G6c allowlist entry 34 complete & owned — process.exit(0)
+  OK G6c allowlist entry 35 complete & owned — process.exit(0)
+  OK G6c allowlist entry 36 complete & owned — process.exit(0)
+  OK G6c allowlist entry 37 complete & owned — process.exit(0)
+  OK G6c allowlist entry 38 complete & owned — process.exit(0)
+  OK G6c allowlist entry 39 complete & owned — process.exit(0)
+  OK G6c allowlist entry 40 complete & owned — process.exit(0)
+  OK G6c allowlist entry 41 complete & owned — process.exit(0)
+  OK G6c allowlist entry 42 complete & owned — process.exit(0)
+  OK G6c allowlist entry 43 complete & owned — process.exit(0)
+  OK G6c allowlist entry 44 complete & owned — process.exit(0)
+  OK G6c allowlist entry 45 complete & owned — process.exit(0)
+  OK G6c allowlist entry 46 complete & owned — process.exit(0)
+  OK G6c allowlist entry 47 complete & owned — process.exit(0)
+  OK G6c allowlist entry 48 complete & owned — process.exit(0)
+  OK G6c allowlist entry 49 complete & owned — process.exit(0)
+  OK G6c allowlist entry 50 complete & owned — process.exit(0)
+  OK G6c allowlist entry 51 complete & owned — process.exit(0)
+  OK G6c allowlist entry 52 complete & owned — process.exit(0)
+  OK G6c allowlist entry 53 complete & owned — process.exit(0)
+  OK G6c allowlist entry 54 complete & owned — process.exit(0)
+  OK G6c allowlist entry 55 complete & owned — process.exit(0)
+  OK G6c allowlist entry 56 complete & owned — process.exit(0)
+  OK G6c allowlist entry 57 complete & owned — process.exit(0)
+  OK G6c allowlist entry 58 complete & owned — process.exit(0)
+  OK G6c allowlist entry 59 complete & owned — process.exit(0)
+  OK G6c allowlist entry 60 complete & owned — process.exit(0)
+  OK G6c allowlist entry 61 complete & owned — process.exit(0)
+  OK G6c allowlist entry 62 complete & owned — process.exit(0)
+  OK G6c allowlist entry 63 complete & owned — process.exit(0)
+  OK G6c allowlist entry 64 complete & owned — process.exit(0)
+  OK G6c allowlist entry 65 complete & owned — process.exit(0)
+  OK G6c allowlist entry 66 complete & owned — process.exit(0)
+  OK G6c allowlist entry 67 complete & owned — process.exit(0)
+  OK G6c allowlist entry 68 complete & owned — process.exit(0)
+  OK G6c allowlist entry 69 complete & owned — process.exit(0)
+  OK G6c allowlist entry 70 complete & owned — process.exit(0)
+  OK G6c allowlist entry 71 complete & owned — process.exit(0)
+  OK G6c allowlist entry 72 complete & owned — process.exit(0)
+  OK G6c allowlist entry 73 complete & owned — process.exit(0)
+  OK G6c allowlist entry 74 complete & owned — process.exit(0)
+  OK G6c allowlist entry 75 complete & owned — process.exit(0)
+  OK G6c allowlist entry 76 complete & owned — process.exit(0)
+  OK G6c allowlist entry 77 complete & owned — process.exit(0)
+  OK G6c allowlist entry 78 complete & owned — process.exit(0)
+  OK G6c allowlist entry 79 complete & owned — process.exit(0)
+  OK G6c allowlist entry 80 complete & owned — process.exit(0)
+  OK G6c allowlist entry 81 complete & owned — process.exit(0)
+  OK G6c allowlist entry 82 complete & owned — process.exit(0)
+  OK G6c allowlist entry 83 complete & owned — process.exit(0)
+  OK G6c allowlist entry 84 complete & owned — process.exit(0)
+  OK G6c allowlist entry 85 complete & owned — process.exit(0)
+  OK G6c allowlist entry 86 complete & owned — process.exit(0)
+  OK G6c allowlist entry 87 complete & owned — process.exit(0)
+  OK G6c allowlist entry 88 complete & owned — process.exit(0)
+  OK G6c allowlist entry 89 complete & owned — process.exit(0)
+  OK G6c allowlist entry 90 complete & owned — process.exit(0)
+  OK G6c allowlist entry 91 complete & owned — process.exit(0)
+  OK G6c allowlist entry 92 complete & owned — process.exit(0)
+  OK G6c allowlist entry 93 complete & owned — process.exit(0)
+  OK G6c allowlist entry 94 complete & owned — process.exit(0)
+  OK G6c allowlist entry 95 complete & owned — process.exit(0)
+  OK G6c allowlist entry 96 complete & owned — process.exit(0)
+  OK G6c allowlist entry 97 complete & owned — process.exit(0)
+  OK G6c allowlist entry 98 complete & owned — process.exit(0)
+  OK G6c allowlist entry 99 complete & owned — process.exit(0)
+  OK G6c allowlist entry 100 complete & owned — process.exit(0)
+  OK G6c allowlist entry 101 complete & owned — process.exit(0)
+  OK G6c allowlist entry 102 complete & owned — process.exit(0)
+  OK G6c allowlist entry 103 complete & owned — process.exit(0)
+  OK G6c allowlist entry 104 complete & owned — process.exit(0)
+  OK G6c allowlist entry 105 complete & owned — process.exit(0)
+  OK G6c allowlist entry 106 complete & owned — process.exit(0)
+  OK G6c allowlist entry 107 complete & owned — process.exit(0)
+  OK G6c allowlist entry 108 complete & owned — process.exit(0)
+  OK G6c allowlist entry 109 complete & owned — process.exit(0)
+  OK G6c allowlist entry 110 complete & owned — process.exit(0)
+  OK G6c allowlist entry 111 complete & owned — process.exit(0)
+  OK G6c allowlist entry 112 complete & owned — process.exit(0)
+  OK G6c allowlist entry 113 complete & owned — process.exit(0)
+  OK G6c allowlist entry 114 complete & owned — process.exit(0)
+  OK G6c allowlist entry 115 complete & owned — process.exit(0)
+  OK G6c allowlist entry 116 complete & owned — process.exit(0)
+  OK G6c allowlist entry 117 complete & owned — process.exit(0)
+  OK G6c allowlist entry 118 complete & owned — process.exit(0)
+  OK G6c allowlist entry 119 complete & owned — process.exit(0)
+  OK G6c allowlist entry 120 complete & owned — process.exit(0)
+  OK G6c allowlist entry 121 complete & owned — process.exit(0)
+  OK G6c allowlist entry 122 complete & owned — process.exit(0)
+  OK G6c allowlist entry 123 complete & owned — process.exit(0)
+  OK G6c allowlist entry 124 complete & owned — process.exit(0)
+  OK G6c allowlist entry 125 complete & owned — process.exit(0)
+  OK G6c allowlist entry 126 complete & owned — process.exit(0)
+  OK G6c allowlist entry 127 complete & owned — process.exit(0)
+  OK G6c allowlist entry 128 complete & owned — process.exit(0)
+  OK G6c allowlist entry 129 complete & owned — process.exit(0)
+  OK G6c allowlist entry 130 complete & owned — process.exit(0)
+  OK G6c allowlist entry 131 complete & owned — || true
+  OK G6c allowlist entry 132 complete & owned — || true
+  OK G6c allowlist entry 133 complete & owned — || true
+  OK G6c allowlist entry 134 complete & owned — || true
+  OK G6c allowlist entry 135 complete & owned — || true
+  OK G6c allowlist entry 136 complete & owned — || true
+  OK G6c allowlist entry 137 complete & owned — || true
+  OK G6c allowlist entry 138 complete & owned — || true
+  OK G6c allowlist entry 139 complete & owned — || true
+  OK G6c allowlist entry 140 complete & owned — || true
+  OK G6c allowlist entry 141 complete & owned — || true
+  OK G6c allowlist entry 142 complete & owned — || true
+  OK G6c allowlist entry 143 complete & owned — || true
+  OK G6c allowlist entry 144 complete & owned — || true
+  OK G6c allowlist entry 145 complete & owned — || true
+  OK G6c allowlist entry 146 complete & owned — || true
+  OK G6c allowlist entry 147 complete & owned — || true
+  OK G6c allowlist entry 148 complete & owned — || true
+  OK G6c allowlist entry 149 complete & owned — || true
+  OK G6c allowlist entry 150 complete & owned — || true
+  OK G6c allowlist entry 151 complete & owned — || true
+  OK G6c allowlist entry 152 complete & owned — || true
+  OK G6c allowlist entry 153 complete & owned — || true
+  OK G6c allowlist entry 154 complete & owned — || true
+  OK G6c allowlist entry 155 complete & owned — || true
+  OK G6c allowlist entry 156 complete & owned — || true
+  OK G6c allowlist entry 157 complete & owned — || true
+  OK G6c allowlist entry 158 complete & owned — || true
+  OK G6c allowlist entry 159 complete & owned — || true
+  OK G6c allowlist entry 160 complete & owned — || true
+  OK G6c allowlist entry 161 complete & owned — || true
+  OK G6c allowlist entry 162 complete & owned — || true
+  OK G6c allowlist entry 163 complete & owned — || true
+  OK G6c allowlist entry 164 complete & owned — || true
+  OK G6c allowlist entry 165 complete & owned — || true
+  OK G6c allowlist entry 166 complete & owned — || true
+  OK G6c allowlist entry 167 complete & owned — || true
+  OK G6c allowlist entry 168 complete & owned — || true
+  OK G6c allowlist entry 169 complete & owned — || true
+  OK G6c allowlist entry 170 complete & owned — || true
+  OK G6c allowlist entry 171 complete & owned — || true
+  OK G6c allowlist entry 172 complete & owned — 0/0 checks
+  OK G6c allowlist entry 173 complete & owned — 0/0 checks
+  OK G6c allowlist entry 174 complete & owned — 0/0 checks
+  OK G7 assert(true has no unapproved hits
+  OK G7 process.exit(0) has no unapproved hits
+  OK G7 || true has no unapproved hits
+  OK G7 0/0 checks has no unapproved hits
+  OK G7 self-skip has no unapproved hits
+  OK G7 self-only has no unapproved hits
+  OK G7 expect-true-toBe has no unapproved hits
+  OK V-06 origin/main resolvable — fff1beae09ff45d69e554f8c000a9d15b75d968c
+  FAIL V-06 HEAD contained in origin/main (not a local-only line) — head=3222709cfd96abf94bd5902b31d489b169e6d860 origin/main=fff1beae09ff45d69e554f8c000a9d15b75d968c
+  OK G17 no uncommitted tracked drift outside the registry
+  OK V-01 registry declares a non-empty items array — items=32
+  OK V-04 allowed_statuses is the canonical status machine — ["UNKNOWN","TESTED","RUNTIME_VERIFIED","ADVERSARIAL_VERIFIED","INDEPENDENTLY_VERIFIED","CERTIFIED"]
+  OK V-05 top-level status in machine & not BLOCKED* — UNKNOWN
+  FAIL V-02 registry head_bound matches immutable evidence SHA — head_bound=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK V-12 registry has all required keys — complete
+  OK G14a registry declares its expected item contract — 32 ids declared
+  OK G14b all declared items present (32) — missing: 
+  OK G14c no undeclared/unknown items — undeclared: 
+  OK G14d expected_ids has no duplicate entries
+  OK V-15 registry status is bounded by its weakest item — top=UNKNOWN(0) weakest_item_rank=0
+  OK V-15b blocked items cap the registry below the verifying band — blocked_items=29 top=UNKNOWN
+  OK V-09b reviews_recorded only uses known reviewer slots
+  OK V-09c reviews_recorded records are distinct non-empty entries
+  OK G8 unique item A-01
+  FAIL G9 A-01 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-01 arena verdict + evidence — BLOCKED
+  OK G13 A-01 non-certified item does not claim certification
+  OK V-04 A-01 status in machine — UNKNOWN
+  OK V-13 A-01 verdict/status/block state consistent
+  OK G15a A-01 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-01 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-01 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-01 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-01 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-01 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-01 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-01 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-01 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-01 evidence non-vacuous (non-verifying status)
+  OK V-12 A-01 item+evidence schema
+  OK G8 unique item A-02
+  FAIL G9 A-02 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-02 arena verdict + evidence — BLOCKED
+  OK G13 A-02 non-certified item does not claim certification
+  OK V-04 A-02 status in machine — UNKNOWN
+  OK V-13 A-02 verdict/status/block state consistent
+  OK G15a A-02 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-02 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-02 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-02 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-02 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-02 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-02 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-02 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-02 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-02 evidence non-vacuous (non-verifying status)
+  OK V-12 A-02 item+evidence schema
+  OK G8 unique item A-03
+  FAIL G9 A-03 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-03 arena verdict + evidence — BLOCKED
+  OK G13 A-03 non-certified item does not claim certification
+  OK V-04 A-03 status in machine — UNKNOWN
+  OK V-13 A-03 verdict/status/block state consistent
+  OK G15a A-03 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-03 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-03 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-03 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-03 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-03 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-03 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-03 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-03 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-03 evidence non-vacuous (non-verifying status)
+  OK V-12 A-03 item+evidence schema
+  OK G8 unique item A-04
+  FAIL G9 A-04 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-04 arena verdict + evidence — BLOCKED
+  OK G13 A-04 non-certified item does not claim certification
+  OK V-04 A-04 status in machine — UNKNOWN
+  OK V-13 A-04 verdict/status/block state consistent
+  OK G15a A-04 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-04 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-04 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-04 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-04 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-04 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-04 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-04 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-04 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-04 evidence non-vacuous (non-verifying status)
+  OK V-12 A-04 item+evidence schema
+  OK G8 unique item A-05
+  FAIL G9 A-05 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-05 arena verdict + evidence — BLOCKED
+  OK G13 A-05 non-certified item does not claim certification
+  OK V-04 A-05 status in machine — UNKNOWN
+  OK V-13 A-05 verdict/status/block state consistent
+  OK G15a A-05 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-05 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-05 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-05 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-05 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-05 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-05 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-05 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-05 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-05 evidence non-vacuous (non-verifying status)
+  OK V-12 A-05 item+evidence schema
+  OK G8 unique item A-06
+  FAIL G9 A-06 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-06 arena verdict + evidence — BLOCKED
+  OK G13 A-06 non-certified item does not claim certification
+  OK V-04 A-06 status in machine — UNKNOWN
+  OK V-13 A-06 verdict/status/block state consistent
+  OK G15a A-06 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-06 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-06 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-06 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-06 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-06 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-06 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-06 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-06 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-06 evidence non-vacuous (non-verifying status)
+  OK V-12 A-06 item+evidence schema
+  OK G8 unique item A-07
+  FAIL G9 A-07 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-07 arena verdict + evidence — BLOCKED
+  OK G13 A-07 non-certified item does not claim certification
+  OK V-04 A-07 status in machine — UNKNOWN
+  OK V-13 A-07 verdict/status/block state consistent
+  OK G15a A-07 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-07 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-07 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-07 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-07 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-07 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-07 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-07 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-07 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-07 evidence non-vacuous (non-verifying status)
+  OK V-12 A-07 item+evidence schema
+  OK G8 unique item A-08
+  FAIL G9 A-08 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-08 arena verdict + evidence — BLOCKED
+  OK G13 A-08 non-certified item does not claim certification
+  OK V-04 A-08 status in machine — UNKNOWN
+  OK V-13 A-08 verdict/status/block state consistent
+  OK G15a A-08 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-08 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-08 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-08 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-08 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-08 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-08 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-08 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-08 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-08 evidence non-vacuous (non-verifying status)
+  OK V-12 A-08 item+evidence schema
+  OK G8 unique item A-09
+  FAIL G9 A-09 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-09 arena verdict + evidence — BLOCKED
+  OK G13 A-09 non-certified item does not claim certification
+  OK V-04 A-09 status in machine — UNKNOWN
+  OK V-13 A-09 verdict/status/block state consistent
+  OK G15a A-09 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-09 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-09 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-09 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-09 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-09 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-09 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-09 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-09 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-09 evidence non-vacuous (non-verifying status)
+  OK V-12 A-09 item+evidence schema
+  OK G8 unique item A-10
+  FAIL G9 A-10 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-10 arena verdict + evidence — BLOCKED
+  OK G13 A-10 non-certified item does not claim certification
+  OK V-04 A-10 status in machine — UNKNOWN
+  OK V-13 A-10 verdict/status/block state consistent
+  OK G15a A-10 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-10 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-10 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-10 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-10 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-10 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-10 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-10 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-10 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-10 evidence non-vacuous (non-verifying status)
+  OK V-12 A-10 item+evidence schema
+  OK G8 unique item A-11
+  FAIL G9 A-11 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-11 arena verdict + evidence — BLOCKED
+  OK G13 A-11 non-certified item does not claim certification
+  OK V-04 A-11 status in machine — UNKNOWN
+  OK V-13 A-11 verdict/status/block state consistent
+  OK G15a A-11 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-11 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-11 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-11 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-11 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-11 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-11 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-11 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-11 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-11 evidence non-vacuous (non-verifying status)
+  OK V-12 A-11 item+evidence schema
+  OK G8 unique item A-12
+  FAIL G9 A-12 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-12 arena verdict + evidence — BLOCKED
+  OK G13 A-12 non-certified item does not claim certification
+  OK V-04 A-12 status in machine — UNKNOWN
+  OK V-13 A-12 verdict/status/block state consistent
+  OK G15a A-12 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-12 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-12 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-12 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-12 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-12 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-12 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-12 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-12 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-12 evidence non-vacuous (non-verifying status)
+  OK V-12 A-12 item+evidence schema
+  OK G8 unique item A-13
+  FAIL G9 A-13 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-13 arena verdict + evidence — BLOCKED
+  OK G13 A-13 non-certified item does not claim certification
+  OK V-04 A-13 status in machine — UNKNOWN
+  OK V-13 A-13 verdict/status/block state consistent
+  OK G15a A-13 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-13 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-13 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-13 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-13 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-13 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-13 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-13 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-13 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-13 evidence non-vacuous (non-verifying status)
+  OK V-12 A-13 item+evidence schema
+  OK G8 unique item A-14
+  FAIL G9 A-14 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-14 arena verdict + evidence — BLOCKED
+  OK G13 A-14 non-certified item does not claim certification
+  OK V-04 A-14 status in machine — UNKNOWN
+  OK V-13 A-14 verdict/status/block state consistent
+  OK G15a A-14 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-14 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-14 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-14 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-14 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-14 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-14 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-14 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-14 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-14 evidence non-vacuous (non-verifying status)
+  OK V-12 A-14 item+evidence schema
+  OK G8 unique item A-15
+  FAIL G9 A-15 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-15 arena verdict + evidence — BLOCKED
+  OK G13 A-15 non-certified item does not claim certification
+  OK V-04 A-15 status in machine — UNKNOWN
+  OK V-13 A-15 verdict/status/block state consistent
+  OK G15a A-15 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-15 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-15 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-15 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-15 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-15 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-15 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-15 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-15 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-15 evidence non-vacuous (non-verifying status)
+  OK V-12 A-15 item+evidence schema
+  OK G8 unique item A-16
+  FAIL G9 A-16 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-16 arena verdict + evidence — BLOCKED
+  OK G13 A-16 non-certified item does not claim certification
+  OK V-04 A-16 status in machine — UNKNOWN
+  OK V-13 A-16 verdict/status/block state consistent
+  OK G15a A-16 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-16 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-16 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-16 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-16 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-16 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-16 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-16 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-16 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-16 evidence non-vacuous (non-verifying status)
+  OK V-12 A-16 item+evidence schema
+  OK G8 unique item A-17
+  FAIL G9 A-17 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-17 arena verdict + evidence — BLOCKED
+  OK G13 A-17 non-certified item does not claim certification
+  OK V-04 A-17 status in machine — UNKNOWN
+  OK V-13 A-17 verdict/status/block state consistent
+  OK G15a A-17 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-17 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-17 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-17 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-17 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-17 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-17 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-17 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-17 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-17 evidence non-vacuous (non-verifying status)
+  OK V-12 A-17 item+evidence schema
+  OK G8 unique item A-18
+  FAIL G9 A-18 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-18 arena verdict + evidence — BLOCKED
+  OK G13 A-18 non-certified item does not claim certification
+  OK V-04 A-18 status in machine — UNKNOWN
+  OK V-13 A-18 verdict/status/block state consistent
+  OK G15a A-18 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-18 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-18 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-18 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-18 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-18 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-18 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-18 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-18 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-18 evidence non-vacuous (non-verifying status)
+  OK V-12 A-18 item+evidence schema
+  OK G8 unique item A-19
+  FAIL G9 A-19 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-19 arena verdict + evidence — BLOCKED
+  OK G13 A-19 non-certified item does not claim certification
+  OK V-04 A-19 status in machine — UNKNOWN
+  OK V-13 A-19 verdict/status/block state consistent
+  OK G15a A-19 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-19 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-19 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-19 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-19 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-19 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-19 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-19 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-19 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-19 evidence non-vacuous (non-verifying status)
+  OK V-12 A-19 item+evidence schema
+  OK G8 unique item A-20
+  FAIL G9 A-20 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-20 arena verdict + evidence — BLOCKED
+  OK G13 A-20 non-certified item does not claim certification
+  OK V-04 A-20 status in machine — UNKNOWN
+  OK V-13 A-20 verdict/status/block state consistent
+  OK G15a A-20 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-20 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-20 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-20 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-20 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-20 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-20 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-20 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-20 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-20 evidence non-vacuous (non-verifying status)
+  OK V-12 A-20 item+evidence schema
+  OK G8 unique item A-21
+  FAIL G9 A-21 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-21 arena verdict + evidence — BLOCKED
+  OK G13 A-21 non-certified item does not claim certification
+  OK V-04 A-21 status in machine — UNKNOWN
+  OK V-13 A-21 verdict/status/block state consistent
+  OK G15a A-21 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-21 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-21 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-21 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-21 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-21 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-21 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-21 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-21 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-21 evidence non-vacuous (non-verifying status)
+  OK V-12 A-21 item+evidence schema
+  OK G8 unique item A-22
+  FAIL G9 A-22 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-22 arena verdict + evidence — BLOCKED
+  OK G13 A-22 non-certified item does not claim certification
+  OK V-04 A-22 status in machine — UNKNOWN
+  OK V-13 A-22 verdict/status/block state consistent
+  OK G15a A-22 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-22 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-22 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-22 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-22 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-22 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-22 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-22 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-22 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-22 evidence non-vacuous (non-verifying status)
+  OK V-12 A-22 item+evidence schema
+  OK G8 unique item A-23
+  FAIL G9 A-23 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-23 arena verdict + evidence — BLOCKED
+  OK G13 A-23 non-certified item does not claim certification
+  OK V-04 A-23 status in machine — UNKNOWN
+  OK V-13 A-23 verdict/status/block state consistent
+  OK G15a A-23 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-23 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-23 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-23 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-23 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-23 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-23 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-23 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-23 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-23 evidence non-vacuous (non-verifying status)
+  OK V-12 A-23 item+evidence schema
+  OK G8 unique item A-24
+  FAIL G9 A-24 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-24 arena verdict + evidence — BLOCKED
+  OK G13 A-24 non-certified item does not claim certification
+  OK V-04 A-24 status in machine — UNKNOWN
+  OK V-13 A-24 verdict/status/block state consistent
+  OK G15a A-24 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-24 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-24 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-24 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-24 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-24 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-24 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-24 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-24 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-24 evidence non-vacuous (non-verifying status)
+  OK V-12 A-24 item+evidence schema
+  OK G8 unique item A-25
+  FAIL G9 A-25 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-25 arena verdict + evidence — BLOCKED
+  OK G13 A-25 non-certified item does not claim certification
+  OK V-04 A-25 status in machine — UNKNOWN
+  OK V-13 A-25 verdict/status/block state consistent
+  OK G15a A-25 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-25 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-25 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-25 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-25 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-25 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-25 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-25 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-25 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-25 evidence non-vacuous (non-verifying status)
+  OK V-12 A-25 item+evidence schema
+  OK G8 unique item A-26
+  FAIL G9 A-26 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-26 arena verdict + evidence — BLOCKED
+  OK G13 A-26 non-certified item does not claim certification
+  OK V-04 A-26 status in machine — UNKNOWN
+  OK V-13 A-26 verdict/status/block state consistent
+  OK G15a A-26 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-26 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-26 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-26 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-26 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-26 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-26 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-26 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-26 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-26 evidence non-vacuous (non-verifying status)
+  OK V-12 A-26 item+evidence schema
+  OK G8 unique item A-27
+  FAIL G9 A-27 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-27 arena verdict + evidence — BLOCKED
+  OK G13 A-27 non-certified item does not claim certification
+  OK V-04 A-27 status in machine — UNKNOWN
+  OK V-13 A-27 verdict/status/block state consistent
+  OK G15a A-27 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-27 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-27 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-27 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-27 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-27 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-27 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-27 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-27 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-27 evidence non-vacuous (non-verifying status)
+  OK V-12 A-27 item+evidence schema
+  OK G8 unique item A-28
+  FAIL G9 A-28 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-28 arena verdict + evidence — BLOCKED
+  OK G13 A-28 non-certified item does not claim certification
+  OK V-04 A-28 status in machine — UNKNOWN
+  OK V-13 A-28 verdict/status/block state consistent
+  OK G15a A-28 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-28 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-28 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-28 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-28 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-28 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-28 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-28 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-28 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-28 evidence non-vacuous (non-verifying status)
+  OK V-12 A-28 item+evidence schema
+  OK G8 unique item A-29
+  FAIL G9 A-29 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 A-29 arena verdict + evidence — BLOCKED
+  OK G13 A-29 non-certified item does not claim certification
+  OK V-04 A-29 status in machine — UNKNOWN
+  OK V-13 A-29 verdict/status/block state consistent
+  OK G15a A-29 arena evidence is reproducible pointer — arena review_note node tools/verification-legacy-inventory.js docs/ver
+  OK G15b A-29 arena cited file exists — tools/verification-legacy-inventory.js
+  N/A  G16 A-29 cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 A-29 shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 A-29 status reachable with 1 reviewer slot(s) — UNKNOWN
+  FAIL V-02 A-29 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 A-29 pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 A-29 not certified by self-attesting sources alone — 2 commands checked
+  OK V-09 A-29 reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 A-29 evidence non-vacuous (non-verifying status)
+  OK V-12 A-29 item+evidence schema
+  OK G8 unique item M15-01-A
+  FAIL G9 M15-01-A binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 M15-01-A arena verdict + evidence — PASS
+  OK G13 M15-01-A non-certified item does not claim certification
+  OK V-04 M15-01-A status in machine — RUNTIME_VERIFIED
+  OK V-13 M15-01-A verdict/status/block state consistent
+  OK G15a M15-01-A arena evidence is reproducible pointer — arena positive_test node tests/m15-01-registry-strict-verification.tes
+  OK G15b M15-01-A arena cited file exists — tests/m15-01-registry-strict-verification.test.js
+  OK G15a M15-01-A arena evidence is reproducible pointer — arena negative_test node tests/strict-verification-gate.negative.test.
+  OK G15b M15-01-A arena cited file exists — tests/strict-verification-gate.negative.test.js
+  N/A  G16 M15-01-A cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 M15-01-A shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 M15-01-A status reachable with 1 reviewer slot(s) — RUNTIME_VERIFIED
+  FAIL V-02 M15-01-A evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | item[1]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[1]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 M15-01-A pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 M15-01-A not certified by self-attesting sources alone — 4 commands checked
+  OK V-09 M15-01-A reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 M15-01-A evidence non-vacuous & adversarially covered
+  OK V-12 M15-01-A item+evidence schema
+  OK G8 unique item M15-01-B
+  FAIL G9 M15-01-B binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 M15-01-B arena verdict + evidence — PASS
+  OK G13 M15-01-B non-certified item does not claim certification
+  OK V-04 M15-01-B status in machine — RUNTIME_VERIFIED
+  OK V-13 M15-01-B verdict/status/block state consistent
+  OK G15a M15-01-B arena evidence is reproducible pointer — arena positive_test node tests/m15-01-registry-strict-verification.tes
+  OK G15b M15-01-B arena cited file exists — tests/m15-01-registry-strict-verification.test.js
+  OK G15a M15-01-B arena evidence is reproducible pointer — arena negative_test node tests/strict-verification-gate.negative.test.
+  OK G15b M15-01-B arena cited file exists — tests/strict-verification-gate.negative.test.js
+  N/A  G16 M15-01-B cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 M15-01-B shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 M15-01-B status reachable with 1 reviewer slot(s) — RUNTIME_VERIFIED
+  FAIL V-02 M15-01-B evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | item[1]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[1]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 M15-01-B pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 M15-01-B not certified by self-attesting sources alone — 4 commands checked
+  OK V-09 M15-01-B reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 M15-01-B evidence non-vacuous & adversarially covered
+  OK V-12 M15-01-B item+evidence schema
+  OK G8 unique item M15-01-C
+  FAIL G9 M15-01-C binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+  OK G10 M15-01-C arena verdict + evidence — PASS
+  OK G13 M15-01-C non-certified item does not claim certification
+  OK V-04 M15-01-C status in machine — RUNTIME_VERIFIED
+  OK V-13 M15-01-C verdict/status/block state consistent
+  OK G15a M15-01-C arena evidence is reproducible pointer — arena positive_test node tests/m15-01-registry-strict-verification.tes
+  OK G15b M15-01-C arena cited file exists — tests/m15-01-registry-strict-verification.test.js
+  OK G15a M15-01-C arena evidence is reproducible pointer — arena positive_test node tests/strict-verification-gate-a30.test.js do
+  OK G15b M15-01-C arena cited file exists — tests/strict-verification-gate-a30.test.js
+  OK G15a M15-01-C arena evidence is reproducible pointer — arena negative_test node tests/strict-verification-gate.negative.test.
+  OK G15b M15-01-C arena cited file exists — tests/strict-verification-gate.negative.test.js
+  N/A  G16 M15-01-C cross-reviewer duplication — vacuous at 1 reviewer slot
+  OK V-17 M15-01-C shared witness is scoped per item, not copied — no cross-item witness reuse
+  OK V-18 M15-01-C status reachable with 1 reviewer slot(s) — RUNTIME_VERIFIED
+  FAIL V-02 M15-01-C evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | item[1]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | item[2]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+  N/A  V-03 M15-01-C pairwise reviewer independence — vacuous at 1 reviewer slot; V-17/V-18 apply instead
+  OK V-08 M15-01-C not certified by self-attesting sources alone — 6 commands checked
+  OK V-09 M15-01-C reviewer PASS corroborated (recorded + reviews + identity)
+  OK V-11 M15-01-C evidence non-vacuous & adversarially covered
+  OK V-12 M15-01-C item+evidence schema
+RESULT 632 pass / 66 fail
+HEAD 3222709cfd96abf94bd5902b31d489b169e6d860
+EVIDENCE_SHA 3222709cfd96abf94bd5902b31d489b169e6d860
+CERTIFIED 0
+CONTRACT FAIL
+VERIFIED_ITEMS 3/32 at registry status UNKNOWN
+VERDICT NOT VERIFIED
+BLOCKERS
+ - V-06 HEAD contained in origin/main (not a local-only line) — head=3222709cfd96abf94bd5902b31d489b169e6d860 origin/main=fff1beae09ff45d69e554f8c000a9d15b75d968c
+ - V-02 registry head_bound matches immutable evidence SHA — head_bound=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - G9 A-01 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-01 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-02 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-02 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-03 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-03 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-04 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-04 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-05 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-05 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-06 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-06 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-07 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-07 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-08 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-08 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-09 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-09 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-10 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-10 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-11 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-11 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-12 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-12 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-13 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-13 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-14 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-14 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-15 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-15 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-16 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-16 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-17 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-17 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-18 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-18 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-19 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-19 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-20 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-20 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-21 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-21 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-22 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-22 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-23 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-23 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-24 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-24 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-25 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-25 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-26 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-26 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-27 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-27 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-28 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-28 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 A-29 binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 A-29 evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 M15-01-A binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 M15-01-A evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | item[1]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[1]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 M15-01-B binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 M15-01-B evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | item[1]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[1]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)
+ - G9 M15-01-C binds immutable evidence SHA — item=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3222709cfd96abf94bd5902b31d489b169e6d860 checkout_head=3222709cfd96abf94bd5902b31d489b169e6d860
+ - V-02 M15-01-C evidence binds immutable SHA+artifact+hash+exit0 — item[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | item[1]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | item[2]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860) | arena[0]: head_sha mismatch (expected evidence SHA 3222709cfd96abf94bd5902b31d489b169e6d860)

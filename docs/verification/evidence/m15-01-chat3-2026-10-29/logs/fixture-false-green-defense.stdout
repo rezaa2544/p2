@@ -1,0 +1,60 @@
+
+▸ FALSE-GREEN DEFENSE — proving known failures cannot be reported GREEN
+  ✅ C1 a zero-assertion suite still exits 0 (the hole a defense must close)
+  ✅ C1 project suite g7-ci-database-env.test.js asserts (11 checks)
+  ✅ C1 project suite g6-migration-022-down.test.js asserts (12 checks)
+  ✅ C1 project suite a20-occ-production-invariant.test.js asserts (11 checks)
+  ✅ C1 project suite reaudit-occ-stale-write.js asserts (16 checks)
+  ✅ C2 a vacuous assert(true) suite exits 0 (the hole a defense must close)
+  ✅ C2 the strict gate scans for assert(true) patterns
+  ✅ C2 assert(true) is a KNOWN scanner label (allowlist-aware, not blanket)
+  ✅ C2 every allowlist entry is owned (owner+reason+expiry+replacement)
+  ✅ C3 a swallowed catch produces a misleading exit 0
+  ✅ C3 the strict gate scans for swallowed catches
+  ✅ C4 exploit: a runner can report 0/1 and still exit 0 (missing suite)
+  ✅ C4 project api/runner.js exits non-zero on suite failure
+  ✅ C4 every suite in api/runner.js list exists on disk (31 listed)
+  ✅ C5 `false || true` makes a failing script exit 0
+  ✅ C5 the G7 probe has no unguarded $DATABASE_URL under set -u
+  ✅ C6 registry provenance audit does not exit 0 against a stale registry
+  ✅ C6 audit specifically reports the head_bound mismatch
+  ✅ C6 registry head_bound vs live HEAD are comparable (not equal → stale, not green)
+  ✅ C7 an env-gated suite reports green while its real path never ran
+  ✅ C7 G7 regression suite is itself env-honest (green only on real assertions)
+  ✅ C8 an empty suite list reports 0/0 green (the vacuous-coverage hole)
+  ✅ C8 the strict gate requires a non-empty items array (V-01)
+  ✅ C9 no blanket repo-wide allowlist entry exists (every entry has explicit path)
+  ✅ C9 every allowlist path and replacement_test exists on disk (175 entries)
+  ✅ C9 all 7/7 G7 false-green pattern classes pass with zero G6/G7 failures
+  ✅ C9 unapproved new file with false-green pattern fails G7 closed immediately
+  ✅ C10 zero-execution suite (exit 0, no evidence) is REJECTED by the API runner
+  ✅ C11 a suite declaring skip>0 is REJECTED (skip is never a pass)
+  ✅ C12 fail>0 with exit 0 is REJECTED (counted failure cannot be green)
+  ✅ C13 pass=0 is REJECTED (a suite that ran no assertion proves nothing)
+  ✅ C14 declared pass≠printed ✅ is REJECTED (evidence must match reality)
+  ✅ C15 a hanging suite is REJECTED by the per-suite timeout (bounded RED)
+
+────────────────────────────────────────────────────
+✅ هر 1 سوئیت شاهدِ اجرای خود را اعلام کرد (PAYESH_SUITE_RESULT) و 2 assertion واقعی اجرا شد.
+نتیجه کلی RESTful API Tests: 1/1 سوئیت موفق — بدون خطا ✅
+────────────────────────────────────────────────────
+  ✅ C16 CONTROL an honest suite with matching evidence is ACCEPTED
+  ✅ C17 one suite declaring two markers is REJECTED (DUPLICATE_EVIDENCE)
+  ✅ C18 a witness copied from another suite is REJECTED (EVIDENCE_FILE_MISMATCH)
+  ✅ C19 a second suite re-declaring the same witness name is REJECTED (DUPLICATE_WITNESS_NAME)
+  ✅ C20 a truncated declaration is REJECTED (MALFORMED_EVIDENCE, never skipped)
+
+────────────────────────────────────────────────────
+✅ هر 2 سوئیت شاهدِ اجرای خود را اعلام کرد (PAYESH_SUITE_RESULT) و 2 assertion واقعی اجرا شد.
+نتیجه کلی RESTful API Tests: 2/2 سوئیت موفق — بدون خطا ✅
+────────────────────────────────────────────────────
+  ✅ C21 CONTROL two honest suites with distinct witnesses are ACCEPTED
+  ✅ C16b every registered API suite declares execution evidence (32 suites)
+  ✅ C16c every registered API suite exists on disk
+  ✅ C16d every tests/api/<dir>/*.test.js on disk is registered (32 discovered)
+  ✅ CONTROL a genuine passing suite is accepted (defense is not always-red)
+  ✅ CONTROL a20 invariant suite is accepted
+
+────────────────────────────────────────────────────
+false-green-defense: 44/44 موفق  —  بدون خطا ✅
+────────────────────────────────────────────────────

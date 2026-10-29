@@ -1,0 +1,25 @@
+== /tmp/wt-src
+   HEAD: 344a9dbf82fe9dafc0b8bf9fa5ed2b5334998272
+   shallow: true
+   tracked-drift: ''
+   untracked/ignored present: ''
+== /tmp/wt-land
+   HEAD: 3222709cfd96abf94bd5902b31d489b169e6d860
+   shallow: true
+   tracked-drift: ''
+   untracked/ignored present: ''
+== /tmp/wt-seed
+   HEAD: 344a9dbf82fe9dafc0b8bf9fa5ed2b5334998272
+   shallow: true
+   tracked-drift: ''
+   untracked/ignored present: '!! server/data/;'
+== /tmp/wt-fix
+   HEAD: 598c12430b482342fd542031f52cbe599da5fd01
+   shallow: true
+   tracked-drift: ''
+   untracked/ignored present: ''
+== /tmp/wt-check
+   HEAD: ecdda07849acab76b1c56b91481e137e45872ada
+   shallow: true
+   tracked-drift: ''
+   untracked/ignored present: ''

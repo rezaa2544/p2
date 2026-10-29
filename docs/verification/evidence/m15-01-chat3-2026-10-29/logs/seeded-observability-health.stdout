@@ -1,0 +1,14 @@
+generated JWT secret -> /tmp/payesh-api-obs-1Xe91N/jwt.key
+  cursor : enabled — key=keyfile (signed cursors survive restarts, ttl=3600s)
+
+🔍 Testing /api/v1/system/observability-health Endpoint
+[CANARY] weights hydrated from PostgreSQL (cluster_weights SSoT, 7 clusters)
+  ✅ OBS1: Anonymous request rejected with 401
+  ✅ OBS2: Missing params rejected with 400
+  ✅ OBS3: Manager gets 200 with Phase 4 observability health snapshot
+  ✅ OBS4: Foreign manager rejected with 403 (Tenant Isolation)
+  ✅ OBS5: Unauthorized student role rejected with 403
+  ✅ OBS6: Regional observability overview strictly enforces zero-ranking policy
+
+Observability Health API Tests: 6 passed, 0 failed
+PAYESH_SUITE_RESULT {"name":"observability-health","file":"observability-health.test.js","pass":6,"fail":0,"skip":0}

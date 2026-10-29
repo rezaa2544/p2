@@ -1,0 +1,25 @@
+collected_at_utc: 2026-10-29T17:12:25Z
+node: v22.22.3
+git: git version 2.39.5
+gh: gh version 2.23.0 (2023-02-27 Debian 2.23.0+dfsg1-1)
+uname: Linux 6.1.158+
+repo_is_shallow: true
+shallow_boundary: fff1beae09ff45d69e554f8c000a9d15b75d968c
+instrumented_branch: arena/2f9a9e82-p2 fff1beae09ff45d69e554f8c000a9d15b75d968c
+candidate_source: 344a9dbf82fe9dafc0b8bf9fa5ed2b5334998272
+candidate_source_parents: 46c45041cd2aef2ee69860aca2f04ba667ce4e0d
+merge_candidate: 3222709cfd96abf94bd5902b31d489b169e6d860
+merge_candidate_parents: fff1beae09ff45d69e554f8c000a9d15b75d968c 344a9dbf82fe9dafc0b8bf9fa5ed2b5334998272
+origin_main: fff1beae09ff45d69e554f8c000a9d15b75d968c
+registry_head_bound: bf263bf253696d3afac2057332eb29c7dd7820a5
+--- sha256 (candidate source 344a9db) ---
+8d433db1aa1f626a0fc70cc9bc3313a7afd04932721ba8c92a22ed80685e0159  tools/strict-verification-gate.js (at 344a9db)
+ff525399a709c4b815617371e4a7a204fcd4cb82289f3544435a0ba693d8a9e3  tools/registry-provenance.js (at 344a9db)
+f5d1348825af1dab4f48bf338a563f8c88994f81e8c52915b619ffb6c099364c  docs/verification/VERIFICATION_REGISTRY.json (at 344a9db)
+9a7a81fddc2cc2cff4f28f0f19a77bc9f4bb9c22d018c994c72b0d43ec0b51d0  docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json (at 344a9db)
+--- changed paths 344a9db vs parent (metadata-only pre-flight) ---
+docs/verification/evidence/M15-01_EXECUTION_MISSION2_2026-10-27.md
+docs/verification/evidence/m15-01-mission2-2026-10-27/EXITCODES.txt
+--- changed paths landing vs 344a9db (should be empty) ---
+--- changed paths landing vs fff1bea (PR content) count ---
+63

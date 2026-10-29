@@ -1,0 +1,35 @@
+
+▸ registry-provenance: shallow history must never be reported as DIVERGED
+  OK A the fixture clone really is shallow
+  OK A the clone has the same HEAD commit
+  OK A the bound commit object is present in the clone
+  OK A complete history proves the bound commit IS an ancestor
+  OK A the truncated clone cannot see that ancestry
+  FAIL A reports UNDECIDABLE, not DIVERGED —   V-02 HEAD-BIND: MISMATCH — DIVERGED (head_bound is not in the history of the evidence commit — re-verify from scratch)
+  FAIL A does not prescribe the wrong remedy "re-verify from scratch"
+  FAIL A never asserts the measured negative "ancestor-of-evidence: NO" —     ancestor-of-evidence: NO
+  FAIL A names the shallow clone as the reason —     ancestor-of-evidence: NO
+  OK A still fails closed with exit 2
+  OK A still refuses to claim agreement with the gate
+  OK B the bound commit object is genuinely absent from the clone
+  FAIL B reports UNDECIDABLE, not INVALID —   V-02 HEAD-BIND: MISMATCH — INVALID (registry cites a SHA that is not a commit in this repository)
+  OK B still fails closed with exit 2
+  OK B still refuses to claim agreement with the gate
+  OK C the control repository is NOT shallow
+  OK C an ancestor binding is still reported STALE
+  OK C the measured positive is still printed
+  OK C exits 2
+  OK D the control repository is NOT shallow
+  OK D an unrelated SHA is still reported DIVERGED
+  OK D the decidable negative "ancestor-of-evidence: NO" is still printed
+  OK D the patch did not rename the honest remedy on a decidable case
+  OK D exits 2
+
+──────────────────────────────────────────
+shallow-history regression: 19 موفق / 5 ناموفق (از 24)
+موارد ناموفق:
+- A reports UNDECIDABLE, not DIVERGED
+- A does not prescribe the wrong remedy "re-verify from scratch"
+- A never asserts the measured negative "ancestor-of-evidence: NO"
+- A names the shallow clone as the reason
+- B reports UNDECIDABLE, not INVALID

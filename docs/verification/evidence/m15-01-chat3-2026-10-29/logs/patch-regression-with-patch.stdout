@@ -1,0 +1,30 @@
+
+▸ registry-provenance: shallow history must never be reported as DIVERGED
+  OK A the fixture clone really is shallow
+  OK A the clone has the same HEAD commit
+  OK A the bound commit object is present in the clone
+  OK A complete history proves the bound commit IS an ancestor
+  OK A the truncated clone cannot see that ancestry
+  OK A reports UNDECIDABLE, not DIVERGED
+  OK A does not prescribe the wrong remedy "re-verify from scratch"
+  OK A never asserts the measured negative "ancestor-of-evidence: NO"
+  OK A names the shallow clone as the reason
+  OK A still fails closed with exit 2
+  OK A still refuses to claim agreement with the gate
+  OK B the bound commit object is genuinely absent from the clone
+  OK B reports UNDECIDABLE, not INVALID
+  OK B still fails closed with exit 2
+  OK B still refuses to claim agreement with the gate
+  OK C the control repository is NOT shallow
+  OK C an ancestor binding is still reported STALE
+  OK C the measured positive is still printed
+  OK C exits 2
+  OK D the control repository is NOT shallow
+  OK D an unrelated SHA is still reported DIVERGED
+  OK D the decidable negative "ancestor-of-evidence: NO" is still printed
+  OK D the patch did not rename the honest remedy on a decidable case
+  OK D exits 2
+
+──────────────────────────────────────────
+shallow-history regression: 24 موفق / 0 ناموفق (از 24)
+✅ تاریخِ بریده‌شده دیگر به‌عنوان DIVERGED گزارش نمی‌شود و fail-closed مانده است.
