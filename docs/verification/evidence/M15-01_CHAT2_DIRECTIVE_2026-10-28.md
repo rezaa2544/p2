@@ -412,6 +412,63 @@ commit whose CI was read back from the API: **`b95a568`**, green ×2. Any commit
 documentation-only and is described as such; nothing in this report ever claims a green for a
 commit whose runs were not read.
 
+### 5.6 `570465c` — one event green, one red, and the red's root cause
+
+On the same commit, Node.js CI split:
+
+| run | event | conclusion | failed step |
+|---|---|---|---|
+| `40910934982` | pull_request | **success** | — |
+| `40910921632` | push | failure | #7, exit 1 |
+
+The annotation names the failing suite and its exact assertion:
+
+> `baseline-pre — 7/8` · `T2 production + CA-signed → سرور بالا آمد — code=null err=no port / no exit`
+
+`code=null` means the child process neither exited nor answered: the boot loop ran out of
+waiting. Root cause, read from `tests/server13.js:93-137`:
+
+```js
+for (let i = 0; i < 50; i++) {          // 50 x 250 ms = 12.5 s per port
+  const h = await httpGet(p, '/api/health', tls).then(r => r.json).catch(() => null);
+  if (h && h.ok && h.pid === proc.pid) { booted = true; break; }
+  ...
+}
+return { booted: false, code: null, stderr: 'no port / no exit' };
+```
+
+In production mode that same function injects `DATABASE_URL` and `REDIS_URL`, so the server
+under test must connect to PostgreSQL **and** Redis, run migrations, and only then listen.
+The budget for all of that is a fixed **12.5 s**, measured while `scripts/run-all-tests.sh`
+has ~20 suites in flight on a shared 2-core runner. Under that load the boot legitimately
+exceeds the budget, the loop gives up, and `T2` reports `no port / no exit` — a false red on
+a TLS assertion. It is not a product defect: the *sibling* `pull_request` run of the same
+commit passed the whole runner, and both events passed on `b95a568` and `30987fd`.
+
+**Why it is not fixed here.** `tests/server13.js` is outside this directive's scope and is
+shared with other work on this repository, so it is not edited without coordination. Exact
+patch for whoever owns it — a condition-based wait, not a larger promise:
+
+```js
+/* replace the fixed 50-iteration cap with a bounded wait on the real condition */
+const BOOT_WAIT_MS = Math.max(0, Number(process.env.S13_BOOT_WAIT_MS ?? 60000) || 0);
+const deadline = Date.now() + BOOT_WAIT_MS;
+while (Date.now() < deadline) {
+  const h = await httpGet(p, '/api/health', !!(tlsCert && tlsKey)).then(r => r.json).catch(() => null);
+  if (h && h.ok && h.pid === proc.pid) { booted = true; break; }
+  if (h && h.ok) break;
+  const code = await Promise.race([exitP, sleep(250).then(() => null)]);
+  if (code != null) { proc.kill('SIGKILL'); return { booted: false, code, stderr: err, port: p }; }
+}
+```
+
+Verification commands for that owner: `node tests/server13.js` (exit 0), then the same suite
+under load — `for i in $(seq 1 8); do node tests/server13.js & done; wait` — and finally
+`bash scripts/run-all-tests.sh` in CI. No assertion is changed by the patch: `T2` still
+requires `booted === true`, so a server that genuinely fails to boot still fails.
+
+Recorded as **OPEN** in §7, not as flake, not as green.
+
 ---
 
 ## 5b. Second canonical run, on the fixed HEAD (`3970f4c8`)
@@ -521,6 +578,10 @@ What is still open, and honestly why:
    so there is no scan result to report.
 3. **Registry re-binding** — deliberate: the gate's 67-68 failing checks are evidence bound to
    earlier SHAs; re-binding it is promotion, explicitly out of scope for this directive.
+4. **`tests/server13.js` T2 boot budget** — a 12.5 s fixed cap against a production boot that
+   needs PostgreSQL + Redis under ~20-way parallel load; CI-only intermittent, false red on a
+   TLS assertion, root-caused with an exact patch in §5.6. Not edited here because that file
+   is outside this directive and shared with other work.
 
 `M15-01: OPEN — ACTIONABLE DEFECTS REMAIN`
 
