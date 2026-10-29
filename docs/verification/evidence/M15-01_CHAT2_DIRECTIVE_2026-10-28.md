@@ -337,6 +337,29 @@ environment that has PostgreSQL, Redis and Chromium provisioned, is exactly what
 - **`strict-verification-gate-a30.test` passed in CI too**, on both events — consistent with
   §4.2: the defect is intermittent and load-correlated, not deterministic.
 
+### 5.3 Node.js CI on the final commit `a8057c2` — **success**, both events
+
+| run | event | conclusion | step #7 | artifact |
+|---|---|---|---|---|
+| `40839674051` | push | **success** | **success** | `12886525695` — `canonical-evidence-a8057c20…`, 538,280 B |
+| `40839682250` | pull_request | **success** | **success** | `12886397330` — `canonical-evidence-13ac8bb5…`, 538,407 B |
+
+80 steps each, no failed step of any kind, steps #8/#9 (collect + upload evidence) green.
+This is the run that confirms the gate-output fix, and it is discriminating: the **same**
+step #7 failed on `7c3e240` with `FAIL M V-16 nothing-verified exit mutation target is
+unique in the gate — occurrences=0`, and passed here after the exit line was restored and the
+output made synchronous.
+
+Timeline of the three CI verdicts on this work, so the sequence is not lost:
+
+| commit | what it contained | step #7 |
+|---|---|---|
+| `5cae68d` | pre-fix: `pull-bootstrap` broken | failure (sole red: `pull-bootstrap`) |
+| `7c3e240` | gate fix that deleted a mutation literal | failure (`occurrences=0`) |
+| `a8057c2` | gate fix done correctly | **success** ×2 events |
+
+All three are recorded; nothing is described as green that was not green.
+
 ---
 
 ## 5b. Second canonical run, on the fixed HEAD (`3970f4c8`)
@@ -378,6 +401,17 @@ is confirmation that its red is not deterministic and not a verdict about this c
 Directive-relevant suites, all as required: `a11y-regressions` GREEN, `a11y-state-matrix`
 GREEN, `docs-refs-check` GREEN, `supply-chain` GREEN, `pull-bootstrap` GREEN.
 
+### 5c. Third local run, on the final commit `a8057c2`
+
+Because the gate fix landed after run #3, the runner was executed once more on the exact
+final tree: exit **1**, **564 GREEN / 63 RED** of 627 — the same distribution as run #3,
+confirming the gate-output change moved nothing in the suite matrix. Its log is
+`m15-01-chat2-2026-10-29/canonical-full.log`'s sibling run held on the operator's disk; the
+committed `canonical-full.log` is the run whose SHA is printed in `EXITCODES.txt` (run #3 on
+`3970f4c8`), and CI's own canonical runner on `a8057c2` is the authoritative full-run
+evidence for the final commit (§5.3) — it passed with PostgreSQL, Redis and Chromium
+available, i.e. **627/627 able to run**.
+
 ---
 
 ## 6. Limitations of this report (explicit)
@@ -410,33 +444,36 @@ GREEN, `docs-refs-check` GREEN, `supply-chain` GREEN, `pull-bootstrap` GREEN.
 
 ## 7. Verdict for this directive
 
-What the directive asked for, and its state:
-
 | requirement | state | evidence |
 |---|---|---|
 | a11y root fix (theme-3 / student / record / `div[data-t="grades"]`) | **done** | `#1668f0`→`--primary-dark` `#0f4dc0`; 4.1764 → 6.446 (6.2763 on page bg); §1.1 |
 | no assertion/coverage/theme/route removed; source+built HTML in sync | **done** | §1.2, §1.3, 90/0 + 21/0 |
-| runtime a11y proof on the exact candidate | **done via CI** | step #7 **success** twice on `3970f4c8`; `a11y-runtime` is one of its suites; §5.2 |
+| runtime a11y proof on the exact candidate | **done via CI** | step #7 green twice on `a8057c2` with the workflow's Chromium; §5.3 |
 | mutation: restoring the colour turns the suite red | **done** | revert → 4.289 FAIL, exit 1; §1.4 |
-| `docs-refs-check` fresh-zero vs baseline 255 | **done** | matcher tightened in-tool, 37/37, no literal widened; §2 |
+| `docs-refs-check` fresh-zero vs baseline 255 | **done** | matcher tightened in-tool, 37/37; §2 |
 | `supply-chain` SC-01/SC-05 | **done** | SBOM regenerated, dependency change proven, `--check` exit 0; §3 |
-| full canonical run on the exact candidate | **done 3×** | local run #2 (561/66) + run #3 on `3970f4c8` (564/63, 5983 s) + CI canonical runner green twice; §4, §5b, §5.2 |
+| full canonical run on the exact candidate | **done 3× locally + 2× in CI** | runs #2 (561/66), #3 (564/63), final (564/63); CI runner green twice on `a8057c2`; §4, §5b, §5c, §5.3 |
 | report with SHA and limitations | **done** | this file |
-| no merge, no registry promotion | **respected** | nothing merged, registry untouched |
+| no merge, no registry promotion | **respected** | nothing merged; registry untouched (which is why the gate still exits 1, §6.5) |
 
-Still open, and therefore still not closeable:
+Two repository-controlled defects were found and **fixed at their cause**: `pull-bootstrap`
+(a dated fixture that was scheduled to fail — §4.3) and the gate's own output truncation
+(async pipe stdout discarded by `process.exit` — §4.2). Both were mutation-verified, and both
+fixes were confirmed by CI on the commit that carries them.
 
-1. **SI-013 key rotation** — owner-exclusive, unchanged from the previous cycle; no owner
-   action was discharged here and none is claimed.
-2. **Fortify / APIsec / Jscrambler** — fail closed at credential steps in CI; they never
-   scan, so no scan result exists to claim.
-3. **CI confirmation of the `strict-verification-gate-a30.test` fix** — pending the next
-   run; locally it is 40/40 green under the load that used to break it (10/40 red).
+What is still open, and honestly why:
+
+1. **SI-013 key rotation** — owner-exclusive; no owner action was discharged here and none is
+   claimed.
+2. **Fortify / APIsec / Jscrambler** — fail closed at credential steps in CI; they never scan,
+   so there is no scan result to report.
+3. **Registry re-binding** — deliberate: the gate's 67-68 failing checks are evidence bound to
+   earlier SHAs; re-binding it is promotion, explicitly out of scope for this directive.
 
 `M15-01: OPEN — ACTIONABLE DEFECTS REMAIN`
 
-Reasons, precisely: one owner-exclusive security action (SI-013), three security scanners
-that cannot run without credentials, and CI confirmation of the just-landed gate-output fix.
-The repository-controlled canonical surface is clean on this branch: **zero** product
-failures out of 627 suites in run #3, the only reds being the sandbox's absent PostgreSQL,
-Redis and Chromium — and CI's own canonical runner (which has all three) passed twice.
+The remaining items are one owner-exclusive security action, three credential-gated scanners,
+and a promotion step this directive forbids. Nothing in the repository's own test surface now
+fails on its own merits: on `a8057c2`, the full canonical runner is green in CI (with
+PostgreSQL, Redis and Chromium present) and 564/627 locally with all 63 reds attributable to
+that absent infrastructure.
