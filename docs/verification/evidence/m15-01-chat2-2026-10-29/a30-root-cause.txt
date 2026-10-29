@@ -80,3 +80,11 @@ AFTER (process.exitCode instead of process.exit):
 gate direct run at HEAD: exit=1 bytes=80788 (full verdict, fail-closed preserved)
 mutation exitCode=0 (fake green): exit=1 with 17 FAIL — the suite still catches it (a30-mutation-exit0.log)
 corrupt-registry probe: exit=1 (a30-corrupt-registry-failclosed.log)
+
+FINAL FIX (commit after 7c3e240): gate output via unbuffered fs.writeSync(1, ...) ("say()"),
+exit line left verbatim as process.exit(fail || nothingVerified ? 1 : 0);
+  - 10-way x4 after the rewrite: 40/40 exit 0 (a30-after-sync-10way.txt)
+  - tests/m15-01-registry-strict-verification.test.js: CHECKS 32 FAIL 0 (its mutation
+    target literal still present exactly once)
+  - forced-green gate process.exit(0): a30 exit 1 / 17 FAIL, mutation suite exit 1 / 14 FAIL
+  - gate at HEAD: 68 FAIL both before and after the change (output 85,483 B, complete)

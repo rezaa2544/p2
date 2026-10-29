@@ -1,0 +1,24 @@
+OK positive valid contract passes
+contract reviewers: [arena] (from docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json)
+FAIL V01-empty-registry fails closed
+FAIL V02-weak-evidence fails closed
+N/A V03-reviewer-not-independent — contract declares a single reviewer (arena); pairwise cross-reviewer independence is vacuous at N=1
+FAIL V04-invalid-status fails closed
+FAIL V05-blocked-until fails closed
+FAIL V06-head-mismatch fails closed
+FAIL V08-self-attested-cert fails closed
+FAIL V09-cert-input-injection fails closed
+FAIL V11-zero-ranking fails closed
+FAIL V12-provenance-missing fails closed
+FAIL V02b-stale-artifact-hash fails closed
+FAIL V03-retired-reviewer-slot fails closed
+FAIL V13-blocked-with-verifying-status fails closed
+FAIL G14c-undeclared-item fails closed
+FAIL G14d-duplicate-declaration fails closed
+OK absent human_governance block stays green (V-10 retired by owner ruling)
+OK an explicitly unapproved human_governance block also stays green
+OK honestly blocked registry conforms to the contract
+FAIL honestly blocked registry is never reported VERIFIED
+FAIL V07 scanner catches injected false-green pattern
+FAIL V06 external intended-head mismatch fails closed
+CHECKS 21 FAIL 17

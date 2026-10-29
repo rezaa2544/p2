@@ -232,18 +232,24 @@ verdict and print it** (`TRACE reached-final-exit fail=…`) even in the runs wh
 stdout is truncated. So the gate was right and its *output* was being lost: the test asserts
 on text that never arrived. Not a registry verdict, not a real fail-open.
 
-*Fix* (`tools/strict-verification-gate.js`, one line, commit following `3970f4c8`): replace
-`process.exit(code)` with `process.exitCode = code`. Same exit status, output drains
-naturally. No assertion, check or fail-closed path was touched.
+*Fix* (`tools/strict-verification-gate.js`, commit after `3970f4c8`): the gate's own output
+is now written with an unbuffered `fs.writeSync(1, …)` (`say()`), so the verdict is on the
+pipe before the process exits. The exit line itself is left **exactly as it was**
+(`process.exit(fail || nothingVerified ? 1 : 0);`) because
+`tests/m15-01-registry-strict-verification.test.js` mutates that literal to prove the
+nothing-verified path is load-bearing — the first attempt at this fix swapped it for
+`process.exitCode = …`, which broke that mutation target (`occurrences=0`) and turned CI red
+on `7c3e240`; that attempt was reverted rather than papering over the assertion. No
+assertion, check, fail-closed path or mutation target was changed.
 
 *Evidence.*
 
 | measurement | before | after |
 |---|---|---|
-| 10-way concurrency, 40 runs | **10 red / 30 green** | **0 red / 40 green** |
+| 10-way concurrency, 40 runs | **10 red / 30 green** | **0 red / 40 green** (repeated after the rewrite) |
 | solo | green | green (`CHECKS 21 FAIL 0`) |
 | direct gate run at HEAD, output size | could truncate (pipe) | **80,788 B, complete** |
-| mutation `exitCode = 0` (fake green) | — | **exit 1, 17 FAIL** — suite still catches it |
+| forced-green gate `process.exit(0)` | — | **exit 1** — a30 17 FAIL, mutation suite 14 FAIL |
 | corrupt registry (items removed) | — | **exit 1**, still fails closed |
 
 The truncation was also visible on the *real* gate (80 KB of verdict text), so the fix
