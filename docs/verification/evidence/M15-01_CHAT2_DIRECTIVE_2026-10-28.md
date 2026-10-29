@@ -360,30 +360,24 @@ Timeline of the three CI verdicts on this work, so the sequence is not lost:
 
 All three are recorded; nothing is described as green that was not green.
 
-### 5.4 Node.js CI on the **final** commit `2720562` — **success**, both events
+### 5.4 Node.js CI — every commit, both events, and where it ends
 
-| run | event | conclusion | step #7 | failures | artifact |
-|---|---|---|---|---|---|
-| `40852278972` | push | **success** | **success** | **0 of 80 steps** | `12891199215`, 538,233 B |
-| `40852288273` | pull_request | **success** | **success** | **0 of 80 steps** | `12891169796`, 538,293 B |
+| commit | content | step #7 | note |
+|---|---|---|---|
+| `5cae68d` | pre-fix | failure | sole red suite `pull-bootstrap` |
+| `03190d9c` | report + evidence | failure | same |
+| `7c3e240` | first gate fix (deleted a mutation literal) | failure | `FAIL M V-16 … occurrences=0` |
+| `a8057c2` | gate fix done correctly | **success** ×2 | `40839674051` / `40839682250`, artifacts `12886525695` / `12886397330` |
+| `d19715b` | HANDOFF checkpoint, stats stale | failure | **exit 5** — the runner's own pre-flight |
+| `2720562` | stats regenerated | **success** ×2 | `40852278972` / `40852288273`, 0 failures of 80 steps |
+| `30987fd` | §5.4 evidence | **success** ×2 | `40866664411` / `40866670795`, 0 failures of 80 steps |
 
-The intermediate commit `d19715b` (the HANDOFF checkpoint) failed here with **exit code 5**
-— the runner's pre-flight, i.e. exactly the stale-`DOCUMENTATION_MAP` token count the docs
-gate reports — and `2720562` regenerated the stats with the tool rather than editing them by
-hand. So the sequence is fully accounted for, per commit:
-
-| commit | content | CI step #7 |
-|---|---|---|
-| `5cae68d` | pre-fix | failure — sole red suite `pull-bootstrap` |
-| `03190d9c` | report + evidence | failure — same |
-| `7c3e240` | first gate fix (deleted a mutation literal) | failure — `occurrences=0` |
-| `a8057c2` | gate fix done correctly | **success** ×2 |
-| `d19715b` | HANDOFF checkpoint, stats stale | failure — exit 5 (pre-flight) |
-| `2720562` | stats regenerated | **success** ×2 |
-
-**`2720562` is the final SHA and it is green in CI on both events**, with the full canonical
-runner inside it — PostgreSQL, Redis and Chromium all present — so every suite that this
-sandbox can only mark as *not run* executed there and passed.
+`30987fd` is the final SHA of this directive's work and **CI is green on it for both the
+`push` and `pull_request` events, with zero failed steps out of 80**, step #7 (the full
+canonical runner, including `tests/a11y-runtime.js` under the workflow's own Chromium)
+included. Dead ends are in the table too: every failure above is either pre-fix state, a
+mistake of mine that was reverted rather than worked around, or the docs pre-flight doing its
+job.
 
 ---
 
@@ -473,11 +467,11 @@ available, i.e. **627/627 able to run**.
 |---|---|---|
 | a11y root fix (theme-3 / student / record / `div[data-t="grades"]`) | **done** | `#1668f0`→`--primary-dark` `#0f4dc0`; 4.1764 → 6.446 (6.2763 on page bg); §1.1 |
 | no assertion/coverage/theme/route removed; source+built HTML in sync | **done** | §1.2, §1.3, 90/0 + 21/0 |
-| runtime a11y proof on the exact candidate | **done via CI** | step #7 green on `a8057c2` ×2 and on the final `2720562` ×2, with the workflow's own Chromium; §5.3, §5.4 |
+| runtime a11y proof on the exact candidate | **done via CI** | step #7 green on the final `30987fd` for both events, with the workflow's own Chromium; §5.4 |
 | mutation: restoring the colour turns the suite red | **done** | revert → 4.289 FAIL, exit 1; §1.4 |
 | `docs-refs-check` fresh-zero vs baseline 255 | **done** | matcher tightened in-tool, 37/37; §2 |
 | `supply-chain` SC-01/SC-05 | **done** | SBOM regenerated, dependency change proven, `--check` exit 0; §3 |
-| full canonical run on the exact candidate | **done 4× locally + 4× in CI** | runs #2 (561/66), #3 (564/63), #4 and final (564/63); CI runner green on `a8057c2` ×2 and on the final `2720562` ×2; §4, §5b, §5c, §5.3, §5.4 |
+| full canonical run on the exact candidate | **5× locally + 4× in CI** | runs #2 (561/66), #3 (564/63), #4 (564/63); CI runner green on `a8057c2` ×2 and on the final `30987fd` ×2, 0/80 failed steps; §4, §5b, §5c, §5.4 |
 | report with SHA and limitations | **done** | this file |
 | no merge, no registry promotion | **respected** | nothing merged; registry untouched (which is why the gate still exits 1, §6.5) |
 
