@@ -1,0 +1,7 @@
+
+پیش‌سنجیِ خطِ پایه (پیش ازِ هر جهش):
+  ❌ baseline-pre — 0/1 :: ▸ دور 85 — P1-4: fail-fastِ TLS در production ⏎ ❌ P0-PG ENVIRONMENT — PostgreSQL unreachable — target=127.0.0.1:5432/payesh_ci budget_ms=90000 attempts=90 waited_ms=89172 last=connect ECONNREFUSED 127.0.0.1:5432 ⏎ server13: 0/1 — شکست: P0-PG ENVIRONMENT — PostgreSQL unreachable (محیط/وابستگی، نه رفتارِ محصول)
+
+❌ BASELINE-RED — خطِ پایه (پیش ازِ جهش) بدونِ جهش سبز نشد؛ حکمِ جهش‌ها بی‌اعتبار است (تبدیلِ قرمزِ محیطی به سبز انجام نمی‌شود).
+   علت‌هایِ ممکن: وابستگیِ محیط (پیش‌سنجِ `P0-PG ENVIRONMENT` در خودِ سوئیت) یا نقصِ واقعیِ fail-fast.
+   دنبالهٔ خروجیِ پایه: ▸ دور 85 — P1-4: fail-fastِ TLS در production ⏎ ❌ P0-PG ENVIRONMENT — PostgreSQL unreachable — target=127.0.0.1:5432/payesh_ci budget_ms=90000 attempts=90 waited_ms=89172 last=connect ECONNREFUSED 127.0.0.1:5432 ⏎ server13: 0/1 — شکست: P0-PG ENVIRONMENT — PostgreSQL unreachable (محیط/وابستگی، نه رفتارِ محصول)

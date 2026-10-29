@@ -1,0 +1,10 @@
+Error: connect ECONNREFUSED 127.0.0.1:5432
+    at /home/user/p2/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /home/user/p2/tests/sync-replay-adversarial-live.js:38:54 {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 5432
+}

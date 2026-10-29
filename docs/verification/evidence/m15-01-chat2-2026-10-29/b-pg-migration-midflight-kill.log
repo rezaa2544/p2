@@ -1,0 +1,5 @@
+B-PG-3 mid-migration crash-recovery probe  (PROBE_LEGACY=0)
+  PASS  precondition: pg-client split path forced (PGURL/DATABASE_URL absent from env, so usePsql stays false even where psql is installed)
+B-PG-PROBE VERDICT: NOT-RUN reason=cannot connect to postgres maintenance db (connect ECONNREFUSED 127.0.0.1:5432) — probe needs a live PostgreSQL cluster (PGURL/DATABASE_URL/PAYESH_BPG_ADMIN_URL)
+  SETUP FAILED: cannot connect to postgres maintenance db (connect ECONNREFUSED 127.0.0.1:5432)
+  This probe needs a live PostgreSQL cluster (PGURL/DATABASE_URL/PAYESH_BPG_ADMIN_URL).

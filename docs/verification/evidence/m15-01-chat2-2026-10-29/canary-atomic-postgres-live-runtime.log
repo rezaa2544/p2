@@ -1,0 +1,6 @@
+============================================================
+[REAL-DATABASE] Phase 7.6-R.7.2 Canary Atomic PostgreSQL Live Runtime
+Evidence Level: E3/E4 — Real PostgreSQL Engine Required
+============================================================
+
+ ❌ FAIL: PostgreSQL database is unreachable at postgres://payesh:payesh@127.0.0.1:5432/payesh_ci: connect ECONNREFUSED 127.0.0.1:5432

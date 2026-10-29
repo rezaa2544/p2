@@ -1,0 +1,5 @@
+pg-prod-boot-with-db — production WITH live PostgreSQL must succeed
+
+  target: postgres://payesh:***@127.0.0.1:5432/payesh_ci
+
+pg-prod-boot-with-db: NOT-RUN — PostgreSQL at the target URL is not reachable: connect ECONNREFUSED 127.0.0.1:5432

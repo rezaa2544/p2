@@ -1,0 +1,3 @@
+pg-prod-two-instance — two instances, one PostgreSQL ⇒ one state
+
+pg-prod-two-instance: NOT-RUN — PostgreSQL not reachable: connect ECONNREFUSED 127.0.0.1:5432

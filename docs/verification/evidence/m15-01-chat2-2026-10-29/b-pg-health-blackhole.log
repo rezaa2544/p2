@@ -1,0 +1,3 @@
+B-PG-1 health-under-runtime-PG-blackhole probe  (PROBE_LEGACY=0)
+B-PG-PROBE VERDICT: NOT-RUN reason=cannot reach the PostgreSQL admin connection (connect ECONNREFUSED 127.0.0.1:5432) — probe needs a live PostgreSQL on 127.0.0.1:5432 (set PAYESH_BPG_ADMIN_URL to override)
+  SETUP FAILED: cannot reach the PostgreSQL admin connection (connect ECONNREFUSED 127.0.0.1:5432) — probe needs a live PostgreSQL on 127.0.0.1:5432 (set PAYESH_BPG_ADMIN_URL to override)

@@ -1,0 +1,11 @@
+
+▸ Supply-chain audit regression gate
+  ✅ SC-01 SPDX 2.3 SBOM exists and maps every lockfile package
+  ✅ SC-02 every third-party package declares a license
+  ✅ SC-03 license inventory is present and records the lockfile fingerprint
+  ✅ SC-04 audit snapshot has no production advisories
+  ✅ SC-05 current lockfile equals the approved dependency drift baseline
+  ✅ SC-06 every direct dependency has a locked resolution
+  ✅ SC-07 simulated lockfile drift is detected
+
+supply-chain: 7/7 checks ✅

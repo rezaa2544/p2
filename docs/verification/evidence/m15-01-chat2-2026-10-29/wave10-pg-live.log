@@ -1,0 +1,4 @@
+  ⏭️  wave10 pg live gate  —  باینری‌هایِ PostgreSQL (initdb/postgres/pg_ctl) در PATH/PG_LIVE_BIN نیستند
+
+wave10-pg-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisites are NOT-RUN and exit 2
+

@@ -1,0 +1,38 @@
+
+▸ R1 — Crash Consistency (SIGKILL)
+  ✅ R1a استارتِ فرایند (READY)
+  ✅ R1b لاگینِ superadmin (demo code)
+  ✅ R1c syncِ نوشتِ واقعی (3 visitor)
+  ✅ R1d flush به دیسک (persist ≤ 8s)
+  ✅ R1e فرایند SIGKILL شد
+  ✅ R1f store پس ازِ crash سالم (JSON قابلِ parse)
+  ✅ R1g دادهٔ flushشده پس ازِ crash مانده
+  ✅ R1h restart + readiness 200
+  ✅ R1i دادهٔ زنده: del رویِ رکوردِ مانده
+  ✅ R1j حذف flush شد (نوشتنِ زنده)
+
+▸ R2 — Restore Drill (backup ← فساد ← restore)
+[DB] no DATABASE_URL — using the JSON/in-memory store. Dev/test only; set ALLOW_MEMORY_FALLBACK=1 to silence this warning. In production this is a startup failure.
+generated JWT secret -> /tmp/payesh-a5-r2-H6aw8X/key
+  cursor : enabled — key=keyfile (signed cursors survive restarts, ttl=3600s)
+[CANARY] weights hydrated from PostgreSQL (cluster_weights SSoT, 7 clusters)
+  ✅ R2a لاگینِ superadmin
+  ✅ R2b نوشتِ مارکر
+  ✅ R2c backup (API) → 200 + file
+  ✅ R2d فایلِ بکاپ سالم + شاملِ مارکر
+  ✅ R2e فساد اعمال شد (مارکر از حافظه حذف)
+  ✅ R2f restore (API) → 200
+  ✅ R2g مارکر بازگشت (بازیابیِ واقعی)
+  ✅ R2h audit: backup_created + restore_completed
+  ✅ R2i db.ping (درایورِ حافظه) ok
+
+▸ R3 — Redis Failover/Failback (ioredis واقعی)
+  ✅ R3a fake ردیس (TCP RESP) بالا
+  ❌ R3b استارتِ production + ردیسِ زنده (init کامل)
+FATAL: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14976:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async j (/home/user/p2/tests/arena5-recovery.js:72:13)
+    at async readiness (/home/user/p2/tests/arena5-recovery.js:130:13)
+    at async waitStatus (/home/user/p2/tests/arena5-recovery.js:137:15)
+    at async /home/user/p2/tests/arena5-recovery.js:399:18

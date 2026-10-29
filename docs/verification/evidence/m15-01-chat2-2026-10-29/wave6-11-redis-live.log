@@ -1,0 +1,12 @@
+
+▸ Wave 6+11 — قراردادهای Redis روی سرورِ واقعی
+[Redis] Connection failed. Production refuses fallback (readiness fails): Connection is closed.
+  ❌ R1 init با REDIS_URL زنده ⇒ ok و درایورِ واقعی  —  {"ini":{"ok":false,"driver":"none","error":"Redis unreachable in production: Connection is closed."},"isRedis":false,"status":{"active":false,"mode":"memory","ioredisAvailable":true}}
+live redis gate crashed: Error: REDIS_UNAVAILABLE: Redis unavailable in production (fail-closed): set
+    at prodNoRedis (/home/user/p2/server/redis.js:344:17)
+    at Object.set (/home/user/p2/server/redis.js:406:3)
+    at main (/home/user/p2/tests/wave6-11-redis-live.js:106:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {
+  code: 'REDIS_UNAVAILABLE',
+  status: 503
+}

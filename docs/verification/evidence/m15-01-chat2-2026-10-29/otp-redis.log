@@ -1,0 +1,9 @@
+▸ P0-15 — حالت OTP در ردیس
+[Redis] Connection failed. Production refuses fallback (readiness fails): Connection is closed.
+  ❌ فلاش روی کلید ردیس می‌نشیند
+  ❌ سند شمارهٔ دنباله دارد
+  ❌ نمونهٔ ب کدِ صادرشدهٔ الف را می‌بیند
+  ✅ نمونهٔ ب هیچ فایلی نساخته است
+خطای غیرمنتظره: TypeError: Cannot read properties of null (reading 'codes')
+    at main (/home/user/p2/tests/otp-redis.js:86:42)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)

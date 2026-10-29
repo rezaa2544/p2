@@ -661,4 +661,13 @@ console.log('VERIFIED_ITEMS ' + verifiedItems.length + '/' + itemList.length + '
 console.log('VERDICT ' + (fail || nothingVerified ? 'NOT VERIFIED' : 'VERIFIED'));
 if (fail) { console.log('BLOCKERS'); failures.forEach((x) => console.log(' - ' + x.n + (x.d ? ' — ' + x.d : ''))); }
 if (nothingVerified) console.log('BLOCKER — V-16 registry conforms to the schema but verifies nothing (no item in the verifying band)');
-process.exit(fail || nothingVerified ? 1 : 0);
+/* Exit code, not process.exit() (M15-01, 2026-10-29).
+   Why: stdout to a PIPE is asynchronous in Node, so process.exit() discards writes
+   still queued in libuv. Under load this truncated the gate's own verdict output
+   mid-print — reproducibly at G6c allowlist entry 158, exactly 10,903 B, with empty
+   stderr — while the gate had in fact reached this line and computed the verdict.
+   Consumers that assert on the printed CONTRACT PASS / VERDICT NOT VERIFIED lines
+   (`tests/strict-verification-gate-a30.test.js`) then saw a "missing" verdict and
+   went red: 10/40 runs at 10-way concurrency before, 0/40 after. Setting exitCode
+   lets the loop drain and preserves the exit status exactly (1 = fail / not verified). */
+process.exitCode = (fail || nothingVerified ? 1 : 0);

@@ -1,0 +1,14 @@
+A-NEXT health-under-runtime-blackhole probe  (PROBE_LEGACY=0)
+  relay forward on 127.0.0.1:4398 -> 127.0.0.1:6379
+  FAIL  baseline: healthy boot through forward relay (200 + ok:true + redis alive)  — status=null log=es fallback (readiness fails): Connection is closed.
+[FATAL] Cache readiness failed: Redis unreachable in production: Connection is closed.
+
+  boot never came up; abort
+/home/user/p2/tests/a-next-health-blackhole.js:144
+    if (!up) { console.log('  boot never came up; abort'); throw new Error('boot failed'); }
+                                                                 ^
+
+Error: boot failed
+    at /home/user/p2/tests/a-next-health-blackhole.js:144:66
+
+Node.js v22.22.3

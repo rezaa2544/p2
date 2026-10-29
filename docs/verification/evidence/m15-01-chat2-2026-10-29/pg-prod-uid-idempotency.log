@@ -1,0 +1,3 @@
+pg-prod-uid-idempotency — the idempotency check must fail closed in production
+
+pg-prod-uid-idempotency: NOT-RUN — PostgreSQL not reachable: connect ECONNREFUSED 127.0.0.1:5432

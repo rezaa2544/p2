@@ -1,0 +1,2079 @@
+[lanes] A=300 (main) B=107 (copies) PORT-serial=75+65 suite_timeout=900s
+[suite] START g7-ci-database-env.test
+[suite] GREEN g7-ci-database-env.test (0s)
+[suite] START false-green-defense.test
+[suite] GREEN false-green-defense.test (7s)
+[suite] START docs-metrics
+[suite] GREEN docs-metrics (2s)
+[suite] START f1-boot-syntax-five-pass
+[suite] GREEN f1-boot-syntax-five-pass (21s)
+[suite] START a11y-audit
+[suite] GREEN a11y-audit (0s)
+[suite] START a11y-interactive
+[suite] RED a11y-interactive (0s) :: 
+::error title=RED suite a11y-interactive (exit 2)::╔════════════════════════════════════════════════════════════╗ ║ Looks like Playwright was just installed or updated.       ║ ║ Please run the following command to download new browsers: ║ ║                                                            ║ ║     npx 
+FATAL browserType.launch: Executable doesn't exist at /home/user/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     npx playwright install                                 ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+    at /home/user/p2/tests/a11y-interactive.js:149:34 {
+  log: [],
+  name: 'Error'
+}
+[suite] START a11y-keyboard
+[suite] RED a11y-keyboard (1s) :: 
+::error title=RED suite a11y-keyboard (exit 2)::╔════════════════════════════════════════════════════════════╗ ║ Looks like Playwright was just installed or updated.       ║ ║ Please run the following command to download new browsers: ║ ║                                                            ║ ║     npx 
+FATAL browserType.launch: Executable doesn't exist at /home/user/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     npx playwright install                                 ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+    at /home/user/p2/tests/a11y-keyboard.js:148:34 {
+  log: [],
+  name: 'Error'
+}
+[suite] START a11y-runtime
+[suite] RED a11y-runtime (0s) :: 
+::error title=RED suite a11y-runtime (exit 2)::╔════════════════════════════════════════════════════════════╗ ║ Looks like Playwright was just installed or updated.       ║ ║ Please run the following command to download new browsers: ║ ║                                                            ║ ║     npx 
+FATAL browserType.launch: Executable doesn't exist at /home/user/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     npx playwright install                                 ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+    at /home/user/p2/tests/a11y-runtime.js:110:34 {
+  log: [],
+  name: 'Error'
+}
+[suite] START reports-export
+[suite] RED reports-export (4s) :: 
+::error title=RED suite reports-export (exit 1)::     browserType.launch: Executable doesn't exist at /home/user/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell ╔════════════════════════════════════════════════════════════╗ ║ Looks like Playwright was just installed or
+داده نمونه: {
+  'مدارس': 6,
+  'کاربران': 1040,
+  'کلاس‌ها': 36,
+  'حضوروغیاب': 11060,
+  'نمرات': 12855,
+  'انضباطی': 759,
+  'اعلان‌ها': 705,
+  'اقساط': 1561,
+  'تراکنش‌ها': 980
+}
+
+▸ Wave 23 — گزارش‌ها: خروجی CSV و چاپ/PDF
+  ✅ rptCsvData: هر چهار گزارش سرستون و ردیف هم‌طول دارند
+  ✅ ایمنی تزریق فرمول: نام خصمانه با csvCell خنثی می‌شود
+  ✅ اکشن rpt-csv: دانلود + ثبت report_logs با format='csv'
+  ✅ rptPrint: پنجرهٔ چاپ A4 باز و report_logs با format='pdf' ثبت می‌شود
+  ❌ playwright: سند چاپی گزارش به PDF واقعی تبدیل می‌شود
+     browserType.launch: Executable doesn't exist at /home/user/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     npx playwright install                                 ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+
+────────────────────────────────────────────────────
+reports-export: 4 سبز / 1 قرمز ❌
+[suite] START reports-pdf-e2e
+[suite] RED reports-pdf-e2e (3s) :: 
+::error title=RED suite reports-pdf-e2e (exit 1)::║                                                            ║ ║ <3 Playwright Team                                         ║ ╚════════════════════════════════════════════════════════════╝   ⚠️ SKIP: pdftotext (poppler) در دسترس نیست — محتوایِ 
+  'اعلان‌ها': 705,
+  'اقساط': 1561,
+  'تراکنش‌ها': 980
+}
+
+▸ P1-1 — PDF E2E از مسیرِ واقعیِ UI (روت reports → rptPrint → printableDoc → Chromium)
+
+— سناریوی A: مدیرِ مدرسهٔ ۱ (مجاز)
+  ✅ A1 روت reports برای مدیر مجاز است (canRoute) و رندر شد
+  ✅ A2 کلیکِ UI روی «چاپ / PDF» سندِ چاپیِ واقعی تولید کرد (rptPrint → printableDoc)
+  ✅ A3 سندِ چاپی tenant-scoped است (مدرسهٔ مدیر داخل، مدرسهٔ دیگر غایب)
+  ❌ A4 همان سندِ UI در Chromium به PDF واقعی تبدیل شد (%PDF + حجم)
+     browserType.launch: Executable doesn't exist at /home/user/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     npx playwright install                                 ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+  ⚠️ SKIP: pdftotext (poppler) در دسترس نیست — محتوایِ PDF متن‌کاوی نشد (امضا و حجم در A4 سنجیده شد)
+
+— سناریوی B: دانش‌آموز (غیرمجاز) — رد پیش از هر تولیدی
+  ✅ B1 canRoute برای student روی reports رد می‌کند
+  ✅ B2 رندرِ روت، صفحهٔ ممنوع است و دکمهٔ چاپ اصلاً در DOM نیست
+  ✅ B3 حتی صدازدنِ مستقیم rptPrint برای student سندی با دادهٔ مدرسه تولید نمی‌کند (rptSchools=[])
+
+────────────────────────────────────────────────────
+reports-pdf-e2e: 6 سبز / 1 قرمز / 1 SKIP ❌
+[suite] START tracing-performance
+[suite] GREEN tracing-performance (1s)
+[suite] START wave9-performance
+[suite] GREEN wave9-performance (9s)
+[suite] START wave17-testing
+[suite] GREEN wave17-testing (11s)
+[suite] START wave18-load
+[suite] GREEN wave18-load (4s)
+[suite] START a-next-health-blackhole
+[suite] START a02-dev-otp-bypass
+[suite] START a11y-state-matrix
+[suite] START a11y-regressions
+[suite] GREEN a11y-regressions (0s)
+[suite] START a20-occ-production-invariant.test
+[suite] GREEN a11y-state-matrix (0s)
+[suite] START analytics-timestamps.test
+[suite] GREEN a02-dev-otp-bypass (0s)
+[suite] START analytics-wiring-guard.test
+[suite] GREEN a20-occ-production-invariant.test (0s)
+[suite] START api-changelog-coverage
+[suite] GREEN analytics-wiring-guard.test (0s)
+[suite] START arena5-demo-guard
+[suite] GREEN analytics-timestamps.test (0s)
+[suite] GREEN api-changelog-coverage (0s)
+[suite] START assets
+[suite] START association2
+[suite] GREEN assets (4s)
+[suite] START att2
+[suite] GREEN association2 (4s)
+[suite] START att3
+[suite] GREEN arena5-demo-guard (5s)
+[suite] START att4
+[suite] GREEN att2 (5s)
+[suite] START attack-detector
+[suite] GREEN att3 (6s)
+[suite] START attpartial
+[suite] GREEN attack-detector (1s)
+[suite] START authz-model
+[suite] GREEN authz-model (1s)
+[suite] START b-pg-canary-sot-bounds
+[suite] GREEN b-pg-canary-sot-bounds (2s)
+[suite] START backup-snap
+[suite] GREEN attpartial (4s)
+[suite] START behavior2
+[suite] RED a-next-health-blackhole (15s) :: 
+::error title=RED suite a-next-health-blackhole (exit 1)::  FAIL  baseline: healthy boot through forward relay (200 + ok:true + redis alive)  — status=null log=es fallback (readiness fails): Connection is closed. [FATAL] Cache readiness failed: Redis unreachable in production: Connection is closed.    boot never came up; abort /home/user/p2/tests/a-next-health-blackhole.js:144     if (!up) { console.log('  boot never came up; abort'); throw new Error('
+A-NEXT health-under-runtime-blackhole probe  (PROBE_LEGACY=0)
+  relay forward on 127.0.0.1:4398 -> 127.0.0.1:6379
+  FAIL  baseline: healthy boot through forward relay (200 + ok:true + redis alive)  — status=null log=es fallback (readiness fails): Connection is closed.
+[FATAL] Cache readiness failed: Redis unreachable in production: Connection is closed.
+
+  boot never came up; abort
+/home/user/p2/tests/a-next-health-blackhole.js:144
+    if (!up) { console.log('  boot never came up; abort'); throw new Error('boot failed'); }
+                                                                 ^
+
+Error: boot failed
+    at /home/user/p2/tests/a-next-health-blackhole.js:144:66
+
+Node.js v22.22.3
+[suite] START bell2
+[suite] GREEN behavior2 (4s)
+[suite] START bgsync
+[suite] GREEN bell2 (3s)
+[suite] START bughunt-session9
+[suite] GREEN bughunt-session9 (2s)
+[suite] START bundle-registry-coverage
+[suite] GREEN backup-snap (7s)
+[suite] START bus2
+[suite] GREEN bundle-registry-coverage (0s)
+[suite] START bus3
+[suite] GREEN bgsync (5s)
+[suite] START c3-remediation-regression.test
+[suite] GREEN c3-remediation-regression.test (0s)
+[suite] START cache-l2-epoch
+[suite] GREEN bus2 (3s)
+[suite] GREEN cache-l2-epoch (0s)
+[suite] START canary-atomic-runtime
+[suite] START canary-atomic-mock-harness
+[suite] GREEN bus3 (3s)
+[suite] START capacity-saturation-probe
+[suite] GREEN canary-atomic-runtime (0s)
+[suite] GREEN canary-atomic-mock-harness (0s)
+[suite] START certification-non-circular.test
+[suite] START chaos-drill-lib
+[suite] GREEN chaos-drill-lib (0s)
+[suite] START chat9-behavior-regression
+[suite] GREEN certification-non-circular.test (1s)
+[suite] START check-authz
+[suite] GREEN chat9-behavior-regression (1s)
+[suite] START chg_id_cursor
+[suite] GREEN chg_id_cursor (0s)
+[suite] START classmodel
+[suite] GREEN check-authz (0s)
+[suite] START client-features
+[suite] GREEN classmodel (3s)
+[suite] START clsctx
+[suite] GREEN client-features (3s)
+[suite] START collision-detector
+[suite] GREEN collision-detector (0s)
+[suite] START compact
+[suite] GREEN clsctx (2s)
+[suite] START config-audit
+[suite] GREEN config-audit (1s)
+[suite] START config-reference-coverage
+[suite] GREEN config-reference-coverage (0s)
+[suite] START conflicts-list-cap
+[suite] GREEN conflicts-list-cap (0s)
+[suite] START contract-layers
+[suite] GREEN compact (4s)
+[suite] START cursor-token
+[suite] GREEN cursor-token (0s)
+[suite] START data-dictionary-coverage
+[suite] GREEN data-dictionary-coverage (0s)
+[suite] START data-integrity-occ-migration
+[suite] GREEN data-integrity-occ-migration (0s)
+[suite] START db-engineering
+[suite] GREEN db-engineering (0s)
+[suite] START db-replica-recovery
+[suite] GREEN db-replica-recovery (0s)
+[suite] START deadletter
+[suite] GREEN contract-layers (3s)
+[suite] START delta-phase4
+[suite] GREEN deadletter (4s)
+[suite] START delta-schema-gaps
+[suite] GREEN delta-schema-gaps (0s)
+[suite] START demo-thursday
+[suite] GREEN delta-phase4 (5s)
+[suite] START diag2
+[suite] GREEN demo-thursday (6s)
+[suite] START disaster-recovery-coverage
+[suite] GREEN disaster-recovery-coverage (0s)
+[suite] START docs-consistency
+[suite] GREEN diag2 (5s)
+[suite] START docs-export-script
+[suite] GREEN docs-export-script (0s)
+[suite] START docs-freeze-marker
+[suite] GREEN docs-freeze-marker (0s)
+[suite] START docs-health
+[suite] GREEN docs-health (0s)
+[suite] START docs-index-coverage
+[suite] GREEN docs-index-coverage (0s)
+[suite] START docs-metadata
+[suite] GREEN docs-consistency (1s)
+[suite] START docs-refs-check
+[suite] GREEN docs-metadata (1s)
+[suite] START documentation-handover-coverage
+[suite] GREEN documentation-handover-coverage (0s)
+[suite] START documentation-maintenance-coverage
+[suite] GREEN documentation-maintenance-coverage (0s)
+[suite] START documentation-map-coverage
+[suite] GREEN docs-refs-check (1s)
+[suite] START dojo
+[suite] GREEN documentation-map-coverage (0s)
+[suite] START dr-runbook
+[suite] GREEN dr-runbook (0s)
+[suite] START dropout
+[suite] GREEN dojo (4s)
+[suite] START env-flags
+[suite] GREEN dropout (4s)
+[suite] START exam-types
+[suite] GREEN env-flags (3s)
+[suite] START examcount
+[suite] GREEN exam-types (4s)
+[suite] START excuse
+[suite] GREEN examcount (3s)
+[suite] START executive-briefing-coverage
+[suite] GREEN executive-briefing-coverage (0s)
+[suite] START executive-slides-coverage
+[suite] GREEN executive-slides-coverage (0s)
+[suite] START faq-coverage
+[suite] GREEN faq-coverage (0s)
+[suite] START finance2
+[suite] GREEN att4 (49s)
+[suite] START g6-migration-022-down.test
+[suite] GREEN g6-migration-022-down.test (1s)
+[suite] START gdpr-tombstones
+[suite] GREEN gdpr-tombstones (0s)
+[suite] START genp12
+[suite] GREEN excuse (4s)
+[suite] START glossary-coverage
+[suite] GREEN glossary-coverage (0s)
+[suite] START go-live-package-coverage
+[suite] GREEN go-live-package-coverage (0s)
+[suite] START goals
+[suite] GREEN finance2 (6s)
+[suite] START gradeavg2
+[suite] GREEN genp12 (5s)
+[suite] START ha-config
+[suite] GREEN ha-config (1s)
+[suite] START handoff-integrity
+[suite] GREEN handoff-integrity (0s)
+[suite] START homework
+[suite] GREEN goals (5s)
+[suite] START homework2
+[suite] GREEN homework (4s)
+[suite] START httpgetjson
+[suite] GREEN homework2 (5s)
+[suite] START ics
+[suite] GREEN gradeavg2 (9s)
+[suite] START id-collision
+[suite] GREEN id-collision (0s)
+[suite] START idb-probe
+[suite] GREEN idb-probe (1s)
+[suite] START idb2
+[suite] GREEN ics (4s)
+[suite] START idor-regression
+[suite] GREEN idor-regression (1s)
+[suite] START iep2
+[suite] GREEN idb2 (3s)
+[suite] START incident-playbooks
+[suite] GREEN incident-playbooks (0s)
+[suite] START intelligence-client-render.test
+[suite] GREEN intelligence-client-render.test (0s)
+[suite] START internship2
+[suite] GREEN httpgetjson (9s)
+[suite] START iran-compliance-coverage
+[suite] GREEN iran-compliance-coverage (0s)
+[suite] START lessons-learned-coverage
+[suite] GREEN lessons-learned-coverage (0s)
+[suite] START library
+[suite] GREEN iep2 (3s)
+[suite] START libserial2
+[suite] GREEN internship2 (3s)
+[suite] START load-test-results-coverage
+[suite] GREEN load-test-results-coverage (0s)
+[suite] START lock-atomic
+[suite] GREEN library (3s)
+[suite] START m14-b01-stale-cache
+[suite] GREEN m14-b01-stale-cache (1s)
+[suite] START m15-01-registry-strict-verification.test
+[suite] GREEN lock-atomic (2s)
+[suite] START m15-durable-invalidation
+[suite] GREEN libserial2 (4s)
+[suite] START master-onboarding-path-coverage
+[suite] GREEN master-onboarding-path-coverage (0s)
+[suite] START migration-009-negative.test
+[suite] GREEN migration-009-negative.test (0s)
+[suite] START migration-guide-coverage
+[suite] GREEN migration-guide-coverage (0s)
+[suite] START migration-sequence
+[suite] GREEN migration-sequence (0s)
+[suite] START multi-grade
+[suite] GREEN m15-durable-invalidation (1s)
+[suite] START mutant-kit-test
+[suite] GREEN mutant-kit-test (0s)
+[suite] START n02-check-authz-crlf.test
+[suite] GREEN n02-check-authz-crlf.test (0s)
+[suite] START n03-n11-n12-fabricated-metrics.test
+[suite] GREEN n03-n11-n12-fabricated-metrics.test (0s)
+[suite] START n04-n05-region-tenant-guards.test
+[suite] GREEN n04-n05-region-tenant-guards.test (1s)
+[suite] START n05-n13-analytics-guards-writeperms.test
+[suite] GREEN n05-n13-analytics-guards-writeperms.test (0s)
+[suite] START n06-jwt-key-strength.test
+[suite] GREEN n06-jwt-key-strength.test (0s)
+[suite] START n07-gdpr-durable-erasure.test
+[suite] GREEN multi-grade (6s)
+[suite] START n08-otp-hash-pepper.test
+[suite] GREEN n07-gdpr-durable-erasure.test (5s)
+[suite] START n14-migration-rollback.test
+[suite] GREEN n14-migration-rollback.test (1s)
+[suite] START n16-migration-sequence-advancement.test
+[suite] GREEN n16-migration-sequence-advancement.test (0s)
+[suite] START n23-lint-contract.test
+[suite] GREEN n08-otp-hash-pepper.test (5s)
+[suite] START n25-scope-escalation.test
+[suite] GREEN m15-01-registry-strict-verification.test (11s)
+[suite] START n26-provincial-scope.test
+[suite] GREEN n25-scope-escalation.test (1s)
+[suite] START n27-pull-directory-least-privilege.test
+[suite] GREEN n26-provincial-scope.test (1s)
+[suite] START n28-waf-body-and-mode.test
+[suite] GREEN n27-pull-directory-least-privilege.test (1s)
+[suite] START n29-csrf-origin-required.test
+[suite] GREEN n28-waf-body-and-mode.test (2s)
+[suite] START n30-simulation-headers.test
+[suite] GREEN n29-csrf-origin-required.test (1s)
+[suite] START n31-teacher-iep-write-scope.test
+[suite] GREEN n30-simulation-headers.test (1s)
+[suite] START n32-route-now-fresh-timestamp.test
+[suite] GREEN n31-teacher-iep-write-scope.test (2s)
+[suite] START n33-dead-bearer-middleware.test
+[suite] GREEN n33-dead-bearer-middleware.test (1s)
+[suite] START n34-edu-office-inscope-failclosed.test
+[suite] GREEN n34-edu-office-inscope-failclosed.test (0s)
+[suite] START n35-region-resolver-no-implicit-one.test
+[suite] GREEN n35-region-resolver-no-implicit-one.test (1s)
+[suite] START national-architecture-coverage
+[suite] GREEN national-architecture-coverage (0s)
+[suite] START national-dataset-integrity
+[suite] GREEN n32-route-now-fresh-timestamp.test (4s)
+[suite] START no-data-masking.test
+[suite] GREEN no-data-masking.test (0s)
+[suite] START nudge2
+[suite] GREEN national-dataset-integrity (1s)
+[suite] START observability-dashboards
+[suite] GREEN observability-dashboards (1s)
+[suite] START observability-doc-coverage
+[suite] GREEN observability-doc-coverage (0s)
+[suite] START observability-live-setup-coverage
+[suite] GREEN observability-live-setup-coverage (0s)
+[suite] START observability-s2-metrics.test
+[suite] GREEN observability-s2-metrics.test (0s)
+[suite] START observability-semantic-guard
+[suite] GREEN observability-semantic-guard (0s)
+[suite] START officesupp2
+[suite] GREEN nudge2 (6s)
+[suite] START offline-e2e
+[suite] GREEN officesupp2 (6s)
+[suite] START offline-indicator
+[suite] GREEN offline-indicator (4s)
+[suite] START offline-sync-drill
+[suite] GREEN offline-e2e (7s)
+[suite] START onboarding-checklist-coverage
+[suite] GREEN onboarding-checklist-coverage (0s)
+[suite] START onboarding-coverage
+[suite] GREEN onboarding-coverage (0s)
+[suite] START openapi-drift
+[suite] GREEN openapi-drift (0s)
+[suite] START openapi-spec
+[suite] GREEN openapi-spec (0s)
+[suite] START operational-handover-coverage
+[suite] GREEN operational-handover-coverage (0s)
+[suite] START outbox-dlq-atomicity.test
+[suite] GREEN outbox-dlq-atomicity.test (0s)
+[suite] START outbox-lease-fencing.test
+[suite] GREEN outbox-lease-fencing.test (0s)
+[suite] START outbox-runtime-reliability.test
+[suite] GREEN outbox-runtime-reliability.test (0s)
+[suite] START p0-blocker-tracker-coverage
+[suite] GREEN p0-blocker-tracker-coverage (0s)
+[suite] START p13-public-report-pg
+[suite] GREEN p13-public-report-pg (1s)
+[suite] START performance-benchmarks-coverage
+[suite] GREEN performance-benchmarks-coverage (0s)
+[suite] START persist-roundtrip
+[suite] GREEN capacity-saturation-probe (90s)
+[suite] START pg-outage-control
+[suite] GREEN pg-outage-control (0s)
+[suite] START pg-prod-boot-no-db
+[suite] GREEN n23-lint-contract.test (26s)
+[suite] START pg-prod-no-json-writes
+[suite] GREEN pg-prod-no-json-writes (1s)
+[suite] START pg-prod-suite-policy
+[suite] GREEN persist-roundtrip (5s)
+[suite] START phase-b-tenant-and-data-boundaries
+[suite] GREEN pg-prod-suite-policy (3s)
+[suite] START phase-c-backup-pg-noop
+[suite] GREEN phase-c-backup-pg-noop (1s)
+[suite] START phase-c-conflict-resolution
+[suite] GREEN phase-b-tenant-and-data-boundaries (1s)
+[suite] GREEN phase-c-conflict-resolution (0s)
+[suite] START phase-c-id-race
+[suite] START phase-c-regional-difficulty-metric
+[suite] GREEN phase-c-regional-difficulty-metric (0s)
+[suite] START phase-c-regional-pg-reads
+[suite] GREEN phase-c-id-race (0s)
+[suite] START phase-c-student-timeline-ownership
+[suite] GREEN phase-c-regional-pg-reads (0s)
+[suite] START phase-c-unvalidated-fks
+[suite] GREEN phase-c-student-timeline-ownership (0s)
+[suite] START phase7-production-verifier-contract.test
+[suite] GREEN phase7-production-verifier-contract.test (0s)
+[suite] START pilot-operations-playbook-coverage
+[suite] GREEN pilot-operations-playbook-coverage (0s)
+[suite] START pilot-rollout-coverage
+[suite] GREEN pilot-rollout-coverage (0s)
+[suite] START pitr-restore-args
+[suite] GREEN pitr-restore-args (0s)
+[suite] START pnote
+[suite] GREEN phase-c-unvalidated-fks (0s)
+[suite] START privacy
+[suite] GREEN offline-sync-drill (11s)
+[suite] START pub01-no-universal-credential.test
+[suite] GREEN privacy (4s)
+[suite] START pull-bootstrap
+[suite] GREEN pull-bootstrap (3s)
+[suite] START pull-rest-delete
+[suite] GREEN pull-rest-delete (1s)
+[suite] START pull-to-refresh
+[suite] GREEN pub01-no-universal-credential.test (7s)
+[suite] START r1-eliminate-ram-authorities.test
+[suite] GREEN r1-eliminate-ram-authorities.test (0s)
+[suite] GREEN pnote (8s)
+[suite] START recovery-instructions-coverage
+[suite] START r2-postgres-authority-fail-closed
+[suite] GREEN recovery-instructions-coverage (0s)
+[suite] START redis-backup
+[suite] GREEN r2-postgres-authority-fail-closed (0s)
+[suite] START redis-cluster
+[suite] GREEN redis-cluster (1s)
+[suite] START redis-key-audit
+[suite] GREEN redis-key-audit (0s)
+[suite] START redis-mem-ttl
+[suite] GREEN redis-mem-ttl (1s)
+[suite] START redis-metrics
+[suite] GREEN redis-metrics (0s)
+[suite] START redis-prodfail
+[suite] GREEN redis-prodfail (1s)
+[suite] START registry-provenance-protocol.test
+[suite] GREEN registry-provenance-protocol.test (0s)
+[suite] START release-notes-coverage
+[suite] GREEN release-notes-coverage (0s)
+[suite] START release-version-contract
+[suite] GREEN release-version-contract (0s)
+[suite] START reports-basic
+[suite] GREEN reports-basic (1s)
+[suite] START reports-offline
+[suite] GREEN pull-to-refresh (5s)
+[suite] START reports-tenant-isolation
+[suite] GREEN reports-tenant-isolation (1s)
+[suite] START risk-register-coverage
+[suite] GREEN risk-register-coverage (0s)
+[suite] START route-url-guard
+[suite] GREEN reports-offline (3s)
+[suite] START runbook-cards-coverage
+[suite] GREEN runbook-cards-coverage (0s)
+[suite] START runbook-coverage
+[suite] GREEN runbook-coverage (1s)
+[suite] START runtime-monitor
+[suite] GREEN runtime-monitor (1s)
+[suite] START runtime-probes-scrape-regression.test
+[suite] GREEN runtime-probes-scrape-regression.test (0s)
+[suite] START runtime-reliability-five-task.test
+[suite] GREEN pg-prod-boot-no-db (22s)
+[suite] START schema-migrations-ledger.test
+[suite] GREEN schema-migrations-ledger.test (0s)
+[suite] START schoolmode
+[suite] GREEN runtime-reliability-five-task.test (0s)
+[suite] START schoolmode2
+[suite] GREEN route-url-guard (5s)
+[suite] START secrets-management-coverage
+[suite] GREEN secrets-management-coverage (0s)
+[suite] START security-adversarial-a18-a22.test
+[suite] GREEN security-adversarial-a18-a22.test (1s)
+[suite] START security-findings-register-coverage
+[suite] GREEN security-findings-register-coverage (0s)
+[suite] START security-incident-log-coverage
+[suite] GREEN security-incident-log-coverage (0s)
+[suite] START security
+[suite] GREEN schoolmode (4s)
+[suite] START security_client
+[suite] GREEN security_client (1s)
+[suite] START seed-completeness
+[suite] GREEN schoolmode2 (7s)
+[suite] START seed-integrity
+[suite] GREEN redis-backup (16s)
+[suite] START semantic-analytics-e2e.test
+[suite] GREEN semantic-analytics-e2e.test (0s)
+[suite] START session8-audit-async-io
+[suite] GREEN session8-audit-async-io (0s)
+[suite] START session8-audit-flush
+[suite] GREEN session8-audit-flush (0s)
+[suite] START session8-audit-queue
+[suite] GREEN session8-audit-queue (0s)
+[suite] START session8-cache-index
+[suite] GREEN session8-cache-index (0s)
+[suite] START session8-classes-index
+[suite] GREEN session8-classes-index (1s)
+[suite] START session8-gc
+[suite] GREEN session8-gc (1s)
+[suite] START session8-grades-index
+[suite] GREEN session8-grades-index (0s)
+[suite] START session8-public-report
+[suite] GREEN session8-public-report (0s)
+[suite] START sidadiff
+[suite] GREEN seed-completeness (7s)
+[suite] START simulation
+[suite] GREEN security (11s)
+[suite] START staffatt2
+[suite] GREEN seed-integrity (7s)
+[suite] START stale-path-contract
+[suite] GREEN stale-path-contract (0s)
+[suite] START storage-full-honest
+[suite] GREEN sidadiff (4s)
+[suite] START storage-quota
+[suite] GREEN storage-full-honest (6s)
+[suite] GREEN staffatt2 (6s)
+[suite] START strict-verification-gate-a30.test
+[suite] START strict-gate-empty-registry
+[suite] GREEN strict-gate-empty-registry (0s)
+[suite] START superadmin
+[suite] GREEN storage-quota (6s)
+[suite] START supply-chain
+[suite] GREEN supply-chain (0s)
+[suite] START sync-atomic-batch
+[suite] GREEN sync-atomic-batch (1s)
+[suite] START sync-cache-errors
+[suite] GREEN sync-cache-errors (0s)
+[suite] START sync-chunk
+[suite] GREEN simulation (10s)
+[suite] START sync-client-adversarial
+[suite] GREEN sync-client-adversarial (1s)
+[suite] START sync-conflict-ui
+[suite] GREEN strict-verification-gate-a30.test (5s)
+[suite] START sync-del-mirror
+[suite] GREEN superadmin (6s)
+[suite] START sync-dlq-retry
+[suite] GREEN sync-conflict-ui (6s)
+[suite] START sync-dup-claim
+[suite] GREEN sync-dup-claim (0s)
+[suite] START sync-lastsync
+[suite] GREEN sync-chunk (8s)
+[suite] START sync-mirror-visible
+[suite] GREEN sync-mirror-visible (1s)
+[suite] START sync-queue-caps
+[suite] GREEN sync-dlq-retry (6s)
+[suite] START sync-sending-revive
+[suite] GREEN sync-lastsync (4s)
+[suite] START sync-virtualday-audit
+[suite] GREEN sync-virtualday-audit (0s)
+[suite] START teacher-eval
+[suite] GREEN sync-queue-caps (4s)
+[suite] START test-coverage-report-coverage
+[suite] GREEN sync-del-mirror (10s)
+[suite] GREEN test-coverage-report-coverage (0s)
+[suite] START theme-picker
+[suite] START tickets
+[suite] GREEN sync-sending-revive (5s)
+[suite] START tomorrow
+[suite] GREEN teacher-eval (5s)
+[suite] START tools-wave18-load-guards.test
+[suite] GREEN tools-wave18-load-guards.test (1s)
+[suite] START tracing-integration
+[suite] GREEN tickets (6s)
+[suite] START tracing-sampling
+[suite] GREEN tracing-sampling (0s)
+[suite] START training2
+[suite] GREEN tomorrow (6s)
+[suite] START trendcmp2
+[suite] GREEN tracing-integration (3s)
+[suite] START troubleshooting-coverage
+[suite] GREEN troubleshooting-coverage (0s)
+[suite] START truncation-telemetry
+[suite] GREEN theme-picker (9s)
+[suite] START tuition-plan
+[suite] GREEN truncation-telemetry (1s)
+[suite] START underpriv2
+[suite] GREEN training2 (6s)
+[suite] START user-guides-coverage
+[suite] GREEN user-guides-coverage (0s)
+[suite] START vclass
+[suite] GREEN trendcmp2 (5s)
+[suite] START vclass2
+[suite] GREEN tuition-plan (6s)
+[suite] START vclass3
+[suite] GREEN underpriv2 (7s)
+[suite] START vendor-playbook-coverage
+[suite] GREEN vendor-playbook-coverage (0s)
+[suite] START visitors
+[suite] GREEN vclass2 (6s)
+[suite] START visitors2
+[suite] GREEN vclass (7s)
+[suite] START vocational-grades
+[suite] GREEN vclass3 (6s)
+[suite] START waf-ddos
+[suite] GREEN visitors (6s)
+[suite] START wal-drill-bootstrap
+[suite] GREEN wal-drill-bootstrap (0s)
+[suite] START wave1-multi-instance
+[suite] GREEN waf-ddos (3s)
+[suite] START wave1-reads
+[suite] GREEN wave1-reads (0s)
+[suite] START wave1-regression-gate
+[suite] GREEN wave1-regression-gate (0s)
+[suite] START wave1-writes
+[suite] GREEN wave1-writes (0s)
+[suite] START wave10-chg-id
+[suite] GREEN wave1-multi-instance (2s)
+[suite] START wave10-db-scale
+[suite] GREEN wave10-chg-id (0s)
+[suite] START wave10-pgbouncer
+[suite] GREEN wave10-db-scale (0s)
+[suite] START wave10-query-audit
+[suite] GREEN visitors2 (7s)
+[suite] START wave10-retention
+[suite] GREEN wave10-pgbouncer (1s)
+[suite] START wave11-cache
+[suite] GREEN wave10-query-audit (0s)
+[suite] START wave13-asvs-audit-coverage
+[suite] GREEN wave10-retention (0s)
+[suite] START wave13-security
+[suite] GREEN wave13-security (0s)
+[suite] START wave15-health
+[suite] GREEN wave13-asvs-audit-coverage (0s)
+[suite] START wave18-hydration-guards
+[suite] GREEN wave11-cache (0s)
+[suite] START wave18-hydration-probe
+[suite] GREEN wave18-hydration-probe (0s)
+[suite] START wave18-spike-test
+[suite] GREEN wave18-spike-test (1s)
+[suite] START wave18-stress-test
+[suite] GREEN wave18-hydration-guards (1s)
+[suite] START wave19-chaos
+[suite] GREEN wave18-stress-test (0s)
+[suite] START wave20-arena5
+[suite] GREEN wave20-arena5 (0s)
+[suite] START wave3-keyset
+[suite] GREEN wave3-keyset (0s)
+[suite] START wave3-query2
+[suite] GREEN wave3-query2 (0s)
+[suite] START wave4-sync-all-collections
+[suite] GREEN wave4-sync-all-collections (1s)
+[suite] START wave6-redis
+[suite] GREEN wave19-chaos (1s)
+[suite] START wave7-offline-queue
+[suite] GREEN vocational-grades (9s)
+[suite] START wave8-outbox
+[suite] GREEN wave8-outbox (0s)
+[suite] START workdays
+[suite] GREEN wave6-redis (1s)
+[suite] START worker-timer-replicate
+[suite] GREEN worker-timer-replicate (0s)
+[suite] START workshop2
+[suite] GREEN wave15-health (5s)
+[suite] START zero-suite-fail-closed.test
+[suite] GREEN zero-suite-fail-closed.test (0s)
+[suite] START runner
+[suite] GREEN workdays (5s)
+[suite] GREEN wave7-offline-queue (5s)
+[suite] GREEN workshop2 (6s)
+[suite] GREEN runner (20s)
+[suite] START a11y-modal-focus-mutations (isolated copy)
+[suite] START a11y-modal-focus (isolated copy)
+[suite] START a11y-audit-mutations (isolated copy)
+[suite] START academic-years-mutations (isolated copy)
+[suite] GREEN a11y-audit-mutations (1s)
+[suite] START academic-years (isolated copy)
+[suite] GREEN a11y-modal-focus (7s)
+[suite] START assets-mutations (isolated copy)
+[suite] GREEN academic-years (8s)
+[suite] START assets2 (isolated copy)
+[suite] GREEN assets2 (6s)
+[suite] START assocmin2 (isolated copy)
+[suite] GREEN assocmin2 (8s)
+[suite] START att2-mutations (isolated copy)
+[suite] GREEN a11y-modal-focus-mutations (32s)
+[suite] START att3-mutations (isolated copy)
+[suite] GREEN assets-mutations (30s)
+[suite] START att4-mutations (isolated copy)
+[suite] GREEN academic-years-mutations (41s)
+[suite] START attack-detector-mutations (isolated copy)
+[suite] GREEN attack-detector-mutations (10s)
+[suite] START attpartial-mutations (isolated copy)
+[suite] GREEN att2-mutations (49s)
+[suite] START backup-snap-mutations (isolated copy)
+[suite] GREEN att3-mutations (59s)
+[suite] START behavior-mutations (isolated copy)
+[suite] GREEN attpartial-mutations (40s)
+[suite] START boom2-mutations (isolated copy)
+[suite] GREEN boom2-mutations (22s)
+[suite] START boom2 (isolated copy)
+[suite] GREEN behavior-mutations (27s)
+[suite] START bughunt-session9-mutations (isolated copy)
+[suite] GREEN boom2 (5s)
+[suite] START build-eol-reproducibility.test (isolated copy)
+[suite] GREEN build-eol-reproducibility.test (7s)
+[suite] START clsctx-mutations (isolated copy)
+[suite] GREEN backup-snap-mutations (58s)
+[suite] START cmsg2 (isolated copy)
+[suite] GREEN cmsg2 (5s)
+[suite] START compact-mutations (isolated copy)
+[suite] GREEN clsctx-mutations (16s)
+[suite] START db-engineering-mutations (isolated copy)
+[suite] GREEN att4-mutations (109s)
+[suite] GREEN db-engineering-mutations (0s)
+[suite] START deadletter-mutations (isolated copy)
+[suite] START delta-phase4-mutations (isolated copy)
+[suite] GREEN bughunt-session9-mutations (39s)
+[suite] START delta-sync-hardening (isolated copy)
+[suite] GREEN deadletter-mutations (19s)
+[suite] GREEN delta-sync-hardening (10s)
+[suite] START donations-mutations (isolated copy)
+[suite] START donations2 (isolated copy)
+[suite] GREEN donations2 (7s)
+[suite] START drills-mutations (isolated copy)
+[suite] GREEN donations-mutations (21s)
+[suite] START drills2 (isolated copy)
+[suite] GREEN drills2 (7s)
+[suite] START exam-types-mutations (isolated copy)
+[suite] GREEN drills-mutations (21s)
+[suite] START examcount-mutations (isolated copy)
+[suite] GREEN examcount-mutations (48s)
+[suite] START excuse-mutations (isolated copy)
+[suite] GREEN exam-types-mutations (77s)
+[suite] START finance2-mutations (isolated copy)
+[suite] GREEN compact-mutations (162s)
+[suite] START genp12-mutations (isolated copy)
+[suite] GREEN excuse-mutations (73s)
+[suite] START goals-mutations (isolated copy)
+[suite] GREEN genp12-mutations (35s)
+[suite] START gradeavg2-mutations (isolated copy)
+[suite] GREEN finance2-mutations (63s)
+[suite] START ha-config-mutations (isolated copy)
+[suite] GREEN ha-config-mutations (2s)
+[suite] START httpgetjson-mutations (isolated copy)
+[suite] GREEN goals-mutations (38s)
+[suite] START ics-mutations (isolated copy)
+[suite] GREEN ics-mutations (63s)
+[suite] START idb-persistence-mutations (isolated copy)
+[suite] GREEN httpgetjson-mutations (82s)
+[suite] START iep2-mutations (isolated copy)
+[suite] GREEN gradeavg2-mutations (98s)
+[suite] GREEN delta-phase4-mutations (292s)
+[suite] START internship-mutations (isolated copy)
+[suite] GREEN idb-persistence-mutations (15s)
+[suite] START library-mutations (isolated copy)
+[suite] START library2 (isolated copy)
+[suite] GREEN library2 (8s)
+[suite] START libserial2-mutations (isolated copy)
+[suite] GREEN iep2-mutations (38s)
+[suite] START migration-009-live-mutations (isolated copy)
+[suite] RED migration-009-live-mutations (0s) :: 
+::error title=RED suite migration-009-live-mutations (exit 1)::  ❌ FAIL: migration-009 mutations — باینری‌هایِ PG یا ماژولِ pg در دسترس نیستند migration-009-live-mutations: وابستگی مفقود = FAIL قطعی (عدم خروج با کد صفر) 
+  ❌ FAIL: migration-009 mutations — باینری‌هایِ PG یا ماژولِ pg در دسترس نیستند
+migration-009-live-mutations: وابستگی مفقود = FAIL قطعی (عدم خروج با کد صفر)
+[suite] START minutes2-mutations (isolated copy)
+[suite] GREEN library-mutations (33s)
+[suite] START minutes2 (isolated copy)
+[suite] GREEN internship-mutations (40s)
+[suite] GREEN libserial2-mutations (27s)
+[suite] START multigrade2 (isolated copy)
+[suite] START multigrade2-mutations (isolated copy)
+[suite] GREEN minutes2 (8s)
+[suite] START offline-e2e-mutations (isolated copy)
+[suite] GREEN multigrade2 (11s)
+[suite] START pathway2-mutations (isolated copy)
+[suite] GREEN minutes2-mutations (25s)
+[suite] START pathway2 (isolated copy)
+[suite] GREEN pathway2 (6s)
+[suite] START persist-roundtrip-mutations (isolated copy)
+[suite] GREEN pathway2-mutations (24s)
+[suite] START pnote-mutations (isolated copy)
+[suite] GREEN multigrade2-mutations (37s)
+[suite] START pr81-mutations (isolated copy)
+[suite] GREEN pr81-mutations (0s)
+[suite] START preapp2 (isolated copy)
+[suite] GREEN preapp2 (7s)
+[suite] START public-security (isolated copy)
+[suite] GREEN public-security (7s)
+[suite] START public2-mutations (isolated copy)
+[suite] GREEN offline-e2e-mutations (67s)
+[suite] START public2 (isolated copy)
+[suite] GREEN public2-mutations (19s)
+[suite] GREEN persist-roundtrip-mutations (51s)
+[suite] START pubrep-mutations (isolated copy)
+[suite] START pubrep (isolated copy)
+[suite] GREEN public2 (7s)
+[suite] START push-recovery-playbook-coverage (isolated copy)
+[suite] GREEN push-recovery-playbook-coverage (0s)
+[suite] START rate-limit-mutations (isolated copy)
+[suite] GREEN pubrep (8s)
+[suite] START reexam2 (isolated copy)
+[suite] GREEN reexam2 (5s)
+[suite] START run (isolated copy)
+[suite] GREEN run (2s)
+[suite] START runtime-monitor-mutations (isolated copy)
+[suite] GREEN pnote-mutations (55s)
+[suite] START schedule-gen-mutations (isolated copy)
+[suite] GREEN rate-limit-mutations (14s)
+[suite] START schedule-gen (isolated copy)
+[suite] GREEN runtime-monitor-mutations (5s)
+[suite] START scholarship2 (isolated copy)
+[suite] GREEN schedule-gen (5s)
+[suite] START school-type-mutations (isolated copy)
+[suite] GREEN scholarship2 (7s)
+[suite] START school-type (isolated copy)
+[suite] GREEN school-type (7s)
+[suite] START secret-scan (isolated copy)
+[suite] GREEN secret-scan (6s)
+[suite] START server2 (isolated copy)
+[suite] GREEN pubrep-mutations (48s)
+[suite] START session-revocation-mutations (isolated copy)
+[suite] GREEN schedule-gen-mutations (34s)
+[suite] START session8-audit-async-io-mutations (isolated copy)
+[suite] GREEN session8-audit-async-io-mutations (0s)
+[suite] START session8-audit-flush-mutations (isolated copy)
+[suite] GREEN session8-audit-flush-mutations (1s)
+[suite] START session8-audit-queue-mutations (isolated copy)
+[suite] GREEN session8-audit-queue-mutations (0s)
+[suite] START session8-cache-index-mutations (isolated copy)
+[suite] GREEN session8-cache-index-mutations (1s)
+[suite] START session8-classes-index-mutations (isolated copy)
+[suite] GREEN session8-classes-index-mutations (1s)
+[suite] START session8-gc-mutations (isolated copy)
+[suite] GREEN school-type-mutations (30s)
+[suite] START session8-grades-index-mutations (isolated copy)
+[suite] GREEN session8-grades-index-mutations (0s)
+[suite] GREEN session-revocation-mutations (11s)
+[suite] START session8-public-report-mutations (isolated copy)
+[suite] START staffatt-mutations (isolated copy)
+[suite] GREEN session8-gc-mutations (2s)
+[suite] GREEN session8-public-report-mutations (1s)
+[suite] START summer2 (isolated copy)
+[suite] START sync-atomic-batch-mutations (isolated copy)
+[suite] GREEN sync-atomic-batch-mutations (2s)
+[suite] START sync-chunk-mutations (isolated copy)
+[suite] GREEN summer2 (7s)
+[suite] START sync-queue-caps-mutations (isolated copy)
+[suite] GREEN server2 (25s)
+[suite] START teacher-eval-mutations (isolated copy)
+[suite] GREEN staffatt-mutations (18s)
+[suite] START tickets-mutations (isolated copy)
+[suite] GREEN teacher-eval-mutations (31s)
+[suite] START tomorrow-mutations (isolated copy)
+[suite] GREEN sync-queue-caps-mutations (34s)
+[suite] START tracing-mutations (isolated copy)
+[suite] GREEN tickets-mutations (31s)
+[suite] START training-mutations (isolated copy)
+[suite] GREEN tracing-mutations (11s)
+[suite] START trendcmp2-mutations (isolated copy)
+[suite] GREEN sync-chunk-mutations (57s)
+[suite] START truncation-telemetry-mutations (isolated copy)
+[suite] GREEN training-mutations (17s)
+[suite] START tuition-plan-mutations (isolated copy)
+[suite] GREEN tomorrow-mutations (31s)
+[suite] START underpriv2-mutations (isolated copy)
+[suite] GREEN truncation-telemetry-mutations (15s)
+[suite] START user-guide-mutations (isolated copy)
+[suite] GREEN user-guide-mutations (2s)
+[suite] START visitors-mutations (isolated copy)
+[suite] GREEN trendcmp2-mutations (29s)
+[suite] START vocational-grades-mutations (isolated copy)
+[suite] GREEN tuition-plan-mutations (33s)
+[suite] START waf-mutations (isolated copy)
+[suite] GREEN underpriv2-mutations (35s)
+[suite] START wal-disk-full-mutations (isolated copy)
+[suite] GREEN wal-disk-full-mutations (0s)
+[suite] START wave1-writes-mutations (isolated copy)
+[suite] GREEN waf-mutations (10s)
+[suite] GREEN wave1-writes-mutations (2s)
+[suite] START wave10-chg-id-mutations (isolated copy)
+[suite] START wave8-outbox-mutations (isolated copy)
+[suite] GREEN wave10-chg-id-mutations (2s)
+[suite] GREEN wave8-outbox-mutations (1s)
+[suite] START workshop2-mutations (isolated copy)
+[suite] GREEN visitors-mutations (44s)
+[suite] GREEN vocational-grades-mutations (48s)
+[suite] GREEN workshop2-mutations (22s)
+[suite] START a01-report-logs-repro
+[suite] GREEN a01-report-logs-repro (24s)
+[suite] START assocmin3
+[suite] GREEN assocmin3 (5s)
+[suite] START audit
+[suite] GREEN audit (0s)
+[suite] START b02-school-transfer-cache
+[suite] GREEN b02-school-transfer-cache (2s)
+[suite] START bounded-delta-resume
+[suite] GREEN bounded-delta-resume (4s)
+[suite] START certify
+[suite] GREEN certify (3s)
+[suite] START ci-test-parity-contract
+[suite] GREEN ci-test-parity-contract (0s)
+[suite] START cmsg3
+[suite] GREEN cmsg3 (3s)
+[suite] START dorm-kind
+[suite] GREEN dorm-kind (4s)
+[suite] START dorm-leave-dates
+[suite] GREEN dorm-leave-dates (4s)
+[suite] START dropout2
+[suite] GREEN dropout2 (3s)
+[suite] START entry-gpa
+[suite] GREEN entry-gpa (4s)
+[suite] START experience-store.test
+[suite] GREEN experience-store.test (1s)
+[suite] START family2
+[suite] GREEN family2 (2s)
+[suite] START form-validation-ux
+[suite] GREEN form-validation-ux (0s)
+[suite] START h02-update-user-cache-invalidation
+[suite] GREEN h02-update-user-cache-invalidation (1s)
+[suite] START health-index
+[suite] GREEN health-index (1s)
+[suite] START idb-migration-queue
+[suite] GREEN idb-migration-queue (1s)
+[suite] START idb-persistence
+[suite] GREEN idb-persistence (2s)
+[suite] START iep3
+[suite] GREEN iep3 (3s)
+[suite] START import2
+[suite] GREEN import2 (2s)
+[suite] START integration
+[suite] GREEN integration (6s)
+[suite] START m14-c01-retry-exhaustion
+[suite] GREEN m14-c01-retry-exhaustion (25s)
+[suite] START m15-01-ci-flake-01-unit
+[suite] GREEN m15-01-ci-flake-01-unit (32s)
+[suite] START m15-01-dr-runtime-unit
+[suite] GREEN m15-01-dr-runtime-unit (0s)
+[suite] START m15-01-e4-verify-unit
+[suite] GREEN m15-01-e4-verify-unit (0s)
+[suite] START m15-01-runtime-evidence-unit
+[suite] GREEN m15-01-runtime-evidence-unit (1s)
+[suite] START m15-03-aggregate-pg
+[suite] GREEN m15-03-aggregate-pg (0s)
+[suite] START m15-03-aggregate-sql
+[suite] GREEN m15-03-aggregate-sql (0s)
+[suite] START n09-n10-seed-and-backpressure.test
+[suite] GREEN n09-n10-seed-and-backpressure.test (0s)
+[suite] START n15-rest-phantom-columns.test
+[suite] GREEN n15-rest-phantom-columns.test (1s)
+[suite] START navgroups
+[suite] GREEN navgroups (2s)
+[suite] START observability-config
+[suite] GREEN observability-config (0s)
+[suite] START occ
+[suite] GREEN occ (1s)
+[suite] START office-head-contract
+[suite] GREEN office-head-contract (0s)
+[suite] START otp-ratelimit
+[suite] GREEN otp-ratelimit (41s)
+[suite] START p06-sync-oom-arch
+[suite] GREEN p06-sync-oom-arch (1s)
+[suite] START p11-phone-auth
+[suite] GREEN p11-phone-auth (0s)
+[suite] START phase-c-sms-quota-complexity
+[suite] GREEN phase-c-sms-quota-complexity (1s)
+[suite] START placement-overflow
+[suite] GREEN placement-overflow (3s)
+[suite] START preapp3
+[suite] GREEN preapp3 (8s)
+[suite] START rate-limit-distributed
+[suite] GREEN rate-limit-distributed (3s)
+[suite] START reaudit-a19-student-id-ownership
+[suite] GREEN reaudit-a19-student-id-ownership (1s)
+[suite] START reaudit-occ-stale-write
+[suite] GREEN reaudit-occ-stale-write (1s)
+[suite] START reaudit-redis-outage
+[suite] GREEN reaudit-redis-outage (14s)
+[suite] START red-team
+[suite] GREEN red-team (0s)
+[suite] START redis-fallback
+[suite] GREEN redis-fallback (2s)
+[suite] START reexam3
+[suite] GREEN reexam3 (5s)
+[suite] START region-scorecard
+[suite] GREEN region-scorecard (2s)
+[suite] START reports-bounded-cache
+[suite] GREEN reports-bounded-cache (5s)
+[suite] START scholarship3
+[suite] GREEN scholarship3 (5s)
+[suite] START security2
+[suite] GREEN security2 (5s)
+[suite] START security_seed
+[suite] GREEN security_seed (9s)
+[suite] START session-revocation
+[suite] GREEN session-revocation (3s)
+[suite] START si013-secret-scan
+[suite] GREEN si013-secret-scan (3s)
+[suite] START sim_full3
+[suite] GREEN sim_full3 (6s)
+[suite] START smoke-jsdom-runtime.test
+[suite] GREEN smoke-jsdom-runtime.test (1s)
+[suite] START smoke
+[suite] GREEN smoke (19s)
+[suite] START staff-gap
+[suite] GREEN staff-gap (3s)
+[suite] START strict-verification-gate.negative.test
+[suite] GREEN strict-verification-gate.negative.test (6s)
+[suite] START subs2
+[suite] GREEN subs2 (2s)
+[suite] START summer3
+[suite] GREEN summer3 (6s)
+[suite] START sync-conflict-storm-drill
+[suite] GREEN sync-conflict-storm-drill (0s)
+[suite] START teacher-eval-server
+[suite] GREEN teacher-eval-server (6s)
+[suite] START tombstone
+[suite] GREEN tombstone (1s)
+[suite] START tuition-exempt
+[suite] GREEN tuition-exempt (2s)
+[suite] START urgent-ann
+[suite] GREEN urgent-ann (3s)
+[suite] START waf-enforce
+[suite] GREEN waf-enforce (9s)
+[suite] START wave12-network
+[suite] GREEN wave12-network (1s)
+[suite] START wave14-observability
+[suite] GREEN wave14-observability (1s)
+[suite] START wave16-dr
+[suite] GREEN wave16-dr (0s)
+[suite] START wave18-load-test
+[suite] GREEN wave18-load-test (1s)
+[suite] START wave23-reports-sql
+[suite] GREEN wave23-reports-sql (0s)
+[suite] START wave5-authz
+[suite] GREEN wave5-authz (1s)
+[suite] START xss-guard
+[suite] GREEN xss-guard (3s)
+[suite] START report2 (isolated copy)
+[suite] GREEN report2 (3s)
+[suite] START reporttpl2 (isolated copy)
+[suite] GREEN reporttpl2 (4s)
+[suite] START schedconf2 (isolated copy)
+[suite] GREEN schedconf2 (3s)
+[suite] START server1 (isolated copy)
+[suite] GREEN server1 (7s)
+[suite] START server10 (isolated copy)
+[suite] GREEN server10 (1s)
+[suite] START server11-sms (isolated copy)
+[suite] GREEN server11-sms (2s)
+[suite] START server12 (isolated copy)
+[suite] GREEN server12 (21s)
+[suite] START server13 (isolated copy)
+[suite] RED server13 (89s) :: 
+::error title=RED suite server13 (exit 1):: ▸ دور 85 — P1-4: fail-fastِ TLS در production   ❌ P0-PG ENVIRONMENT — PostgreSQL unreachable — target=127.0.0.1:5432/payesh_ci budget_ms=90000 attempts=90 waited_ms=89182 last=connect ECONNREFUSED 127.0.0.1:5432  server13: 0/1 — شکست: P0-PG ENVIRONMENT — PostgreSQL unreachable (محیط/وابستگی، نه رفتارِ محصول) 
+
+▸ دور 85 — P1-4: fail-fastِ TLS در production
+  ❌ P0-PG ENVIRONMENT — PostgreSQL unreachable — target=127.0.0.1:5432/payesh_ci budget_ms=90000 attempts=90 waited_ms=89182 last=connect ECONNREFUSED 127.0.0.1:5432
+
+server13: 0/1 — شکست: P0-PG ENVIRONMENT — PostgreSQL unreachable (محیط/وابستگی، نه رفتارِ محصول)
+[suite] START server14-gc (isolated copy)
+[suite] GREEN server14-gc (3s)
+[suite] START server15 (isolated copy)
+[suite] GREEN server15 (26s)
+[suite] START server16 (isolated copy)
+[suite] GREEN server16 (8s)
+[suite] START server17 (isolated copy)
+[suite] GREEN server17 (77s)
+[suite] START server18 (isolated copy)
+[suite] GREEN server18 (12s)
+[suite] START server3 (isolated copy)
+[suite] GREEN server3 (13s)
+[suite] START server4 (isolated copy)
+[suite] GREEN server4 (3s)
+[suite] START server5 (isolated copy)
+[suite] GREEN server5 (3s)
+[suite] START server6 (isolated copy)
+[suite] GREEN server6 (4s)
+[suite] START server7 (isolated copy)
+[suite] GREEN server7 (6s)
+[suite] START server8 (isolated copy)
+[suite] GREEN server8 (7s)
+[suite] START server9 (isolated copy)
+[suite] GREEN server9 (6s)
+[suite] START sim_full2 (isolated copy)
+[suite] GREEN sim_full2 (6s)
+[suite] START uiclick (isolated copy)
+[suite] GREEN uiclick (3s)
+[suite] START user-guide (isolated copy)
+[suite] GREEN user-guide (0s)
+[suite] START assocmin2-mutations (isolated copy)
+[suite] GREEN assocmin2-mutations (20s)
+[suite] START bounded-delta-resume-mutations (isolated copy)
+[suite] GREEN bounded-delta-resume-mutations (135s)
+[suite] START cmsg2-mutations (isolated copy)
+[suite] GREEN cmsg2-mutations (19s)
+[suite] START dorm-kind-mutations (isolated copy)
+[suite] GREEN dorm-kind-mutations (28s)
+[suite] START dropout-mutations (isolated copy)
+[suite] GREEN dropout-mutations (12s)
+[suite] START entry-gpa-mutations (isolated copy)
+[suite] GREEN entry-gpa-mutations (34s)
+[suite] START health-index-mutations (isolated copy)
+[suite] GREEN health-index-mutations (5s)
+[suite] START import2-mutations (isolated copy)
+[suite] GREEN import2-mutations (11s)
+[suite] START national-dataset-mutations (isolated copy)
+[suite] GREEN national-dataset-mutations (7s)
+[suite] START observability-config-mutations (isolated copy)
+[suite] GREEN observability-config-mutations (0s)
+[suite] START placement-overflow-mutations (isolated copy)
+[suite] GREEN placement-overflow-mutations (22s)
+[suite] START pr74-mutations (isolated copy)
+[suite] GREEN pr74-mutations (12s)
+[suite] START preapp2-mutations (isolated copy)
+[suite] GREEN preapp2-mutations (24s)
+[suite] START red-team-mutations (isolated copy)
+[suite] GREEN red-team-mutations (3s)
+[suite] START reexam2-mutations (isolated copy)
+[suite] GREEN reexam2-mutations (20s)
+[suite] START region-scorecard-mutations (isolated copy)
+[suite] GREEN region-scorecard-mutations (14s)
+[suite] START report2-mutations (isolated copy)
+[suite] GREEN report2-mutations (11s)
+[suite] START reports-bounded-cache-mutations (isolated copy)
+[suite] GREEN reports-bounded-cache-mutations (45s)
+[suite] START reporttpl2-mutations (isolated copy)
+[suite] GREEN reporttpl2-mutations (16s)
+[suite] START runtime-security-alert-mutations (isolated copy)
+[suite] GREEN runtime-security-alert-mutations (0s)
+[suite] START schedconf2-mutations (isolated copy)
+[suite] GREEN schedconf2-mutations (11s)
+[suite] START scholarship2-mutations (isolated copy)
+[suite] GREEN scholarship2-mutations (19s)
+[suite] START server-mutations (isolated copy)
+[suite] GREEN server-mutations (218s)
+[suite] START server11-mutations (isolated copy)
+[suite] GREEN server11-mutations (17s)
+[suite] START server12-mutations (isolated copy)
+[suite] GREEN server12-mutations (63s)
+[suite] START server13-mutations (isolated copy)
+[suite] RED server13-mutations (90s) :: 
+::error title=RED suite server13-mutations (exit 1):: پیش‌سنجیِ خطِ پایه (پیش ازِ هر جهش):   ❌ baseline-pre — 0/1 :: ▸ دور 85 — P1-4: fail-fastِ TLS در production ⏎ ❌ P0-PG ENVIRONMENT — PostgreSQL unreachable — target=127.0.0.1:5432/payesh_ci budget_ms=90000 attempts=90 waited_ms=89172 last=connect ECONNREFUSED 127.0.0.1:5432 ⏎ server13: 0/1 — شکست: P0-PG ENVIRONMENT — PostgreSQL unreachab
+
+پیش‌سنجیِ خطِ پایه (پیش ازِ هر جهش):
+  ❌ baseline-pre — 0/1 :: ▸ دور 85 — P1-4: fail-fastِ TLS در production ⏎ ❌ P0-PG ENVIRONMENT — PostgreSQL unreachable — target=127.0.0.1:5432/payesh_ci budget_ms=90000 attempts=90 waited_ms=89172 last=connect ECONNREFUSED 127.0.0.1:5432 ⏎ server13: 0/1 — شکست: P0-PG ENVIRONMENT — PostgreSQL unreachable (محیط/وابستگی، نه رفتارِ محصول)
+
+❌ BASELINE-RED — خطِ پایه (پیش ازِ جهش) بدونِ جهش سبز نشد؛ حکمِ جهش‌ها بی‌اعتبار است (تبدیلِ قرمزِ محیطی به سبز انجام نمی‌شود).
+   علت‌هایِ ممکن: وابستگیِ محیط (پیش‌سنجِ `P0-PG ENVIRONMENT` در خودِ سوئیت) یا نقصِ واقعیِ fail-fast.
+   دنبالهٔ خروجیِ پایه: ▸ دور 85 — P1-4: fail-fastِ TLS در production ⏎ ❌ P0-PG ENVIRONMENT — PostgreSQL unreachable — target=127.0.0.1:5432/payesh_ci budget_ms=90000 attempts=90 waited_ms=89172 last=connect ECONNREFUSED 127.0.0.1:5432 ⏎ server13: 0/1 — شکست: P0-PG ENVIRONMENT — PostgreSQL unreachable (محیط/وابستگی، نه رفتارِ محصول)
+[suite] START server14-gc-mutations (isolated copy)
+[suite] GREEN server14-gc-mutations (101s)
+[suite] START server15-mutations (isolated copy)
+[suite] GREEN server15-mutations (284s)
+[suite] START server16-mutations (isolated copy)
+[suite] GREEN server16-mutations (270s)
+[suite] START sim_full3-mutations (isolated copy)
+[suite] GREEN sim_full3-mutations (28s)
+[suite] START staff-gap-mutations (isolated copy)
+[suite] GREEN staff-gap-mutations (29s)
+[suite] START subs2-mutations (isolated copy)
+[suite] GREEN subs2-mutations (12s)
+[suite] START summer2-mutations (isolated copy)
+[suite] GREEN summer2-mutations (21s)
+[suite] START tuition-exempt-mutations (isolated copy)
+[suite] GREEN tuition-exempt-mutations (9s)
+[suite] START uiclick-mutations (isolated copy)
+[suite] GREEN uiclick-mutations (16s)
+[suite] START urgent-ann-mutations (isolated copy)
+[suite] GREEN urgent-ann-mutations (21s)
+[suite] START wave1-mutations (isolated copy)
+[suite] GREEN wave1-mutations (4s)
+[suite] START wave12-network-mutations (isolated copy)
+[suite] GREEN wave12-network-mutations (4s)
+[suite] START wave14-observability-mutations (isolated copy)
+[suite] GREEN wave14-observability-mutations (5s)
+[suite] START wave16-dr-mutations (isolated copy)
+[suite] GREEN wave16-dr-mutations (9s)
+[suite] START wave17-testing-mutations (isolated copy)
+[suite] GREEN wave17-testing-mutations (81s)
+[suite] START wave5-authz-mutations (isolated copy)
+[suite] GREEN wave5-authz-mutations (7s)
+[suite] START otp-ratelimit-mutations (live-infra)
+[suite] GREEN otp-ratelimit-mutations (326s)
+[suite] START schema-migrations-live-pg.test (live-infra)
+[suite] RED schema-migrations-live-pg.test (30s) :: 
+::error title=RED suite schema-migrations-live-pg.test (exit 1)::════════════════════════════════════════════════════════════   R21 Live PostgreSQL Migration Ledger (E3) Suite            ════════════════════════════════════════════════════�
+════════════════════════════════════════════════════════════
+  R21 Live PostgreSQL Migration Ledger (E3) Suite           
+════════════════════════════════════════════════════════════
+
+FATAL in R21 Live PG suite: Error: connect ECONNREFUSED 127.0.0.1:5432
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 5432
+}
+[suite] START migration-012-crash-recovery-live (live-infra)
+[suite] RED migration-012-crash-recovery-live (30s) :: 
+::error title=RED suite migration-012-crash-recovery-live (exit 1)::MIGRATION 012 CRASH/RECOVERY LIVE: FAIL Error: connect ECONNREFUSED 127.0.0.1:5432     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16) 
+MIGRATION 012 CRASH/RECOVERY LIVE: FAIL Error: connect ECONNREFUSED 127.0.0.1:5432
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[suite] START migration-009-live (live-infra)
+[suite] RED migration-009-live (29s) :: migration-009-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prereq
+::error title=RED suite migration-009-live (exit 2)::  ⏭️  migration-009 live gate  —  باینری‌هایِ PostgreSQL در PATH/PG_LIVE_BIN نیستند  migration-009-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisites are NOT-RUN and exit 2  
+  ⏭️  migration-009 live gate  —  باینری‌هایِ PostgreSQL در PATH/PG_LIVE_BIN نیستند
+
+migration-009-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisites are NOT-RUN and exit 2
+
+[suite] START pg-relational-seed (live-infra)
+[suite] RED pg-relational-seed (30s) :: 
+::error title=RED suite pg-relational-seed (exit 1)::pg-relational-seed — relational seed, real foreign keys, tenant isolation  pg-relational-seed: ❌ FAIL — PostgreSQL not reachable: connect ECONNREFUSED 127.0.0.1:5432 — skip/NOT-RUN ممنوع (P1-GAP-01) 
+pg-relational-seed — relational seed, real foreign keys, tenant isolation
+
+pg-relational-seed: ❌ FAIL — PostgreSQL not reachable: connect ECONNREFUSED 127.0.0.1:5432 — skip/NOT-RUN ممنوع (P1-GAP-01)
+[suite] START migrate-pg-constraints (live-infra)
+[suite] GREEN migrate-pg-constraints (30s)
+[suite] START migrate-pg-constraints-mutations (live-infra)
+[suite] GREEN migrate-pg-constraints-mutations (32s)
+[suite] START wave3-query (live-infra)
+[suite] RED wave3-query (30s) :: نتیجه Wave3 Query: 12/13  —  1 ناموفق 
+::error title=RED suite wave3-query (exit 1)::  ✅ students list (memory) returns expected projected rows   ✅ attendance list (memory) returns rows + pagination  ▸ D. PostgreSQL execution (guarded) [DB] PostgreSQL connection failed. Falling back to JSON in-memory store: connect ECONNREFUSED 127.0.0.1:5432   ❌ real-PG run      driver postgres  ───────────────────────────────�
+
+▸ A. DB-native SQL builders
+  ✅ students: correct structure + bound school scope + ORDER BY id
+  ✅ students: search value is only a bound ILIKE param (injection-safe)
+  ✅ students: teacher scope uses only allowlisted tables via EXISTS
+  ✅ students: superadmin has no school_id predicate
+  ✅ students: keyset cursor is a bound predicate
+  ✅ attendance: structure, filters bound, ordering date DESC,id ASC
+  ✅ attendance: parent scope via allowlisted parent_links EXISTS
+
+▸ B. executePagedList pagination shape (fake db)
+  ✅ page not full → has_more=false, total from COUNT
+  ✅ page full via LIMIT+1 → has_more=true and data sliced
+  ✅ executePagedList honors a keyset cursor (id > cursor)
+
+▸ C. Route memory path (PostgreSQL not active)
+  ✅ students list (memory) returns expected projected rows
+  ✅ attendance list (memory) returns rows + pagination
+
+▸ D. PostgreSQL execution (guarded)
+[DB] PostgreSQL connection failed. Falling back to JSON in-memory store: connect ECONNREFUSED 127.0.0.1:5432
+  ❌ real-PG run
+     driver postgres
+
+────────────────────────────────────────────────────────
+نتیجه Wave3 Query: 12/13  —  1 ناموفق
+────────────────────────────────────────────────────────
+
+[suite] START wave3-query3 (live-infra)
+[suite] RED wave3-query3 (30s) ::   جمع: 18 موفق، 1 ناموفق از 19 
+::error title=RED suite wave3-query3 (exit 1)::  ✅ A12 students keeps its single-column id cursor (direction-aware, W3-1: ORDER BY id DESC)   ✅ A12 grades keeps its single-column id cursor (direction-aware, W3-1: ORDER BY id DESC)   ✅ A12 classes keeps its single-column id cursor (direction-aware, W3-1: ORDER BY id DESC)   ✅ A12 users keeps its single-column id cursor (direction-aware, W3-1: ORDER BY id DESC)   ✅ A13 executePagedList
+
+▸ Wave 3 — composite keyset cursors (A: pure · B: live PostgreSQL)
+
+  — A. cursor algebra
+  ✅ A1 the cursor encodes every ORDER BY column, in order
+  ✅ A2 the keyset predicate is the row-value comparison for (date DESC, id ASC)
+  ✅ A3 no cursor value is interpolated into the SQL — only $n placeholders
+  ✅ A3b the builder binds the trailing id as a number, not a string
+  ✅ A4 a leading ASC column flips to `>`, proving direction comes from the spec
+  ✅ A5 a bare numeric cursor still works (backwards compatible)
+  ✅ A6 a malformed cursor yields no predicate rather than broken SQL
+  ✅ A7 a row missing a cursor column falls back to the id-only cursor
+  ✅ A8 buildAttendanceList carries a composite keyset spec
+  ✅ A9 the composite spec matches the ORDER BY it must mirror
+  ✅ A10 a cursor produces the composite predicate in the page SQL
+  ✅ A11 the COUNT query never carries a cursor (total must stay stable)
+  ✅ A12 students keeps its single-column id cursor (direction-aware, W3-1: ORDER BY id DESC)
+  ✅ A12 grades keeps its single-column id cursor (direction-aware, W3-1: ORDER BY id DESC)
+  ✅ A12 classes keeps its single-column id cursor (direction-aware, W3-1: ORDER BY id DESC)
+  ✅ A12 users keeps its single-column id cursor (direction-aware, W3-1: ORDER BY id DESC)
+  ✅ A13 executePagedList emits a composite next_cursor
+  ✅ A14 has_more still comes from LIMIT+1
+
+  — B. live PostgreSQL
+  ❌ B1–B7 real-database gate — FAIL: cannot connect: connect ECONNREFUSED 127.0.0.1:5432 (P1-GAP-01)
+
+  جمع: 18 موفق، 1 ناموفق از 19
+
+[suite] START wave3-parity (live-infra)
+[suite] RED wave3-parity (30s) ::   جمع: 0 موفق، 1 ناموفق از 1 
+::error title=RED suite wave3-parity (exit 1):: ▸ Wave 3 — JS↔SQL parity gate (فیلد‌به‌فیلد، روی PG زنده)   ❌ parity gate — FAIL: cannot connect: connect ECONNREFUSED 127.0.0.1:5432 (P1-GAP-01)    جمع: 0 موفق، 1 ناموفق از 1   شکست‌ها:    - parity gate  
+
+▸ Wave 3 — JS↔SQL parity gate (فیلد‌به‌فیلد، روی PG زنده)
+  ❌ parity gate — FAIL: cannot connect: connect ECONNREFUSED 127.0.0.1:5432 (P1-GAP-01)
+
+  جمع: 0 موفق، 1 ناموفق از 1
+  شکست‌ها:
+   - parity gate
+
+[suite] START wave3-parity-mutations (live-infra)
+[suite] GREEN wave3-parity-mutations (30s)
+[suite] START wave4-sync (live-infra)
+[suite] RED wave4-sync (30s) :: نتیجه Wave4 Sync: 10/11  —  1 ناموفق 
+::error title=RED suite wave4-sync (exit 1)::  ✅ snapshot (no since) path unchanged   ✅ tombstones still served from store (write side not PG-native yet)  ▸ C. PostgreSQL execution (guarded) [DB] PostgreSQL connection failed. Falling back to JSON in-memory store: connect ECONNREFUSED 127.0.0.1:5432   ❌ real-PG run      driver postgres  ─────────────────────────────────
+
+▸ A. syncdelta builders
+  ✅ deltaRowsSql: time predicate pushed, ORDER BY (updated_at,id), allowlisted
+  ✅ deltaRowsSql: unknown table rejected (allowlist)
+  ✅ deltaRowsSql: keyset tie-breaker avoids boundary re-emission
+  ✅ deltaKeysetSql: (updated_at,id) cursor + LIMIT limit+1
+  ✅ tombstonesSql: prepared tombstone read structure + school scope
+
+▸ B. pull.js DB-native delta path
+  ✅ delta request uses DB (time-pushed) when PG live
+  ✅ DB delta fetch transparently falls back on missing timestamp columns
+  ✅ memory path (db absent) still works for delta
+  ✅ snapshot (no since) path unchanged
+  ✅ tombstones still served from store (write side not PG-native yet)
+
+▸ C. PostgreSQL execution (guarded)
+[DB] PostgreSQL connection failed. Falling back to JSON in-memory store: connect ECONNREFUSED 127.0.0.1:5432
+  ❌ real-PG run
+     driver postgres
+
+────────────────────────────────────────────────────────
+نتیجه Wave4 Sync: 10/11  —  1 ناموفق
+────────────────────────────────────────────────────────
+
+[suite] START wave6-11-redis-live (live-infra)
+[suite] RED wave6-11-redis-live (29s) :: 
+::error title=RED suite wave6-11-redis-live (exit 1):: ▸ Wave 6+11 — قراردادهای Redis روی سرورِ واقعی [Redis] Connection failed. Production refuses fallback (readiness fails): Connection is closed.   ❌ R1 init با REDIS_URL زنده ⇒ ok و درایورِ واقعی  —  {"ini":{"ok":false,"driver":"none","error":"Redis unreachable in production: Connection is closed."},"isRedis":false,"status":{"active":false,"mode":
+
+▸ Wave 6+11 — قراردادهای Redis روی سرورِ واقعی
+[Redis] Connection failed. Production refuses fallback (readiness fails): Connection is closed.
+  ❌ R1 init با REDIS_URL زنده ⇒ ok و درایورِ واقعی  —  {"ini":{"ok":false,"driver":"none","error":"Redis unreachable in production: Connection is closed."},"isRedis":false,"status":{"active":false,"mode":"memory","ioredisAvailable":true}}
+live redis gate crashed: Error: REDIS_UNAVAILABLE: Redis unavailable in production (fail-closed): set
+    at prodNoRedis (/home/user/p2/server/redis.js:344:17)
+    at Object.set (/home/user/p2/server/redis.js:406:3)
+    at main (/home/user/p2/tests/wave6-11-redis-live.js:106:17)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {
+  code: 'REDIS_UNAVAILABLE',
+  status: 503
+}
+[suite] START wave6-11-redis-live-mutations (live-infra)
+[suite] GREEN wave6-11-redis-live-mutations (31s)
+[suite] START wave10-pg-live (live-infra)
+[suite] RED wave10-pg-live (30s) :: wave10-pg-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisi
+::error title=RED suite wave10-pg-live (exit 2)::  ⏭️  wave10 pg live gate  —  باینری‌هایِ PostgreSQL (initdb/postgres/pg_ctl) در PATH/PG_LIVE_BIN نیستند  wave10-pg-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisites are NOT-RUN and exit 2  
+  ⏭️  wave10 pg live gate  —  باینری‌هایِ PostgreSQL (initdb/postgres/pg_ctl) در PATH/PG_LIVE_BIN نیستند
+
+wave10-pg-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisites are NOT-RUN and exit 2
+
+[suite] START wave10-pg-live-mutations (live-infra)
+[suite] RED wave10-pg-live-mutations (30s) :: wave10-pg-live-mutations: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing 
+::error title=RED suite wave10-pg-live-mutations (exit 2)::  ⏭️  wave10 pg live mutations — باینری‌هایِ PG یا ماژولِ pg در دسترس نیستند wave10-pg-live-mutations: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisites are NOT-RUN and exit 2 
+  ⏭️  wave10 pg live mutations — باینری‌هایِ PG یا ماژولِ pg در دسترس نیستند
+wave10-pg-live-mutations: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisites are NOT-RUN and exit 2
+[suite] START wave10-tenant-live (live-infra)
+[suite] RED wave10-tenant-live (29s) :: wave10-tenant-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prereq
+::error title=RED suite wave10-tenant-live (exit 2)::  ⏭️  wave10 tenant live gate  —  باینری‌هایِ PostgreSQL (initdb/postgres/pg_ctl) در PATH/PG_LIVE_BIN نیستند  wave10-tenant-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisites are NOT-RUN and exit 2  
+  ⏭️  wave10 tenant live gate  —  باینری‌هایِ PostgreSQL (initdb/postgres/pg_ctl) در PATH/PG_LIVE_BIN نیستند
+
+wave10-tenant-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisites are NOT-RUN and exit 2
+
+[suite] START wave10-tenant-live-mutations (live-infra)
+[suite] RED wave10-tenant-live-mutations (29s) :: wave10-tenant-live-mutations: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; miss
+::error title=RED suite wave10-tenant-live-mutations (exit 2)::  ⏭️  wave10 tenant live mutations — باینری‌هایِ PG یا ماژولِ pg در دسترس نیستند wave10-tenant-live-mutations: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisites are NOT-RUN and exit 2 
+  ⏭️  wave10 tenant live mutations — باینری‌هایِ PG یا ماژولِ pg در دسترس نیستند
+wave10-tenant-live-mutations: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisites are NOT-RUN and exit 2
+[suite] START wave18w19-multinode-live (live-infra)
+[suite] GREEN wave18w19-multinode-live (30s)
+[suite] START wave23-reports-pg (live-infra)
+[suite] GREEN wave23-reports-pg (30s)
+[suite] START wave23-reports-mutations (live-infra)
+[suite] RED wave23-reports-mutations (31s) ::   جمع: 0 کشته، 11 زنده از 11 
+::error title=RED suite wave23-reports-mutations (exit 1)::   - M1 حذفِ GROUP BY هر-مدرسه از روندِ ترمی (تجمیعِ سراسری به‌جای هر مدرسه)    - M2 JOIN غلط: نمرهٔ کلاس بدونِ تطبیقِ مدرسه (g.school_id = c.school_id حذف)    - M3 حذفِ فیلترِ school_id از تجمیعِ شهریه (نشتِ مالی بینِ مدارس)    - M4 تغییرِ فرمولِ نرمال‌سازی
+
+wave23-reports-mutations — هر جهش باید گیتِ PG زنده را قرمز کند
+
+  ❌ زنده ماند: M1 حذفِ GROUP BY هر-مدرسه از روندِ ترمی (تجمیعِ سراسری به‌جای هر مدرسه)
+  ❌ زنده ماند: M2 JOIN غلط: نمرهٔ کلاس بدونِ تطبیقِ مدرسه (g.school_id = c.school_id حذف)
+  ❌ زنده ماند: M3 حذفِ فیلترِ school_id از تجمیعِ شهریه (نشتِ مالی بینِ مدارس)
+  ❌ زنده ماند: M4 تغییرِ فرمولِ نرمال‌سازیِ نمره (score*10 به‌جای score*20)
+  ❌ زنده ماند: M5 حذفِ LIMIT n+1 از صفحهٔ معلمان (نتیجهٔ بی‌کران + has_more شکسته)
+  ❌ زنده ماند: M6 حذفِ گاردِ اعتبارسنجیِ P2 (class_id خراب دیگر 400 نمی‌گیرد)
+  ❌ زنده ماند: M7 حذفِ queryRead از مسیرِ مالی (خواندن از پرایمری)
+  ❌ زنده ماند: M8 برگرداندنِ باگِ has_tuition (نگاشتِ type حذف — شاهدِ PG-شکل دوباره بی‌شهریه)
+  ❌ زنده ماند: M9 وضعیتِ ناشناختهٔ قسط دیگر pending نمی‌شود (catch-all حذف)
+  ❌ زنده ماند: M10 جمعِ مدرسهٔ معلمان از صفحه گرفته شود نه کلِ دامنه (LIMIT در totals)
+  ❌ زنده ماند: M11 برگرداندنِ باگِ flag-2 بازبین (صفحهٔ آخر دوباره همهٔ مدارس با ردیفِ خالی)
+
+  جمع: 0 کشته، 11 زنده از 11
+  زنده‌ها:
+   - M1 حذفِ GROUP BY هر-مدرسه از روندِ ترمی (تجمیعِ سراسری به‌جای هر مدرسه)
+   - M2 JOIN غلط: نمرهٔ کلاس بدونِ تطبیقِ مدرسه (g.school_id = c.school_id حذف)
+   - M3 حذفِ فیلترِ school_id از تجمیعِ شهریه (نشتِ مالی بینِ مدارس)
+   - M4 تغییرِ فرمولِ نرمال‌سازیِ نمره (score*10 به‌جای score*20)
+   - M5 حذفِ LIMIT n+1 از صفحهٔ معلمان (نتیجهٔ بی‌کران + has_more شکسته)
+   - M6 حذفِ گاردِ اعتبارسنجیِ P2 (class_id خراب دیگر 400 نمی‌گیرد)
+   - M7 حذفِ queryRead از مسیرِ مالی (خواندن از پرایمری)
+   - M8 برگرداندنِ باگِ has_tuition (نگاشتِ type حذف — شاهدِ PG-شکل دوباره بی‌شهریه)
+   - M9 وضعیتِ ناشناختهٔ قسط دیگر pending نمی‌شود (catch-all حذف)
+   - M10 جمعِ مدرسهٔ معلمان از صفحه گرفته شود نه کلِ دامنه (LIMIT در totals)
+   - M11 برگرداندنِ باگِ flag-2 بازبین (صفحهٔ آخر دوباره همهٔ مدارس با ردیفِ خالی)
+
+[suite] START wave23-norm-edge-mutations (live-infra)
+[suite] RED wave23-norm-edge-mutations (30s) :: 
+::error title=RED suite wave23-norm-edge-mutations (exit 1):: ══════════════════════════════════════════════ ▸ ساختِ فیکسچرِ لبه‌ها روی PostgreSQL واقعی Error: connect ECONNREFUSED 127.0.0.1:5432     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16) {   errno: -111,   code: 'ECONNREFUSED',   syscall: 'connect',   address: 
+
+══════════════════════════════════════════════
+▸ ساختِ فیکسچرِ لبه‌ها روی PostgreSQL واقعی
+Error: connect ECONNREFUSED 127.0.0.1:5432
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 5432
+}
+[suite] START bench-phone-lookup-p11 (live-infra)
+[suite] RED bench-phone-lookup-p11 (10s) :: 
+::error title=RED suite bench-phone-lookup-p11 (exit 1)::FATAL Command failed: /usr/local/bin/node /home/user/p2/tools/migrate-ledger.js up [LEDGER FATAL] Migration failed: Error: connect ECONNREFUSED 127.0.0.1:5432     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16) {   errno: -111,   code: 'ECONNREFUSED',   syscall: 'connect',   address: '127.0.0.1',   port: 5432 }  
+FATAL Command failed: /usr/local/bin/node /home/user/p2/tools/migrate-ledger.js up
+[LEDGER FATAL] Migration failed: Error: connect ECONNREFUSED 127.0.0.1:5432
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 5432
+}
+
+[suite] START wave1-gate (live-infra)
+[suite] GREEN wave1-gate (142s)
+[suite] START arena5-recovery (live-infra)
+[suite] RED arena5-recovery (49s) :: 
+::error title=RED suite arena5-recovery (exit 1)::  ✅ R2i db.ping (درایورِ حافظه) ok  ▸ R3 — Redis Failover/Failback (ioredis واقعی)   ✅ R3a fake ردیس (TCP RESP) بالا   ❌ R3b استارتِ production + ردیسِ زنده (init کامل) FATAL: TypeError: fetch failed     at node:internal/deps/undici/undici:14976:13     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)     at async 
+  ✅ R1g دادهٔ flushشده پس ازِ crash مانده
+  ✅ R1h restart + readiness 200
+  ✅ R1i دادهٔ زنده: del رویِ رکوردِ مانده
+  ✅ R1j حذف flush شد (نوشتنِ زنده)
+
+▸ R2 — Restore Drill (backup ← فساد ← restore)
+[DB] no DATABASE_URL — using the JSON/in-memory store. Dev/test only; set ALLOW_MEMORY_FALLBACK=1 to silence this warning. In production this is a startup failure.
+generated JWT secret -> /tmp/payesh-a5-r2-H6aw8X/key
+  cursor : enabled — key=keyfile (signed cursors survive restarts, ttl=3600s)
+[CANARY] weights hydrated from PostgreSQL (cluster_weights SSoT, 7 clusters)
+  ✅ R2a لاگینِ superadmin
+  ✅ R2b نوشتِ مارکر
+  ✅ R2c backup (API) → 200 + file
+  ✅ R2d فایلِ بکاپ سالم + شاملِ مارکر
+  ✅ R2e فساد اعمال شد (مارکر از حافظه حذف)
+  ✅ R2f restore (API) → 200
+  ✅ R2g مارکر بازگشت (بازیابیِ واقعی)
+  ✅ R2h audit: backup_created + restore_completed
+  ✅ R2i db.ping (درایورِ حافظه) ok
+
+▸ R3 — Redis Failover/Failback (ioredis واقعی)
+  ✅ R3a fake ردیس (TCP RESP) بالا
+  ❌ R3b استارتِ production + ردیسِ زنده (init کامل)
+FATAL: TypeError: fetch failed
+    at node:internal/deps/undici/undici:14976:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async j (/home/user/p2/tests/arena5-recovery.js:72:13)
+    at async readiness (/home/user/p2/tests/arena5-recovery.js:130:13)
+    at async waitStatus (/home/user/p2/tests/arena5-recovery.js:137:15)
+    at async /home/user/p2/tests/arena5-recovery.js:399:18
+[suite] START b-pg-health-blackhole (live-infra)
+[suite] RED b-pg-health-blackhole (30s) :: 
+::error title=RED suite b-pg-health-blackhole (exit 1)::B-PG-1 health-under-runtime-PG-blackhole probe  (PROBE_LEGACY=0) B-PG-PROBE VERDICT: NOT-RUN reason=cannot reach the PostgreSQL admin connection (connect ECONNREFUSED 127.0.0.1:5432) — probe needs a live PostgreSQL on 127.0.0.1:5432 (set PAYESH_BPG_ADMIN_URL to override)   SETUP FAILED: cannot reach the PostgreSQL admin connection (connect ECONNREFUSED 127.0.0.1:5432) — probe needs a live Post
+B-PG-1 health-under-runtime-PG-blackhole probe  (PROBE_LEGACY=0)
+B-PG-PROBE VERDICT: NOT-RUN reason=cannot reach the PostgreSQL admin connection (connect ECONNREFUSED 127.0.0.1:5432) — probe needs a live PostgreSQL on 127.0.0.1:5432 (set PAYESH_BPG_ADMIN_URL to override)
+  SETUP FAILED: cannot reach the PostgreSQL admin connection (connect ECONNREFUSED 127.0.0.1:5432) — probe needs a live PostgreSQL on 127.0.0.1:5432 (set PAYESH_BPG_ADMIN_URL to override)
+[suite] START b-pg-migration-midflight-kill (live-infra)
+[suite] RED b-pg-migration-midflight-kill (30s) ::   PASS  precondition: pg-client split path forced (PGURL/DATABASE_URL absent from env, so usePsql st
+::error title=RED suite b-pg-migration-midflight-kill (exit 1)::B-PG-3 mid-migration crash-recovery probe  (PROBE_LEGACY=0)   PASS  precondition: pg-client split path forced (PGURL/DATABASE_URL absent from env, so usePsql stays false even where psql is installed) B-PG-PROBE VERDICT: NOT-RUN reason=cannot connect to postgres maintenance db (connect ECONNREFUSED 127.0.0.1:5432) — probe needs a live PostgreSQL cluster (PGURL/DATABASE_URL/PAYESH_BPG_ADMIN_URL)  
+B-PG-3 mid-migration crash-recovery probe  (PROBE_LEGACY=0)
+  PASS  precondition: pg-client split path forced (PGURL/DATABASE_URL absent from env, so usePsql stays false even where psql is installed)
+B-PG-PROBE VERDICT: NOT-RUN reason=cannot connect to postgres maintenance db (connect ECONNREFUSED 127.0.0.1:5432) — probe needs a live PostgreSQL cluster (PGURL/DATABASE_URL/PAYESH_BPG_ADMIN_URL)
+  SETUP FAILED: cannot connect to postgres maintenance db (connect ECONNREFUSED 127.0.0.1:5432)
+  This probe needs a live PostgreSQL cluster (PGURL/DATABASE_URL/PAYESH_BPG_ADMIN_URL).
+[suite] START b-pg-timeout-failsafe (live-infra)
+[suite] RED b-pg-timeout-failsafe (30s) :: 
+::error title=RED suite b-pg-timeout-failsafe (exit 1)::B-PG timeout fail-safe probe  (LEGACY=0 (expect shapes to fail bounded)) B-PG-PROBE VERDICT: NOT-RUN reason=cannot reach the PostgreSQL admin connection (connect ECONNREFUSED 127.0.0.1:5432) — needs a live PostgreSQL on 127.0.0.1:5432 (PAYESH_BPG_ADMIN_URL/PGURL/DATABASE_URL)   SETUP FAILED: cannot reach the PostgreSQL admin connection (connect ECONNREFUSED 127.0.0.1:5432)   this probe needs a l
+B-PG timeout fail-safe probe  (LEGACY=0 (expect shapes to fail bounded))
+B-PG-PROBE VERDICT: NOT-RUN reason=cannot reach the PostgreSQL admin connection (connect ECONNREFUSED 127.0.0.1:5432) — needs a live PostgreSQL on 127.0.0.1:5432 (PAYESH_BPG_ADMIN_URL/PGURL/DATABASE_URL)
+  SETUP FAILED: cannot reach the PostgreSQL admin connection (connect ECONNREFUSED 127.0.0.1:5432)
+  this probe needs a live PostgreSQL on 127.0.0.1:5432
+[suite] START canary-atomic-postgres-live-runtime (live-infra)
+[suite] RED canary-atomic-postgres-live-runtime (30s) :: 
+::error title=RED suite canary-atomic-postgres-live-runtime (exit 1)::============================================================ [REAL-DATABASE] Phase 7.6-R.7.2 Canary Atomic PostgreSQL Live Runtime Evidence Level: E3/E4 — Real PostgreSQL Engine Required ============================================================   ❌ FAIL: PostgreSQL database is unreachable at postgres://payesh:payesh@127.0.0.1:5432/payesh_ci: connect ECONNREFUSED 127.0.0.1:5432 
+============================================================
+[REAL-DATABASE] Phase 7.6-R.7.2 Canary Atomic PostgreSQL Live Runtime
+Evidence Level: E3/E4 — Real PostgreSQL Engine Required
+============================================================
+
+ ❌ FAIL: PostgreSQL database is unreachable at postgres://payesh:payesh@127.0.0.1:5432/payesh_ci: connect ECONNREFUSED 127.0.0.1:5432
+[suite] START canary-persistence (live-infra)
+[suite] RED canary-persistence (30s) :: 
+::error title=RED suite canary-persistence (exit 1)::FATAL connect ECONNREFUSED 127.0.0.1:5432 
+FATAL connect ECONNREFUSED 127.0.0.1:5432
+[suite] START n17-n18-tombstones-sms-wallet.test (live-infra)
+[suite] RED n17-n18-tombstones-sms-wallet.test (30s) :: 
+::error title=RED suite n17-n18-tombstones-sms-wallet.test (exit 2)::🔍 N-17/N-18 regression: durable tombstones + SMS wallet CAS FATAL Error: connect ECONNREFUSED 127.0.0.1:5432     at /home/user/p2/node_modules/pg-pool/index.js:45:11     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)     at async /home/user/p2/tests/n17-n18-tombstones-sms-wallet.test.js:43:3 {   errno: -111,   code: 'ECONNREFUSED',   syscall: 'connect',   address
+🔍 N-17/N-18 regression: durable tombstones + SMS wallet CAS
+FATAL Error: connect ECONNREFUSED 127.0.0.1:5432
+    at /home/user/p2/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /home/user/p2/tests/n17-n18-tombstones-sms-wallet.test.js:43:3 {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 5432
+}
+[suite] START n21-schema-drift.test (live-infra)
+[suite] RED n21-schema-drift.test (30s) ::   PASS  N21-4 migration 021/023 parity: processing_token, DLQ unique index, server_tombstones 
+::error title=RED suite n21-schema-drift.test (exit 1):: === N-21 schema drift / migration-chain parity ===   PASS  N21-1 committed server/schema.sql is byte-identical to generateDDL() (no drift)   PASS  N21-2 every app collection declares "version" INTEGER NOT NULL DEFAULT 1 inline   PASS  N21-3 migration 011 parity: chg_id + payesh_chg_seq + bump trigger on the 14 delta tables   PASS  N21-4 migration 021/023 parity: processing_token, DLQ unique index
+
+=== N-21 schema drift / migration-chain parity ===
+  PASS  N21-1 committed server/schema.sql is byte-identical to generateDDL() (no drift)
+  PASS  N21-2 every app collection declares "version" INTEGER NOT NULL DEFAULT 1 inline
+  PASS  N21-3 migration 011 parity: chg_id + payesh_chg_seq + bump trigger on the 14 delta tables
+  PASS  N21-4 migration 021/023 parity: processing_token, DLQ unique index, server_tombstones
+  FAIL  N21-5 live build: the DDL creates a database where version defaults to 1 and an OCC UPDATE matches
+          Error: spawn psql ENOENT
+
+FAILED: 1 (5 checks)
+[suite] START n22-hydrate-cap.test (live-infra)
+[suite] RED n22-hydrate-cap.test (30s) :: 
+::error title=RED suite n22-hydrate-cap.test (exit 2)::N-22 harness crashed: Error: Error: spawn psql ENOENT     at /home/user/p2/tests/n22-hydrate-cap.test.js:49:45     at exithandler (node:child_process:424:5)     at ChildProcess.errorhandler (node:child_process:436:5)     at ChildProcess.emit (node:events:519:28)     at ChildProcess._handle.onexit (node:internal/child_process:291:12)     at onErrorNT (node:internal/child_process:483:16)     at proc
+N-22 harness crashed: Error: Error: spawn psql ENOENT
+    at /home/user/p2/tests/n22-hydrate-cap.test.js:49:45
+    at exithandler (node:child_process:424:5)
+    at ChildProcess.errorhandler (node:child_process:436:5)
+    at ChildProcess.emit (node:events:519:28)
+    at ChildProcess._handle.onexit (node:internal/child_process:291:12)
+    at onErrorNT (node:internal/child_process:483:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+[suite] START otp-redis (live-infra)
+[suite] RED otp-redis (30s) :: 
+::error title=RED suite otp-redis (exit 1)::▸ P0-15 — حالت OTP در ردیس [Redis] Connection failed. Production refuses fallback (readiness fails): Connection is closed.   ❌ فلاش روی کلید ردیس می‌نشیند   ❌ سند شمارهٔ دنباله دارد   ❌ نمونهٔ ب کدِ صادرشدهٔ الف را می‌بیند   ✅ نمونهٔ ب هیچ فایلی نساخته است خطای غیرمنتظ
+▸ P0-15 — حالت OTP در ردیس
+[Redis] Connection failed. Production refuses fallback (readiness fails): Connection is closed.
+  ❌ فلاش روی کلید ردیس می‌نشیند
+  ❌ سند شمارهٔ دنباله دارد
+  ❌ نمونهٔ ب کدِ صادرشدهٔ الف را می‌بیند
+  ✅ نمونهٔ ب هیچ فایلی نساخته است
+خطای غیرمنتظره: TypeError: Cannot read properties of null (reading 'codes')
+    at main (/home/user/p2/tests/otp-redis.js:86:42)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+[suite] START outbox-lease-race-live (live-infra)
+[suite] RED outbox-lease-race-live (30s) :: 
+::error title=RED suite outbox-lease-race-live (exit 1)::[DB] PostgreSQL connection failed. Falling back to JSON in-memory store: connect ECONNREFUSED 127.0.0.1:5432 LIVE LEASE VERIFICATION FAILED: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal: + actual - expected  + 'memory' - 'postgres'      at /home/user/p2/tests/outbox-lease-race-live.js:53:12     at process.processTicksAndRejections (node:internal/process/task_queues:103:5) 
+[DB] PostgreSQL connection failed. Falling back to JSON in-memory store: connect ECONNREFUSED 127.0.0.1:5432
+LIVE LEASE VERIFICATION FAILED: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ 'memory'
+- 'postgres'
+
+    at /home/user/p2/tests/outbox-lease-race-live.js:53:12
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+[suite] START p11-phone-auth-live (live-infra)
+[suite] RED p11-phone-auth-live (15s) :: 
+::error title=RED suite p11-phone-auth-live (exit 1)::   ❌ L1 زنجیرهٔ 26 مهاجرت روی DB خالی سبز (تا 010) — 001_initial.sql: connect ECONNREFUSED 127.0.0.1:5432 FATAL Error: connect ECONNREFUSED 127.0.0.1:5432     at /home/user/p2/node_modules/pg-pool/index.js:45:11     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)     at async main (/home/user/p2/tests/p11-phone-auth-live.js:69:16) {   err
+P1-1 phone-auth — live PostgreSQL
+
+  ❌ L1 زنجیرهٔ 26 مهاجرت روی DB خالی سبز (تا 010) — 001_initial.sql: connect ECONNREFUSED 127.0.0.1:5432
+FATAL Error: connect ECONNREFUSED 127.0.0.1:5432
+    at /home/user/p2/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async main (/home/user/p2/tests/p11-phone-auth-live.js:69:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 5432
+}
+[suite] START partitioning (live-infra)
+[suite] GREEN partitioning (30s)
+[suite] START pg-prod-boot-with-db (live-infra)
+[suite] RED pg-prod-boot-with-db (30s) :: 
+::error title=RED suite pg-prod-boot-with-db (exit 2)::pg-prod-boot-with-db — production WITH live PostgreSQL must succeed    target: postgres://payesh:***@127.0.0.1:5432/payesh_ci  pg-prod-boot-with-db: NOT-RUN — PostgreSQL at the target URL is not reachable: connect ECONNREFUSED 127.0.0.1:5432 
+pg-prod-boot-with-db — production WITH live PostgreSQL must succeed
+
+  target: postgres://payesh:***@127.0.0.1:5432/payesh_ci
+
+pg-prod-boot-with-db: NOT-RUN — PostgreSQL at the target URL is not reachable: connect ECONNREFUSED 127.0.0.1:5432
+[suite] START pg-prod-client-error (live-infra)
+[suite] RED pg-prod-client-error (29s) :: 
+::error title=RED suite pg-prod-client-error (exit 2)::pg-prod-client-error — a dead pg Client must not crash the process  pg-prod-client-error: NOT-RUN — PostgreSQL not reachable: connect ECONNREFUSED 127.0.0.1:5432 
+pg-prod-client-error — a dead pg Client must not crash the process
+
+pg-prod-client-error: NOT-RUN — PostgreSQL not reachable: connect ECONNREFUSED 127.0.0.1:5432
+[suite] START pg-prod-fallback-probe (live-infra)
+[suite] GREEN pg-prod-fallback-probe (31s)
+[suite] START pg-prod-persistence-failure (live-infra)
+[suite] RED pg-prod-persistence-failure (30s) :: 
+::error title=RED suite pg-prod-persistence-failure (exit 2)::pg-prod-persistence-failure — persistence failure must be explicit, never silent  pg-prod-persistence-failure: NOT-RUN — PostgreSQL not reachable: connect ECONNREFUSED 127.0.0.1:5432 
+pg-prod-persistence-failure — persistence failure must be explicit, never silent
+
+pg-prod-persistence-failure: NOT-RUN — PostgreSQL not reachable: connect ECONNREFUSED 127.0.0.1:5432
+[suite] START pg-prod-two-instance (live-infra)
+[suite] RED pg-prod-two-instance (29s) :: 
+::error title=RED suite pg-prod-two-instance (exit 2)::pg-prod-two-instance — two instances, one PostgreSQL ⇒ one state  pg-prod-two-instance: NOT-RUN — PostgreSQL not reachable: connect ECONNREFUSED 127.0.0.1:5432 
+pg-prod-two-instance — two instances, one PostgreSQL ⇒ one state
+
+pg-prod-two-instance: NOT-RUN — PostgreSQL not reachable: connect ECONNREFUSED 127.0.0.1:5432
+[suite] START pg-prod-uid-idempotency (live-infra)
+[suite] RED pg-prod-uid-idempotency (30s) :: 
+::error title=RED suite pg-prod-uid-idempotency (exit 2)::pg-prod-uid-idempotency — the idempotency check must fail closed in production  pg-prod-uid-idempotency: NOT-RUN — PostgreSQL not reachable: connect ECONNREFUSED 127.0.0.1:5432 
+pg-prod-uid-idempotency — the idempotency check must fail closed in production
+
+pg-prod-uid-idempotency: NOT-RUN — PostgreSQL not reachable: connect ECONNREFUSED 127.0.0.1:5432
+[suite] START phase2-occ-multi (live-infra)
+[suite] RED phase2-occ-multi (30s) :: 
+::error title=RED suite phase2-occ-multi (exit 1)::FATAL connect ECONNREFUSED 127.0.0.1:5432 
+FATAL connect ECONNREFUSED 127.0.0.1:5432
+[suite] START phase2-outbox-failover (live-infra)
+[suite] RED phase2-outbox-failover (30s) :: 
+::error title=RED suite phase2-outbox-failover (exit 1)::[ioredis] Unhandled error event: Error: connect ECONNREFUSED 127.0.0.1:6379     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16) FATAL connect ECONNREFUSED 127.0.0.1:5432 
+[ioredis] Unhandled error event: Error: connect ECONNREFUSED 127.0.0.1:6379
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+FATAL connect ECONNREFUSED 127.0.0.1:5432
+[suite] START phase2-redis-fail-closed (live-infra)
+[suite] RED phase2-redis-fail-closed (64s) :: 
+::error title=RED suite phase2-redis-fail-closed (exit 1)::── docker redis unavailable: docker info failed ── WARNING: falling back to shared REDIS_URL — SHUTDOWN would kill later CI steps; fail-closed still asserted, recovery skipped [DB] no DATABASE_URL — using the JSON/in-memory store. Dev/test only; set ALLOW_MEMORY_FALLBACK=1 to silence this warning. In production this is a startup failure.   cursor : enabled — key=keyfile (signed curso
+── docker redis unavailable: docker info failed
+── WARNING: falling back to shared REDIS_URL — SHUTDOWN would kill later CI steps; fail-closed still asserted, recovery skipped
+[DB] no DATABASE_URL — using the JSON/in-memory store. Dev/test only; set ALLOW_MEMORY_FALLBACK=1 to silence this warning. In production this is a startup failure.
+  cursor : enabled — key=keyfile (signed cursors survive restarts, ttl=3600s)
+[CANARY] weights hydrated from PostgreSQL (cluster_weights SSoT, 7 clusters)
+[Redis] Connection failed. Production refuses fallback (readiness fails): Connection is closed.
+[FATAL] Cache readiness failed: Redis unreachable in production: Connection is closed.
+
+❌ سرور با Redis واقعی بالا آمد
+[suite] START phase65-runtime-truth (live-infra)
+[suite] RED phase65-runtime-truth (30s) :: 
+::error title=RED suite phase65-runtime-truth (exit 1):: ── RT-07 Migration clean DB FATAL Error: connect ECONNREFUSED 127.0.0.1:5432     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16) 
+
+── RT-07 Migration clean DB
+FATAL Error: connect ECONNREFUSED 127.0.0.1:5432
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[suite] START r5-prod-redis-boot-gate (live-infra)
+[suite] RED r5-prod-redis-boot-gate (72s) :: 
+::error title=RED suite r5-prod-redis-boot-gate (exit 1)::  ✅ 2b never listened (no permanent-503 zombie)   ✅ 3a DATABASE_URL-only (shadow production) without REDIS_URL ⇒ non-zero exit (Gap A closed)   ✅ 3b never listened   ✅ 4a PAYESH_ENV=production + explicit dev opt-in flag ⇒ boots (server17 T2 harness contract)   ✅ 5a ALLOW_MEMORY_FALLBACK=1 is IGNORED under NODE_ENV=production ⇒ non-zero exit   ✅ 5b never listened   ✅ 6a configur
+r5-prod-redis-boot-gate — Phase 8.1 / R5 production Redis boot-gate contract matrix
+
+  ✅ 1a NODE_ENV=production without REDIS_URL ⇒ non-zero exit
+  ✅ 1b death is at the Redis gate ([FATAL] Cache readiness failed)
+  ✅ 1c never listened (no fake startup)
+  ✅ 2a PAYESH_ENV=production without REDIS_URL ⇒ non-zero exit (Gap B closed)
+  ✅ 2b never listened (no permanent-503 zombie)
+  ✅ 3a DATABASE_URL-only (shadow production) without REDIS_URL ⇒ non-zero exit (Gap A closed)
+  ✅ 3b never listened
+  ✅ 4a PAYESH_ENV=production + explicit dev opt-in flag ⇒ boots (server17 T2 harness contract)
+  ✅ 5a ALLOW_MEMORY_FALLBACK=1 is IGNORED under NODE_ENV=production ⇒ non-zero exit
+  ✅ 5b never listened
+  ✅ 6a configured-but-unreachable Redis at production boot ⇒ non-zero exit (Wave-15 boot contract)
+  ❌ 6b [FATAL] Cache readiness failed recorded  —    cursor : enabled — key=env_jwt (signed cursors survive restarts, ttl=3600s)
+[ENV] production-flag mismatch: NODE_ENV=production but PAYESH_ENV=<not production> — the Redis gate follows NODE_ENV while the TLS gate follows PAYESH_ENV; set BOTH to production in real deployments (see docs/DEPLOY.md §3
+  ✅ 7a development boot without any URLs still boots (zero-disruption preserved)
+
+r5-prod-redis-boot-gate: 12/13  FAILED: 6b [FATAL] Cache readiness failed recorded
+[suite] START redis-sentinel-failover (live-infra)
+[suite] GREEN redis-sentinel-failover (18s)
+[suite] START sync-occ-adversarial-live (live-infra)
+[suite] RED sync-occ-adversarial-live (30s) :: 
+::error title=RED suite sync-occ-adversarial-live (exit 1)::Error: connect ECONNREFUSED 127.0.0.1:5432     at /home/user/p2/node_modules/pg-pool/index.js:45:11     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)     at async /home/user/p2/tests/sync-occ-adversarial-live.js:73:110 {   errno: -111,   code: 'ECONNREFUSED',   syscall: 'connect',   address: '127.0.0.1',   port: 5432 } 
+Error: connect ECONNREFUSED 127.0.0.1:5432
+    at /home/user/p2/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /home/user/p2/tests/sync-occ-adversarial-live.js:73:110 {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 5432
+}
+[suite] START sync-replay-adversarial-live (live-infra)
+[suite] RED sync-replay-adversarial-live (30s) :: 
+::error title=RED suite sync-replay-adversarial-live (exit 1)::Error: connect ECONNREFUSED 127.0.0.1:5432     at /home/user/p2/node_modules/pg-pool/index.js:45:11     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)     at async /home/user/p2/tests/sync-replay-adversarial-live.js:38:54 {   errno: -111,   code: 'ECONNREFUSED',   syscall: 'connect',   address: '127.0.0.1',   port: 5432 } 
+Error: connect ECONNREFUSED 127.0.0.1:5432
+    at /home/user/p2/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /home/user/p2/tests/sync-replay-adversarial-live.js:38:54 {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 5432
+}
+[suite] START unified-production-verifier (live-infra)
+[suite] GREEN unified-production-verifier (30s)
+[suite] START multi-instance (live-infra)
+[suite] RED multi-instance (37s) :: 
+::error title=RED suite multi-instance (exit 1):: ▸ planeِ datastore (memoryStore + payesh.json)   ⏳ write A → read B روی **دادهٔ اپ** نیازمندِ PG مشترک است (Wave 1/3 — نیمه‌مسیر:      bootstrap/pull + GET-listهایِ students/attendance/grades/classes/users DB-native؛ بقیه در سند معماری §۴).      در این ساندباکس PG زنده نیست — «در انتظارِ زیرسا
+▸ fake Redis مشترک روی 127.0.0.1:39175
+
+▸ MI-1 — استارتِ دو instance (production + Redis مشترک)
+  ❌ MI-1 استارتِ A و B — child exited 1 — sor : enabled — key=env_jwt (signed cursors survive restarts, ttl=3600s)
+[DB] PostgreSQL unreachable in production — refusing the JSON/in-memory fallback: connect ECONNREFUSED 127.0.0
+
+▸ MI-9 — fail-closed: production + Redis مرده (P0-13)
+  ✅ MI-9 production + ردیسِ مرده ⇒ exit 1 + [FATAL] (فال‌بکِ حافظه ممنوع)
+
+▸ MI-10 — fail-fast: بدونِ کلیدِ نشستِ مشترک (P0#2)
+  ✅ MI-10 production + Redis + بدونِ PAYESH_JWT_SECRET ⇒ exit 1 + پیامِ کلیدِ مشترک
+
+▸ MI-11 — outbox ids روی دنبالهٔ مشترکِ Redis
+  ✅ MI-11a ۳۰ appendِ متناوب از دو outbox ⇒ ۳۰ idِ منحصر‌به‌فرد (تلاقی صفر)
+  ✅ MI-11b دنباله روی Redis مشترک (payesh:outbox:seq = 30)
+
+▸ MI-12 — idempotency روی Redis مشترک
+  ✅ MI-12 mark در «نمونهٔ A» ⇒ read در «نمونهٔ B» (همان Redis مشترک)
+
+▸ planeِ datastore (memoryStore + payesh.json)
+  ⏳ write A → read B روی **دادهٔ اپ** نیازمندِ PG مشترک است (Wave 1/3 — نیمه‌مسیر:
+     bootstrap/pull + GET-listهایِ students/attendance/grades/classes/users DB-native؛ بقیه در سند معماری §۴).
+     در این ساندباکس PG زنده نیست — «در انتظارِ زیرساخت» (الگوی W18/W19).
+
+────────────────────────────────────────────────────
+multi-instance: 5 سبز / 1 قرمز
+  ✗ MI-1 استارتِ A و B — child exited 1 — sor : enabled — key=env_jwt (signed cursors survive restarts, ttl=3600s)
+[DB] PostgreSQL unreachable in production — refusing the JSON/in-memory fallback: connect ECONNREFUSED 127.0.0
+────────────────────────────────────────────────────
+
+[suite] START queue-outage-drill (live-infra)
+[suite] RED queue-outage-drill (30s) :: Queue-Outage drill: 7 موفق / 0 خطا / 4 NOT-RUN ⏭️ 
+::error title=RED suite queue-outage-drill (exit 2):: ⚠️  اتصال به PG برقرار نشد: connect ECONNREFUSED 127.0.0.1:5432  ▸ مانورِ زنده   ⏭️  Q1 — NOT RUN — NOT RUN: اتصال به PG برقرار نشد: connect ECONNREFUSED 127.0.0.1:5432   ⏭️  Q2 — NOT RUN — NOT RUN: اتصال به PG برقرار نشد: connect ECONNREFUSED 127.0.0.1:5432   ⏭️  Q3 — NOT RUN — NOT RUN: اتصال به PG ب�
+
+▸ بررسیِ ایستا (بدونِ زیرساخت)
+  ✅ S1 outbox تراکنشی: درجِ PG با ON CONFLICT DO NOTHING (تکرارِ id ساکت رد می‌شود)
+  ✅ S2 صفِ سقف‌دار: OUTBOX_CAP = 1000 (صف، نه انبار)
+  ✅ S3 کارگر رویداد را در شکست حذف نمی‌کند (فقط علامت می‌خورد)
+  ✅ S4 کارگر: سقفِ تلاش (maxRetries) و گاردِ پردازشِ هم‌زمان (inFlight)
+  ✅ S5 آلارمِ SyncQueueDepth (آستانهٔ ۱۰۰۰) در alert-rules.yml تعریف شده
+  ✅ S6 متریکِ payesh_sync_queue_depth (عمقِ صف از PG) زنده است
+  ✅ S7 سندِ همگام‌سازی/معماریِ ناهمگام، outbox را به‌عنوانِ صفِ رویداد مستند کرده
+
+⚠️  اتصال به PG برقرار نشد: connect ECONNREFUSED 127.0.0.1:5432
+
+▸ مانورِ زنده
+  ⏭️  Q1 — NOT RUN — NOT RUN: اتصال به PG برقرار نشد: connect ECONNREFUSED 127.0.0.1:5432
+  ⏭️  Q2 — NOT RUN — NOT RUN: اتصال به PG برقرار نشد: connect ECONNREFUSED 127.0.0.1:5432
+  ⏭️  Q3 — NOT RUN — NOT RUN: اتصال به PG برقرار نشد: connect ECONNREFUSED 127.0.0.1:5432
+  ⏭️  Q4 — NOT RUN — NOT RUN: اتصال به PG برقرار نشد: connect ECONNREFUSED 127.0.0.1:5432
+
+────────────────────────────────────────────
+Queue-Outage drill: 7 موفق / 0 خطا / 4 NOT-RUN ⏭️
+خروجیِ ماشین‌خوان: /home/user/p2/tests/chaos-output/queue-outage-drill.json
+[suite] START chaos-drill-api-kill (live-infra)
+[suite] RED chaos-drill-api-kill (29s) :: 
+::error title=RED suite chaos-drill-api-kill (exit 2):: ────────────────────────────────────────────────────────────────── NOT-RUN: باینریِ PostgreSQL/Redis در دسترس نیست ({"postgres":false,"redis":false,"redisCli":false}) INFRA_REQUIRED: postgresql-17 (initdb/pg_ctl) + redis-server ───────
+
+──────────────────────────────────────────────────────────────────
+NOT-RUN: باینریِ PostgreSQL/Redis در دسترس نیست ({"postgres":false,"redis":false,"redisCli":false})
+INFRA_REQUIRED: postgresql-17 (initdb/pg_ctl) + redis-server
+──────────────────────────────────────────────────────────────────
+[suite] START chaos-drill-redis-outage (live-infra)
+[suite] RED chaos-drill-redis-outage (30s) :: 
+::error title=RED suite chaos-drill-redis-outage (exit 2):: ────────────────────────────────────────────────────────────────── NOT-RUN: باینریِ PostgreSQL/Redis در دسترس نیست ({"postgres":false,"redis":false,"redisCli":false}) INFRA_REQUIRED: postgresql-17 (initdb/pg_ctl) + redis-server ───────
+
+──────────────────────────────────────────────────────────────────
+NOT-RUN: باینریِ PostgreSQL/Redis در دسترس نیست ({"postgres":false,"redis":false,"redisCli":false})
+INFRA_REQUIRED: postgresql-17 (initdb/pg_ctl) + redis-server
+──────────────────────────────────────────────────────────────────
+[suite] START chaos-drill-pg-outage (live-infra)
+[suite] RED chaos-drill-pg-outage (30s) :: 
+::error title=RED suite chaos-drill-pg-outage (exit 2):: ────────────────────────────────────────────────────────────────── NOT-RUN: باینریِ PostgreSQL/Redis در دسترس نیست ({"postgres":false,"redis":false,"redisCli":false}) INFRA_REQUIRED: postgresql-17 (initdb/pg_ctl) + redis-server ───────
+
+──────────────────────────────────────────────────────────────────
+NOT-RUN: باینریِ PostgreSQL/Redis در دسترس نیست ({"postgres":false,"redis":false,"redisCli":false})
+INFRA_REQUIRED: postgresql-17 (initdb/pg_ctl) + redis-server
+──────────────────────────────────────────────────────────────────
+[suite] START chaos-drill-queue-outage (live-infra)
+[suite] RED chaos-drill-queue-outage (30s) :: 
+::error title=RED suite chaos-drill-queue-outage (exit 2):: ────────────────────────────────────────────────────────────────── NOT-RUN: باینریِ PostgreSQL/Redis در دسترس نیست ({"postgres":false,"redis":false,"redisCli":false}) INFRA_REQUIRED: postgresql-17 (initdb/pg_ctl) + redis-server ───────
+
+──────────────────────────────────────────────────────────────────
+NOT-RUN: باینریِ PostgreSQL/Redis در دسترس نیست ({"postgres":false,"redis":false,"redisCli":false})
+INFRA_REQUIRED: postgresql-17 (initdb/pg_ctl) + redis-server
+──────────────────────────────────────────────────────────────────
+[suite] START chaos-drill-network-degradation (live-infra)
+[suite] RED chaos-drill-network-degradation (29s) :: 
+::error title=RED suite chaos-drill-network-degradation (exit 2):: ────────────────────────────────────────────────────────────────── NOT-RUN: باینریِ PostgreSQL/Redis در دسترس نیست ({"postgres":false,"redis":false,"redisCli":false}) INFRA_REQUIRED: postgresql-17 (initdb/pg_ctl) + redis-server ───────
+
+──────────────────────────────────────────────────────────────────
+NOT-RUN: باینریِ PostgreSQL/Redis در دسترس نیست ({"postgres":false,"redis":false,"redisCli":false})
+INFRA_REQUIRED: postgresql-17 (initdb/pg_ctl) + redis-server
+──────────────────────────────────────────────────────────────────
+[suite] START chaos-drill-disk-pressure (live-infra)
+[suite] RED chaos-drill-disk-pressure (30s) :: 
+::error title=RED suite chaos-drill-disk-pressure (exit 2):: ────────────────────────────────────────────────────────────────── NOT-RUN: باینریِ PostgreSQL/Redis در دسترس نیست ({"postgres":false,"redis":false,"redisCli":false}) INFRA_REQUIRED: postgresql-17 (initdb/pg_ctl) + redis-server ───────
+
+──────────────────────────────────────────────────────────────────
+NOT-RUN: باینریِ PostgreSQL/Redis در دسترس نیست ({"postgres":false,"redis":false,"redisCli":false})
+INFRA_REQUIRED: postgresql-17 (initdb/pg_ctl) + redis-server
+──────────────────────────────────────────────────────────────────
+[suite] START chaos-suite (live-infra)
+[suite] RED chaos-suite (35s) :: 
+::error title=RED suite chaos-suite (exit 1)::    '--port',     '17752',     '--save',     '',     '--appendonly',     'no',     '--dir',     '/tmp'   ] }  Node.js v22.22.3 
+── S1: Redis failure
+node:events:497
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: spawn redis-server ENOENT
+    at ChildProcess._handle.onexit (node:internal/child_process:285:19)
+    at onErrorNT (node:internal/child_process:483:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+Emitted 'error' event on ChildProcess instance at:
+    at ChildProcess._handle.onexit (node:internal/child_process:291:12)
+    at onErrorNT (node:internal/child_process:483:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'spawn redis-server',
+  path: 'redis-server',
+  spawnargs: [
+    '--port',
+    '17752',
+    '--save',
+    '',
+    '--appendonly',
+    'no',
+    '--dir',
+    '/tmp'
+  ]
+}
+
+Node.js v22.22.3
+[suite] START idor-runtime (live-infra)
+[suite] RED idor-runtime (10s) :: 
+::error title=RED suite idor-runtime (exit 1)::                  ^  Error: AUTHORITY_UNAVAILABLE: PostgreSQL authority not connected     at Phase6CanaryEngine.refreshCacheFromPg (/home/user/p2/server/infrastructure/phase6-canary-engine.js:237:19)     at Phase6CanaryEngine.initDb (/home/user/p2/server/infrastructure/phase6-canary-engine.js:186:16)     at /home/user/p2/server/index.js:943:38     at process.processTicksAndRejections (node:interna
+  cursor : enabled — key=env_jwt (signed cursors survive restarts, ttl=3600s)
+[DB] PostgreSQL connection failed. Falling back to JSON in-memory store: connect ECONNREFUSED 127.0.0.1:5432
+[CANARY] PostgreSQL hydration FAILED — serving traffic with persisted-weight UNKNOWN; rerouting decisions may diverge from cluster_weights: AUTHORITY_UNAVAILABLE: PostgreSQL authority not connected
+/home/user/p2/server/infrastructure/phase6-canary-engine.js:237
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority not connected');
+                  ^
+
+Error: AUTHORITY_UNAVAILABLE: PostgreSQL authority not connected
+    at Phase6CanaryEngine.refreshCacheFromPg (/home/user/p2/server/infrastructure/phase6-canary-engine.js:237:19)
+    at Phase6CanaryEngine.initDb (/home/user/p2/server/infrastructure/phase6-canary-engine.js:186:16)
+    at /home/user/p2/server/index.js:943:38
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {
+  code: 'AUTHORITY_UNAVAILABLE',
+  status: 503
+}
+
+Node.js v22.22.3
+[suite] START idor-runtime-r4 (live-infra)
+[suite] RED idor-runtime-r4 (11s) :: 
+::error title=RED suite idor-runtime-r4 (exit 1)::                  ^  Error: AUTHORITY_UNAVAILABLE: PostgreSQL authority not connected     at Phase6CanaryEngine.refreshCacheFromPg (/home/user/p2/server/infrastructure/phase6-canary-engine.js:237:19)     at Phase6CanaryEngine.initDb (/home/user/p2/server/infrastructure/phase6-canary-engine.js:186:16)     at /home/user/p2/server/index.js:943:38     at process.processTicksAndRejections (node:interna
+  cursor : enabled — key=env_jwt (signed cursors survive restarts, ttl=3600s)
+phase-2 gate: server on http://127.0.0.1:44785
+[DB] PostgreSQL connection failed. Falling back to JSON in-memory store: connect ECONNREFUSED 127.0.0.1:5432
+[CANARY] PostgreSQL hydration FAILED — serving traffic with persisted-weight UNKNOWN; rerouting decisions may diverge from cluster_weights: AUTHORITY_UNAVAILABLE: PostgreSQL authority not connected
+/home/user/p2/server/infrastructure/phase6-canary-engine.js:237
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority not connected');
+                  ^
+
+Error: AUTHORITY_UNAVAILABLE: PostgreSQL authority not connected
+    at Phase6CanaryEngine.refreshCacheFromPg (/home/user/p2/server/infrastructure/phase6-canary-engine.js:237:19)
+    at Phase6CanaryEngine.initDb (/home/user/p2/server/infrastructure/phase6-canary-engine.js:186:16)
+    at /home/user/p2/server/index.js:943:38
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {
+  code: 'AUTHORITY_UNAVAILABLE',
+  status: 503
+}
+
+Node.js v22.22.3
+[suite] START a31-intelligence-semantic-integrity (live-infra)
+[suite] RED a31-intelligence-semantic-integrity (30s) :: 
+::error title=RED suite a31-intelligence-semantic-integrity (exit 1)::  ✅ [I-09-E2] گیت‌های کیفی: کنترل — با شاهدِ اجرا، پاسِ واقعی   ✅ [I-09-E3] گواهی انتشار: بدونِ شاهدِ گیت/رانتایم ⇒ صادر نمی‌شود  ▸ بخش B — سرور زنده روی PostgreSQL واقعی (مسیرهای واقعی + ورود واقعی) FATAL Error: connect ECONNREFUSED 127.0.0.1:5432     at TCPConnectW
+
+▸ بخش A — سطح موتور (کد واقعی، بدون ماک)
+  ✅ [I-02-E1] detectAttendanceRisk: بی‌داده ⇒ وضعیت صریح NO_DATA، نه LOW
+  ✅ [I-02-E2] detectAttendanceRisk: کنترل — دادهٔ واقعی ریسک واقعی می‌گیرد
+  ✅ [I-03-E1] الگوی هفتگی: صفر رویداد ⇒ NO_DATA، نه PERFECT_ATTENDANCE
+  ✅ [I-03-E2] الگوی هفتگی: کنترل — حضورِ کاملِ واقعی همچنان PERFECT است
+  ✅ [I-03-E3] مرکز اقدام: بدونِ روزِ اوجِ واقعی، روز جعلی ساخته نمی‌شود
+  ✅ [I-04-E1] سلامت زنجیره: بی‌داده ⇒ هیچ گره‌ای حاضر نیست و وضعیت سالم نیست
+  ✅ [I-04-E2] سلامت زنجیره: کنترل — خروجی‌های واقعی ⇒ حضور واقعی و سالم
+  ✅ [I-05-E1] ممیزی تأیید: بی‌داده ⇒ نه ۱۰۰٪، نه COMPLIANT
+  ✅ [I-05-E2] ممیزی تأیید: اقداماتِ بررسی‌نشده ⇒ نرخ تأیید ۱۰۰٪ نیست
+  ✅ [I-05-E3] ممیزی تأیید: کنترل — دادهٔ واقعی نرخ واقعی می‌دهد (۵۰٪)
+  ✅ [I-06-E1] دقت پیشنهادها: بی‌داده ⇒ دقت ارجاع ۱۰۰٪ نیست
+  ✅ [I-06-E2] دقت پیشنهادها: بدونِ هیچ ارجاعی ⇒ دقت ارجاع جعلی ۱۰۰٪ نیست
+  ✅ [I-06-E3] دقت پیشنهادها: کنترل — ارجاعِ واقعی تأییدشده ⇒ ۱۰۰٪ واقعی
+  ✅ [I-08-E1] زنجیرهٔ انتها-به-انتها: بدونِ شاهدِ رانتایم، شبیه‌سازی تأییدشده نیست
+  ✅ [I-08-E2] زنجیرهٔ انتها-به-انتها: کنترل — با شاهدِ رانتایم، تأییدِ رانتایمی
+  ✅ [I-09-E1] گیت‌های کیفی: بدونِ شاهدِ اجرا ⇒ همهٔ گیت‌ها اجرا‌نشده و مردود
+  ✅ [I-09-E2] گیت‌های کیفی: کنترل — با شاهدِ اجرا، پاسِ واقعی
+  ✅ [I-09-E3] گواهی انتشار: بدونِ شاهدِ گیت/رانتایم ⇒ صادر نمی‌شود
+
+▸ بخش B — سرور زنده روی PostgreSQL واقعی (مسیرهای واقعی + ورود واقعی)
+FATAL Error: connect ECONNREFUSED 127.0.0.1:5432
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 5432
+}
+[suite] START a35-regression (live-infra)
+[suite] RED a35-regression (10s) :: 
+::error title=RED suite a35-regression (exit 2)::[seed-idor-fixture] FATAL: Error: connect ECONNREFUSED 127.0.0.1:5432     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16) {   errno: -111,   code: 'ECONNREFUSED',   syscall: 'connect',   address: '127.0.0.1',   port: 5432 } ABORT: Command failed: /usr/local/bin/node /home/user/p2/tools/seed-idor-fixture.js 
+[seed-idor-fixture] FATAL: Error: connect ECONNREFUSED 127.0.0.1:5432
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 5432
+}
+ABORT: Command failed: /usr/local/bin/node /home/user/p2/tools/seed-idor-fixture.js
+[suite] START wal-disk-full (live-infra)
+[suite] RED wal-disk-full (10s) :: خروجیِ ۲: «اجرا نشد» با «موفق» فرق دارد (سبزِ جعلی ممنوع
+::error title=RED suite wal-disk-full (exit 2)::  ✅ S8 migrationِ شکست‌خورده اجرا را می‌بندد (die، نه ادامه)   ✅ S9 مسیرهایِ PGDATA/WAL_MNT/RUN گاردِ مسیرِ سیستمی دارند  [0.0s] ▸ مانورِ زنده   ⏭️  W1 WAL→۸۰٪ warning — NOT RUN: باینریِ PostgreSQL در /usr/bin نیست   ⏭️  W2 WAL→۱۰۰٪ PANIC — NOT RUN: باینریِ PostgreSQL در /usr
+
+[0.0s] ▸ بررسیِ ایستا (بدونِ زیرساخت)
+  ✅ S1 اسکریپتِ زیرساخت وجود دارد
+  ✅ S2 bootstrap روی tmpfsِ سقف‌دار mount می‌کند
+  ✅ S3 pg_wal به tmpfs پیوند می‌خورد
+  ✅ S4 پورتِ ۵۵۴۳۲ پیش‌فرض است
+  ✅ S5 migrationها با کشفِ پویا اعمال می‌شوند (نامِ hardcode نشده)
+  ✅ S6 bash -n سالم است
+  ✅ S7 گزارشِ مانور وجود دارد
+  ✅ S8 migrationِ شکست‌خورده اجرا را می‌بندد (die، نه ادامه)
+  ✅ S9 مسیرهایِ PGDATA/WAL_MNT/RUN گاردِ مسیرِ سیستمی دارند
+
+[0.0s] ▸ مانورِ زنده
+  ⏭️  W1 WAL→۸۰٪ warning — NOT RUN: باینریِ PostgreSQL در /usr/bin نیست
+  ⏭️  W2 WAL→۱۰۰٪ PANIC — NOT RUN: باینریِ PostgreSQL در /usr/bin نیست
+  ⏭️  W3 بازیابی + RTO — NOT RUN: باینریِ PostgreSQL در /usr/bin نیست
+  ⏭️  W4 بازیابی از replica — NOT RUN: باینریِ PostgreSQL در /usr/bin نیست
+  ⏭️  W5 تأییدِ RPO=0 — NOT RUN: باینریِ PostgreSQL در /usr/bin نیست
+────────────────────────────────────────────
+WAL disk-full drill: 9/14 موفق — 5 سناریو NOT-RUN ⏭️
+خروجیِ ۲: «اجرا نشد» با «موفق» فرق دارد (سبزِ جعلی ممنوع).
+=== TOTAL: green=564 red=63 (elapsed: 5983s)
+=== RED: RED   a11y-interactive (0s) :: 
+=== RED: RED   a11y-keyboard (1s) :: 
+=== RED: RED   a11y-runtime (0s) :: 
+=== RED: RED   reports-export (4s) :: 
+=== RED: RED   reports-pdf-e2e (3s) :: 
+=== RED: RED   a-next-health-blackhole (15s) :: 
+=== RED: RED   migration-009-live-mutations (0s) :: 
+=== RED: RED   server13 (89s) :: 
+=== RED: RED   server13-mutations (90s) :: 
+=== RED: RED   schema-migrations-live-pg.test (30s) :: 
+=== RED: RED   migration-012-crash-recovery-live (30s) :: 
+=== RED: RED   migration-009-live (29s) :: migration-009-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prereq
+=== RED: RED   pg-relational-seed (30s) :: 
+=== RED: RED   wave3-query (30s) :: نتیجه Wave3 Query: 12/13  —  1 ناموفق 
+=== RED: RED   wave3-query3 (30s) ::   جمع: 18 موفق، 1 ناموفق از 19 
+=== RED: RED   wave3-parity (30s) ::   جمع: 0 موفق، 1 ناموفق از 1 
+=== RED: RED   wave4-sync (30s) :: نتیجه Wave4 Sync: 10/11  —  1 ناموفق 
+=== RED: RED   wave6-11-redis-live (29s) :: 
+=== RED: RED   wave10-pg-live (30s) :: wave10-pg-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prerequisi
+=== RED: RED   wave10-pg-live-mutations (30s) :: wave10-pg-live-mutations: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing 
+=== RED: RED   wave10-tenant-live (29s) :: wave10-tenant-live: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; missing prereq
+=== RED: RED   wave10-tenant-live-mutations (29s) :: wave10-tenant-live-mutations: 0/0 (NOT-RUN)؛ PASS only when runtime prerequisites are present; miss
+=== RED: RED   wave23-reports-mutations (31s) ::   جمع: 0 کشته، 11 زنده از 11 
+=== RED: RED   wave23-norm-edge-mutations (30s) :: 
+=== RED: RED   bench-phone-lookup-p11 (10s) :: 
+=== RED: RED   arena5-recovery (49s) :: 
+=== RED: RED   b-pg-health-blackhole (30s) :: 
+=== RED: RED   b-pg-migration-midflight-kill (30s) ::   PASS  precondition: pg-client split path forced (PGURL/DATABASE_URL absent from env, so usePsql st
+=== RED: RED   b-pg-timeout-failsafe (30s) :: 
+=== RED: RED   canary-atomic-postgres-live-runtime (30s) :: 
+=== RED: RED   canary-persistence (30s) :: 
+=== RED: RED   n17-n18-tombstones-sms-wallet.test (30s) :: 
+=== RED: RED   n21-schema-drift.test (30s) ::   PASS  N21-4 migration 021/023 parity: processing_token, DLQ unique index, server_tombstones 
+=== RED: RED   n22-hydrate-cap.test (30s) :: 
+=== RED: RED   otp-redis (30s) :: 
+=== RED: RED   outbox-lease-race-live (30s) :: 
+=== RED: RED   p11-phone-auth-live (15s) :: 
+=== RED: RED   pg-prod-boot-with-db (30s) :: 
+=== RED: RED   pg-prod-client-error (29s) :: 
+=== RED: RED   pg-prod-persistence-failure (30s) :: 
+=== RED: RED   pg-prod-two-instance (29s) :: 
+=== RED: RED   pg-prod-uid-idempotency (30s) :: 
+=== RED: RED   phase2-occ-multi (30s) :: 
+=== RED: RED   phase2-outbox-failover (30s) :: 
+=== RED: RED   phase2-redis-fail-closed (64s) :: 
+=== RED: RED   phase65-runtime-truth (30s) :: 
+=== RED: RED   r5-prod-redis-boot-gate (72s) :: 
+=== RED: RED   sync-occ-adversarial-live (30s) :: 
+=== RED: RED   sync-replay-adversarial-live (30s) :: 
+=== RED: RED   multi-instance (37s) :: 
+=== RED: RED   queue-outage-drill (30s) :: Queue-Outage drill: 7 موفق / 0 خطا / 4 NOT-RUN ⏭️ 
+=== RED: RED   chaos-drill-api-kill (29s) :: 
+=== RED: RED   chaos-drill-redis-outage (30s) :: 
+=== RED: RED   chaos-drill-pg-outage (30s) :: 
+=== RED: RED   chaos-drill-queue-outage (30s) :: 
+=== RED: RED   chaos-drill-network-degradation (29s) :: 
+=== RED: RED   chaos-drill-disk-pressure (30s) :: 
+=== RED: RED   chaos-suite (35s) :: 
+=== RED: RED   idor-runtime (10s) :: 
+=== RED: RED   idor-runtime-r4 (11s) :: 
+=== RED: RED   a31-intelligence-semantic-integrity (30s) :: 
+=== RED: RED   a35-regression (10s) :: 
+=== RED: RED   wal-disk-full (10s) :: خروجیِ ۲: «اجرا نشد» با «موفق» فرق دارد (سبزِ جعلی ممنوع

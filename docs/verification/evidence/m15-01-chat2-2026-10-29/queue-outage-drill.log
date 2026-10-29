@@ -1,0 +1,21 @@
+
+▸ بررسیِ ایستا (بدونِ زیرساخت)
+  ✅ S1 outbox تراکنشی: درجِ PG با ON CONFLICT DO NOTHING (تکرارِ id ساکت رد می‌شود)
+  ✅ S2 صفِ سقف‌دار: OUTBOX_CAP = 1000 (صف، نه انبار)
+  ✅ S3 کارگر رویداد را در شکست حذف نمی‌کند (فقط علامت می‌خورد)
+  ✅ S4 کارگر: سقفِ تلاش (maxRetries) و گاردِ پردازشِ هم‌زمان (inFlight)
+  ✅ S5 آلارمِ SyncQueueDepth (آستانهٔ ۱۰۰۰) در alert-rules.yml تعریف شده
+  ✅ S6 متریکِ payesh_sync_queue_depth (عمقِ صف از PG) زنده است
+  ✅ S7 سندِ همگام‌سازی/معماریِ ناهمگام، outbox را به‌عنوانِ صفِ رویداد مستند کرده
+
+⚠️  اتصال به PG برقرار نشد: connect ECONNREFUSED 127.0.0.1:5432
+
+▸ مانورِ زنده
+  ⏭️  Q1 — NOT RUN — NOT RUN: اتصال به PG برقرار نشد: connect ECONNREFUSED 127.0.0.1:5432
+  ⏭️  Q2 — NOT RUN — NOT RUN: اتصال به PG برقرار نشد: connect ECONNREFUSED 127.0.0.1:5432
+  ⏭️  Q3 — NOT RUN — NOT RUN: اتصال به PG برقرار نشد: connect ECONNREFUSED 127.0.0.1:5432
+  ⏭️  Q4 — NOT RUN — NOT RUN: اتصال به PG برقرار نشد: connect ECONNREFUSED 127.0.0.1:5432
+
+────────────────────────────────────────────
+Queue-Outage drill: 7 موفق / 0 خطا / 4 NOT-RUN ⏭️
+خروجیِ ماشین‌خوان: /home/user/p2/tests/chaos-output/queue-outage-drill.json

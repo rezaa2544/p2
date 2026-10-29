@@ -1,0 +1,33 @@
+✅ تم‌های پویا فعال شدند. برای تغییر تم از دستور زیر استفاده کنید:
+switchPayeshTheme("theme-3")
+[demo] staff_posts: ۲۴ هنجار نمونه ساخته شد
+داده نمونه: {
+  'مدارس': 6,
+  'کاربران': 1040,
+  'کلاس‌ها': 36,
+  'حضوروغیاب': 11060,
+  'نمرات': 12855,
+  'انضباطی': 759,
+  'اعلان‌ها': 705,
+  'اقساط': 1561,
+  'تراکنش‌ها': 980
+}
+
+▸ Wave 23 — گزارش‌ها: خروجی CSV و چاپ/PDF
+  ✅ rptCsvData: هر چهار گزارش سرستون و ردیف هم‌طول دارند
+  ✅ ایمنی تزریق فرمول: نام خصمانه با csvCell خنثی می‌شود
+  ✅ اکشن rpt-csv: دانلود + ثبت report_logs با format='csv'
+  ✅ rptPrint: پنجرهٔ چاپ A4 باز و report_logs با format='pdf' ثبت می‌شود
+  ❌ playwright: سند چاپی گزارش به PDF واقعی تبدیل می‌شود
+     browserType.launch: Executable doesn't exist at /home/user/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     npx playwright install                                 ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+
+────────────────────────────────────────────────────
+reports-export: 4 سبز / 1 قرمز ❌

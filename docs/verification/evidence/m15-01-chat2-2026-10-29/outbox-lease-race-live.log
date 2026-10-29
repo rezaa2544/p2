@@ -1,0 +1,9 @@
+[DB] PostgreSQL connection failed. Falling back to JSON in-memory store: connect ECONNREFUSED 127.0.0.1:5432
+LIVE LEASE VERIFICATION FAILED: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ 'memory'
+- 'postgres'
+
+    at /home/user/p2/tests/outbox-lease-race-live.js:53:12
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)

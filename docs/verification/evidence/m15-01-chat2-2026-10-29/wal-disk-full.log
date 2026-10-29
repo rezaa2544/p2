@@ -1,0 +1,21 @@
+
+[0.0s] ▸ بررسیِ ایستا (بدونِ زیرساخت)
+  ✅ S1 اسکریپتِ زیرساخت وجود دارد
+  ✅ S2 bootstrap روی tmpfsِ سقف‌دار mount می‌کند
+  ✅ S3 pg_wal به tmpfs پیوند می‌خورد
+  ✅ S4 پورتِ ۵۵۴۳۲ پیش‌فرض است
+  ✅ S5 migrationها با کشفِ پویا اعمال می‌شوند (نامِ hardcode نشده)
+  ✅ S6 bash -n سالم است
+  ✅ S7 گزارشِ مانور وجود دارد
+  ✅ S8 migrationِ شکست‌خورده اجرا را می‌بندد (die، نه ادامه)
+  ✅ S9 مسیرهایِ PGDATA/WAL_MNT/RUN گاردِ مسیرِ سیستمی دارند
+
+[0.0s] ▸ مانورِ زنده
+  ⏭️  W1 WAL→۸۰٪ warning — NOT RUN: باینریِ PostgreSQL در /usr/bin نیست
+  ⏭️  W2 WAL→۱۰۰٪ PANIC — NOT RUN: باینریِ PostgreSQL در /usr/bin نیست
+  ⏭️  W3 بازیابی + RTO — NOT RUN: باینریِ PostgreSQL در /usr/bin نیست
+  ⏭️  W4 بازیابی از replica — NOT RUN: باینریِ PostgreSQL در /usr/bin نیست
+  ⏭️  W5 تأییدِ RPO=0 — NOT RUN: باینریِ PostgreSQL در /usr/bin نیست
+────────────────────────────────────────────
+WAL disk-full drill: 9/14 موفق — 5 سناریو NOT-RUN ⏭️
+خروجیِ ۲: «اجرا نشد» با «موفق» فرق دارد (سبزِ جعلی ممنوع).
