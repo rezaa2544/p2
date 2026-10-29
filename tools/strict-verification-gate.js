@@ -223,17 +223,20 @@ for (const pair of pats) {
 }
 
 /* ── V-06: prove the checkout is related to the remote in the correct direction.
-   On main/push, HEAD must not be a local-only line beyond origin/main.
-   On pull_request, the base (origin/main) must be an ancestor of the PR HEAD.
-   Requiring PR HEAD to be an ancestor of main makes every unmerged PR fail by
-   construction; branch-aware ancestry preserves the remote-binding contract. */
+   PR heads and pushed arena/** branches must descend from origin/main. A push to
+   main (or workflow_dispatch) must be contained in origin/main. The arena push
+   case preserves push coverage while rejecting stale/divergent branch histories. */
 const rev = cp.spawnSync('git', ['rev-parse', '--verify', '--quiet', 'origin/main'], { cwd: ROOT, encoding: 'utf8' });
 const originMain = (rev.status === 0 ? (rev.stdout || '').trim() : '');
 chk('V-06 origin/main resolvable', isSha1(originMain) && originMain.length === 40, originMain || 'missing');
-const isPullRequest = process.env.GITHUB_EVENT_NAME === 'pull_request';
+const eventName = String(process.env.GITHUB_EVENT_NAME || '');
+const eventRef = String(process.env.GITHUB_REF || '');
+const isPullRequest = eventName === 'pull_request';
+const isArenaBranchPush = eventName === 'push' && eventRef.startsWith('refs/heads/arena/');
+const requireBaseAncestor = isPullRequest || isArenaBranchPush;
 let contained = false;
 if (isSha1(originMain)) {
-  const ancestry = isPullRequest
+  const ancestry = requireBaseAncestor
     ? ['merge-base', '--is-ancestor', 'origin/main', 'HEAD']
     : ['merge-base', '--is-ancestor', 'HEAD', 'origin/main'];
   const anc = cp.spawnSync('git', ancestry, { cwd: ROOT });
@@ -241,8 +244,10 @@ if (isSha1(originMain)) {
 }
 const ancestryLabel = isPullRequest
   ? 'V-06 PR base contained in HEAD'
-  : 'V-06 HEAD contained in origin/main (not a local-only line)';
-chk(ancestryLabel, contained, 'head=' + head + ' origin/main=' + originMain);
+  : isArenaBranchPush
+    ? 'V-06 push branch base contained in HEAD'
+    : 'V-06 HEAD contained in origin/main (not a local-only line)';
+chk(ancestryLabel, contained, 'head=' + head + ' origin/main=' + originMain + (isArenaBranchPush ? ' ref=' + eventRef : ''));
 
 /* ── G17: the evidence must describe the committed tree.
    A run whose code was uncommitted proves nothing about the SHA it is filed

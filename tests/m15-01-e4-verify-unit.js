@@ -184,6 +184,17 @@ async function runTests() {
     );
   }
 
+  const ownerOperatorRolesCorrect = checklistIds.every((id) => {
+    const responsibility = CLOSURE_CHECKLIST_SPEC[id].owner_and_next_action;
+    return responsibility.startsWith('Operator: Chat 4 (Infrastructure/Performance)')
+      && responsibility.includes('Owner only grants secure')
+      && responsibility.includes('owner is not operator, test runner, log analyst, or coordinator.')
+      && responsibility.includes('Never send secret values in chat.');
+  });
+  check('all E4 drills assign operations to existing Chat 4 role, keep owner out of operator duties, and forbid secrets in chat', ownerOperatorRolesCorrect);
+  check('E4-07 requires a designated human on-call acknowledgement and runbook execution',
+    CLOSURE_CHECKLIST_SPEC['E4-07'].owner_and_next_action.includes('The designated on-call human must acknowledge the page and execute the runbook'));
+
   // 2. Empty environment -> BLOCKED WITH PROOF (exit_code === 2, 0 PASS, 7 BLOCKED)
   const blockedReport = await runE4Verification({ env: { GITHUB_SHA: 'deadbeef'.repeat(5) } });
   check('empty env yields BLOCKED overall_status and exit_code 2',

@@ -211,10 +211,15 @@ function finishFixture(dir, reg) {
   return head;
 }
 
-function runGate(dir, eventName) {
+function runGate(dir, eventName, eventRef) {
   const r = spawnSync(process.execPath, ['tools/strict-verification-gate.js'], {
     cwd: dir, encoding: 'utf8', timeout: 60000,
-    env: { ...process.env, GITHUB_EVENT_NAME: eventName || 'push', GITHUB_BASE_REF: eventName === 'pull_request' ? 'main' : '' }
+    env: {
+      ...process.env,
+      GITHUB_EVENT_NAME: eventName || 'push',
+      GITHUB_REF: eventRef || '',
+      GITHUB_BASE_REF: eventName === 'pull_request' ? 'main' : ''
+    }
   });
   return { code: r.status, out: (r.stdout || '') + (r.stderr || '') };
 }
@@ -276,6 +281,14 @@ addCase('V-05b', 'V-05', 'top-level status invented (not in machine, not BLOCKED
 
 /* V-06: local-only HEAD binding — handled in extra (needs divergent origin) */
 addCase('V-06', 'V-06', 'HEAD not contained in origin/main (unpushed local line)', null, { divergentOrigin: true });
+addCase('V-06-ARENA-PUSH-DIVERGENT', 'V-06 push branch base contained in HEAD',
+  'arena branch push rejects a stale/divergent origin/main', null,
+  { arenaBranchPush: true, divergentArenaOrigin: true });
+cases.push({
+  id: 'GOOD-V-06-ARENA-PUSH', expectFail: null,
+  description: 'arena branch push is accepted when origin/main is an ancestor of HEAD',
+  mutate: null, extra: { arenaBranchPush: true }
+});
 
 addCase('V-06b', 'V-06', 'origin/main ref missing (cannot prove remote binding)', null, { noOrigin: true });
 
@@ -553,8 +566,19 @@ for (const c of cases) {
       }
     }
     if (c.extra && c.extra.divergentOrigin) {
-      /* Push/main negative fixture: HEAD is a local-only child beyond origin/main. */
+      /* Main-push negative fixture: HEAD is a local-only child beyond origin/main. */
       git(dir, ['update-ref', 'refs/remotes/origin/main', 'HEAD~1']);
+    }
+    if (c.extra && c.extra.arenaBranchPush) {
+      if (c.extra.divergentArenaOrigin) {
+        const parent = git(dir, ['rev-parse', 'HEAD~1']);
+        const tree = git(dir, ['rev-parse', parent + '^{tree}']);
+        const divergent = git(dir, ['commit-tree', tree, '-p', parent, '-m', 'divergent origin main for arena push']);
+        git(dir, ['update-ref', 'refs/remotes/origin/main', divergent]);
+      } else {
+        /* Valid arena push: the branch HEAD is one commit ahead of origin/main. */
+        git(dir, ['update-ref', 'refs/remotes/origin/main', 'HEAD~1']);
+      }
     }
     if (c.extra && c.extra.noOrigin) {
       git(dir, ['update-ref', '-d', 'refs/remotes/origin/main']);
@@ -567,7 +591,11 @@ for (const c of cases) {
         fs.writeFileSync(sp, JSON.stringify(sc, null, 2));
       }
     }
-    const r = runGate(dir, c.extra && c.extra.prContext ? 'pull_request' : 'push');
+    const r = runGate(
+      dir,
+      c.extra && c.extra.prContext ? 'pull_request' : 'push',
+      c.extra && c.extra.arenaBranchPush ? 'refs/heads/arena/fixture' : 'refs/heads/main'
+    );
     /* A30_VERBOSE=1 prints the gate's own FAIL lines for the case — needed when a
        fixture "passes" and you must know which other check rejected it. */
     if (process.env.A30_VERBOSE) {

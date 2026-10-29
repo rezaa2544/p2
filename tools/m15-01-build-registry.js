@@ -366,10 +366,11 @@ function emit(head, outPath) {
       },
       {
         id: 'OD-2',
-        item: 'strict-verification.yml runs on push to arena/** while V-06 push mode requires HEAD to be an ancestor of origin/main',
-        state: 'NOT DECIDED',
-        why_it_blocks: 'A branch push can never satisfy V-06. Changing the trigger drops CI coverage; changing V-06 ' +
-          'alters a security contract. Both are owner decisions.'
+        item: 'V-06 ancestry policy for arena/** pushes',
+        state: 'DECIDED BY OWNER 2026-10-29 — RESOLVED',
+        why_it_blocks: 'Resolved per OD-2: keep arena/** push coverage; for PRs and arena branch pushes require ' +
+          'origin/main to be an ancestor of HEAD, while main pushes and workflow_dispatch require HEAD to be ' +
+          'contained in origin/main. The negative fixture rejects stale/divergent arena histories.'
       },
       {
         id: 'OD-3',

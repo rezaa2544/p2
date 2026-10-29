@@ -43,7 +43,7 @@ V-02 evidence binding            -> V-02 binds immutable evidence SHA + artifact
 V-03 reviewer independence            -> V-03 reviewer evidence pairwise distinct (no byte-cloned PASS)
 V-04 status machine                   -> V-04 allowed_statuses == canonical machine; item/verdict membership enforced
 V-05 BLOCKED_UNTIL ignored            -> V-05 top-level status must be in the machine and not BLOCKED*
-V-06 remote ancestry binding          -> origin/main resolves; on push/main HEAD is an ancestor of origin/main, while on pull_request origin/main is an ancestor of PR HEAD
+V-06 remote ancestry binding          -> origin/main resolves; on pull_request and push to refs/heads/arena/** origin/main is an ancestor of HEAD; on push to main and workflow_dispatch HEAD is an ancestor of origin/main
 V-07 scanner coverage                 -> G7 walks sh/ts/json + self-skip/self-only/expect-true patterns; G6b allowlist entries must be owned (owner/reason/expiry/replacement) and may be path-scoped
 V-08 self-attested intelligence       -> V-08 self-certification modules may not be the sole evidence source
 V-09 certification input injection    -> V-09 every reviewer PASS needs reviews_recorded + item.reviews + slot-identity corroboration
@@ -182,16 +182,17 @@ its fixtures, then re-runs the same fixtures against a deliberately weakened cop
 (one check disabled at a time) and fails if a fixture survives its own check being removed.
 A fixture that cannot go red is not evidence.
 
-OPEN (OWNER DECISION REQUIRED — NOT VERIFIED ON PURPOSE)
+RESOLVED OWNER DECISIONS (these are not verification evidence)
 O-1  Human governance — DECIDED 2026-10-27, see § OWNER RULINGS below. The registry no longer
      carries a human_governance block and the gate no longer asks for one. A registry still cannot
-     become green by that change: main's stays NOT VERIFIED because 29 legacy items are UNKNOWN
-     (V-15) and no item was promoted.
-O-2  .github/workflows/strict-verification.yml triggers on `push` to `arena/**`, while V-06 in
-     push context requires HEAD to be an ancestor of origin/main. A branch push can therefore
-     never pass V-06. Either the trigger or the ancestry contract must change, and both choices
-     alter a security/CI requirement — that is an owner call, not an execution call.
+     become green by that change: legacy items remain UNKNOWN and no status was promoted.
+O-2  V-06 ancestry for arena pushes — DECIDED 2026-10-29 (OD-2). Keep the `arena/**` push trigger.
+     For a push to `refs/heads/arena/**`, require origin/main to be an ancestor of the pushed HEAD;
+     PR ancestry and push-to-main/workflow_dispatch rules remain unchanged. Positive and divergent-
+     history fixtures are in `tests/strict-verification-gate.negative.test.js`.
+
+OPEN — NOT VERIFIED
 O-3  Landing mechanics: the metadata-only registry commit must land as a single-parent commit
      (fast-forward or a rebuild after landing). A `--no-ff` merge or a squash makes the registry
-     commit non-metadata-only and V-02/G9 fail by construction. Known and accepted; the
-     registry is bound to the source SHA it was built from and must be rebuilt if the line moves.
+     commit non-metadata-only and V-02/G9 fail by construction. The registry must be rebuilt if
+     the source line moves; this is not permission to promote a status without exact-SHA evidence.

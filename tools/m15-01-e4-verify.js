@@ -277,7 +277,7 @@ const CLOSURE_CHECKLIST_SPEC = {
     reproducible_command: 'E4_CONFIRM_ISOLATED_STAGING=1 node tools/m15-01-e4-verify.js --require-pass --output artifacts/m15-01-e4/e4-probe-report.json',
     expected_result_and_threshold: 'Primary pg_is_in_recovery()=false, Standby pg_is_in_recovery()=true, resolved Primary IP != Standby IP (non-loopback), streaming_standbys >= 1, max_lag_bytes <= 16777216.',
     raw_evidence_artifact: 'artifacts/m15-01-e4/e4-probe-report.json (criteria[E4-01].metrics + report_sha256).',
-    owner_and_next_action: '@rezaa2544 (Infrastructure / Repository Owner) — Provision isolated multi-node PostgreSQL Primary + Standby hosts and inject E4_PG_PRIMARY_DSN / E4_PG_STANDBY_DSN into staging environment secrets.',
+    owner_and_next_action: 'Operator: Chat 4 (Infrastructure/Performance) provisions the isolated multi-node PostgreSQL Primary + Standby, runs the probe, and records redacted evidence. Owner only grants secure staging access or explicitly owner-exclusive approvals if required; owner is not operator, test runner, log analyst, or coordinator. Never send secret values in chat.',
   },
   'E4-02': {
     criterion: 'pgBackRest repository resides in an off-site/distinct fault region from PostgreSQL primary with stanza status code 0, non-empty WAL archive range, and full backup age <= 86400s.',
@@ -285,7 +285,7 @@ const CLOSURE_CHECKLIST_SPEC = {
     reproducible_command: 'E4_CONFIRM_ISOLATED_STAGING=1 node tools/m15-01-e4-verify.js --require-pass --output artifacts/m15-01-e4/e4-probe-report.json',
     expected_result_and_threshold: 'E4_PRIMARY_REGION != E4_BACKUP_REPO_REGION, pgbackrest info status.code == 0, >= 1 full backup with age_sec <= 86400, non-empty WAL archive min/max.',
     raw_evidence_artifact: 'artifacts/m15-01-e4/e4-probe-report.json (criteria[E4-02].metrics + report_sha256).',
-    owner_and_next_action: '@rezaa2544 (Infrastructure / Repository Owner) — Provision off-site cross-region S3 backup bucket and run scheduled pgBackRest full + WAL archive backup.',
+    owner_and_next_action: 'Operator: Chat 4 (Infrastructure/Performance) provisions the off-site cross-region backup repository, runs pgBackRest full + WAL archive backup, and records redacted evidence. Owner only grants secure cloud/IAM access or explicitly owner-exclusive approvals if required; owner is not operator, test runner, log analyst, or coordinator. Never send secret values in chat.',
   },
   'E4-03': {
     criterion: 'Isolated host time-target PITR restore from off-site pgBackRest repository matches all 26 schema_migrations checksums and excludes post-target writes.',
@@ -293,7 +293,7 @@ const CLOSURE_CHECKLIST_SPEC = {
     reproducible_command: 'bash tools/pitr-restore.sh --target "$E4_PITR_TARGET_UTC" && bash tools/pitr-verify.sh --expect-before "$E4_PITR_TARGET_UTC" && E4_CONFIRM_ISOLATED_STAGING=1 node tools/m15-01-e4-verify.js --require-pass --output artifacts/m15-01-e4/e4-probe-report.json',
     expected_result_and_threshold: 'Restored host IP distinct from Primary & Standby (non-loopback), 26 schema_migrations rows with catalog_sha256 == sha256:7743953e67a9f6421a245143501f010532c02056427d8d480725fdecfcd14eb6, post_target_audit_rows == 0.',
     raw_evidence_artifact: 'artifacts/m15-01-e4/e4-probe-report.json (criteria[E4-03].metrics + report_sha256).',
-    owner_and_next_action: '@rezaa2544 (Infrastructure / Repository Owner) — Execute multi-host PITR restore drill onto isolated staging recovery VM and pass E4_PITR_RESTORED_DSN + E4_PITR_TARGET_UTC.',
+    owner_and_next_action: 'Operator: Chat 4 (Infrastructure/Performance) executes the multi-host PITR restore drill and records redacted evidence. Owner only grants secure recovery-host access or explicitly owner-exclusive approvals if required; owner is not operator, test runner, log analyst, or coordinator. Never send secret values in chat.',
   },
   'E4-04': {
     criterion: 'Real multi-host PgBouncer transaction pooler routes R/W client traffic across primary promotion (`--reroute-pgbouncer-only`) within <= 30000 ms RTO.',
@@ -301,7 +301,7 @@ const CLOSURE_CHECKLIST_SPEC = {
     reproducible_command: 'bash tools/failover-postgres.sh --live && E4_CONFIRM_ISOLATED_STAGING=1 node tools/m15-01-e4-verify.js --require-pass --output artifacts/m15-01-e4/e4-probe-report.json',
     expected_result_and_threshold: 'PgBouncer pool_mode == "transaction", upstream target host non-loopback and unpaused, client query pg_is_in_recovery() == false, 0 < promotion_to_verified_pgbouncer_write_ms <= 30000.',
     raw_evidence_artifact: 'artifacts/m15-01-e4/e4-probe-report.json (criteria[E4-04].metrics + report_sha256).',
-    owner_and_next_action: '@rezaa2544 (Infrastructure / Repository Owner) — Run tools/failover-postgres.sh --live against multi-node staging HA PostgreSQL + PgBouncer and record E4_PGBOUNCER_EVIDENCE_JSON.',
+    owner_and_next_action: 'Operator: Chat 4 (Infrastructure/Performance) runs tools/failover-postgres.sh --live against multi-node staging HA PostgreSQL + PgBouncer and records redacted E4_PGBOUNCER_EVIDENCE_JSON. Owner only grants secure staging access or explicitly owner-exclusive approvals if required; owner is not operator, test runner, log analyst, or coordinator. Never send secret values in chat.',
   },
   'E4-05': {
     criterion: 'Multi-node Redis Sentinel cluster (>= 3 distinct non-loopback hosts) maintains quorum, agrees on promoted master address, and preserves AOF/RDB persistence.',
@@ -309,7 +309,7 @@ const CLOSURE_CHECKLIST_SPEC = {
     reproducible_command: 'bash tools/failover-redis.sh && E4_CONFIRM_ISOLATED_STAGING=1 node tools/m15-01-e4-verify.js --require-pass --output artifacts/m15-01-e4/e4-probe-report.json',
     expected_result_and_threshold: '>= 3 distinct resolved Sentinel host IPs, 100% SENTINEL ckquorum OK, unanimous non-loopback master IP:port with role == "master" and AOF/RDB persistence enabled.',
     raw_evidence_artifact: 'artifacts/m15-01-e4/e4-probe-report.json (criteria[E4-05].metrics + report_sha256).',
-    owner_and_next_action: '@rezaa2544 (Infrastructure / Repository Owner) — Deploy 3-node cross-host Redis Sentinel topology in staging and set E4_REDIS_SENTINEL_ENDPOINTS.',
+    owner_and_next_action: 'Operator: Chat 4 (Infrastructure/Performance) deploys the 3-node cross-host Redis Sentinel topology, runs the failover checks, and records redacted evidence. Owner only grants secure staging access or explicitly owner-exclusive approvals if required; owner is not operator, test runner, log analyst, or coordinator. Never send secret values in chat.',
   },
   'E4-06': {
     criterion: 'Observability plane (Prometheus + Alertmanager) runs on an independent host/failure domain separate from DB/pooler hosts with canonical alert rules active and zero placeholder receivers.',
@@ -317,7 +317,7 @@ const CLOSURE_CHECKLIST_SPEC = {
     reproducible_command: 'E4_CONFIRM_ISOLATED_STAGING=1 node tools/m15-01-e4-verify.js --require-pass --output artifacts/m15-01-e4/e4-probe-report.json',
     expected_result_and_threshold: 'Non-loopback Prometheus/Alertmanager host IPs disjoint from DB/PgBouncer host IPs, HTTP 200 on /api/v1/rules (>= 11 canonical rules incl. RedisDown & SyncQueueDepth) and /api/v2/status (0 example.invalid receivers).',
     raw_evidence_artifact: 'artifacts/m15-01-e4/e4-probe-report.json (criteria[E4-06].metrics + report_sha256).',
-    owner_and_next_action: '@rezaa2544 (Infrastructure / Repository Owner) — Deploy Prometheus + Alertmanager on isolated monitoring host and set E4_PROMETHEUS_URL / E4_ALERTMANAGER_URL.',
+    owner_and_next_action: 'Operator: Chat 4 (Infrastructure/Performance) deploys Prometheus + Alertmanager on the isolated monitoring host, validates alert rules, and records redacted evidence. Owner only grants secure monitoring access or explicitly owner-exclusive approvals if required; owner is not operator, test runner, log analyst, or coordinator. Never send secret values in chat.',
   },
   'E4-07': {
     criterion: 'Real on-call incident chain (Alert -> Paging -> Human Acknowledgement -> Runbook Execution -> Verified Service Recovery) meets MTTA <= 300000 ms and MTTR <= 900000 ms.',
@@ -325,7 +325,7 @@ const CLOSURE_CHECKLIST_SPEC = {
     reproducible_command: 'E4_CONFIRM_ISOLATED_STAGING=1 node tools/m15-01-e4-verify.js --require-pass --output artifacts/m15-01-e4/e4-probe-report.json',
     expected_result_and_threshold: 'Non-synthetic paging provider and human responder, valid ISO-8601 timestamps, 0 < mtta_ms <= 300000, mtta_ms <= mttr_ms <= 900000.',
     raw_evidence_artifact: 'artifacts/m15-01-e4/e4-probe-report.json (criteria[E4-07].metrics + report_sha256).',
-    owner_and_next_action: '@rezaa2544 + On-Call Responder — Execute live paging/on-call failover acknowledgement drill on isolated staging and supply E4_ONCALL_INCIDENT_JSON.',
+    owner_and_next_action: 'Operator: Chat 4 (Infrastructure/Performance) configures and runs the live paging drill and records redacted E4_ONCALL_INCIDENT_JSON. The designated on-call human must acknowledge the page and execute the runbook; this human action cannot be simulated or self-certified. Owner only grants secure access or explicitly owner-exclusive approvals if required; owner is not operator, test runner, log analyst, or coordinator. Never send secret values in chat.',
   },
 };
 
