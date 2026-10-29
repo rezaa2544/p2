@@ -371,13 +371,46 @@ All three are recorded; nothing is described as green that was not green.
 | `d19715b` | HANDOFF checkpoint, stats stale | failure | **exit 5** — the runner's own pre-flight |
 | `2720562` | stats regenerated | **success** ×2 | `40852278972` / `40852288273`, 0 failures of 80 steps |
 | `30987fd` | §5.4 evidence | **success** ×2 | `40866664411` / `40866670795`, 0 failures of 80 steps |
+| `b95a568` | final ledger note | **success** ×2 | `40882783456` / `40882793690`, 0 failures of 80 steps, artifacts `12905074577` / `12906508521` |
 
-`30987fd` is the final SHA of this directive's work and **CI is green on it for both the
+**`b95a568` is the final SHA of this directive's work and CI is green on it for both the
 `push` and `pull_request` events, with zero failed steps out of 80**, step #7 (the full
 canonical runner, including `tests/a11y-runtime.js` under the workflow's own Chromium)
-included. Dead ends are in the table too: every failure above is either pre-fix state, a
+included. `30987fd` was green the same way before it. Dead ends are in the table too: every failure above is either pre-fix state, a
 mistake of mine that was reverted rather than worked around, or the docs pre-flight doing its
 job.
+
+### 5.5 Every check-run on the final SHA — the full census, failures named
+
+`49 success · 9 failure · 3 skipped` across all workflows on `b95a568`. The failures are
+exactly five contexts, each one accounted for and none of them a defect in this work:
+
+| failing context | why it fails | is it actionable here? |
+|---|---|---|
+| `Fortify-AST-Scan` | fails closed at its credential step — **never scans** | no; owner-only (§7.2) |
+| `Trigger_APIsec_scan` | same | no |
+| `Jscrambler Code Integrity` (job `build`) | same | no |
+| `STRICT — 3-AI Evidence Gate` (job `STRICT — 3-AI Evidence Gate`, step #8) | `V-06 HEAD contained in origin/main` on a `push` to a feature branch (**OD-2**, open owner decision) and `V-02 … head_sha mismatch` because the registry binds evidence to older SHAs — **re-binding it is promotion**, which this directive forbids | no, by directive |
+| `watch` (Payesh Watch) | a scheduled monitor that also fails repeatedly on `main@fff1beae` (`40792147104`, `40792515930`, …) | no; pre-existing on main |
+
+The STRICT workflow is worth reading step by step, because it is independent confirmation of
+the gate fix in a *different* workflow from Node.js CI:
+
+```
+#5 A-30 V-01..V-12 negative gate fixtures        => success
+#6 A-30 contract suite (Arena-only model)        => success   <-- the suite this report fixed
+#7 M15-01 registry & strict-verification props   => success   <-- the mutation suite that caught my first attempt
+#8 Strict verification contract                   => failure   <-- the documented V-06/registry-SHA items
+#9 Core tests                                     => success
+```
+
+So the two suites that this directive touched in the gate are **green in CI**, and the only
+red step is the one whose redness is the deliberate consequence of not promoting the registry.
+
+**A commit cannot contain its own CI result.** The ledger therefore terminates at the last
+commit whose CI was read back from the API: **`b95a568`**, green ×2. Any commit after it is
+documentation-only and is described as such; nothing in this report ever claims a green for a
+commit whose runs were not read.
 
 ---
 
