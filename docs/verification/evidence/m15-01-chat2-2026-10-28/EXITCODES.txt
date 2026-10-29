@@ -1,0 +1,118 @@
+M15-01 — Chat2 directive evidence bundle (2026-10-28)
+======================================================================
+HEAD   : 5cae68dc85b1a13ee5152afcae86c615dccd0682
+TREE   : d3e35ffa020a9d630f1757fe954f75edf3775711
+NODE   : v22.22.3
+
+CANONICAL RUN (command, exit code, runtime)
+----------------------------------------------------------------------
+command : bash scripts/run-all-tests.sh
+cwd     : /home/user/p2
+started : 2026-10-28T22:12Z   finished: 2026-10-28T23:39Z
+exit    : 1
+runtime : 5829 s (97.2 min)
+suites  : 561 GREEN / 66 RED  (total 627)
+stdout  : canonical-full.log (2156 lines, 131284 bytes)
+
+The pre-flight of this runner aborts (exit 5) if docs stats are stale; it did so on
+the first attempt and the fix was to regenerate with the official tool, not to skip
+the pre-flight. Second attempt is the run recorded above.
+
+RED attribution (every red listed; no red is called "flake")
+----------------------------------------------------------------------
+  a11y-interactive                           browser (Chromium) absent in sandbox
+  a11y-keyboard                              browser (Chromium) absent in sandbox
+  a11y-runtime                               browser (Chromium) absent in sandbox
+  reports-export                             browser (Chromium) absent in sandbox
+  reports-pdf-e2e                            browser (Chromium) absent in sandbox
+  a-next-health-blackhole                    live Redis absent in sandbox
+  pull-bootstrap                             PRE-EXISTING ON main — fails identically on origin/main@fff1beae and on 46c45041, standalone (see pb-main/pb-base runs); not caused by this branch
+  release-version-contract                   clone had no git tags; PROVEN green after `git fetch --tags` (see release-version-contract-after-tags.log)
+  strict-verification-gate-a30.test          OPEN — passes standalone 1x and 4x concurrent, fails only inside the copy-mode lane
+  migration-009-live-mutations               live PostgreSQL binaries absent in sandbox (explicit: "PG binaries or pg module unavailable")
+  server13                                   live PostgreSQL absent in sandbox
+  server13-mutations                         live PostgreSQL absent in sandbox
+  schema-migrations-live-pg.test             live PostgreSQL absent in sandbox
+  migration-012-crash-recovery-live          live PostgreSQL absent in sandbox
+  migration-009-live                         live PostgreSQL absent in sandbox
+  pg-relational-seed                         live PostgreSQL absent in sandbox
+  wave3-query                                live PostgreSQL absent in sandbox
+  wave3-query3                               live PostgreSQL absent in sandbox
+  wave3-parity                               live PostgreSQL absent in sandbox
+  wave4-sync                                 live PostgreSQL absent in sandbox
+  wave6-11-redis-live                        live Redis absent in sandbox
+  wave10-pg-live                             live PostgreSQL absent in sandbox
+  wave10-pg-live-mutations                   NOT-RUN → fail-closed (no live PostgreSQL)
+  wave10-tenant-live                         live PostgreSQL absent in sandbox
+  wave10-tenant-live-mutations               NOT-RUN → fail-closed (no live PostgreSQL)
+  wave23-reports-mutations                   mutation harness: 0 killed / 11 alive — baseline cannot run without live PostgreSQL
+  wave23-norm-edge-mutations                 live PostgreSQL absent in sandbox
+  bench-phone-lookup-p11                     live PostgreSQL absent in sandbox
+  arena5-recovery                            live PostgreSQL absent in sandbox
+  b-pg-health-blackhole                      live PostgreSQL absent in sandbox
+  b-pg-migration-midflight-kill              live PostgreSQL absent in sandbox
+  b-pg-timeout-failsafe                      live PostgreSQL absent in sandbox
+  canary-atomic-postgres-live-runtime        live PostgreSQL absent in sandbox
+  canary-persistence                         live PostgreSQL absent in sandbox
+  n17-n18-tombstones-sms-wallet.test         live PostgreSQL absent in sandbox
+  n21-schema-drift.test                      needs psql (live PostgreSQL absent)
+  n22-hydrate-cap.test                       needs psql (live PostgreSQL absent)
+  otp-redis                                  live Redis absent in sandbox
+  outbox-lease-race-live                     live PostgreSQL absent in sandbox
+  p11-phone-auth-live                        live PostgreSQL absent in sandbox
+  pg-prod-boot-with-db                       live PostgreSQL absent in sandbox
+  pg-prod-client-error                       live PostgreSQL absent in sandbox
+  pg-prod-persistence-failure                live PostgreSQL absent in sandbox
+  pg-prod-two-instance                       live PostgreSQL absent in sandbox
+  pg-prod-uid-idempotency                    live PostgreSQL absent in sandbox
+  phase2-occ-multi                           live PostgreSQL absent in sandbox
+  phase2-outbox-failover                     live PostgreSQL absent in sandbox
+  phase2-redis-fail-closed                   live PostgreSQL absent in sandbox
+  phase65-runtime-truth                      live PostgreSQL absent in sandbox
+  r5-prod-redis-boot-gate                    live PostgreSQL absent in sandbox
+  sync-occ-adversarial-live                  live PostgreSQL absent in sandbox
+  sync-replay-adversarial-live               live PostgreSQL absent in sandbox
+  multi-instance                             live PostgreSQL absent in sandbox
+  queue-outage-drill                         live PostgreSQL absent in sandbox
+  chaos-drill-api-kill                       live PostgreSQL absent in sandbox
+  chaos-drill-redis-outage                   live PostgreSQL absent in sandbox
+  chaos-drill-pg-outage                      live PostgreSQL absent in sandbox
+  chaos-drill-queue-outage                   live PostgreSQL absent in sandbox
+  chaos-drill-network-degradation            live PostgreSQL absent in sandbox
+  chaos-drill-disk-pressure                  live PostgreSQL absent in sandbox
+  chaos-suite                                live Redis absent in sandbox
+  idor-runtime                               live PostgreSQL absent in sandbox
+  idor-runtime-r4                            live PostgreSQL absent in sandbox
+  a31-intelligence-semantic-integrity        live PostgreSQL absent in sandbox
+  a35-regression                             live PostgreSQL absent in sandbox
+  wal-disk-full                              live PostgreSQL absent in sandbox
+
+
+Suites this directive touched — all GREEN in the same canonical run:
+  a11y-regressions, a11y-state-matrix, docs-refs-check, supply-chain
+
+SUMMARY BY CAUSE
+  live PostgreSQL / psql absent in sandbox                                 55
+  browser (Chromium) absent in sandbox                                      5
+  live Redis absent in sandbox                                              4
+  clone had no git tags — PROVEN green after `git fetch --tags`              1
+  PRE-EXISTING ON main (reproduced on fff1beae, standalone)                  1
+  OPEN — copy-mode-lane only, 5/5 clean otherwise                            1
+                                                                        = 66
+
+SHA256 OF EVERY LOG IN THIS BUNDLE
+----------------------------------------------------------------------
+  a11y-regressions.log                       91e1c13004c9c05a5fb1d359b554b36200570dbb3a6378f6f8fec5be2e7d9ea2
+  a11y-runtime-nobrowser.log                 e1503914cda98ad787ecc491b9f001032d4d45ffbfc197ba967b9f9a4f55681f
+  a11y-state-matrix.log                      dac280155f34498e731df2b28a7413f12a4ab93b5c2882342028ed431fa2d1ed
+  canonical-full.log                         b7ad7bb59156e14873f1534053b2a370c03aa72471ca2155a3f456499b4a54a6
+  dep-proof-api110.log                       96eab390f38228b08a4f271c44416b217092976d01ce411b17817fc886c8746f
+  dep-proof-resources3.log                   8ce65ad3772828a7beaac599721593b239d0f12ae107e4bb48dcbf2e0313b65b
+  docs-refs-check.log                        76ccab636dc935acbb6b3a5d89b42d2575b426e3766098d68e685f28624334ab
+  npm-audit-all.log                          6526d73ef9da405f5342f3132e50b01892b20a603f9391154f99382d3a6c45b6
+  npm-audit-prod.log                         6d8c5c8f3d7684adb070417bd608d01ae90aa3dc26a65af03ffda4955f38d9a3
+  npm-ci.log                                 c1879929bf87057d75064af66da7b8dc9200e9ffce74fed8148ce660aa0cbb0c
+  playwright-browser-download.log            43059e6666eb051168ad0e7afda06595cf5b9e334bb67bae4c2c5946c4b83043
+  release-version-contract-after-tags.log    609dd01fcd665e372f87876b2ad58acf02bd929539a093d21980ac664412d274
+  supply-chain-audit-check.log               ba691c7dbc43db41b301b307e0f6c0e73fe58de7c654d880a43a8d6def2c0def
+  supply-chain.log                           75f706edb47a9719c4e6f1bc981476c9ef0bef8a2a76d1525c724b9091c9368f
