@@ -371,7 +371,10 @@ All three are recorded; nothing is described as green that was not green.
 | `d19715b` | HANDOFF checkpoint, stats stale | failure | **exit 5** — the runner's own pre-flight |
 | `2720562` | stats regenerated | **success** ×2 | `40852278972` / `40852288273`, 0 failures of 80 steps |
 | `30987fd` | §5.4 evidence | **success** ×2 | `40866664411` / `40866670795`, 0 failures of 80 steps |
-| `b95a568` | final ledger note | **success** ×2 | `40882783456` / `40882793690`, 0 failures of 80 steps, artifacts `12905074577` / `12906508521` |
+| `b95a568` | §5.5 census | **success** ×2 | `40882783456` / `40882793690`, 0 failures of 80 steps, artifacts `12905074577` / `12906508521` |
+| `c775db5` | HANDOFF sync, freeze manifest stale | failure ×2 | exit 5 — same docs pre-flight, see §5.6 note |
+| `570465c` | freeze manifest regenerated | **split**: pull_request **success**, push failure | the push red is `server13` T2 boot budget — root-caused in §5.6 |
+| `e237807` | §5.6 evidence | pending | documentation-only; its CI is not claimed here |
 
 **`b95a568` is the final SHA of this directive's work and CI is green on it for both the
 `push` and `pull_request` events, with zero failed steps out of 80**, step #7 (the full
@@ -407,10 +410,12 @@ the gate fix in a *different* workflow from Node.js CI:
 So the two suites that this directive touched in the gate are **green in CI**, and the only
 red step is the one whose redness is the deliberate consequence of not promoting the registry.
 
-**A commit cannot contain its own CI result.** The ledger therefore terminates at the last
-commit whose CI was read back from the API: **`b95a568`**, green ×2. Any commit after it is
-documentation-only and is described as such; nothing in this report ever claims a green for a
-commit whose runs were not read.
+**A commit cannot contain its own CI result.** So the ledger is read back only up to the
+commit that carries the text, and the last rows above are therefore the honest edge of what
+is known: `b95a568` was the last commit green on **both** events; `570465c` is green on
+`pull_request` and red on `push` for the `server13` reason in §5.6; `e237807` is
+documentation-only and **pending**. Nothing in this report claims a green for a commit whose
+runs were not read, and no run was retried to manufacture one.
 
 ### 5.6 `570465c` — one event green, one red, and the red's root cause
 
