@@ -1,0 +1,46 @@
+
+▸ A-20 — OCC invariant across all five PATCH paths
+  ✅ T1 production: students rejects version-less write with 400
+  ✅ T1 production: users rejects version-less write with 400
+  ✅ T1 production: classes rejects version-less write with 400
+  ✅ T1 production: attendance rejects version-less write with 400
+  ✅ T1 production: grades rejects version-less write with 400
+  ✅ T2 strict flag: students rejects version-less with 400
+  ✅ T2 strict flag: users rejects version-less with 400
+  ✅ T2 strict flag: classes rejects version-less with 400
+  ✅ T2 strict flag: attendance rejects version-less with 400
+  ✅ T2 strict flag: grades rejects version-less with 400
+  ✅ T3 NODE_ENV=production: users rejects version-less with 400
+  ✅ T4 dev: students accepts legacy version-less write (documented compatibility)
+  ✅ T4 dev: users accepts legacy version-less write (documented compatibility)
+  ✅ T4 dev: classes accepts legacy version-less write (documented compatibility)
+  ✅ T4 dev: attendance accepts legacy version-less write (documented compatibility)
+  ✅ T4 dev: grades accepts legacy version-less write (documented compatibility)
+  ✅ T5 dev: students stale base_version ⇒ 409 conflict + server version
+  ✅ T5 dev: users stale base_version ⇒ 409 conflict + server version
+  ✅ T5 dev: classes stale base_version ⇒ 409 conflict + server version
+  ✅ T5 dev: attendance stale base_version ⇒ 409 conflict + server version
+  ✅ T5 dev: grades stale base_version ⇒ 409 conflict + server version
+  ✅ T5 production: students stale base_version ⇒ 409 conflict + server version
+  ✅ T5 production: users stale base_version ⇒ 409 conflict + server version
+  ✅ T5 production: classes stale base_version ⇒ 409 conflict + server version
+  ✅ T5 production: attendance stale base_version ⇒ 409 conflict + server version
+  ✅ T5 production: grades stale base_version ⇒ 409 conflict + server version
+  ✅ T6 correct base_version accepted, version bumped server-side
+  ✅ T7 production: bogus base_version (string) rejected
+  ✅ T7 production: bogus base_version (boolean) rejected
+  ✅ T7 production: bogus base_version (zero) rejected
+  ✅ T7 production: bogus base_version (negative) rejected
+  ✅ T7 production: bogus base_version (float) rejected
+  ✅ T7 production: bogus base_version (empty string) rejected
+  ✅ T7 production: bogus base_version (null) rejected
+  ✅ T7 production: bogus base_version (undefined-as-key) rejected
+  ✅ T7b dev: supplied-but-invalid base_version (string) rejected with 400
+  ✅ T7b dev: supplied-but-invalid base_version (boolean) rejected with 400
+  ✅ T7b dev: supplied-but-invalid base_version (zero) rejected with 400
+  ✅ T7b dev: absent base_version allowed (documented legacy path)
+  ✅ T8 client-supplied data.version is not accepted as a base_version substitute
+
+────────────────────────────────────────────────────
+a20-occ-production-invariant: 40/40 موفق  —  بدون خطا ✅
+────────────────────────────────────────────────────

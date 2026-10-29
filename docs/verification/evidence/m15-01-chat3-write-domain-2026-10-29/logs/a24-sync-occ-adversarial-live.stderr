@@ -1,0 +1,15 @@
+/tmp/wt-src/tests/sync-occ-adversarial-live.js:11
+if(!url) throw Error('SYNC_TEST_DATABASE_URL required; missing real PG is failure, never skip');
+         ^
+
+Error: SYNC_TEST_DATABASE_URL required; missing real PG is failure, never skip
+    at Object.<anonymous> (/tmp/wt-src/tests/sync-occ-adversarial-live.js:11:16)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49
+
+Node.js v22.22.3

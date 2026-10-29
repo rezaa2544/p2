@@ -1,0 +1,480 @@
+diff --git a/server/conflicts.js b/server/conflicts.js
+index df0987a6..8378c6b2 100644
+--- a/server/conflicts.js
++++ b/server/conflicts.js
+@@ -7,7 +7,7 @@
+    Authorization:
+      • list & resolve require `manager` or `superadmin`
+      • `manager` is strictly scoped to their own `school_id`
+-       (school_id == null conflicts are global and visible to any manager)
++       (global conflicts require superadmin)
+      • `superadmin` sees and resolves across all schools
+    Persistence:
+      • SSoT when PostgreSQL is live: PostgreSQL `sync_conflicts` table
+@@ -16,7 +16,7 @@
+    ═══════════════════════════════════════════════════════════════════ */
+ 'use strict';
+ 
+-function sendJson(res, statusCode, data) {
++function defaultSendJson(res, statusCode, data) {
+   res.statusCode = statusCode;
+   res.setHeader('Content-Type', 'application/json; charset=utf-8');
+   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+@@ -34,6 +34,7 @@ function shallowTrim(obj) {
+ }
+ 
+ function createConflicts(ctx) {
++  const sendJson = ctx.sendJson || defaultSendJson;
+   const store = ctx.store;
+   const db = ctx.db;
+   const sessionFrom = ctx.sessionFrom;
+@@ -52,7 +53,7 @@ function createConflicts(ctx) {
+         let sql = 'SELECT id, collection, record_id, school_id, base_version, server_version, server_state, incoming, status, winner, resolved_by, resolved_at, reason, created_at, updated_at FROM sync_conflicts WHERE 1=1';
+         const params = [];
+         if (s.role === 'manager') {
+-          sql += ' AND (school_id IS NULL OR school_id = $1)';
++          sql += ' AND school_id = $1';
+           params.push(s.school_id);
+         }
+         sql += ' ORDER BY CASE WHEN status = \'open\' THEN 0 ELSE 1 END, created_at DESC LIMIT 50';
+@@ -61,13 +62,14 @@ function createConflicts(ctx) {
+           return sendJson(res, 200, { ok: true, conflicts: resPg.rows });
+         }
+       } catch (err) {
+-        console.error('[CONFLICTS] PG apiList query failed, falling back to cache:', err.message);
++        return sendJson(res, 503, { ok: false, code: 'pg_unavailable' });
+       }
+     }
+ 
++    if (pgLive) return sendJson(res, 503, { ok: false, code: 'pg_unavailable' });
+     if (!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
+     const scoped = s.role === 'manager'
+-      ? store.sync_conflicts.filter(c => c.school_id == null || Number(c.school_id) === Number(s.school_id))
++      ? store.sync_conflicts.filter(c => c.school_id != null && Number(c.school_id) === Number(s.school_id))
+       : store.sync_conflicts;
+     scoped.sort((a, b) =>
+       ((a.status === 'open') === (b.status === 'open') ? 0 : (a.status === 'open' ? -1 : 1))
+@@ -81,6 +83,15 @@ function createConflicts(ctx) {
+     if (s.role !== 'manager' && s.role !== 'superadmin')
+       return sendJson(res, 403, { ok: false, code: 'role_denied' });
+ 
++    if (!body || typeof body !== 'object' || Array.isArray(body)) return sendJson(res, 400, { ok: false, code: 'bad_payload' });
++    if (Object.keys(body).some(k => !['conflict_id','id','winner','reason'].includes(k))) return sendJson(res, 400, { ok: false, code: 'unknown_field' });
++    const suppliedId = body.conflict_id !== undefined ? body.conflict_id : body.id;
++    if (typeof suppliedId !== 'number' || !Number.isSafeInteger(suppliedId) || suppliedId < 1 ||
++        (body.id !== undefined && body.conflict_id !== undefined && body.id !== body.conflict_id) ||
++        !['incoming','server'].includes(body.winner) ||
++        (body.reason !== undefined && (typeof body.reason !== 'string' || body.reason.length > 200))) {
++      return sendJson(res, 400, { ok: false, code: 'bad_payload' });
++    }
+     const trimmed = shallowTrim(body);
+     const conflictId = trimmed.conflict_id || trimmed.id;
+     const winner = trimmed.winner; /* 'incoming' | 'server' */
+@@ -89,111 +100,99 @@ function createConflicts(ctx) {
+     if (winner !== 'incoming' && winner !== 'server')
+       return sendJson(res, 400, { ok: false, code: 'invalid_winner', message: 'winner باید incoming یا server باشد' });
+ 
+-    if (!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
+-    let c = store.sync_conflicts.find(x => String(x.id) === String(conflictId));
+-
++    // A-18: PostgreSQL is authoritative; never adjudicate a cached conflict.
+     const pgLive = !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
+-    if (!c && pgLive && typeof db.query === 'function') {
+-      try {
+-        const resPg = await db.query('SELECT * FROM sync_conflicts WHERE id = $1', [conflictId]);
+-        if (resPg && resPg.rows && resPg.rows.length > 0) {
+-          c = resPg.rows[0];
+-          if (!store.sync_conflicts.some(x => String(x.id) === String(c.id))) {
+-            store.sync_conflicts.push(c);
+-          }
+-        }
+-      } catch (e) {
+-        console.error('[CONFLICTS] PG lookup for resolve failed:', e.message);
+-      }
++    const { AUTHZ, fieldGate } = require('./sync');
++    const { validateSyncData } = require('./validate');
++    function reject(status, code) { const e = new Error(code); e.status = status; e.code = code; throw e; }
++    function prepare(c, target) {
++      if (!c) reject(404, 'not_found');
++      if (s.role === 'manager' && (c.school_id == null || Number(c.school_id) !== Number(s.school_id))) reject(403, 'out_of_scope');
++      if (c.status !== 'open') reject(409, 'already_resolved');
++      if (target && s.role === 'manager' && Number(target.school_id) !== Number(s.school_id)) reject(403, 'out_of_scope');
++      if (winner !== 'incoming') return null;
++      if (!target) reject(409, 'target_deleted'); // Never resurrect a deleted row.
++      const version = Number(target.version || 1);
++      if (!Number.isSafeInteger(version) || version < 1 || version >= Number.MAX_SAFE_INTEGER ||
++          !Number.isSafeInteger(Number(c.server_version)) || Number(c.server_version) !== version) reject(409, 'stale_conflict');
++      let data = c.incoming;
++      if (typeof data === 'string') { try { data = JSON.parse(data); } catch (_) { reject(400, 'invalid_conflict_payload'); } }
++      if (data && data.data) data = data.data;
++      if (!data || typeof data !== 'object' || Array.isArray(data)) reject(400, 'invalid_conflict_payload');
++      data = Object.assign({}, data);
++      if (data.id != null && Number(data.id) !== Number(target.id)) reject(400, 'record_identity_mismatch');
++      for (const key of ['id', 'version', 'base_version', 'created_at', 'updated_at']) delete data[key];
++      const coll = c.collection === 'students' ? 'users' : c.collection;
++      const op = { c: coll, t: 'upd', id: target.id, data };
++      const field = fieldGate(op, s, false);
++      if (field) reject(403, field.code);
++      if (validateSyncData(coll, op.data, 'upd')) reject(400, 'validation_failed');
++      return Object.assign({}, op.data, { version: version + 1, updated_at: new Date().toISOString() });
+     }
+-
+-    if (!c) return sendJson(res, 404, { ok: false, code: 'not_found' });
+-
+-    if (s.role === 'manager' && c.school_id != null && Number(c.school_id) !== Number(s.school_id))
+-      return sendJson(res, 403, { ok: false, code: 'out_of_scope' });
+-
+-    if (c.status === 'resolved')
+-      return sendJson(res, 409, { ok: false, code: 'already_resolved' });
+-
+-    const coll = c.collection;
+-    if (!Array.isArray(store[coll])) store[coll] = [];
+-    const targetId = Number(c.record_id);
+-    let target = store[coll].find(x => Number(x.id) === targetId);
+-
+-    if (winner === 'incoming') {
+-      let incData = c.incoming;
+-      if (typeof incData === 'string') {
+-        try { incData = JSON.parse(incData); } catch (e) { incData = {}; }
+-      }
+-      /* P0 fix (Phase-2 remediation, found live via R95 server15 C15): incoming
+-         is stored as the ENVELOPE { data, by, at, op_uid } — the adjudicator's
+-         payload lives under .data. Applying the envelope verbatim wrote junk
+-         fields (data/by/at) onto the record and never landed the client's
+-         values, so 'incoming wins' silently did nothing (score stayed 12.5).
+-         Unwrap the envelope first. */
+-      if (incData && typeof incData === 'object' && incData.data && typeof incData.data === 'object') incData = incData.data;
+-      if (!incData || typeof incData !== 'object') incData = {};
+-
+-      const nextVer = (Number(c.server_version) || 1) + 1;
+-      const patch = Object.assign({}, incData, { id: targetId, version: nextVer });
+-
+-      if (target) {
+-        Object.assign(target, patch);
++    async function work(client) {
++      const c = client
++        ? (await client.query('SELECT * FROM sync_conflicts WHERE id = $1 FOR UPDATE', [conflictId])).rows[0]
++        : (store.sync_conflicts || []).find(x => String(x.id) === String(conflictId));
++      if (!c) reject(404, 'not_found');
++      const coll = c.collection === 'students' ? 'users' : c.collection;
++      if (!Object.prototype.hasOwnProperty.call(AUTHZ, coll) || !/^[a-z_]+$/.test(coll)) reject(400, 'unknown_collection');
++      // Check scope before reading a foreign target, even for server-wins.
++      if (s.role === 'manager' && (c.school_id == null || Number(c.school_id) !== Number(s.school_id))) reject(403, 'out_of_scope');
++      const target = client
++        ? (await client.query('SELECT * FROM "' + coll + '" WHERE id = $1 FOR UPDATE', [c.record_id])).rows[0]
++        : (store[coll] || []).find(x => Number(x.id) === Number(c.record_id));
++      const patch = prepare(c, target);
++      const resolved = Object.assign({}, c, { status: 'resolved', winner, resolved_by: s.id,
++        resolved_at: new Date().toISOString(), updated_at: new Date().toISOString(), reason: trimmed.reason ? String(trimmed.reason).slice(0, 200) : null });
++      let applied = target || null;
++      if (client) {
++        if (patch) {
++          await db.persistOpWithClient(client, { c: coll, t: 'upd', id: target.id, base_version: Number(target.version || 1), data: patch });
++          applied = (await client.query('SELECT * FROM "' + coll + '" WHERE id = $1', [target.id])).rows[0];
++        }
++        const r = await client.query("UPDATE sync_conflicts SET status='resolved', winner=$2, resolved_by=$3, resolved_at=$4, updated_at=$4, reason=$5 WHERE id=$1 AND status='open'", [c.id, winner, s.id, resolved.resolved_at, resolved.reason]);
++        if (r.rowCount !== 1) reject(409, 'already_resolved');
+       } else {
+-        store[coll].push(patch);
+-        target = patch;
++        // No await between comparison and both mutations in memory mode.
++        if (patch) Object.assign(target, patch);
++        Object.assign(c, resolved);
+       }
+-
+-      if (pgLive && typeof db.persistOpsBatch === 'function') {
+-        try {
+-          await db.persistOpsBatch([{
+-            c: coll,
+-            t: target ? 'upd' : 'ins',
+-            id: targetId,
+-            data: patch
+-          }]);
+-        } catch (e) {
+-          console.error('[CONFLICTS] PG apply incoming failed:', e.message);
++      return { conflict: resolved, applied_data: applied, coll };
++    }
++    try {
++      if (pgLive && (typeof db.transaction !== 'function' || typeof db.persistOpWithClient !== 'function')) reject(503, 'pg_unavailable');
++      const result = pgLive ? await db.transaction(work) : await work(null);
++      // Publish cache only after the database transaction has committed.
++      if (pgLive) {
++        if (!Array.isArray(store.sync_conflicts)) store.sync_conflicts = [];
++        const old = store.sync_conflicts.find(x => String(x.id) === String(conflictId));
++        if (old) Object.assign(old, result.conflict); else store.sync_conflicts.push(result.conflict);
++        if (result.applied_data) {
++          const cached = (store[result.coll] || []).find(x => Number(x.id) === Number(result.applied_data.id));
++          if (cached) Object.assign(cached, result.applied_data);
+         }
+       }
+-    }
+-
+-    c.status = 'resolved';
+-    c.winner = winner;
+-    c.resolved_by = s.id;
+-    c.resolved_at = new Date().toISOString();
+-    c.updated_at = c.resolved_at;
+-    if (body.reason) c.reason = String(body.reason).slice(0, 200);
+-
+-    /* P1-06: Persist resolved conflict state to PostgreSQL SSoT */
+-    if (pgLive && db && typeof db.query === 'function') {
+-      try {
+-        await db.query(
+-          `UPDATE sync_conflicts
+-              SET status = $2, winner = $3, resolved_by = $4,
+-                  resolved_at = $5, updated_at = $6, reason = $7
+-            WHERE id = $1`,
+-          [c.id, 'resolved', winner, s.id, c.resolved_at, c.updated_at, c.reason || null]
+-        );
+-      } catch (pgErr) {
+-        console.error('[CONFLICTS] Failed to update sync_conflicts status in PG:', pgErr.message);
++      // Bounded dev/offline cache retention; PG retains authoritative audit rows.
++      if (!pgLive) {
++        const raw = Number(process.env.PAYESH_RESOLVED_CONFLICTS_MAX || 1000);
++        const cap = Number.isSafeInteger(raw) && raw > 0 ? raw : 1000;
++        const resolved = (store.sync_conflicts || []).filter(x => x.status === 'resolved')
++          .sort((a,b) => String(b.resolved_at || '').localeCompare(String(a.resolved_at || '')));
++        const removed = new Set(resolved.slice(cap));
++        if (removed.size) {
++          if (!Array.isArray(store.__deleted_records)) store.__deleted_records = [];
++          for (const c of removed) store.__deleted_records.push({ c: 'sync_conflicts', id: c.id, school_id: c.school_id, at: new Date().toISOString() });
++          store.sync_conflicts = store.sync_conflicts.filter(c => !removed.has(c));
++          store.__deleted_records = store.__deleted_records.slice(-5000);
++        }
+       }
++      ctx.markDirty();
++      audit('sync_conflict_resolved', { user_id: s.id, conflict_id: result.conflict.id, collection: result.coll, winner, school_id: result.conflict.school_id });
++      return sendJson(res, 200, { ok: true, conflict: result.conflict, applied_data: result.applied_data });
++    } catch (e) {
++      const status = [400,403,404,409].includes(e.status) ? e.status : 503;
++      return sendJson(res, status, { ok: false, code: status === 503 ? 'pg_unavailable' : e.code });
+     }
+-
+-    ctx.markDirty();
+-    audit('sync_conflict_resolved', {
+-      user_id: s.id,
+-      conflict_id: c.id,
+-      collection: coll,
+-      winner: winner,
+-      school_id: c.school_id
+-    });
+-
+-    return sendJson(res, 200, {
+-      ok: true,
+-      conflict: c,
+-      applied_data: winner === 'incoming' ? target : (c.server_state || target)
+-    });
+   }
+ 
+   return { apiList, apiResolve };
+diff --git a/server/db.js b/server/db.js
+index 4252971f..ca3aa6c1 100644
+--- a/server/db.js
++++ b/server/db.js
+@@ -703,6 +703,17 @@ async function persistOpWithClient(client, op) {
+       .map(f => `${ident(f)} = EXCLUDED.${ident(f)}`)
+       .join(', ');
+ 
++    if (op.insertOnly) {
++      // An offline INSERT is creation, never an unversioned upsert.
++      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', ['sync-row:' + col + ':' + data.id]);
++      const existing = await client.query(`SELECT 1 FROM ${table} WHERE id=$1`, [data.id]);
++      const reject = () => { const e = new Error('sync insert identity already exists'); e.code = 'record_exists'; e.status = 409; throw e; };
++      if (existing.rows.length) reject();
++      const inserted = await client.query(`INSERT INTO ${table} (${cols}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`, values);
++      if (inserted.rowCount !== 1) reject();
++      return;
++    }
++
+     /* Wave 10 (پارتیشن‌بندی): جدولِ پارتیشن‌شده PK (id, created_at) دارد —
+        ON CONFLICT (id) دیگر به هیچ uniqueای نمی‌خورد و فرمِ (id, created_at)
+        هم idempotency را می‌شکند (id تکراری با created_at متفاوت ⇒ سطرِ
+@@ -881,6 +892,25 @@ async function persistOpsBatch(ops) {
+   });
+ }
+ 
++/** Sync-only transaction: claim all UIDs before any mutation or derived effect.
++ * Sorted advisory locks serialize independent processes without deadlocks from
++ * reversed batch UID order. Claim and data commit/rollback together.
++ */
++async function persistSyncBatch(ops) {
++  if (!isPostgres()) return persistOpsBatch(ops);
++  const uids = [...new Set((ops || []).filter(op => op && op.uid).map(op => String(op.uid)))].sort();
++  return transaction(async client => {
++    for (const uid of uids) {
++      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [uid]);
++      const exists = await client.query('SELECT 1 FROM server_processed_uids WHERE uid=$1', [uid]);
++      if (exists.rows.length) { const e = new Error('concurrent duplicate sync; retry will deduplicate'); e.code = 'duplicate_sync'; throw e; }
++    }
++    const result = await persistOpsBatchWithClient(client, (ops || []).map(op => op && op.uid && op.t === 'ins' ? { ...op, insertOnly: true } : op));
++    for (const uid of uids) await client.query('INSERT INTO server_processed_uids(uid,processed_at) VALUES($1,NOW()) ON CONFLICT(uid) DO NOTHING', [uid]);
++    return result;
++  });
++}
++
+ /**
+  * Check if a UID has been processed (PostgreSQL or memory store)
+  */
+@@ -1048,6 +1078,7 @@ module.exports = {
+   persistOpWithClient,
+   persistOpsBatchWithClient,
+   persistOpsBatch,
++  persistSyncBatch,
+   __setPoolForTests,
+   /* Wave 10 (chg_id): کنارگذاریِ ستون‌های داخلی برای خواننده‌های بیرونی (pull/delta) */
+   stripInternalColumns,
+diff --git a/server/occ.js b/server/occ.js
+index a4b66deb..5286ebf8 100644
+--- a/server/occ.js
++++ b/server/occ.js
+@@ -32,6 +32,9 @@ function checkOcc(rec, body, entityLabel, isVersioned = false) {
+     };
+   }
+   if (base === undefined || base === null || base === '') return null; /* کلاینت کهنه غیر نسخه دار */
++  if (typeof base !== 'number' || !Number.isSafeInteger(base) || base < 1) {
++    return { status: 400, body: { ok: false, code: 'bad_base_version' } };
++  }
+   const serverVersion = Number(rec.version) || 1;
+   if (Number(base) !== serverVersion) {
+     return {
+diff --git a/server/routes/attendance.js b/server/routes/attendance.js
+index d017585d..17093ca9 100644
+--- a/server/routes/attendance.js
++++ b/server/routes/attendance.js
+@@ -165,7 +165,7 @@ const schoolId = user.role === 'superadmin' && body.school_id ? Number(body.scho
+     }
+ 
+     /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ (پیش‌تر نسخه بی‌بررسی بالا می‌رفت) */
+-    const conflict = checkOcc(rec, body, 'رکورد حضور و غیاب');
++    const conflict = checkOcc(rec, body, 'رکورد حضور و غیاب', true);
+     if (conflict) {
+       /* B4: rejected concurrent write ⇒ recorded in sync_conflicts (SSoT) */
+       await recordRejectedConflict({ store, db, ids }, { collection: 'attendance', rec: rec, user, base: body && (body.base_version !== undefined ? body.base_version : body.version), body });
+diff --git a/server/routes/classes.js b/server/routes/classes.js
+index afdb5274..b80271e8 100644
+--- a/server/routes/classes.js
++++ b/server/routes/classes.js
+@@ -208,7 +208,7 @@ function createClassRoutes(ctx) {
+     }
+ 
+     /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
+-    const conflict = checkOcc(cls, body, 'کلاس');
++    const conflict = checkOcc(cls, body, 'کلاس', true);
+     if (conflict) {
+       /* B4: rejected concurrent write ⇒ recorded in sync_conflicts (SSoT) */
+       await recordRejectedConflict({ store, db, ids }, { collection: 'classes', rec: cls, user, base: body && (body.base_version !== undefined ? body.base_version : body.version), body });
+diff --git a/server/routes/students.js b/server/routes/students.js
+index 78442db2..63b6f163 100644
+--- a/server/routes/students.js
++++ b/server/routes/students.js
+@@ -201,7 +201,7 @@ function createStudentRoutes(ctx) {
+     }
+ 
+     /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
+-    const conflict = checkOcc(student, body, 'دانش‌آموز');
++    const conflict = checkOcc(student, body, 'دانش‌آموز', true);
+     if (conflict) {
+       /* B4: rejected concurrent write ⇒ recorded in sync_conflicts (SSoT) */
+       await recordRejectedConflict({ store, db, ids }, { collection: 'students', rec: student, user, base: body && (body.base_version !== undefined ? body.base_version : body.version), body });
+diff --git a/server/routes/users.js b/server/routes/users.js
+index b623c37a..ca316f5f 100644
+--- a/server/routes/users.js
++++ b/server/routes/users.js
+@@ -176,7 +176,7 @@ function createUserRoutes(ctx) {
+     }
+ 
+     /* P0-18: OCC — نسخهٔ پایهٔ نادرست ⇒ ۴۰۹ */
+-    const conflict = checkOcc(target, body, 'کاربر');
++    const conflict = checkOcc(target, body, 'کاربر', true);
+     if (conflict) {
+       /* B4: rejected concurrent write ⇒ recorded in sync_conflicts (SSoT) */
+       await recordRejectedConflict({ store, db, ids }, { collection: 'users', rec: target, user, base: body && (body.base_version !== undefined ? body.base_version : body.version), body });
+diff --git a/server/sync.js b/server/sync.js
+index 68702dd4..9bdc4957 100644
+--- a/server/sync.js
++++ b/server/sync.js
+@@ -871,7 +871,7 @@ function createSync(ctx){
+       }
+       /* P1-05: mandatory base_version on VERSIONED resource updates when in strict mode or production */
+       const strictBaseVersion = process.env.PAYESH_STRICT_BASE_VERSION === '1' || process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production';
+-      if((op.t === 'upd' || op.t === 'del') && VERSIONED[op.c] && op.base_version == null && strictBaseVersion){
++      if((op.t === 'upd' || op.t === 'del') && VERSION_TRACKED[op.c] && op.base_version == null && strictBaseVersion){
+         audit('sync_validation_failed', { user_id: s.id, uid: op.uid, collection: op.c, field: 'base_version', reason: 'missing_base_version' });
+         results.push({ uid: op.uid, ok: false, code: 'missing_base_version', field: 'base_version', message: 'مقدارِ «base_version» برای مجموعه‌های نسخه‌دار الزامی است' });
+         continue;
+@@ -1054,12 +1054,11 @@ function createSync(ctx){
+         /* Wave 1: hydrate cross-instance misses from PG before the upsert check. */
+         const ex = await findForApply(op.c, data.id, undo);
+         if(ex){
+-          const uRec = undo ? undo.items.push({ k: 'rec', c: op.c, id: ex.id,
+-            before: JSON.parse(JSON.stringify(ex)) }) - 1 : -1;   /* باگ ۲: before + after */
+-          Object.assign(ex, data); Object.assign(ex, prot);
+-          if(undo) undo.items[uRec].after = JSON.parse(JSON.stringify(ex));
++          await rollbackUndo();
++          for (const r of results) if (r) r.ok = false;
++          return sendJson(res, 409, { ok: false, code: 'record_exists', results });
+         }
+-        else { Object.assign(data, prot); mirrorAppend(op.c, data); }
++        Object.assign(data, prot); mirrorAppend(op.c, data);
+         data.updated_at = new Date().toISOString();   /* تکمیلِ رکورد پیش از ثبتِ after */
+         /* باگ ۱ (بازبین، دور ۲): uPush فقط برای درجِ خودِ این op — var تابع‌محدوده
+            بود و مقدارش از دورِ قبل می‌ماند؛ op برخوردیِ بعدی (مسیرِ ex) با رکوردِ
+@@ -1082,11 +1081,12 @@ function createSync(ctx){
+           if(op.c === 'users' && clean.role && rec.role !== clean.role){
+             audit('role_change', { user_id: s.id, role: s.role, school_id: s.school_id, target_user_id: rec.id, old_role: rec.role, new_role: clean.role, summary: 'تغییر نقش کاربر ' + rec.id + ' به ' + clean.role });
+           }
++          delete clean.version;
+           Object.assign(rec, clean, { id: rec.id, updated_at: new Date().toISOString() });
+           Object.assign(rec, prot); /* مقادیرِ اعتبارسنجی‌شده — صریح، نه inject */
+           if(VERSION_TRACKED[op.c]) rec.version = (rec.version || 1) + 1; /* R95 */
+           if(undo) undo.items[uRec].after = JSON.parse(JSON.stringify(rec));   /* باگ ۲ */
+-          mirror.push({ uid: op.uid, c: op.c, t: 'upd', data: rec });   /* P1-14 */
++          mirror.push({ uid: op.uid, c: op.c, t: 'upd', id: rec.id, base_version: op.base_version, data: Object.assign({}, rec) });   /* P1-14 */
+         }
+       }else if(op.t === 'del'){
+         const delId = Number(op.id != null ? op.id : (op.data && op.data.id));
+@@ -1106,7 +1106,7 @@ function createSync(ctx){
+            مجموعه‌ها اشتباه می‌گرفت (grades:42 vs announcements:42). */
+         if(undo) undo.items.push({ k: 'popDelRec', idx: store.__deleted_records.length - 1, id: delId, c: op.c, at: tomb.at, ref: tomb });
+         audit('record_deleted', { user_id: s.id, role: s.role, school_id: s.school_id, collection: op.c, record_id: delId, summary: 'حذف رکورد ' + delId + ' از ' + op.c });
+-        mirror.push({ uid: op.uid, c: op.c, t: 'del', id: delId });   /* P1-14 */
++        mirror.push({ uid: op.uid, c: op.c, t: 'del', id: delId, base_version: op.base_version });   /* P1-14 */
+       }
+       store.__server_version = (store.__server_version || 0) + 1;
+       if(undo) undo.bumps++;   /* باگ ۲: فقط افزایش‌های خودِ این درخواست */
+@@ -1208,9 +1208,14 @@ function createSync(ctx){
+     let mirrorFailed = false;
+     if(batchAll.length && db && typeof db.persistOpsBatch === 'function'){
+       try{
+-        await db.persistOpsBatch(batchAll);
++        await (typeof db.persistSyncBatch === 'function' ? db.persistSyncBatch(batchAll) : db.persistOpsBatch(batchAll));
+       }catch(mirrorErr){
+         const why = String((mirrorErr && mirrorErr.message) || mirrorErr);
++        if (mirrorErr && mirrorErr.code === 'record_exists') {
++          await rollbackUndo();
++          for (const r of results) if (r) r.ok = false;
++          return sendJson(res, 409, { ok: false, code: 'record_exists', results });
++        }
+ 
+         /* Final OCC gate: the earlier read/compare is advisory only. PostgreSQL's
+            conditional UPDATE/DELETE is the authoritative compare-and-write. A
+@@ -1369,6 +1374,18 @@ function createSync(ctx){
+     sendJson(res, 200, mirrorFailed ? { ok: true, results, mirror_failed: true } : { ok: true, results });
+   }
+ 
+-  return { apiSync, canWrite, inScope };
++  // Do not acknowledge an in-flight UID as durable. Requests sharing a UID
++  // wait for the earlier commit/rollback; unrelated requests remain concurrent.
++  const pending = new Map();
++  async function syncAfterPending(req, res, body) {
++    const list = body && Array.isArray(body.ops) && body.ops.length <= (MAX_BATCH || 500) ? body.ops : [];
++    const keys = [...new Set(list.filter(op => op && typeof op.uid === 'string' && op.uid.length <= 128).map(op => op.uid))];
++    const previous = keys.map(key => pending.get(key)).filter(Boolean);
++    let release; const gate = new Promise(resolve => { release = resolve; });
++    for (const key of keys) pending.set(key, gate);
++    try { await Promise.all(previous); return await apiSync(req, res, body); }
++    finally { for (const key of keys) if (pending.get(key) === gate) pending.delete(key); release(); }
++  }
++  return { apiSync: syncAfterPending, canWrite, inScope };
+ }
+ module.exports = { createSync, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, virtualDayOfflineBasis, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED };

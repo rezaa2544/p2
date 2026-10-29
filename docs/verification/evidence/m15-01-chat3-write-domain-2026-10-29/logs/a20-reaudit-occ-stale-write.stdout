@@ -1,0 +1,37 @@
+▸ RE-AUDIT A-20 — stale-write واقعی OCC
+  ✅ سرورِ عادی بالا آمد
+  ✅ نشست سوپرادمین
+  ✅ [students/عادی] پایهٔ درست ⇒ ۲۰۰ و نسخه 2
+  ✅ [students/عادی] پایهٔ کهنه ⇒ ۴۰۹ conflict
+  ✅ [students/عادی] نویسندهٔ A ویرایش می‌کند (پایهٔ تازه)
+  ✅ [students/عادی] B بدونِ base_version ⇒ ۲۰۰ (ناامن)
+  ✅ [students/عادی] stale-write واقعی: ویرایشِ A از بین رفت
+  ✅ [users/عادی] پایهٔ درست ⇒ ۲۰۰ و نسخه 2
+  ✅ [users/عادی] پایهٔ کهنه ⇒ ۴۰۹ conflict
+  ✅ [users/عادی] نویسندهٔ A ویرایش می‌کند (پایهٔ تازه)
+  ✅ [users/عادی] B بدونِ base_version ⇒ ۲۰۰ (ناامن)
+  ✅ [users/عادی] stale-write واقعی: ویرایشِ A از بین رفت
+  ✅ [classes/عادی] پایهٔ درست ⇒ ۲۰۰ و نسخه 2
+  ✅ [classes/عادی] پایهٔ کهنه ⇒ ۴۰۹ conflict
+  ✅ [classes/عادی] نویسندهٔ A ویرایش می‌کند (پایهٔ تازه)
+  ✅ [classes/عادی] B بدونِ base_version ⇒ ۲۰۰ (ناامن)
+  ✅ [classes/عادی] stale-write واقعی: ویرایشِ A از بین رفت
+  ✅ [attendance/عادی] پایهٔ درست ⇒ ۲۰۰ و نسخه 2
+  ✅ [attendance/عادی] پایهٔ کهنه ⇒ ۴۰۹ conflict
+  ✅ [attendance/عادی] نویسندهٔ A ویرایش می‌کند (پایهٔ تازه)
+  ✅ [attendance/عادی] B بدونِ base_version ⇒ ۲۰۰ (ناامن)
+  ✅ [attendance/عادی] stale-write واقعی: ویرایشِ A از بین رفت
+  ✅ [grades/عادی] پایهٔ درست ⇒ ۲۰۰ و نسخه 2
+  ✅ [grades/عادی] پایهٔ کهنه ⇒ ۴۰۹ conflict
+  ✅ [grades/عادی] نویسندهٔ A ویرایش می‌کند (پایهٔ تازه)
+  ✅ [grades/عادی] B بدونِ base_version ⇒ ۲۰۰ (ناامن)
+  ✅ [grades/عادی] stale-write واقعی: ویرایشِ A از بین رفت
+  ✅ سرورِ strict بالا آمد
+  ✅ نشست سوپرادمین (strict)
+  ✅ [students/STRICT] بدونِ base_version ⇒ ۴۰۰ missing_base_version
+  ✅ [users/STRICT] بدونِ base_version ⇒ ۴۰۰ missing_base_version
+  ✅ [classes/STRICT] بدونِ base_version ⇒ ۴۰۰ missing_base_version
+  ✅ [attendance/STRICT] بدونِ base_version ⇒ ۴۰۰ missing_base_version
+  ✅ [grades/STRICT] بدونِ base_version ⇒ ۴۰۰ missing_base_version
+
+reaudit-occ-stale-write (A-20): 34/34 موفق

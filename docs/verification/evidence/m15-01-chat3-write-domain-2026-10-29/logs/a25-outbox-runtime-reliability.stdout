@@ -1,0 +1,11 @@
+
+════ Runtime Reliability: Outbox / Worker / Redis ════
+  ✅ Pass 1: normal processing
+  ✅ Pass 2: crash window is represented as processing + lease timestamp
+  ✅ Pass 3: stale processing is recovered after restart-equivalent tick
+  ✅ Pass 4: no-handler event remains visible as pending
+  ✅ Pass 5: concurrent workers process 20 events with zero overlap
+  ✅ DLQ regression: terminal dead_letter survives repeated ticks
+  ✅ Redis regression: production set operations cannot silently fall back to RAM
+
+Runtime Reliability: 7 independent passes + DLQ/Redis regressions PASS

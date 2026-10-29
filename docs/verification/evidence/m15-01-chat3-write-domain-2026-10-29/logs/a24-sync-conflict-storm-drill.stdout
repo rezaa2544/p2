@@ -1,0 +1,37 @@
+
+sync-conflict-storm-drill — دور ۱۲: طوفانِ تعارض/شکستِ جزئی/طوفانِ retry/طوفانِ ساعت (server/sync.js واقعی)
+
+▸ S7 — طوفانِ تعارض: ۵۰ آپدیتِ هم‌زمان روی grades#900 با base_version کهنه
+  ✅ S7a هر ۵۰ آپدیتِ نسخه‌کهنه conflict-preserve شد (سرورِ مرجع — داوری، نه LWW)
+  ✅ S7b رکوردِ مرجع کاملاً دست‌نخورده (score=17, version=4)
+  ✅ S7c ‏۵۰ conflict در صفِ داوری ثبت شد
+  ✅ S7d integrity: صفر side-effect دیگر (ann/uids ثابت — تا رفعِ داوری هیچ uid ی مصرف نشد)
+▸ S8 — شکستِ جزئی: batch ۱۰تایی + کرشِ DB حینِ نوشتن ⇒ rollback اتمیک ⇒ retry کامل
+  ✅ S8a شکستِ mirror ⇒ ‏503 با کدِ پایدارِ sync_mirror_failed
+  ✅ S8b قراردادِ all-or-nothing: ‏rollback با undo-log — صفر رکورد از ۱۰ ماند
+  ✅ S8c هیچ uid ی mark نشد (شکست ⇒ replay کامل مجاز)
+  ✅ S8d ‏auditِ sync_mirror_failed ثبت شد (رصدپذیری)
+  ✅ S8e ‏retry: هر ۱۰ به مرجع (PG) رسید و همه ok — آینه طبق P1-2 عمداً هرس شد
+  ✅ S8f integrity: دقیقاً ۱۰ در مرجع — نه duplicate، نه گم‌شده
+▸ S9 — طوفانِ retry: ‏۱۰۰ mutation × ۳ ارسال (۳۰۰ درخواستِ شافل‌شده) ⇒ اثرِ ۱۰۰
+  ✅ S9a اثرِ نهایی دقیقاً ۱۰۰ (نه ۳۰۰)
+  ✅ S9b ‏dedupe hit = ۲۰۰ از ۳۰۰
+  ✅ S9c هر ۳۰۰ پاسخ برای کلاینت ok بود (retry شفاف — صف گیر نمی‌کند)
+  ✅ S9d integrity: صفر duplicate در عنوان‌ها + ‏uids=۱۰۰
+▸ S10 — طوفانِ ساعت: ‏۲۰ کلاینت با skew از ‎-۶۰ تا +۶۰ دقیقه (حدِ drift = ‏۱۰min)
+  ✅ S10a هر ۲۰ اعمال شد (قراردادِ fail-open با ثبت — ساعتِ کلاینت داور نیست)
+  ✅ S10b ‏audit دقیقاً برای skewهای بیرونِ حد (16 از ۲۰)
+  ✅ S10c ترتیبِ علّی از version است نه timestamp: کهنه+نسخه‌درست نشست (score=18) و تازه+نسخه‌کهنه conflict شد
+  ✅ S10d integrity: صفر duplicate/خرابی
+▸ محدودیت‌ها (سبزِ جعلی ممنوع):
+  🚫 NOT-RUN: طوفان روی PG/Redis زنده با پروسه‌های OS مجزا — این drill درهم‌تنیدگیِ event-loop تک‌پروسه است — هم‌زمانیِ بین‌پروسه‌ایِ واقعی نیازمند استیجینگ (بستهٔ P0-5)
+  🚫 NOT-RUN: latency/throughput زیرِ بار (p50/p95/p99) — مالکیتِ Capacity = چت ۴ — این‌جا فقط صحتِ زیر طوفان
+  🚫 NOT-RUN: conflict storm چند-tenant هم‌زمان — سناریوی داوریِ بین‌مدرسه‌ای نیازمند قراردادِ counselor/tenancy باز (صف ناظر)
+
+▸ جدولِ metrics:
+  {"scn":"S7","storm_size":50,"detect_ms":11,"conflicts":50,"applied":0,"integrity":true}
+  {"scn":"S8","batch":10,"fail_ms":2,"retry_ms":1,"rolled_back":10,"final_applied":10,"integrity":true}
+  {"scn":"S9","mutations":100,"sends":300,"dedupe_hits":200,"drain_ms":23,"integrity":true}
+  {"scn":"S10","clients":20,"skew_min":[-60,60],"out_of_bound":16,"audits":16,"conflicts":1,"integrity":true}
+
+sync-conflict-storm-drill: 18 موفق، 0 ناموفق (+ 3 NOT-RUN ثبت‌شده) — 0.0s
