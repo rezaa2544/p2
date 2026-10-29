@@ -67,6 +67,21 @@ function group(title) {
 }
 
 (async () => {
+  /* ── لنگرِ زمانیِ نسبی (M15-01, 2026-10-28) ─────────────────────────
+     چرا: این فایل تاریخ‌هایِ ثابتِ ۲۰۲۶-۱۰-۲۱ داشت و سرور برایِ دلتاهایی که
+     `since`شان از PAYESH_DELTA_MAX_AGE_DAYS (پیش‌فرض ۷ روز) قدیمی‌تر باشد،
+     **به‌درستی** اسنپ‌شاتِ کامل می‌دهد (`full_snapshot_reason: since_too_old`).
+     یعنی تست یک «بمبِ ساعتی» بود: تا ۲۰۲۶-۱۰-۲۸T09:30Z سبز و بعد از آن قرمز،
+     بدونِ آنکه هیچ کدی عوض شود. ثابت شد: با since=2026-10-21T09:30Z در
+     2026-10-29 مقدارِ full_snapshot=true و هر دو نمره برگشت.
+
+     رفع: لنگرِ زمانی نسبت به «الان» ساخته می‌شود، پس مسیرِ دلتا همیشه آزموده
+     می‌شود. هیچ assertion‌ای حذف یا شل نشد؛ در عوض رفتارِ since_too_old هم
+     صریحاً پوشش داده شد (تست ۶ب) تا این مسیر از پوشش بیرون نمانَد. */
+  const HOUR = 60 * 60 * 1000;
+  const NOW = Date.now();
+  const at = (hoursAgo) => new Date(NOW - hoursAgo * HOUR).toISOString();
+
   // پایگاه داده آزمایشی سرور
   const mockStore = {
     schools: [
@@ -97,11 +112,11 @@ function group(title) {
       { id: 2, school_id: 1, class_id: 2, student_id: 31 }
     ],
     grades: [
-      { id: 101, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 20, version: 1, updated_at: '2026-10-21T10:00:00.000Z' },
-      { id: 102, school_id: 1, class_id: 2, student_id: 31, subject_id: 2, teacher_id: 99, score: 18, version: 1, updated_at: '2026-10-21T09:00:00.000Z' }
+      { id: 101, school_id: 1, class_id: 1, student_id: 30, subject_id: 1, teacher_id: 20, score: 20, version: 1, updated_at: at(3) },
+      { id: 102, school_id: 1, class_id: 2, student_id: 31, subject_id: 2, teacher_id: 99, score: 18, version: 1, updated_at: at(5) }
     ],
     attendance: [
-      { id: 201, school_id: 1, class_id: 1, student_id: 30, date: '2026-10-21', status: 'present', version: 1, updated_at: '2026-10-21T10:00:00.000Z' }
+      { id: 201, school_id: 1, class_id: 1, student_id: 30, date: '2026-10-21', status: 'present', version: 1, updated_at: at(3) }
     ],
     notifications: [
       { id: 1, user_id: 10, school_id: 1, title: 'اعلان مدیر' },
@@ -169,7 +184,10 @@ function group(title) {
 
   await test('۶. دلتای تغییرات با پارامتر since فیلتر می‌شود', async () => {
     currentSession = { id: 10, school_id: 1, role: 'manager' };
-    const since = '2026-10-21T09:30:00.000Z';
+    /* since بینِ ۵ و ۳ ساعتِ پیش است: نمرهٔ ۱۰۱ (۳ ساعت پیش) باید بیاید و
+       نمرهٔ ۱۰۲ (۵ ساعت پیش) نباید — و چون since تازه است، سرور آن را
+       اسنپ‌شاتِ کامل نمی‌کند. */
+    const since = at(4);
     const res = await pullController.apiPull({ url: `/api/v1/pull?since=${encodeURIComponent(since)}` }, {});
     assert(res.body.full_snapshot === false, 'درخواست دلتا نباید اسنپ‌شات کامل باشد');
     const cols = res.body.collections;
@@ -182,13 +200,27 @@ function group(title) {
       c: 'grades',
       id: 999,
       school_id: 1,
-      at: '2026-10-21T11:00:00.000Z'
+      at: at(1)
     });
     currentSession = { id: 10, school_id: 1, role: 'manager' };
-    const since = '2026-10-21T10:30:00.000Z';
+    const since = at(2);
     const res = await pullController.apiPull({ url: `/api/v1/pull?since=${encodeURIComponent(since)}` }, {});
     assert(Array.isArray(res.body.deleted) && res.body.deleted.length === 1, 'رکورد حذف‌شده بازگردانده نشد');
     assert(res.body.deleted[0].c === 'grades' && res.body.deleted[0].id === 999, 'شناسه یا کالکشن رکورد حذفی نادرست است');
+  });
+
+  /* ۶ب — رفتارِ عمدیِ سرور که همین تست را قبلاً قرمز کرد، اکنون صریح آزموده
+     می‌شود: sinceِ قدیمی‌تر از پنجرهٔ مجاز ⇒ اسنپ‌شاتِ کامل با دلیلِ
+     since_too_old و نسخهٔ سرور، نه دلتا. این پوششِ تازه است، نه جایگزینِ
+     تستی که حذف شده باشد. */
+  await test('۶ب. since قدیمی‌تر از پنجرهٔ مجاز ⇒ اسنپ‌شات کامل با دلیلِ since_too_old', async () => {
+    currentSession = { id: 10, school_id: 1, role: 'manager' };
+    const days = Number(process.env.PAYESH_DELTA_MAX_AGE_DAYS) || 7;
+    const tooOld = new Date(Date.now() - (days + 1) * 24 * HOUR).toISOString();
+    const res = await pullController.apiPull({ url: `/api/v1/pull?since=${encodeURIComponent(tooOld)}` }, {});
+    assert(res.body.full_snapshot === true, 'sinceِ بیرون از پنجره باید اسنپ‌شات کامل بدهد');
+    assert(res.body.full_snapshot_reason === 'since_too_old', 'دلیلِ اسنپ‌شات کامل باید since_too_old باشد');
+    assert(res.body.collections.grades.length === 2, 'اسنپ‌شاتِ کامل باید همهٔ نمره‌ها را بدهد');
   });
 
   group('۲. تست‌های سمت کلاینت (29-pull.js)');

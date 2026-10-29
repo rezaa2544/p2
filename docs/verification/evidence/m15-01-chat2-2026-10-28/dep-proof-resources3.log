@@ -1,0 +1,36 @@
+npm error code ERESOLVE
+npm error ERESOLVE could not resolve
+npm error
+npm error While resolving: @rezaa2544/payesh@1.0.0
+npm error Found: @opentelemetry/resources@2.12.0
+npm error node_modules/@opentelemetry/resources
+npm error   @opentelemetry/resources@"^3.0.0" from the root project
+npm error   @opentelemetry/resources@"2.12.0" from @opentelemetry/otlp-transformer@0.223.0
+npm error   node_modules/@opentelemetry/otlp-transformer
+npm error     @opentelemetry/otlp-transformer@"0.223.0" from @opentelemetry/exporter-trace-otlp-http@0.223.0
+npm error     node_modules/@opentelemetry/exporter-trace-otlp-http
+npm error       @opentelemetry/exporter-trace-otlp-http@"^0.223.0" from the root project
+npm error     @opentelemetry/otlp-transformer@"0.223.0" from @opentelemetry/otlp-exporter-base@0.223.0
+npm error     node_modules/@opentelemetry/otlp-exporter-base
+npm error       @opentelemetry/otlp-exporter-base@"0.223.0" from @opentelemetry/exporter-trace-otlp-http@0.223.0
+npm error       node_modules/@opentelemetry/exporter-trace-otlp-http
+npm error         @opentelemetry/exporter-trace-otlp-http@"^0.223.0" from the root project
+npm error   4 more (@opentelemetry/sdk-logs, @opentelemetry/sdk-metrics, ...)
+npm error
+npm error Could not resolve dependency:
+npm error @opentelemetry/resources@"^3.0.0" from the root project
+npm error
+npm error Conflicting peer dependency: @opentelemetry/api@1.10.0
+npm error node_modules/@opentelemetry/api
+npm error   peer @opentelemetry/api@">=1.10.0 <1.11.0" from @opentelemetry/resources@3.0.0
+npm error   node_modules/@opentelemetry/resources
+npm error     @opentelemetry/resources@"^3.0.0" from the root project
+npm error
+npm error Fix the upstream dependency conflict, or retry
+npm error this command with --force or --legacy-peer-deps
+npm error to accept an incorrect (and potentially broken) dependency resolution.
+npm error
+npm error
+npm error For a full report see:
+npm error /home/user/.npm/_logs/2026-10-28T21_59_15_212Z-eresolve-report.txt
+npm error A complete log of this run can be found in: /home/user/.npm/_logs/2026-10-28T21_59_15_212Z-debug-0.log
