@@ -1,0 +1,18 @@
+r5-prod-redis-boot-gate — Phase 8.1 / R5 production Redis boot-gate contract matrix
+
+  ✅ 1a NODE_ENV=production without REDIS_URL ⇒ non-zero exit
+  ✅ 1b death is at the Redis gate ([FATAL] Cache readiness failed)
+  ✅ 1c never listened (no fake startup)
+  ✅ 2a PAYESH_ENV=production without REDIS_URL ⇒ non-zero exit (Gap B closed)
+  ✅ 2b never listened (no permanent-503 zombie)
+  ✅ 3a DATABASE_URL-only (shadow production) without REDIS_URL ⇒ non-zero exit (Gap A closed)
+  ✅ 3b never listened
+  ✅ 4a PAYESH_ENV=production + explicit dev opt-in flag ⇒ boots (server17 T2 harness contract)
+  ✅ 5a ALLOW_MEMORY_FALLBACK=1 is IGNORED under NODE_ENV=production ⇒ non-zero exit
+  ✅ 5b never listened
+  ✅ 6a configured-but-unreachable Redis at production boot ⇒ non-zero exit (Wave-15 boot contract)
+  ❌ 6b [FATAL] Cache readiness failed recorded  —    cursor : enabled — key=env_jwt (signed cursors survive restarts, ttl=3600s)
+[ENV] production-flag mismatch: NODE_ENV=production but PAYESH_ENV=<not production> — the Redis gate follows NODE_ENV while the TLS gate follows PAYESH_ENV; set BOTH to production in real deployments (see docs/DEPLOY.md §3
+  ✅ 7a development boot without any URLs still boots (zero-disruption preserved)
+
+r5-prod-redis-boot-gate: 12/13  FAILED: 6b [FATAL] Cache readiness failed recorded

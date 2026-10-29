@@ -1,0 +1,8 @@
+N-22 harness crashed: Error: Error: spawn psql ENOENT
+    at /home/user/p2/tests/n22-hydrate-cap.test.js:49:45
+    at exithandler (node:child_process:424:5)
+    at ChildProcess.errorhandler (node:child_process:436:5)
+    at ChildProcess.emit (node:events:519:28)
+    at ChildProcess._handle.onexit (node:internal/child_process:291:12)
+    at onErrorNT (node:internal/child_process:483:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)

@@ -1,0 +1,11 @@
+🔍 N-17/N-18 regression: durable tombstones + SMS wallet CAS
+FATAL Error: connect ECONNREFUSED 127.0.0.1:5432
+    at /home/user/p2/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /home/user/p2/tests/n17-n18-tombstones-sms-wallet.test.js:43:3 {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 5432
+}

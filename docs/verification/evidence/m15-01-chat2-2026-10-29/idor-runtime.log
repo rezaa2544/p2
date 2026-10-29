@@ -1,0 +1,17 @@
+  cursor : enabled — key=env_jwt (signed cursors survive restarts, ttl=3600s)
+[DB] PostgreSQL connection failed. Falling back to JSON in-memory store: connect ECONNREFUSED 127.0.0.1:5432
+[CANARY] PostgreSQL hydration FAILED — serving traffic with persisted-weight UNKNOWN; rerouting decisions may diverge from cluster_weights: AUTHORITY_UNAVAILABLE: PostgreSQL authority not connected
+/home/user/p2/server/infrastructure/phase6-canary-engine.js:237
+      const err = new Error('AUTHORITY_UNAVAILABLE: PostgreSQL authority not connected');
+                  ^
+
+Error: AUTHORITY_UNAVAILABLE: PostgreSQL authority not connected
+    at Phase6CanaryEngine.refreshCacheFromPg (/home/user/p2/server/infrastructure/phase6-canary-engine.js:237:19)
+    at Phase6CanaryEngine.initDb (/home/user/p2/server/infrastructure/phase6-canary-engine.js:186:16)
+    at /home/user/p2/server/index.js:943:38
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {
+  code: 'AUTHORITY_UNAVAILABLE',
+  status: 503
+}
+
+Node.js v22.22.3

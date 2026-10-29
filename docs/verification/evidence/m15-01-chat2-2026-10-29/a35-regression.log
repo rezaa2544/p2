@@ -1,0 +1,9 @@
+[seed-idor-fixture] FATAL: Error: connect ECONNREFUSED 127.0.0.1:5432
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 5432
+}
+ABORT: Command failed: /usr/local/bin/node /home/user/p2/tools/seed-idor-fixture.js

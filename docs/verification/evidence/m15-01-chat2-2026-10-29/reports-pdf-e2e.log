@@ -1,0 +1,40 @@
+✅ تم‌های پویا فعال شدند. برای تغییر تم از دستور زیر استفاده کنید:
+switchPayeshTheme("theme-3")
+[demo] staff_posts: ۲۴ هنجار نمونه ساخته شد
+داده نمونه: {
+  'مدارس': 6,
+  'کاربران': 1040,
+  'کلاس‌ها': 36,
+  'حضوروغیاب': 11060,
+  'نمرات': 12855,
+  'انضباطی': 759,
+  'اعلان‌ها': 705,
+  'اقساط': 1561,
+  'تراکنش‌ها': 980
+}
+
+▸ P1-1 — PDF E2E از مسیرِ واقعیِ UI (روت reports → rptPrint → printableDoc → Chromium)
+
+— سناریوی A: مدیرِ مدرسهٔ ۱ (مجاز)
+  ✅ A1 روت reports برای مدیر مجاز است (canRoute) و رندر شد
+  ✅ A2 کلیکِ UI روی «چاپ / PDF» سندِ چاپیِ واقعی تولید کرد (rptPrint → printableDoc)
+  ✅ A3 سندِ چاپی tenant-scoped است (مدرسهٔ مدیر داخل، مدرسهٔ دیگر غایب)
+  ❌ A4 همان سندِ UI در Chromium به PDF واقعی تبدیل شد (%PDF + حجم)
+     browserType.launch: Executable doesn't exist at /home/user/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     npx playwright install                                 ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+  ⚠️ SKIP: pdftotext (poppler) در دسترس نیست — محتوایِ PDF متن‌کاوی نشد (امضا و حجم در A4 سنجیده شد)
+
+— سناریوی B: دانش‌آموز (غیرمجاز) — رد پیش از هر تولیدی
+  ✅ B1 canRoute برای student روی reports رد می‌کند
+  ✅ B2 رندرِ روت، صفحهٔ ممنوع است و دکمهٔ چاپ اصلاً در DOM نیست
+  ✅ B3 حتی صدازدنِ مستقیم rptPrint برای student سندی با دادهٔ مدرسه تولید نمی‌کند (rptSchools=[])
+
+────────────────────────────────────────────────────
+reports-pdf-e2e: 6 سبز / 1 قرمز / 1 SKIP ❌

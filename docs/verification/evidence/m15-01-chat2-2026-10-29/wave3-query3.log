@@ -1,0 +1,28 @@
+
+▸ Wave 3 — composite keyset cursors (A: pure · B: live PostgreSQL)
+
+  — A. cursor algebra
+  ✅ A1 the cursor encodes every ORDER BY column, in order
+  ✅ A2 the keyset predicate is the row-value comparison for (date DESC, id ASC)
+  ✅ A3 no cursor value is interpolated into the SQL — only $n placeholders
+  ✅ A3b the builder binds the trailing id as a number, not a string
+  ✅ A4 a leading ASC column flips to `>`, proving direction comes from the spec
+  ✅ A5 a bare numeric cursor still works (backwards compatible)
+  ✅ A6 a malformed cursor yields no predicate rather than broken SQL
+  ✅ A7 a row missing a cursor column falls back to the id-only cursor
+  ✅ A8 buildAttendanceList carries a composite keyset spec
+  ✅ A9 the composite spec matches the ORDER BY it must mirror
+  ✅ A10 a cursor produces the composite predicate in the page SQL
+  ✅ A11 the COUNT query never carries a cursor (total must stay stable)
+  ✅ A12 students keeps its single-column id cursor (direction-aware, W3-1: ORDER BY id DESC)
+  ✅ A12 grades keeps its single-column id cursor (direction-aware, W3-1: ORDER BY id DESC)
+  ✅ A12 classes keeps its single-column id cursor (direction-aware, W3-1: ORDER BY id DESC)
+  ✅ A12 users keeps its single-column id cursor (direction-aware, W3-1: ORDER BY id DESC)
+  ✅ A13 executePagedList emits a composite next_cursor
+  ✅ A14 has_more still comes from LIMIT+1
+
+  — B. live PostgreSQL
+  ❌ B1–B7 real-database gate — FAIL: cannot connect: connect ECONNREFUSED 127.0.0.1:5432 (P1-GAP-01)
+
+  جمع: 18 موفق، 1 ناموفق از 19
+

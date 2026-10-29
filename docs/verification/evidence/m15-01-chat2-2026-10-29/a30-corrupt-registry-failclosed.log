@@ -1,0 +1,227 @@
+==== PAYESH STRICT VERIFICATION GATE ====
+  OK G1 current HEAD known — 3970f4c88c094449b25de4c2607c13d8a1c96974
+  OK V-02 evidence binding mode explicit — changed paths=[".gitignore","docs/verification/evidence/m15-01-chat2-2026-10-28/a11y-regressions.log","docs/verification/evidence/m15-01-chat2-2026-10-28/a11y-runtime-nobrowser.log","docs/verification/evidence/m15-01-chat2-2026-10-28/a11y-state-matrix.log","docs/verification/evidence/m15-01-chat2-2026-10-28/canonical-full.log","docs/verification/evidence/m15-01-chat2-2026-10-28/ci-annotations-40778400346.json","docs/verification/evidence/m15-01-chat2-2026-10-28/ci-steps-40778400346.json","docs/verification/evidence/m15-01-chat2-2026-10-28/dep-proof-api110.log","docs/verification/evidence/m15-01-chat2-2026-10-28/dep-proof-resources3.log","docs/verification/evidence/m15-01-chat2-2026-10-28/docs-refs-check.log","docs/verification/evidence/m15-01-chat2-2026-10-28/npm-audit-all.log","docs/verification/evidence/m15-01-chat2-2026-10-28/npm-audit-prod.log","docs/verification/evidence/m15-01-chat2-2026-10-28/npm-ci.log","docs/verification/evidence/m15-01-chat2-2026-10-28/playwright-browser-download.log","docs/verification/evidence/m15-01-chat2-2026-10-28/release-version-contract-after-tags.log","docs/verification/evidence/m15-01-chat2-2026-10-28/supply-chain-audit-check.log","docs/verification/evidence/m15-01-chat2-2026-10-28/supply-chain.log","tests/pull-bootstrap.js"]; expected registry only
+  OK V-14 evidence SHA is a commit in this history line — evidence_sha=3970f4c88c094449b25de4c2607c13d8a1c96974 checkout_head=3970f4c88c094449b25de4c2607c13d8a1c96974
+  OK G2 mandatory policy exists
+  OK G3 registry exists
+  OK G4 registry valid JSON
+  OK G5 Arena is the sole required AI reviewer
+  NOTE V-03/G16 independence checks are vacuous with 1 reviewer slot — reported as N/A (never as a pass) and capped by V-18; bounded additionally by G5/V-15/V-17/V-18
+  NOTE cross-ITEM witness copying is not vacuous at N=1 and is policed by V-17
+  OK G6 explicit false-green allowlist exists
+  OK G6a canonical alert rules exists — infra/observability/alert-rules.yml
+  OK V-12 schema file exists & valid JSON — docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json
+  OK V-12 schema matches canonical contract
+  OK G6b allowlist entries carry owner+reason+valid expiry
+  OK G6c allowlist entry 0 complete & owned — assert(true
+  OK G6c allowlist entry 1 complete & owned — process.exit(0)
+  OK G6c allowlist entry 2 complete & owned — || true
+  OK G6c allowlist entry 3 complete & owned — 0/0 checks
+  OK G6c allowlist entry 4 complete & owned — assert(true
+  OK G6c allowlist entry 5 complete & owned — assert(true
+  OK G6c allowlist entry 6 complete & owned — assert(true
+  OK G6c allowlist entry 7 complete & owned — assert(true
+  OK G6c allowlist entry 8 complete & owned — assert(true
+  OK G6c allowlist entry 9 complete & owned — assert(true
+  OK G6c allowlist entry 10 complete & owned — assert(true
+  OK G6c allowlist entry 11 complete & owned — assert(true
+  OK G6c allowlist entry 12 complete & owned — process.exit(0)
+  OK G6c allowlist entry 13 complete & owned — process.exit(0)
+  OK G6c allowlist entry 14 complete & owned — process.exit(0)
+  OK G6c allowlist entry 15 complete & owned — process.exit(0)
+  OK G6c allowlist entry 16 complete & owned — process.exit(0)
+  OK G6c allowlist entry 17 complete & owned — process.exit(0)
+  OK G6c allowlist entry 18 complete & owned — process.exit(0)
+  OK G6c allowlist entry 19 complete & owned — process.exit(0)
+  OK G6c allowlist entry 20 complete & owned — process.exit(0)
+  OK G6c allowlist entry 21 complete & owned — process.exit(0)
+  OK G6c allowlist entry 22 complete & owned — process.exit(0)
+  OK G6c allowlist entry 23 complete & owned — process.exit(0)
+  OK G6c allowlist entry 24 complete & owned — process.exit(0)
+  OK G6c allowlist entry 25 complete & owned — process.exit(0)
+  OK G6c allowlist entry 26 complete & owned — process.exit(0)
+  OK G6c allowlist entry 27 complete & owned — process.exit(0)
+  OK G6c allowlist entry 28 complete & owned — process.exit(0)
+  OK G6c allowlist entry 29 complete & owned — process.exit(0)
+  OK G6c allowlist entry 30 complete & owned — process.exit(0)
+  OK G6c allowlist entry 31 complete & owned — process.exit(0)
+  OK G6c allowlist entry 32 complete & owned — process.exit(0)
+  OK G6c allowlist entry 33 complete & owned — process.exit(0)
+  OK G6c allowlist entry 34 complete & owned — process.exit(0)
+  OK G6c allowlist entry 35 complete & owned — process.exit(0)
+  OK G6c allowlist entry 36 complete & owned — process.exit(0)
+  OK G6c allowlist entry 37 complete & owned — process.exit(0)
+  OK G6c allowlist entry 38 complete & owned — process.exit(0)
+  OK G6c allowlist entry 39 complete & owned — process.exit(0)
+  OK G6c allowlist entry 40 complete & owned — process.exit(0)
+  OK G6c allowlist entry 41 complete & owned — process.exit(0)
+  OK G6c allowlist entry 42 complete & owned — process.exit(0)
+  OK G6c allowlist entry 43 complete & owned — process.exit(0)
+  OK G6c allowlist entry 44 complete & owned — process.exit(0)
+  OK G6c allowlist entry 45 complete & owned — process.exit(0)
+  OK G6c allowlist entry 46 complete & owned — process.exit(0)
+  OK G6c allowlist entry 47 complete & owned — process.exit(0)
+  OK G6c allowlist entry 48 complete & owned — process.exit(0)
+  OK G6c allowlist entry 49 complete & owned — process.exit(0)
+  OK G6c allowlist entry 50 complete & owned — process.exit(0)
+  OK G6c allowlist entry 51 complete & owned — process.exit(0)
+  OK G6c allowlist entry 52 complete & owned — process.exit(0)
+  OK G6c allowlist entry 53 complete & owned — process.exit(0)
+  OK G6c allowlist entry 54 complete & owned — process.exit(0)
+  OK G6c allowlist entry 55 complete & owned — process.exit(0)
+  OK G6c allowlist entry 56 complete & owned — process.exit(0)
+  OK G6c allowlist entry 57 complete & owned — process.exit(0)
+  OK G6c allowlist entry 58 complete & owned — process.exit(0)
+  OK G6c allowlist entry 59 complete & owned — process.exit(0)
+  OK G6c allowlist entry 60 complete & owned — process.exit(0)
+  OK G6c allowlist entry 61 complete & owned — process.exit(0)
+  OK G6c allowlist entry 62 complete & owned — process.exit(0)
+  OK G6c allowlist entry 63 complete & owned — process.exit(0)
+  OK G6c allowlist entry 64 complete & owned — process.exit(0)
+  OK G6c allowlist entry 65 complete & owned — process.exit(0)
+  OK G6c allowlist entry 66 complete & owned — process.exit(0)
+  OK G6c allowlist entry 67 complete & owned — process.exit(0)
+  OK G6c allowlist entry 68 complete & owned — process.exit(0)
+  OK G6c allowlist entry 69 complete & owned — process.exit(0)
+  OK G6c allowlist entry 70 complete & owned — process.exit(0)
+  OK G6c allowlist entry 71 complete & owned — process.exit(0)
+  OK G6c allowlist entry 72 complete & owned — process.exit(0)
+  OK G6c allowlist entry 73 complete & owned — process.exit(0)
+  OK G6c allowlist entry 74 complete & owned — process.exit(0)
+  OK G6c allowlist entry 75 complete & owned — process.exit(0)
+  OK G6c allowlist entry 76 complete & owned — process.exit(0)
+  OK G6c allowlist entry 77 complete & owned — process.exit(0)
+  OK G6c allowlist entry 78 complete & owned — process.exit(0)
+  OK G6c allowlist entry 79 complete & owned — process.exit(0)
+  OK G6c allowlist entry 80 complete & owned — process.exit(0)
+  OK G6c allowlist entry 81 complete & owned — process.exit(0)
+  OK G6c allowlist entry 82 complete & owned — process.exit(0)
+  OK G6c allowlist entry 83 complete & owned — process.exit(0)
+  OK G6c allowlist entry 84 complete & owned — process.exit(0)
+  OK G6c allowlist entry 85 complete & owned — process.exit(0)
+  OK G6c allowlist entry 86 complete & owned — process.exit(0)
+  OK G6c allowlist entry 87 complete & owned — process.exit(0)
+  OK G6c allowlist entry 88 complete & owned — process.exit(0)
+  OK G6c allowlist entry 89 complete & owned — process.exit(0)
+  OK G6c allowlist entry 90 complete & owned — process.exit(0)
+  OK G6c allowlist entry 91 complete & owned — process.exit(0)
+  OK G6c allowlist entry 92 complete & owned — process.exit(0)
+  OK G6c allowlist entry 93 complete & owned — process.exit(0)
+  OK G6c allowlist entry 94 complete & owned — process.exit(0)
+  OK G6c allowlist entry 95 complete & owned — process.exit(0)
+  OK G6c allowlist entry 96 complete & owned — process.exit(0)
+  OK G6c allowlist entry 97 complete & owned — process.exit(0)
+  OK G6c allowlist entry 98 complete & owned — process.exit(0)
+  OK G6c allowlist entry 99 complete & owned — process.exit(0)
+  OK G6c allowlist entry 100 complete & owned — process.exit(0)
+  OK G6c allowlist entry 101 complete & owned — process.exit(0)
+  OK G6c allowlist entry 102 complete & owned — process.exit(0)
+  OK G6c allowlist entry 103 complete & owned — process.exit(0)
+  OK G6c allowlist entry 104 complete & owned — process.exit(0)
+  OK G6c allowlist entry 105 complete & owned — process.exit(0)
+  OK G6c allowlist entry 106 complete & owned — process.exit(0)
+  OK G6c allowlist entry 107 complete & owned — process.exit(0)
+  OK G6c allowlist entry 108 complete & owned — process.exit(0)
+  OK G6c allowlist entry 109 complete & owned — process.exit(0)
+  OK G6c allowlist entry 110 complete & owned — process.exit(0)
+  OK G6c allowlist entry 111 complete & owned — process.exit(0)
+  OK G6c allowlist entry 112 complete & owned — process.exit(0)
+  OK G6c allowlist entry 113 complete & owned — process.exit(0)
+  OK G6c allowlist entry 114 complete & owned — process.exit(0)
+  OK G6c allowlist entry 115 complete & owned — process.exit(0)
+  OK G6c allowlist entry 116 complete & owned — process.exit(0)
+  OK G6c allowlist entry 117 complete & owned — process.exit(0)
+  OK G6c allowlist entry 118 complete & owned — process.exit(0)
+  OK G6c allowlist entry 119 complete & owned — process.exit(0)
+  OK G6c allowlist entry 120 complete & owned — process.exit(0)
+  OK G6c allowlist entry 121 complete & owned — process.exit(0)
+  OK G6c allowlist entry 122 complete & owned — process.exit(0)
+  OK G6c allowlist entry 123 complete & owned — process.exit(0)
+  OK G6c allowlist entry 124 complete & owned — process.exit(0)
+  OK G6c allowlist entry 125 complete & owned — process.exit(0)
+  OK G6c allowlist entry 126 complete & owned — process.exit(0)
+  OK G6c allowlist entry 127 complete & owned — process.exit(0)
+  OK G6c allowlist entry 128 complete & owned — process.exit(0)
+  OK G6c allowlist entry 129 complete & owned — process.exit(0)
+  OK G6c allowlist entry 130 complete & owned — process.exit(0)
+  OK G6c allowlist entry 131 complete & owned — || true
+  OK G6c allowlist entry 132 complete & owned — || true
+  OK G6c allowlist entry 133 complete & owned — || true
+  OK G6c allowlist entry 134 complete & owned — || true
+  OK G6c allowlist entry 135 complete & owned — || true
+  OK G6c allowlist entry 136 complete & owned — || true
+  OK G6c allowlist entry 137 complete & owned — || true
+  OK G6c allowlist entry 138 complete & owned — || true
+  OK G6c allowlist entry 139 complete & owned — || true
+  OK G6c allowlist entry 140 complete & owned — || true
+  OK G6c allowlist entry 141 complete & owned — || true
+  OK G6c allowlist entry 142 complete & owned — || true
+  OK G6c allowlist entry 143 complete & owned — || true
+  OK G6c allowlist entry 144 complete & owned — || true
+  OK G6c allowlist entry 145 complete & owned — || true
+  OK G6c allowlist entry 146 complete & owned — || true
+  OK G6c allowlist entry 147 complete & owned — || true
+  OK G6c allowlist entry 148 complete & owned — || true
+  OK G6c allowlist entry 149 complete & owned — || true
+  OK G6c allowlist entry 150 complete & owned — || true
+  OK G6c allowlist entry 151 complete & owned — || true
+  OK G6c allowlist entry 152 complete & owned — || true
+  OK G6c allowlist entry 153 complete & owned — || true
+  OK G6c allowlist entry 154 complete & owned — || true
+  OK G6c allowlist entry 155 complete & owned — || true
+  OK G6c allowlist entry 156 complete & owned — || true
+  OK G6c allowlist entry 157 complete & owned — || true
+  OK G6c allowlist entry 158 complete & owned — || true
+  OK G6c allowlist entry 159 complete & owned — || true
+  OK G6c allowlist entry 160 complete & owned — || true
+  OK G6c allowlist entry 161 complete & owned — || true
+  OK G6c allowlist entry 162 complete & owned — || true
+  OK G6c allowlist entry 163 complete & owned — || true
+  OK G6c allowlist entry 164 complete & owned — || true
+  OK G6c allowlist entry 165 complete & owned — || true
+  OK G6c allowlist entry 166 complete & owned — || true
+  OK G6c allowlist entry 167 complete & owned — || true
+  OK G6c allowlist entry 168 complete & owned — || true
+  OK G6c allowlist entry 169 complete & owned — || true
+  OK G6c allowlist entry 170 complete & owned — || true
+  OK G6c allowlist entry 171 complete & owned — || true
+  OK G6c allowlist entry 172 complete & owned — 0/0 checks
+  OK G6c allowlist entry 173 complete & owned — 0/0 checks
+  OK G6c allowlist entry 174 complete & owned — 0/0 checks
+  OK G7 assert(true has no unapproved hits
+  OK G7 process.exit(0) has no unapproved hits
+  OK G7 || true has no unapproved hits
+  OK G7 0/0 checks has no unapproved hits
+  OK G7 self-skip has no unapproved hits
+  OK G7 self-only has no unapproved hits
+  OK G7 expect-true-toBe has no unapproved hits
+  OK V-06 origin/main resolvable — fff1beae09ff45d69e554f8c000a9d15b75d968c
+  FAIL V-06 HEAD contained in origin/main (not a local-only line) — head=3970f4c88c094449b25de4c2607c13d8a1c96974 origin/main=fff1beae09ff45d69e554f8c000a9d15b75d968c
+  FAIL G17 no uncommitted tracked drift outside the registry — docs/verification/evidence/M15-01_CHAT2_DIRECTIVE_2026-10-28.md | tools/strict-verification-gate.js
+  FAIL V-01 registry declares a non-empty items array — items=0
+  OK V-04 allowed_statuses is the canonical status machine — ["UNKNOWN","TESTED","RUNTIME_VERIFIED","ADVERSARIAL_VERIFIED","INDEPENDENTLY_VERIFIED","CERTIFIED"]
+  OK V-05 top-level status in machine & not BLOCKED* — UNKNOWN
+  FAIL V-02 registry head_bound matches immutable evidence SHA — head_bound=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3970f4c88c094449b25de4c2607c13d8a1c96974 checkout_head=3970f4c88c094449b25de4c2607c13d8a1c96974
+  OK V-12 registry has all required keys — complete
+  OK G14a registry declares its expected item contract — 32 ids declared
+  FAIL G14b all declared items present (32) — missing: A-01, A-02, A-03, A-04, A-05, A-06, A-07, A-08, A-09, A-10
+  OK G14c no undeclared/unknown items — undeclared: 
+  OK G14d expected_ids has no duplicate entries
+  FAIL V-15 registry status is bounded by its weakest item — top=UNKNOWN(0) weakest_item_rank=-1
+  OK V-15b blocked items cap the registry below the verifying band — blocked_items=0 top=UNKNOWN
+  OK V-09b reviews_recorded only uses known reviewer slots
+  OK V-09c reviews_recorded records are distinct non-empty entries
+RESULT 204 pass / 6 fail
+HEAD 3970f4c88c094449b25de4c2607c13d8a1c96974
+EVIDENCE_SHA 3970f4c88c094449b25de4c2607c13d8a1c96974
+CERTIFIED 0
+CONTRACT FAIL
+VERIFIED_ITEMS 0/0 at registry status UNKNOWN
+VERDICT NOT VERIFIED
+BLOCKERS
+ - V-06 HEAD contained in origin/main (not a local-only line) — head=3970f4c88c094449b25de4c2607c13d8a1c96974 origin/main=fff1beae09ff45d69e554f8c000a9d15b75d968c
+ - G17 no uncommitted tracked drift outside the registry — docs/verification/evidence/M15-01_CHAT2_DIRECTIVE_2026-10-28.md | tools/strict-verification-gate.js
+ - V-01 registry declares a non-empty items array — items=0
+ - V-02 registry head_bound matches immutable evidence SHA — head_bound=bf263bf253696d3afac2057332eb29c7dd7820a5 evidence_sha=3970f4c88c094449b25de4c2607c13d8a1c96974 checkout_head=3970f4c88c094449b25de4c2607c13d8a1c96974
+ - G14b all declared items present (32) — missing: A-01, A-02, A-03, A-04, A-05, A-06, A-07, A-08, A-09, A-10
+ - V-15 registry status is bounded by its weakest item — top=UNKNOWN(0) weakest_item_rank=-1

@@ -1,0 +1,5 @@
+
+▸ دور 85 — P1-4: fail-fastِ TLS در production
+  ❌ P0-PG ENVIRONMENT — PostgreSQL unreachable — target=127.0.0.1:5432/payesh_ci budget_ms=90000 attempts=90 waited_ms=89182 last=connect ECONNREFUSED 127.0.0.1:5432
+
+server13: 0/1 — شکست: P0-PG ENVIRONMENT — PostgreSQL unreachable (محیط/وابستگی، نه رفتارِ محصول)

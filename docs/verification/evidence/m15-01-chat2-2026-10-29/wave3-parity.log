@@ -1,0 +1,8 @@
+
+▸ Wave 3 — JS↔SQL parity gate (فیلد‌به‌فیلد، روی PG زنده)
+  ❌ parity gate — FAIL: cannot connect: connect ECONNREFUSED 127.0.0.1:5432 (P1-GAP-01)
+
+  جمع: 0 موفق، 1 ناموفق از 1
+  شکست‌ها:
+   - parity gate
+

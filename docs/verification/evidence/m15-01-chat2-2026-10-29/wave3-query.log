@@ -1,0 +1,28 @@
+
+▸ A. DB-native SQL builders
+  ✅ students: correct structure + bound school scope + ORDER BY id
+  ✅ students: search value is only a bound ILIKE param (injection-safe)
+  ✅ students: teacher scope uses only allowlisted tables via EXISTS
+  ✅ students: superadmin has no school_id predicate
+  ✅ students: keyset cursor is a bound predicate
+  ✅ attendance: structure, filters bound, ordering date DESC,id ASC
+  ✅ attendance: parent scope via allowlisted parent_links EXISTS
+
+▸ B. executePagedList pagination shape (fake db)
+  ✅ page not full → has_more=false, total from COUNT
+  ✅ page full via LIMIT+1 → has_more=true and data sliced
+  ✅ executePagedList honors a keyset cursor (id > cursor)
+
+▸ C. Route memory path (PostgreSQL not active)
+  ✅ students list (memory) returns expected projected rows
+  ✅ attendance list (memory) returns rows + pagination
+
+▸ D. PostgreSQL execution (guarded)
+[DB] PostgreSQL connection failed. Falling back to JSON in-memory store: connect ECONNREFUSED 127.0.0.1:5432
+  ❌ real-PG run
+     driver postgres
+
+────────────────────────────────────────────────────────
+نتیجه Wave3 Query: 12/13  —  1 ناموفق
+────────────────────────────────────────────────────────
+

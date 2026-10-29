@@ -1,0 +1,3 @@
+pg-relational-seed — relational seed, real foreign keys, tenant isolation
+
+pg-relational-seed: ❌ FAIL — PostgreSQL not reachable: connect ECONNREFUSED 127.0.0.1:5432 — skip/NOT-RUN ممنوع (P1-GAP-01)

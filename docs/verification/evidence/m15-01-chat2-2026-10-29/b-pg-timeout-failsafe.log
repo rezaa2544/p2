@@ -1,0 +1,4 @@
+B-PG timeout fail-safe probe  (LEGACY=0 (expect shapes to fail bounded))
+B-PG-PROBE VERDICT: NOT-RUN reason=cannot reach the PostgreSQL admin connection (connect ECONNREFUSED 127.0.0.1:5432) — needs a live PostgreSQL on 127.0.0.1:5432 (PAYESH_BPG_ADMIN_URL/PGURL/DATABASE_URL)
+  SETUP FAILED: cannot reach the PostgreSQL admin connection (connect ECONNREFUSED 127.0.0.1:5432)
+  this probe needs a live PostgreSQL on 127.0.0.1:5432

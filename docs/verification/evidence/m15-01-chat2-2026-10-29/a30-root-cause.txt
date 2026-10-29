@@ -1,0 +1,82 @@
+a30 root cause + fix — measurements (2026-10-29)
+fixed HEAD tree: df58bb2973287b105ab7bf81301ee12d618f55c4
+
+failure signature: status=1 signal=null err=undefined out=10903B err_bytes=0 — a fs.writeSync(2) trace proves the gate reached its final line, yet its stdout was truncated mid-G6c at allowlist entry 158 (async pipe stdout discarded by process.exit())
+
+BEFORE (unmodified gate, 10-way concurrency x4 rounds):
+  r1-10 exit=0
+  r1-5 exit=0
+  r1-3 exit=0
+  r1-8 exit=0
+  r1-7 exit=0
+  r1-1 exit=0
+  r1-9 exit=0
+  r1-2 exit=1
+  r1-6 exit=0
+  r1-4 exit=0
+  r2-6 exit=0
+  r2-2 exit=0
+  r2-8 exit=0
+  r2-7 exit=0
+  r2-3 exit=0
+  r2-5 exit=0
+  r2-1 exit=0
+  r2-4 exit=0
+  r2-9 exit=0
+  r2-10 exit=1
+  r3-3 exit=0
+  r3-7 exit=0
+  r3-8 exit=0
+  r3-2 exit=0
+  r3-10 exit=0
+  r3-4 exit=1
+  r3-5 exit=1
+  r3-6 exit=0
+  r3-9 exit=0
+  r3-1 exit=0
+
+AFTER (process.exitCode instead of process.exit):
+  r1-10 exit=0
+  r1-4 exit=0
+  r1-2 exit=0
+  r1-8 exit=0
+  r1-1 exit=0
+  r1-6 exit=0
+  r1-7 exit=0
+  r1-3 exit=0
+  r1-5 exit=0
+  r1-9 exit=0
+  r2-8 exit=0
+  r2-1 exit=0
+  r2-6 exit=0
+  r2-2 exit=0
+  r2-9 exit=0
+  r2-7 exit=0
+  r2-10 exit=0
+  r2-5 exit=0
+  r2-3 exit=0
+  r2-4 exit=0
+  r3-10 exit=0
+  r3-1 exit=0
+  r3-9 exit=0
+  r3-5 exit=0
+  r3-6 exit=0
+  r3-7 exit=0
+  r3-3 exit=0
+  r3-8 exit=0
+  r3-2 exit=0
+  r3-4 exit=0
+  r4-10 exit=0
+  r4-2 exit=0
+  r4-9 exit=0
+  r4-5 exit=0
+  r4-1 exit=0
+  r4-8 exit=0
+  r4-4 exit=0
+  r4-3 exit=0
+  r4-7 exit=0
+  r4-6 exit=0
+
+gate direct run at HEAD: exit=1 bytes=80788 (full verdict, fail-closed preserved)
+mutation exitCode=0 (fake green): exit=1 with 17 FAIL — the suite still catches it (a30-mutation-exit0.log)
+corrupt-registry probe: exit=1 (a30-corrupt-registry-failclosed.log)

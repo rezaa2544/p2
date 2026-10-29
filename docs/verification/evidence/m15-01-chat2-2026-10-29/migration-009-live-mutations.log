@@ -1,0 +1,2 @@
+  ❌ FAIL: migration-009 mutations — باینری‌هایِ PG یا ماژولِ pg در دسترس نیستند
+migration-009-live-mutations: وابستگی مفقود = FAIL قطعی (عدم خروج با کد صفر)

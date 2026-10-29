@@ -1,0 +1,24 @@
+
+▸ A. syncdelta builders
+  ✅ deltaRowsSql: time predicate pushed, ORDER BY (updated_at,id), allowlisted
+  ✅ deltaRowsSql: unknown table rejected (allowlist)
+  ✅ deltaRowsSql: keyset tie-breaker avoids boundary re-emission
+  ✅ deltaKeysetSql: (updated_at,id) cursor + LIMIT limit+1
+  ✅ tombstonesSql: prepared tombstone read structure + school scope
+
+▸ B. pull.js DB-native delta path
+  ✅ delta request uses DB (time-pushed) when PG live
+  ✅ DB delta fetch transparently falls back on missing timestamp columns
+  ✅ memory path (db absent) still works for delta
+  ✅ snapshot (no since) path unchanged
+  ✅ tombstones still served from store (write side not PG-native yet)
+
+▸ C. PostgreSQL execution (guarded)
+[DB] PostgreSQL connection failed. Falling back to JSON in-memory store: connect ECONNREFUSED 127.0.0.1:5432
+  ❌ real-PG run
+     driver postgres
+
+────────────────────────────────────────────────────────
+نتیجه Wave4 Sync: 10/11  —  1 ناموفق
+────────────────────────────────────────────────────────
+

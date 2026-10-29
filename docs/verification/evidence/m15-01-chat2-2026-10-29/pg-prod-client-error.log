@@ -1,0 +1,3 @@
+pg-prod-client-error — a dead pg Client must not crash the process
+
+pg-prod-client-error: NOT-RUN — PostgreSQL not reachable: connect ECONNREFUSED 127.0.0.1:5432

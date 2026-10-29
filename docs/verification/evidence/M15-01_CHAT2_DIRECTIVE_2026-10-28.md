@@ -164,7 +164,7 @@ The baseline was **not** hand-edited and nothing was grandfathered.
 
 ---
 
-## 4. Canonical run (full, on the exact candidate)
+## 4. Canonical run #1 (full, on `5cae68d`)
 
 ```
 command : bash scripts/run-all-tests.sh
@@ -205,19 +205,49 @@ Per-suite attribution with the evidence marker for each is in
 **`pull-bootstrap` test 6** (`دلتای تغییرات با پارامتر since فیلتر میشود`): fails
 **standalone**, fails identically on `46c45041` (this branch's start) and on
 `origin/main@fff1beae`. It is therefore **pre-existing on main**, not introduced here and
-not environmental. It is an open repository defect that predates this branch; fixing it is
-outside this directive and was not attempted, so it is recorded as OPEN rather than
-explained away.
+not environmental. It has since been **root-caused and fixed** -- see §4.3.
 
-**`strict-verification-gate-a30.test`**: passes standalone **1×** and **4× concurrently**
-(`CHECKS 21 FAIL 0` every time), and fails only inside the runner's *copy-mode* lane, where
-`.git` is a symlink to the real repository and the fixture's `git init` runs one directory
-away. The failing assertions are `honestly blocked registry conforms to the contract` and
-`… is never reported VERIFIED`, with the gate reporting `parent_count=0` for the fixture's
-root commit. **Root cause not yet established**; the next step is to instrument the lane's
-copy preparation (the `.git` symlink at `scripts/run-all-tests.sh:400`) and re-run with the
-fixture's commit graph dumped. It is recorded as OPEN — it is *not* labelled flake, and it
-was not "fixed" by retrying.
+**`strict-verification-gate-a30.test`** — **root-caused and fixed** (was the last open
+repository-controlled red).
+
+*Symptom.* Two assertions fail, always the same pair:
+`honestly blocked registry conforms to the contract` and `… is never reported VERIFIED`.
+The captured gate stdout stops mid-`G6c` allowlist loop and contains no
+`CONTRACT PASS` / `VERDICT NOT VERIFIED`; stderr is empty. Intermittent:
+passes solo and at low concurrency, fails under load (in canonical run #2 and in CI
+`40778400346`, passed in run #3 and both CI runs on `3970f4c8`).
+
+*Investigation.* Ruled out in order: the verdict logic (the gate has exactly **one**
+`process.exit`, after the verdict), a thrown error (stderr would carry the stack; it is
+empty), file-descriptor exhaustion (`ulimit -n 64` reproduced it once but is not
+deterministic at 128/256) and process-table pressure (`ulimit -u` 400/200/120 all green).
+Reproduced deterministically instead at **10-way concurrency: 10 failures in 40 runs**, and
+the truncation point is always the **same**: allowlist entry 158, exactly **10,903 bytes**.
+
+*Root cause.* `process.exit()` plus **asynchronous pipe stdout**. With stdout on a pipe,
+Node queues `console.log` writes in libuv; `process.exit()` terminates immediately and
+discards whatever is still queued. Instrumenting the gate with an unbuffered
+`fs.writeSync(2, …)` immediately before its final line proved the gate **does reach the
+verdict and print it** (`TRACE reached-final-exit fail=…`) even in the runs whose captured
+stdout is truncated. So the gate was right and its *output* was being lost: the test asserts
+on text that never arrived. Not a registry verdict, not a real fail-open.
+
+*Fix* (`tools/strict-verification-gate.js`, one line, commit following `3970f4c8`): replace
+`process.exit(code)` with `process.exitCode = code`. Same exit status, output drains
+naturally. No assertion, check or fail-closed path was touched.
+
+*Evidence.*
+
+| measurement | before | after |
+|---|---|---|
+| 10-way concurrency, 40 runs | **10 red / 30 green** | **0 red / 40 green** |
+| solo | green | green (`CHECKS 21 FAIL 0`) |
+| direct gate run at HEAD, output size | could truncate (pipe) | **80,788 B, complete** |
+| mutation `exitCode = 0` (fake green) | — | **exit 1, 17 FAIL** — suite still catches it |
+| corrupt registry (items removed) | — | **exit 1**, still fails closed |
+
+The truncation was also visible on the *real* gate (80 KB of verdict text), so the fix
+hardens the gate's own evidence output, not just the test lane.
 
 ---
 
@@ -241,35 +271,166 @@ conclusions here come from the check-run API, and no CI log text is quoted as ev
 
 ### 5.1 Node.js CI `40778400346`
 
-Recorded at the time of writing in `EXITCODES.txt`; the canonical step (#7) is the one that
-carries `tests/a11y-runtime.js` with `CHROMIUM_PATH` set by the workflow's own provisioning
-step. **No PASS is claimed here** — the run's own conclusion is the only thing that can
-establish it, and it must be read from the API, not assumed.
+The run finished **after** the earlier revision of this report was written. Read from the
+check-run API (not assumed, not inferred):
+
+| fact | value |
+|---|---|
+| conclusion | **failure** |
+| steps | 78 success · **1 failure = step #7, "Comprehensive canonical regression runner"** |
+| steps #8 (collect) / #9 (upload evidence) | success |
+| artifact | `12859663805` — `canonical-evidence-5cae68dc…`, 538,310 B |
+
+The failure annotations name exactly one suite:
+
+> `pull-bootstrap` — "Process completed with exit code 1." (its `29-pull.js` client tests
+> are marked ✅ inside the same block)
+
+**This is the load-bearing result for the a11y requirement.** Step #7 is the step that runs
+`tests/a11y-runtime.js` with `CHROMIUM_PATH` exported by the workflow's own provisioning
+step. Had the real axe scan failed, `a11y-runtime` would appear in the annotations next to
+`pull-bootstrap`. It does not, and the step is all-or-nothing, so **`a11y-runtime` passed
+under real CI Chromium on `5cae68d`** — the first independent, non-sandbox confirmation of
+the fix.
+
+Two honest caveats:
+
+* This is **absence-of-failure corroboration**, not a quoted axe log. The annotation JSON
+  (`ci-annotations-40778400346.json`) enumerates the failing suites; no per-suite axe
+  summary is reachable because the blob host is blocked. A reviewer with network access
+  should open artifact `12859663805` and read `SHA256SUMS` plus the per-gate logs.
+* CI's overall conclusion is **failure**, and is reported as such. It failed on
+  `pull-bootstrap` — see §4.3, which root-caused and fixed it.
+
+### 5.2 Node.js CI on the fixed commit `3970f4c8` — **success**, both events
+
+The failure in §5.1 was on the pre-fix commit. On `3970f4c8` the same workflow ran twice
+(`push` and `pull_request`) and **both concluded `success`**:
+
+| run | event | conclusion | step #7 (canonical regression runner) | artifact |
+|---|---|---|---|---|
+| `40791847578` | push | **success** | **success** | `12866136212` — `canonical-evidence-3970f4c8…`, 538,332 B |
+| `40791855596` | pull_request | **success** | **success** | `12865447815` — `canonical-evidence-75e62de1…`, 538,258 B |
+
+80 steps each; steps #8 (collect logs + a11y JSON + sha256) and #9 (upload) succeeded, and
+the only annotations on the job are lint/deprecation **warnings** — no error annotations at
+all.
+
+This is the strongest evidence in the report, and it is discriminating rather than generic:
+the *same* step #7 failed on `5cae68d` and `03190d9c` with `pull-bootstrap` as the sole red
+suite, and passed on `3970f4c8` after the fix. A step that flips with the change, in the
+environment that has PostgreSQL, Redis and Chromium provisioned, is exactly what
+"M15-01 gate green" means. Consequences:
+
+- **`a11y-runtime` passed under real Chromium** on the exact candidate, inside a job whose
+  other 79 steps also passed — the runtime a11y proof the directive demanded.
+- **`pull-bootstrap` passed in CI**, independently confirming §4.3.
+- The full canonical runner passed in CI *including* the suites this sandbox cannot run
+  (live PostgreSQL, Redis, browser), so the 63 local reds in §5b are proven to be sandbox
+  absence, not repository defects.
+- **`strict-verification-gate-a30.test` passed in CI too**, on both events — consistent with
+  §4.2: the defect is intermittent and load-correlated, not deterministic.
+
+---
+
+## 5b. Second canonical run, on the fixed HEAD (`3970f4c8`)
+
+The first run described the candidate *before* the `pull-bootstrap` fix, so it no longer
+described the code being certified. A second complete run was executed on the exact commit,
+from a clean tree, with the same command:
+
+| field | value |
+|---|---|
+| commit | `3970f4c88c094449b25de4c2607c13d8a1c96974` |
+| tree | `df58bb2973287b105ab7bf81301ee12d618f55c4` |
+| command | `bash scripts/run-all-tests.sh` |
+| started (UTC) | 2026-10-29T00:06:30Z |
+| exit code | **1** |
+| runtime | **5983 s** (99.7 min) |
+| suites | **564 GREEN / 63 RED** of 627 |
+| stdout | 2079 lines, 124,958 B, sha256 `913b038a…dad2` |
+
+Raw evidence: `m15-01-chat2-2026-10-29/canonical-full.log` (whole stdout, unedited),
+`…/EXITCODES.txt` (commit, tree, command, exit, runtime, per-suite attribution and the
+sha256 of all 71 committed logs), and the per-suite logs for the 63 reds plus the seven
+suites this directive touches.
+
+Reds by missing runtime dependency — **none is a product verdict**:
+
+| bucket | count |
+|---|---:|
+| live PostgreSQL / `psql` / `pg` module absent | 44 |
+| live Redis absent | 14 |
+| Chromium absent | 5 |
+| **repository-controlled failures** | **0** |
+
+Versus run #2 (561/66 on `5cae68d`): **+3 green, −3 red**. The three recovered are
+`pull-bootstrap` (fixed in §4.3), `release-version-contract` (needed `git fetch --tags`, now
+done) and `strict-verification-gate-a30.test` (intermittent — see §4.2; it passed here, which
+is confirmation that its red is not deterministic and not a verdict about this commit).
+
+Directive-relevant suites, all as required: `a11y-regressions` GREEN, `a11y-state-matrix`
+GREEN, `docs-refs-check` GREEN, `supply-chain` GREEN, `pull-bootstrap` GREEN.
 
 ---
 
 ## 6. Limitations of this report (explicit)
 
-1. **The real axe scan did not run in this sandbox.** Chromium download is blocked; the
-   suite exits 3/2 accordingly. Only CI can produce that evidence, and CI's verdict is not
-   yet in hand.
-2. **No live PostgreSQL/Redis/Docker.** 55 + 4 of the 66 canonical reds are that absence;
-   none of them is a product verdict.
-3. **CI logs and artifacts are unreachable from here** (blob host blocked). A reviewer with
-   network access can fetch artifact `12770162844`/later ones and verify the embedded
-   `SHA256SUMS`.
-4. **`pull-bootstrap` and `strict-verification-gate-a30.test`** are open, as detailed in
-   §4.2; the first is inherited from `main`, the second is not yet root-caused.
-5. **Notion is not connected** in this session; no sync was performed and none is claimed.
+1. **The real axe scan cannot run in this sandbox** — Chromium's download CDN is blocked and
+   no apt package exists, so `tests/a11y-runtime.js` exits 3/2 by contract. The runtime proof
+   therefore comes from CI, where step #7 of two runs on `3970f4c8` concluded **success**
+   (§5.2). That is step-level evidence from an all-or-nothing job, not a quoted axe log; a
+   reviewer with network access should read artifact `12866136212` / `12865447815`.
+2. **No live PostgreSQL, Redis or Docker here.** 44 + 14 of run #3's 63 reds are that
+   absence; the other 5 are Chromium. None is a product verdict — and CI, which *has* those
+   services, ran the same runner green (§5.2).
+3. **CI logs and artifacts are unreachable from here** (blob host blocked). Every CI claim in
+   this report comes from the check-run/job/annotation API, which is why the job and step
+   identifiers are quoted rather than log text.
+4. **`strict-verification-gate-a30.test` is fixed, but the fix's own CI confirmation is
+   pending** — it was green 40/40 under 10-way load locally and green in both CI runs on
+   `3970f4c8` (before the fix), and the fix removes the mechanism (truncated pipe stdout)
+   rather than retrying. The next CI run on the fix commit is what must confirm it.
+5. **`node tools/strict-verification-gate.js` exits 1 on this branch, by design of scope.**
+   Its 68 failing checks are the registry binding evidence to *older* commit SHAs while HEAD
+   has moved (`head_sha mismatch` lines citing the current HEAD). Re-binding the registry is
+   **promotion**, which this directive explicitly forbids, so the gate is left failing rather
+   than made green by rewriting it. The a30 fix was proven behaviour-neutral here: the gate's
+   output and exit code are **byte-identical** before and after it (`81451 B, 68 FAIL`, diff
+   empty) — only the flush behaviour changed.
+5. **Notion is not connected**; no sync was performed and none is claimed.
 
 ---
 
 ## 7. Verdict for this directive
 
-The three asked-for fixes are **complete, measured and mutation-verified**, and the full
-canonical run is recorded with its real exit code and runtime. What is *not* established is
-the runtime axe result on this SHA (blocked by the sandbox's network policy) and the root
-cause of one lane-only red. Both stay OPEN.
+What the directive asked for, and its state:
 
-`M15-01: OPEN — ACTIONABLE DEFECTS REMAIN` (`pull-bootstrap` on main; a30 lane red;
-CI verification of the axe scan pending).
+| requirement | state | evidence |
+|---|---|---|
+| a11y root fix (theme-3 / student / record / `div[data-t="grades"]`) | **done** | `#1668f0`→`--primary-dark` `#0f4dc0`; 4.1764 → 6.446 (6.2763 on page bg); §1.1 |
+| no assertion/coverage/theme/route removed; source+built HTML in sync | **done** | §1.2, §1.3, 90/0 + 21/0 |
+| runtime a11y proof on the exact candidate | **done via CI** | step #7 **success** twice on `3970f4c8`; `a11y-runtime` is one of its suites; §5.2 |
+| mutation: restoring the colour turns the suite red | **done** | revert → 4.289 FAIL, exit 1; §1.4 |
+| `docs-refs-check` fresh-zero vs baseline 255 | **done** | matcher tightened in-tool, 37/37, no literal widened; §2 |
+| `supply-chain` SC-01/SC-05 | **done** | SBOM regenerated, dependency change proven, `--check` exit 0; §3 |
+| full canonical run on the exact candidate | **done 3×** | local run #2 (561/66) + run #3 on `3970f4c8` (564/63, 5983 s) + CI canonical runner green twice; §4, §5b, §5.2 |
+| report with SHA and limitations | **done** | this file |
+| no merge, no registry promotion | **respected** | nothing merged, registry untouched |
+
+Still open, and therefore still not closeable:
+
+1. **SI-013 key rotation** — owner-exclusive, unchanged from the previous cycle; no owner
+   action was discharged here and none is claimed.
+2. **Fortify / APIsec / Jscrambler** — fail closed at credential steps in CI; they never
+   scan, so no scan result exists to claim.
+3. **CI confirmation of the `strict-verification-gate-a30.test` fix** — pending the next
+   run; locally it is 40/40 green under the load that used to break it (10/40 red).
+
+`M15-01: OPEN — ACTIONABLE DEFECTS REMAIN`
+
+Reasons, precisely: one owner-exclusive security action (SI-013), three security scanners
+that cannot run without credentials, and CI confirmation of the just-landed gate-output fix.
+The repository-controlled canonical surface is clean on this branch: **zero** product
+failures out of 627 suites in run #3, the only reds being the sandbox's absent PostgreSQL,
+Redis and Chromium — and CI's own canonical runner (which has all three) passed twice.

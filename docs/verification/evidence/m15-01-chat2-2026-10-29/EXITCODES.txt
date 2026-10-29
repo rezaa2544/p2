@@ -1,0 +1,173 @@
+M15-01 / Chat2 — canonical run #3 — exit codes, runtime and per-suite attribution
+generated: 2026-10-29T02:01:05Z
+
+COMMIT      : 3970f4c88c094449b25de4c2607c13d8a1c96974
+TREE        : df58bb2973287b105ab7bf81301ee12d618f55c4
+BRANCH      : arena/0008c4f4-p2
+NODE        : v22.22.3
+COMMAND     : bash scripts/run-all-tests.sh
+STARTED(UTC): 2026-10-29T00:06:30Z
+EXIT CODE   : 1
+RUNTIME     : 5983 s
+SUITES      : GREEN 564 / RED 63 / TOTAL 627
+STDOUT      : 2079 lines, 124958 bytes
+SHA256      : 913b038a24ef7d3b1ce8bd3c0fc183ce148da86fc2a21cb149ea2b636873dad2
+
+RUN-TIME PRE-REQUISITES ABSENT IN THIS SANDBOX (cause of every RED below)
+  - no live PostgreSQL / psql binary / pg module
+  - no live Redis on 127.0.0.1:6379
+  - no Chromium (download CDN blocked; apt has no package)
+
+RED ATTRIBUTION  (bucket | suite)
+  CHROMIUM  a11y-interactive
+  CHROMIUM  a11y-keyboard
+  CHROMIUM  a11y-runtime
+  CHROMIUM  reports-export
+  CHROMIUM  reports-pdf-e2e
+  REDIS     a-next-health-blackhole
+  OTHER     migration-009-live-mutations
+  POSTGRES  server13
+  POSTGRES  server13-mutations
+  POSTGRES  schema-migrations-live-pg.test
+  POSTGRES  migration-012-crash-recovery-live
+  POSTGRES  migration-009-live
+  POSTGRES  pg-relational-seed
+  POSTGRES  wave3-query
+  POSTGRES  wave3-query3
+  POSTGRES  wave3-parity
+  POSTGRES  wave4-sync
+  REDIS     wave6-11-redis-live
+  POSTGRES  wave10-pg-live
+  OTHER     wave10-pg-live-mutations
+  POSTGRES  wave10-tenant-live
+  OTHER     wave10-tenant-live-mutations
+  OTHER     wave23-reports-mutations
+  POSTGRES  wave23-norm-edge-mutations
+  POSTGRES  bench-phone-lookup-p11
+  REDIS     arena5-recovery
+  POSTGRES  b-pg-health-blackhole
+  POSTGRES  b-pg-migration-midflight-kill
+  POSTGRES  b-pg-timeout-failsafe
+  POSTGRES  canary-atomic-postgres-live-runtime
+  POSTGRES  canary-persistence
+  POSTGRES  n17-n18-tombstones-sms-wallet.test
+  POSTGRES  n21-schema-drift.test
+  POSTGRES  n22-hydrate-cap.test
+  REDIS     otp-redis
+  POSTGRES  outbox-lease-race-live
+  POSTGRES  p11-phone-auth-live
+  POSTGRES  pg-prod-boot-with-db
+  POSTGRES  pg-prod-client-error
+  POSTGRES  pg-prod-persistence-failure
+  POSTGRES  pg-prod-two-instance
+  POSTGRES  pg-prod-uid-idempotency
+  POSTGRES  phase2-occ-multi
+  POSTGRES  phase2-outbox-failover
+  REDIS     phase2-redis-fail-closed
+  POSTGRES  phase65-runtime-truth
+  REDIS     r5-prod-redis-boot-gate
+  POSTGRES  sync-occ-adversarial-live
+  POSTGRES  sync-replay-adversarial-live
+  REDIS     multi-instance
+  POSTGRES  queue-outage-drill
+  REDIS     chaos-drill-api-kill
+  REDIS     chaos-drill-redis-outage
+  REDIS     chaos-drill-pg-outage
+  REDIS     chaos-drill-queue-outage
+  REDIS     chaos-drill-network-degradation
+  REDIS     chaos-drill-disk-pressure
+  REDIS     chaos-suite
+  POSTGRES  idor-runtime
+  POSTGRES  idor-runtime-r4
+  POSTGRES  a31-intelligence-semantic-integrity
+  POSTGRES  a35-regression
+  POSTGRES  wal-disk-full
+
+COUNTS
+  CHROMIUM  5
+  POSTGRES  40
+  REDIS     14
+  OTHER     4
+
+DIRECTIVE-RELEVANT SUITES IN THIS RUN
+  [suite] GREEN a11y-regressions (0s)
+  [suite] GREEN a11y-state-matrix (0s)
+  [suite] GREEN docs-refs-check (1s)
+  [suite] GREEN supply-chain (0s)
+  [suite] GREEN pull-bootstrap (3s)
+  [suite] GREEN strict-verification-gate-a30.test (5s)
+  [suite] GREEN release-version-contract (0s)
+
+
+PER-LOG SHA256
+  d2663af09f82fa92e3f1e4e7019d116b7cb0f03ea64abea19c0c6bfeb8f887c9  a-next-health-blackhole.log
+  9180dcd78f916c9318d31c130edddd28a5e78f73b0668b0c2ec86b9d87983d3c  a11y-interactive.log
+  d93c5b645cd49d4825e4457df0ba765c502630d18d4952c12ec7b2eb904de3a2  a11y-keyboard.log
+  91e1c13004c9c05a5fb1d359b554b36200570dbb3a6378f6f8fec5be2e7d9ea2  a11y-regressions.log
+  e1503914cda98ad787ecc491b9f001032d4d45ffbfc197ba967b9f9a4f55681f  a11y-runtime.log
+  dac280155f34498e731df2b28a7413f12a4ab93b5c2882342028ed431fa2d1ed  a11y-state-matrix.log
+  9cb208401f1bd2879613ce36f20cfda56bc39392193c1913395f92d928460caf  a31-intelligence-semantic-integrity.log
+  c76bb1edce39f5a758235042ffd85153b5c6c3c80789527fffc83391fc6bc468  a35-regression.log
+  35953d0979169c112586f139c2eb28b62f889283e763e5d0764a7cf41ccfaa0f  arena5-recovery.log
+  998b0e8eb8c580bc176264e3b7e3566adef02adcfb862915995e64c3358c9eb8  b-pg-health-blackhole.log
+  a08354c439f02c37fe5447d09296647301709d8933da97c350abec09eca29bda  b-pg-migration-midflight-kill.log
+  b3363ec7f30e66a24044bd7dd7d52437a2da5c78d107b48fb0aaf43f7fd56b73  b-pg-timeout-failsafe.log
+  05e33c426dc1e848aa8cbf3b156a6eeac5bce6bd51e3039bf6d1e43708b3f7f0  bench-phone-lookup-p11.log
+  8205460b312af463cdb47064aa57b6b2813d1a0dcdbaba840328e1604843e1bd  canary-atomic-postgres-live-runtime.log
+  ab43f8904500148b7e7dcbb0eaa9b9f0697bedbfc7e1a2cc0abef2f873ec8130  canary-persistence.log
+  913b038a24ef7d3b1ce8bd3c0fc183ce148da86fc2a21cb149ea2b636873dad2  canonical-full.log
+  3adb5216feaa9ded518c3a9e9ecb8a3b326ac49b387e36b2ccda375ff87d2d87  chaos-drill-api-kill.log
+  3adb5216feaa9ded518c3a9e9ecb8a3b326ac49b387e36b2ccda375ff87d2d87  chaos-drill-disk-pressure.log
+  3adb5216feaa9ded518c3a9e9ecb8a3b326ac49b387e36b2ccda375ff87d2d87  chaos-drill-network-degradation.log
+  3adb5216feaa9ded518c3a9e9ecb8a3b326ac49b387e36b2ccda375ff87d2d87  chaos-drill-pg-outage.log
+  3adb5216feaa9ded518c3a9e9ecb8a3b326ac49b387e36b2ccda375ff87d2d87  chaos-drill-queue-outage.log
+  3adb5216feaa9ded518c3a9e9ecb8a3b326ac49b387e36b2ccda375ff87d2d87  chaos-drill-redis-outage.log
+  85fea478bf4efd5b61b3182c089a9c32544e6d6e8c718c29133b0e251b48b165  chaos-suite.log
+  76ccab636dc935acbb6b3a5d89b42d2575b426e3766098d68e685f28624334ab  docs-refs-check.log
+  1ce25d8fe169ce37e2cdeebdd8407809929a3d9023ee911b95baa65242c33307  idor-runtime-r4.log
+  3c0cf4947cb456192b35de7f818c0d275815c041bc6d7c82dc5df7428cd29b3b  idor-runtime.log
+  60356107836bfcdbd0eb8df1780060599927ff6c655f2c59e4f94ceb0fb6dd46  migration-009-live-mutations.log
+  7027475e7247bd8d5ece8167a161ca5a995deaa1bff572edfe25beb5adebdfa8  migration-009-live.log
+  1eb99df6117ada742d6b6917eb82e2f143b1e07beb28c77cd6ce7cda23eaeb9a  migration-012-crash-recovery-live.log
+  e3026ce9fd0d2331a82e2fd967bbf66d5103352aa579a3be738e1bb73b83c2e9  multi-instance.log
+  29d361f18057e360d5ee90a96d4dfd5a6d3f312a849abe564b4e442461e2b343  n17-n18-tombstones-sms-wallet.test.log
+  2735e388aae39b09cf7aaec71f4af2a9965de033203f45f5b26934a639e493f5  n21-schema-drift.test.log
+  c280e5b435ecfaaa0ca4f3354ef8ae767bf3e61a77b667adfa26750792ed79a6  n22-hydrate-cap.test.log
+  33e40d60e2f61975386df3936bb07ff3d457ef7662316c18c43288a550234c38  otp-redis.log
+  08500fbc15629c49e3caae9f1bc7f357d0c74d73c953b63d7b1b2435d4b9ed90  outbox-lease-race-live.log
+  f8669e03baf9aea23d3de79ef04a1deaa4b6bab0cd18c9bec3615e2b61831a79  p11-phone-auth-live.log
+  68f8e14522967e62ec01b6ef1498606a447a5d4af0df254412fa7aa9ff4769df  pg-prod-boot-with-db.log
+  fee57fd79ca8a94374d62c539e03e4b577589c57ddd41d8a64e92e23e9e6e811  pg-prod-client-error.log
+  bfc13dd371798473e6cb0f3f4bdaace4e296e9662778a23977b5b7c7cd9a794f  pg-prod-persistence-failure.log
+  6854156561901639f678df69502d1330845a27d9bfbf9efc7e58de1b6d55432e  pg-prod-two-instance.log
+  f8de9ae22e8bf57424dbceadda339c5121c36f73c48bf3ce5d98ba6ba615571a  pg-prod-uid-idempotency.log
+  a8478ebefb1d5c6c3a1c27b40d12b864b78054f7b7b270d149e550ebd30382aa  pg-relational-seed.log
+  ab43f8904500148b7e7dcbb0eaa9b9f0697bedbfc7e1a2cc0abef2f873ec8130  phase2-occ-multi.log
+  6eebd67e47b9caf14d1a10c066533be43bb13990b092d034eaa40b8b4a6a9e0d  phase2-outbox-failover.log
+  c75aff855d442fc297ad064623b8c8d9169fff7f14fa9a65dd3c517755362dcf  phase2-redis-fail-closed.log
+  d92afb899bbc6e714475a0aa0a2e3b379e26ee83ca858631094c5175396291d2  phase65-runtime-truth.log
+  a5acc2183ea6ea6f811769b6a6993971fa5bfc44611cce4289237b59bcb55d07  pull-bootstrap.log
+  79ac52f289789ffa8f9b7d629d953412f595d49925793afdb64bd82fb705361d  queue-outage-drill.log
+  baa5b59d2d92cd91425471648808c779f8322e673d756c6dc4ecdc5a8f229b6c  r5-prod-redis-boot-gate.log
+  e748de00185b51ce0a1a7a462bdb1883a096f4728f4daf74c2c0602b01c8b425  release-version-contract.log
+  5b7c94d528adeda441f89103ee1dd34d1e6f01d85f58ea6b0bba895c0f52c8b4  reports-export.log
+  00c1eebfe51bb149f072405a9223649348d5e736e3ac5eb54dbb3b76d98e4fd2  reports-pdf-e2e.log
+  32e224df42a1aad072d8da21980bf5e5d1dd37298b55d29553511cb97a6671ef  schema-migrations-live-pg.test.log
+  eb38b35828a6a1b829bf37e1d084fb40185b95bc974cc34455f6f4dc7360818b  server13-mutations.log
+  3d2b92b244d7a7f88fad33a17a6d9618baef8d9cb76fba66bfa5db5a1fe763fa  server13.log
+  1d6475fb42d062c84dae89ebcaa298e390b6366c6fef70189b81227b63721ada  strict-verification-gate-a30.test.log
+  75f706edb47a9719c4e6f1bc981476c9ef0bef8a2a76d1525c724b9091c9368f  supply-chain.log
+  512cde2b267fd8431e9b53bacaa8e3936bbdb64d1e7508c789da0e4e9283a84f  sync-occ-adversarial-live.log
+  15464a6919b62f47a5c30e614f8f60f921df2793dccb866106f2618ba92b8a31  sync-replay-adversarial-live.log
+  10b6a5ede30dbc6732a870b622f1044c9dfc5895251e1367fb25745913d3d048  wal-disk-full.log
+  06a8f06236eb5505b2fada27d0dd1257d692f862f7c3c09c5863d587d35ef2ea  wave10-pg-live-mutations.log
+  f56a9563366b6ff853b420557ae9c134260ffef00a6a1a01b6f452c0dbfefbb1  wave10-pg-live.log
+  357f29551f7379b90358b343240f6140ed7e5135aeb60d6463506158c6cf2b0a  wave10-tenant-live-mutations.log
+  b532a27aa1cf951f5aa5bd97239b337ec6d46c5c43088ce5c91fb45df096bd07  wave10-tenant-live.log
+  3d9e9f8b83709d139cf0e67ca9a69db6ed7b95b5bf27e39c78b455fde35022a0  wave23-norm-edge-mutations.log
+  a06623320bbc64daab59f2137dd5fef7d0d5ecb70dff01b018d48084e34d5fd3  wave23-reports-mutations.log
+  86d992d66b4219f1abbd533f33fd7161171996f6f2175ca902c6de8304005d53  wave3-parity.log
+  ac516888cd1e2001bedd06cc150c923b1f951a5d9639525260234624aef6e7fa  wave3-query.log
+  bbd668f8bcca103fd4e4d2c38ec28b5b4db677784bd14b4c7ca53bc37a20de02  wave3-query3.log
+  bc62532a8ef16561a308c7f33d1a7340caab7d4bc9ff9a4c9a4410cc27f0fce9  wave4-sync.log
+  4e986d8610352ecdc893fc177acda3b030d3ae9666bf3e0d964be1a74e5d5bbf  wave6-11-redis-live.log

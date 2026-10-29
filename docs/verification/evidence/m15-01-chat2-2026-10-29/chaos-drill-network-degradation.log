@@ -1,0 +1,5 @@
+
+──────────────────────────────────────────────────────────────────
+NOT-RUN: باینریِ PostgreSQL/Redis در دسترس نیست ({"postgres":false,"redis":false,"redisCli":false})
+INFRA_REQUIRED: postgresql-17 (initdb/pg_ctl) + redis-server
+──────────────────────────────────────────────────────────────────

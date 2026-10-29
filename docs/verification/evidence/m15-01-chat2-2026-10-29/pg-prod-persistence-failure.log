@@ -1,0 +1,3 @@
+pg-prod-persistence-failure — persistence failure must be explicit, never silent
+
+pg-prod-persistence-failure: NOT-RUN — PostgreSQL not reachable: connect ECONNREFUSED 127.0.0.1:5432

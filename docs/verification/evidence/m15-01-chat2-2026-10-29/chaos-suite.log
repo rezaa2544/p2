@@ -1,0 +1,31 @@
+
+── S1: Redis failure
+node:events:497
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: spawn redis-server ENOENT
+    at ChildProcess._handle.onexit (node:internal/child_process:285:19)
+    at onErrorNT (node:internal/child_process:483:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)
+Emitted 'error' event on ChildProcess instance at:
+    at ChildProcess._handle.onexit (node:internal/child_process:291:12)
+    at onErrorNT (node:internal/child_process:483:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'spawn redis-server',
+  path: 'redis-server',
+  spawnargs: [
+    '--port',
+    '17752',
+    '--save',
+    '',
+    '--appendonly',
+    'no',
+    '--dir',
+    '/tmp'
+  ]
+}
+
+Node.js v22.22.3

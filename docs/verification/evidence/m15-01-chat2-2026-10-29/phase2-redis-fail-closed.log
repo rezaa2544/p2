@@ -1,0 +1,9 @@
+── docker redis unavailable: docker info failed
+── WARNING: falling back to shared REDIS_URL — SHUTDOWN would kill later CI steps; fail-closed still asserted, recovery skipped
+[DB] no DATABASE_URL — using the JSON/in-memory store. Dev/test only; set ALLOW_MEMORY_FALLBACK=1 to silence this warning. In production this is a startup failure.
+  cursor : enabled — key=keyfile (signed cursors survive restarts, ttl=3600s)
+[CANARY] weights hydrated from PostgreSQL (cluster_weights SSoT, 7 clusters)
+[Redis] Connection failed. Production refuses fallback (readiness fails): Connection is closed.
+[FATAL] Cache readiness failed: Redis unreachable in production: Connection is closed.
+
+❌ سرور با Redis واقعی بالا آمد
