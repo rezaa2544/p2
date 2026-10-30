@@ -124,7 +124,7 @@ the same G7 precedence rule (a real `createdb` earlier in `PATH` wins).
 Supported: `-h/--host`, `-p/--port`, `-U/--username`, `-O/--owner`,
 `-T/--template`, `-E/--encoding`, `-l/--list`, `--maintenance-db=DB`,
 `-w/-W`, `-e`, `--version`. Unknown options are hard failures.
-`--selftest` is **17/17** (9 positive, 8 negative — quoting/injection, port
+`--selftest` is **20/20** (12 positive, 8 negative — quoting/injection, port
 coercion, missing value, unknown flag, missing dbname, invalid encoding).
 
 Measured effect: with both shims on `PATH`,

@@ -15,9 +15,12 @@
 
    WHAT IT DOES
    ------------
-   Exactly what `createdb` does: connect to the maintenance database
-   (`postgres` unless --maintenance-db/PGDATABASE says otherwise) and issue
-   `CREATE DATABASE`. Nothing is faked; the server does the work.
+   Exactly what `createdb` does: connect to the maintenance database and issue
+   `CREATE DATABASE`. Nothing is faked; the server does the work. The
+   maintenance database is `--maintenance-db`, else `postgres`, else
+   `template1` when `postgres` does not exist or is the database being created —
+   createdb's own documented fallback, and *not* PGDATABASE, which names the
+   database to create.
 
    WHAT IT REFUSES
    ---------------
@@ -120,11 +123,15 @@ function buildCreateDatabaseSql(opts) {
   return sql;
 }
 
-function connectionOpts(opts) {
+function connectionOpts(opts, maintenanceOverride) {
   /* createdb connects to the maintenance database, not to the database it is
-     about to create */
-  const maintenance = opts.maintenanceDb || (process.env.PGDATABASE && opts.dbname && process.env.PGDATABASE !== opts.dbname
-    ? process.env.PGDATABASE : null) || 'postgres';
+     about to create. A drill that points this tool at a freshly initialised
+     cluster has no `payesh_ci`/`PGDATABASE` database there — using the
+     environment as the maintenance target (this tool's first version did) makes
+     the tool fail on a cluster the real createdb would never touch. */
+  const target = opts.dbname || process.env.PGDATABASE;
+  const maintenance = maintenanceOverride || opts.maintenanceDb
+    || (target === 'postgres' ? 'template1' : 'postgres');
   return {
     host: opts.host, port: opts.port, user: opts.user,
     dbname: maintenance, url: null, sslmode: null
@@ -135,24 +142,34 @@ async function run(opts) {
   let pg;
   try { pg = require('pg'); }
   catch (e) { throw new GuardError('pg driver not resolvable — set NODE_PATH to a node_modules containing pg'); }
-  const { cfg, wantsTlsRetry } = buildClientConfig(connectionOpts(opts), process.env);
-  const connect = async () => {
-    const c = new pg.Client(cfg);
-    await c.connect();
-    return c;
+  const open = async (maintenanceOverride) => {
+    const { cfg, wantsTlsRetry } = buildClientConfig(connectionOpts(opts, maintenanceOverride), process.env);
+    const connect = async () => {
+      const c = new pg.Client(cfg);
+      await c.connect();
+      return c;
+    };
+    try {
+      return await connect();
+    } catch (e) {
+      /* retry with TLS only when the server actually demanded it — retrying on
+         every error would report a TLS complaint for an authentication failure
+         and hide the real cause (caught by the live check) */
+      const tlsDemanded = /SSL|TLS|secure connection/i.test(String(e && e.message || ''));
+      if (!wantsTlsRetry || !tlsDemanded) throw e;
+      const c = new pg.Client(Object.assign({}, cfg, { ssl: { rejectUnauthorized: false } }));
+      await c.connect();
+      return c;
+    }
   };
   let client;
   try {
-    client = await connect();
+    client = await open();
   } catch (e) {
-    /* retry with TLS only when the server actually demanded it — retrying on
-       every error would report a TLS complaint for an authentication failure
-       and hide the real cause (this exact bug was caught by the live check) */
-    const tlsDemanded = /SSL|TLS|secure connection/i.test(String(e && e.message || ''));
-    if (!wantsTlsRetry || !tlsDemanded) throw e;
-    const c = new pg.Client(Object.assign({}, cfg, { ssl: { rejectUnauthorized: false } }));
-    await c.connect();
-    client = c;
+    /* createdb's documented fallback: if `postgres` does not exist (3D000) it
+       connects to `template1` instead */
+    if (!opts.maintenanceDb && e && e.code === '3D000') client = await open('template1');
+    else throw e;
   }
   try {
     if (opts.echo || opts.list) {
@@ -211,6 +228,22 @@ function selftest() {
   });
   ok('C9 port string is coerced once, at the boundary', () => {
     assert.strictEqual(parseArgs(['-p', '5432', 'db']).port, 5432);
+  });
+  ok('C10 PGDATABASE names the database to CREATE, never the maintenance one', () => {
+    const saved = process.env.PGDATABASE;
+    process.env.PGDATABASE = 'payesh_ci';
+    try {
+      const o = parseArgs(['-h', 'h', '-p', '1', '-U', 'u', 'payesh']);
+      assert.strictEqual(connectionOpts(o).dbname, 'postgres');
+    } finally {
+      if (saved === undefined) delete process.env.PGDATABASE; else process.env.PGDATABASE = saved;
+    }
+  });
+  ok('C11 creating "postgres" itself falls back to template1', () => {
+    assert.strictEqual(connectionOpts(parseArgs(['postgres'])).dbname, 'template1');
+  });
+  ok('C12 --maintenance-db beats the fallback', () => {
+    assert.strictEqual(connectionOpts(parseArgs(['--maintenance-db=other', 'postgres'])).dbname, 'other');
   });
   bad('N1 unknown long option refused', () => parseArgs(['--no-such-flag', 'db']));
   bad('N2 unknown short option refused', () => parseArgs(['-Z', 'db']));
