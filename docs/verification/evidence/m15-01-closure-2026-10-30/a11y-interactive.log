@@ -1,0 +1,27 @@
+
+▸ A11y Interactive — مودال‌ها و حالت‌هایِ تعاملی (axe-core، Chromium headless)
+  18 سناریو
+
+  ✅ modal:user-new (افزودن کاربر)                        critical:0 serious:0 moderate:0 minor:0
+  ✅ modal:user-edit (ویرایش کاربر)                       critical:0 serious:0 moderate:0 minor:0
+  ✅ modal:class (کلاس)                                   critical:0 serious:0 moderate:0 minor:0
+  ✅ modal:subject (درس/کتاب)                             critical:0 serious:0 moderate:0 minor:0
+  ✅ modal:calendar (رویداد تقویم)                        critical:0 serious:0 moderate:0 minor:0
+  ✅ modal:ticket (تیکت پشتیبانی)                         critical:0 serious:0 moderate:0 minor:0
+  ✅ modal:school (مدرسه — superadmin)                    critical:0 serious:0 moderate:0 minor:0
+  ✅ modal:grade (ثبت نمره — teacher)                     critical:0 serious:0 moderate:0 minor:0
+  ✅ modal:confirm-delete (تأیید حذف)                     critical:0 serious:0 moderate:0 minor:0
+  ✅ modal:ask-confirm (تأیید عمومی)                      critical:0 serious:0 moderate:0 minor:0
+  ✅ modal:sync-panel (پنل همگام‌سازی)                    critical:0 serious:0 moderate:0 minor:0
+  ✅ modal:storage-quota (حافظهٔ دستگاه)                  critical:0 serious:0 moderate:0 minor:0
+  ✅ state:form-error (فرم کاربر با خطای ولیدیشن)         critical:0 serious:0 moderate:0 minor:0
+  ✅ state:form-error-nid (کد ملی نامعتبر)                critical:0 serious:0 moderate:0 minor:0
+  ✅ state:toasts (ok + err + warn هم‌زمان)               critical:0 serious:0 moderate:0 minor:0
+  ✅ state:sidebar-open (سایدبار موبایل باز)              critical:0 serious:0 moderate:0 minor:0
+  ✅ state:theme-menu-open (منوی پوسته باز)               critical:0 serious:0 moderate:0 minor:0
+  ✅ modal:panel-picker (انتخاب پنل بعد از ورود)          critical:0 serious:0 moderate:0 minor:0
+
+  جمعِ کل: critical=0 serious=0 moderate=0 minor=0
+  گزارشِ JSON: out/a11y-interactive.json (18 سناریو)
+
+  ✅ قبول: صفر critical، صفر serious.

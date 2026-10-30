@@ -1,0 +1,15 @@
+
+▸ دور 85 — P1-4: fail-fastِ TLS در production
+  · P0-PG pg-ready target=127.0.0.1:5432/payesh_ci attempts=1 waited_ms=11
+  · P0-MIG migrations-applied attempts=1 [LEDGER] Applied 0 migration(s).
+  ✅ P0 گواهی‌های تست ساخته شد (self-signed + leafِ CA)
+  ✅ T1 production + self-signed → exit(1)
+  ✅ T1b پیامِ خطایِ دقیق
+  ✅ T2 production + CA-signed → سرور بالا آمد
+  ✅ T2b health روی https سالم است
+  ✅ T3 development + self-signed → سرور بالا آمد
+  ✅ T3b health روی https سالم است
+  ✅ T4 production + گواهیِ خراب → exit(1)
+  ✅ T4b پیامِ «cert unreadable»
+
+server13: 9/9  ✅

@@ -1,0 +1,131 @@
+
+▸ A11y Keyboard — focus trap، ترتیبِ tab، Escape، skip-link (کلیدهایِ واقعی)
+
+— مودالِ user-new —
+  ✅ user-new: focus اولیه واردِ مودال می‌شود
+  ✅ user-new: Tab از آخرین عنصر به اولین می‌چرخد
+  ✅ user-new: Shift+Tab از اولین عنصر به آخرین می‌چرخد
+  ✅ user-new: focus با Tabهایِ پیاپی از مودال بیرون نمی‌رود (trap)
+  ✅ user-new: Escape مودال را می‌بندد
+  ✅ user-new: پس از بستن، focus به عنصرِ بازکننده برمی‌گردد
+
+— مودالِ user-edit —
+  ✅ user-edit: focus اولیه واردِ مودال می‌شود
+  ✅ user-edit: Tab از آخرین عنصر به اولین می‌چرخد
+  ✅ user-edit: Shift+Tab از اولین عنصر به آخرین می‌چرخد
+  ✅ user-edit: focus با Tabهایِ پیاپی از مودال بیرون نمی‌رود (trap)
+  ✅ user-edit: Escape مودال را می‌بندد
+  ✅ user-edit: پس از بستن، focus به عنصرِ بازکننده برمی‌گردد
+
+— مودالِ class —
+  ✅ class: focus اولیه واردِ مودال می‌شود
+  ✅ class: Tab از آخرین عنصر به اولین می‌چرخد
+  ✅ class: Shift+Tab از اولین عنصر به آخرین می‌چرخد
+  ✅ class: focus با Tabهایِ پیاپی از مودال بیرون نمی‌رود (trap)
+  ✅ class: Escape مودال را می‌بندد
+  ✅ class: پس از بستن، focus به عنصرِ بازکننده برمی‌گردد
+
+— مودالِ subject —
+  ✅ subject: focus اولیه واردِ مودال می‌شود
+  ✅ subject: Tab از آخرین عنصر به اولین می‌چرخد
+  ✅ subject: Shift+Tab از اولین عنصر به آخرین می‌چرخد
+  ✅ subject: focus با Tabهایِ پیاپی از مودال بیرون نمی‌رود (trap)
+  ✅ subject: Escape مودال را می‌بندد
+  ✅ subject: پس از بستن، focus به عنصرِ بازکننده برمی‌گردد
+
+— مودالِ calendar —
+  ✅ calendar: focus اولیه واردِ مودال می‌شود
+  ✅ calendar: Tab از آخرین عنصر به اولین می‌چرخد
+  ✅ calendar: Shift+Tab از اولین عنصر به آخرین می‌چرخد
+  ✅ calendar: focus با Tabهایِ پیاپی از مودال بیرون نمی‌رود (trap)
+  ✅ calendar: Escape مودال را می‌بندد
+  ✅ calendar: پس از بستن، focus به عنصرِ بازکننده برمی‌گردد
+
+— مودالِ ticket —
+  ✅ ticket: focus اولیه واردِ مودال می‌شود
+  ✅ ticket: Tab از آخرین عنصر به اولین می‌چرخد
+  ✅ ticket: Shift+Tab از اولین عنصر به آخرین می‌چرخد
+  ✅ ticket: focus با Tabهایِ پیاپی از مودال بیرون نمی‌رود (trap)
+  ✅ ticket: Escape مودال را می‌بندد
+  ✅ ticket: پس از بستن، focus به عنصرِ بازکننده برمی‌گردد
+
+— مودالِ confirm-del —
+  ✅ confirm-del: focus اولیه واردِ مودال می‌شود
+  ✅ confirm-del: Tab از آخرین عنصر به اولین می‌چرخد
+  ✅ confirm-del: Shift+Tab از اولین عنصر به آخرین می‌چرخد
+  ✅ confirm-del: focus با Tabهایِ پیاپی از مودال بیرون نمی‌رود (trap)
+  ✅ confirm-del: Escape مودال را می‌بندد
+  ✅ confirm-del: پس از بستن، focus به عنصرِ بازکننده برمی‌گردد
+
+— مودالِ ask-confirm —
+  ✅ ask-confirm: focus اولیه واردِ مودال می‌شود
+  ✅ ask-confirm: Tab از آخرین عنصر به اولین می‌چرخد
+  ✅ ask-confirm: Shift+Tab از اولین عنصر به آخرین می‌چرخد
+  ✅ ask-confirm: focus با Tabهایِ پیاپی از مودال بیرون نمی‌رود (trap)
+  ✅ ask-confirm: Escape مودال را می‌بندد
+  ✅ ask-confirm: پس از بستن، focus به عنصرِ بازکننده برمی‌گردد
+
+— مودالِ sync-panel —
+  ✅ sync-panel: focus اولیه واردِ مودال می‌شود
+  ✅ sync-panel: Tab از آخرین عنصر به اولین می‌چرخد
+  ✅ sync-panel: Shift+Tab از اولین عنصر به آخرین می‌چرخد
+  ✅ sync-panel: focus با Tabهایِ پیاپی از مودال بیرون نمی‌رود (trap)
+  ✅ sync-panel: Escape مودال را می‌بندد
+  ✅ sync-panel: پس از بستن، focus به عنصرِ بازکننده برمی‌گردد
+
+— مودالِ grade —
+  ✅ grade: focus اولیه واردِ مودال می‌شود
+  ✅ grade: Tab از آخرین عنصر به اولین می‌چرخد
+  ✅ grade: Shift+Tab از اولین عنصر به آخرین می‌چرخد
+  ✅ grade: focus با Tabهایِ پیاپی از مودال بیرون نمی‌رود (trap)
+  ✅ grade: Escape مودال را می‌بندد
+  ✅ grade: پس از بستن، focus به عنصرِ بازکننده برمی‌گردد
+
+— مودالِ school —
+  ✅ school: focus اولیه واردِ مودال می‌شود
+  ✅ school: Tab از آخرین عنصر به اولین می‌چرخد
+  ✅ school: Shift+Tab از اولین عنصر به آخرین می‌چرخد
+  ✅ school: focus با Tabهایِ پیاپی از مودال بیرون نمی‌رود (trap)
+  ✅ school: Escape مودال را می‌بندد
+  ✅ school: پس از بستن، focus به عنصرِ بازکننده برمی‌گردد
+
+— پوسته (manager) —
+  ✅ manager: نخستین Tab رویِ skip-link می‌نشیند
+  ✅ manager: Enter رویِ skip-link → focus به محتوایِ اصلی
+  ✅ manager: nav-item با کیبورد فوکوس‌پذیر است (tabindex)
+  ✅ manager: Enter رویِ nav-item مسیر را عوض می‌کند
+
+— پوسته (teacher) —
+  ✅ teacher: نخستین Tab رویِ skip-link می‌نشیند
+  ✅ teacher: Enter رویِ skip-link → focus به محتوایِ اصلی
+  ✅ teacher: nav-item با کیبورد فوکوس‌پذیر است (tabindex)
+  ✅ teacher: Enter رویِ nav-item مسیر را عوض می‌کند
+
+— پوسته (parent) —
+  ✅ parent: نخستین Tab رویِ skip-link می‌نشیند
+  ✅ parent: Enter رویِ skip-link → focus به محتوایِ اصلی
+  ✅ parent: nav-item با کیبورد فوکوس‌پذیر است (tabindex)
+  ✅ parent: Enter رویِ nav-item مسیر را عوض می‌کند
+
+— پوسته (student) —
+  ✅ student: نخستین Tab رویِ skip-link می‌نشیند
+  ✅ student: Enter رویِ skip-link → focus به محتوایِ اصلی
+  ✅ student: nav-item با کیبورد فوکوس‌پذیر است (tabindex)
+  ✅ student: Enter رویِ nav-item مسیر را عوض می‌کند
+
+— پوسته (counselor) —
+  ✅ counselor: نخستین Tab رویِ skip-link می‌نشیند
+  ✅ counselor: Enter رویِ skip-link → focus به محتوایِ اصلی
+  ✅ counselor: nav-item با کیبورد فوکوس‌پذیر است (tabindex)
+  ✅ counselor: Enter رویِ nav-item مسیر را عوض می‌کند
+
+— منویِ پوسته (dropdown، نمایِ موبایل) + فرم —
+  ✅ dropdown: دکمهٔ منویِ پوسته فوکوس‌پذیر است
+  ✅ dropdown: Enter منو را باز می‌کند
+  ✅ dropdown: ArrowDown به گزینهٔ نخست می‌رود
+  ✅ dropdown: ArrowUp به گزینهٔ قبلی برمی‌گردد
+  ✅ dropdown: Escape منو را می‌بندد و focus به دکمه برمی‌گردد
+  ✅ form: ArrowDown رویِ select گزینه را عوض می‌کند (رفتارِ بومی)
+
+جمع: 92 قبول، 0 رد
+✅ ناوبریِ صفحه‌کلید کامل است.

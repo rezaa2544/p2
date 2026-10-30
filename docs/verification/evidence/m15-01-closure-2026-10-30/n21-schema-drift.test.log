@@ -1,0 +1,9 @@
+
+=== N-21 schema drift / migration-chain parity ===
+  PASS  N21-1 committed server/schema.sql is byte-identical to generateDDL() (no drift)
+  PASS  N21-2 every app collection declares "version" INTEGER NOT NULL DEFAULT 1 inline
+  PASS  N21-3 migration 011 parity: chg_id + payesh_chg_seq + bump trigger on the 14 delta tables
+  PASS  N21-4 migration 021/023 parity: processing_token, DLQ unique index, server_tombstones
+  PASS  N21-5 live build: the DDL creates a database where version defaults to 1 and an OCC UPDATE matches
+
+ALL PASSED (5 checks)

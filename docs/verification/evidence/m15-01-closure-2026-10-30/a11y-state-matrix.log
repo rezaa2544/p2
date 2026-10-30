@@ -1,0 +1,29 @@
+▸ ماتریسِ وضعیت × تم (بدونِ مرورگر — جایگزینِ axe نیست)
+  theme    node              fg        bg        ratio   verdict
+  ✅ theme-1  tab.active        #0f4fc4   #f6f9ff   6.783:1 PASS
+  ✅ theme-1  tab (inactive)    #556074   #f6f9ff   6.013:1 PASS
+  ✅ theme-1  sync-chip.busy    #0f4fc4   #e7f0ff   6.235:1 PASS
+  ✅ theme-1  sync-chip.off     #556074   #eef2f7   5.641:1 PASS
+  ✅ theme-1  back-btn          #0f4fc4   #e7f0ff   6.235:1 PASS
+  ✅ theme-1  avatar            #ffffff   #2563eb   5.169:1 PASS
+  ✅ theme-1  sec-title         #0f4fc4   #e7f0ff   6.235:1 PASS
+  ✅ theme-2  tab.active        #1d4ed8   #f1f5f9   6.117:1 PASS
+  ✅ theme-2  tab (inactive)    #556074   #f1f5f9   5.788:1 PASS
+  ✅ theme-2  sync-chip.busy    #1d4ed8   #eff6ff   6.158:1 PASS
+  ✅ theme-2  sync-chip.off     #556074   #eef2f7   5.641:1 PASS
+  ✅ theme-2  back-btn          #1d4ed8   #eff6ff   6.158:1 PASS
+  ✅ theme-2  avatar            #ffffff   #2563eb   5.169:1 PASS
+  ✅ theme-2  sec-title         #1d4ed8   #eff6ff   6.158:1 PASS
+  ✅ theme-3  tab.active        #0f4dc0   #e8f0fe   6.446:1 PASS
+  ✅ theme-3  tab (inactive)    #4f6382   #e8f0fe   5.328:1 PASS
+  ✅ theme-3  sync-chip.busy    #0f4dc0   #e3edff   6.269:1 PASS
+  ✅ theme-3  sync-chip.off     #556074   #eef2f7   5.641:1 PASS
+  ✅ theme-3  back-btn          #0f4dc0   #e3edff   6.269:1 PASS
+  ✅ theme-3  avatar            #ffffff   #2563eb   5.169:1 PASS
+  ✅ theme-3  sec-title         #0f4dc0   #e3edff   6.269:1 PASS
+
+  ترکیب‌های سنجیده‌شده: 21  (۳ تم × 7 نود)
+  نقض: 0
+
+──────────────────────────────────────────
+نتیجه: ۰ نقض در 21 ترکیب ✅

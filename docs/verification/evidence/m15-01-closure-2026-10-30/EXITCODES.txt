@@ -1,0 +1,62 @@
+M15-01 closure evidence — canonical run — exit code, runtime and per-suite attribution
+generated: 2026-10-30T23:51:18.889Z
+
+COMMIT      : a1a9e80cb090a04863d5dfc9a73f7c22ac06d2b8
+TREE        : ab1edfa8b20efc20b64a9e65a1dbdab218193bc4
+BRANCH      : arena/474f9c0b-p2
+NODE        : v22.22.3
+COMMAND     : bash scripts/run-all-tests.sh
+EXIT CODE   : 1
+RUNTIME     : 5075 s
+SUITES      : GREEN 626 / RED 1 / TOTAL 627
+STDOUT      : 657 lines, 22673 bytes
+SHA256      : da71939396a377a2f41c7c18c2f5b03c34f275b3600323f9e53318d68f8d1a44
+
+RUN-TIME SERVICES PRESENT IN THIS SANDBOX (not the CI baseline — versions differ)
+  PostgreSQL 18.4 (embedded-postgres npm, @embedded-postgres/linux-x64 18.4.0-beta.17) on 127.0.0.1:5432
+  Redis      6.2.14 (redislite wheel binary) on 127.0.0.1:6379   [CI baseline: redis:8]
+  Chromium   153.0.8010.0 (@sparticuz/chromium npm) via playwright 1.x
+  absent    : Docker  (so C-03/C-04/C-05 E3 Docker subsets cannot run here)
+
+RED ATTRIBUTION  (bucket | suite | first line of its log)
+  POSTGRES   wal-disk-full  :: خروجیِ ۲: «اجرا نشد» با «موفق» فرق دارد (سبزِ جعلی ممنوع
+
+COUNTS
+  POSTGRES   1
+
+CLOSURE-MATRIX SUITES IN THIS RUN
+  GREEN a11y-runtime (74s)
+  GREEN a11y-interactive (43s)
+  GREEN a11y-keyboard (26s)
+  GREEN a11y-regressions (1s)
+  GREEN a11y-state-matrix (1s)
+  GREEN docs-refs-check (2s)
+  GREEN supply-chain (0s)
+  GREEN pull-bootstrap (4s)
+  GREEN release-version-contract (0s)
+  GREEN strict-verification-gate-a30.test (6s)
+  GREEN pg-relational-seed (7s)
+  GREEN server13 (6s)
+  GREEN server13-mutations (45s)
+  GREEN n21-schema-drift.test (5s)
+
+PER-LOG SHA256 (logs committed next to this file)
+  c68e54dd5af0082af4f7eea527f9e2e4398d4f91bdb3371b83c47de4bd172ba2  a11y-interactive.log
+  c19477560e90a5f6c2f212540e390ba16d24816e406bec1c6d7dc5936ff557f6  a11y-keyboard.log
+  91e1c13004c9c05a5fb1d359b554b36200570dbb3a6378f6f8fec5be2e7d9ea2  a11y-regressions.log
+  b6ada712e22f755bb98501592b62baddc58d5b6c9298a50017f5502e7856fdb5  a11y-runtime.log
+  dac280155f34498e731df2b28a7413f12a4ab93b5c2882342028ed431fa2d1ed  a11y-state-matrix.log
+  76ccab636dc935acbb6b3a5d89b42d2575b426e3766098d68e685f28624334ab  docs-refs-check.log
+  abfcedb8bccb5ebbef858db6755c4266f25f2f00ad68ed87db7deaa3fbe76bf7  n21-schema-drift.test.log
+  ba85244e6329f8e13e5f3fbdd452229e625bc3347bd7c174571eec46ff1c41e5  otp-redis.log
+  e8970aebf6a714c74c0b4b88cd5b7970e7b108f88fdc416fc4b1dadcf8f30703  pg-relational-seed.log
+  a5acc2183ea6ea6f811769b6a6993971fa5bfc44611cce4289237b59bcb55d07  pull-bootstrap.log
+  5ca4a8325bd0aba1534bdcf8bd6c330d4a823c8b9c0b0715a5b2bb3a54d0348f  release-version-contract.log
+  d3e756c20bad64e1e17d03d398e5c07b165d1a7f2c2f5ef6740efdeeb40a4748  server13-mutations.log
+  ab269f4a87e6c59a03bfea15b37d9cf13f7f6f6c3894da435f16e48e9faf9472  server13.log
+  1d6475fb42d062c84dae89ebcaa298e390b6366c6fef70189b81227b63721ada  strict-verification-gate-a30.test.log
+  75f706edb47a9719c4e6f1bc981476c9ef0bef8a2a76d1525c724b9091c9368f  supply-chain.log
+  efd7246284737a0444514c57fb3832de3441a6753997bbf8526a5633f9e37348  wal-disk-full.log
+  6c7e12bb1caf62118a05ae6afe9877de26dc98ed9b8c53d89949f98021f805d5  wave6-11-redis-live.log
+
+ARTIFACT    : a11y-runtime.json sha256=51fcbed9f25ff55045d936b0df35712c56310488845da29d74be929b4965108c
