@@ -83,13 +83,37 @@ statement with autocommit, so `BEGIN`/`COMMIT` and procedures with internal
 |---|---|
 | `-v NAME=VALUE` (repeatable) | `\if` / `\elif` / `\else` / `\endif` |
 | `--quiet`, `-q` | `\echo` |
-| `-f FILE` | `\copy` |
+| `-f FILE`, `-f -` (stdin), and stdin when neither `-c` nor `-f` is given | `\copy` |
 | `-c COMMAND` | `\dt`, `\d`, `\l` and other introspection |
-| positional connection URL | `\timing`, `\i`, `\set`, `\quit` |
-| `\gset [prefix]` | any other `\<word>` |
+| positional connection URL, or `-d` with a URL | `\timing`, `\i`, `\set`, `\quit` |
+| `-h/-p/-U/-d` + long forms; `PG*` environment fallbacks | any other `\<word>` |
+| `-t/--tuples-only`, `-A/--no-align`, clustered `-tAq`, `-tAf FILE` | any other option (e.g. `--no-such-flag`, `-tZ`) |
+| `-w`, `-X` (accepted no-ops: no prompt, no psqlrc) | `-P` other than `pager=off` / `format=unaligned` |
+| `--version` | |
+| `--sslmode` = `disable|allow|prefer|require|verify-ca|verify-full` (from URL/`PGSSLMODE` too) | |
+| psql-shaped row output (aligned header/separator/footer; `-tA` bare values) | |
+| `\gset [prefix]` | |
 | `:var`, `:'var'`, `:"var"` | |
 | `BEGIN` / `COMMIT` | |
 | `DO $$ … $$`, `CREATE PROCEDURE` with internal `COMMIT` | |
+
+### 4a. Widened surface (M15-01, 2026-10-30) — and the one documented deviation
+
+Five live suites (`n21-schema-drift`, `n22-hydrate-cap`, `a35-regression`,
+`migration-012-crash-recovery-live`, `wave23-norm-edge-mutations`) shelled out
+to `psql` with flags this shim refused, so on a machine with no PostgreSQL
+client they failed with a `GuardError` instead of exercising the real database.
+The option/connection surface above closes that. What did **not** change: an
+unknown option or meta-command is still a hard failure (`N13`/`N14`), the
+base-directory escape guard still applies to real `-f` paths (`N11`), and
+`\gset` / `:var` guards are untouched.
+
+**Deviation, stated rather than hidden:** psql's default `sslmode=prefer` tries
+TLS first and falls back to plaintext. This shim connects in plaintext first and
+retries once **with** TLS if the server demands it. The *outcome* is the same
+(a server without TLS connects; a TLS-only server connects), but the handshake
+order is not. `require`/`verify-ca`/`verify-full` force TLS, `disable`/`allow`
+never do.
 
 **Unsupported is a hard failure by design, not a skip.** Silently skipping a
 meta-command would produce a green run over a half-applied migration — exactly
@@ -158,7 +182,7 @@ doing less would be a lie.
 
 | claim | value | provenance |
 |---|---|---|
-| `node tools/psql-min.js --selftest` | **33/33**, exit 0 | **re-measured for M15-01 (2026-10-23): +P20/P21 +N11/N12 for the `-c`/`-f` SQL-source guard** |
+| `node tools/psql-min.js --selftest` | **48/48**, exit 0 | **re-measured for M15-01 (2026-10-30): +P22–P31 +N13–N17 for the widened option/connection surface, TLS policy and row rendering (33/33 → 48/48)** |
 | migrations 001..012 on a fresh schema | **12 applied · 102 tables** | measured round 5 @ `7db609f` |
 | partition artifacts created | `attendance_y2025/2026/2027`, `attendance_default`, `grades_y2025/2026/2027`, `grades_default` | measured round 5 |
 | `tests/wave23-reports-pg.js` with shim on `PATH` | **76/76**, exit 0 | measured round 5 |
