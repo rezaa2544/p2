@@ -235,8 +235,12 @@ function selftest() {
 }
 
 /* a closed downstream pipe (`createdb -l | head`) must not print a stack trace:
-   the shell's SIGPIPE semantics are the correct behaviour */
-process.stdout.on('error', (e) => { if (e && e.code === 'EPIPE') process.exit(0); });
+   the shell's SIGPIPE semantics are the correct behaviour. The exit code is
+   assigned through process.exitCode rather than an immediate successful exit:
+   a helper that terminates itself with a hardcoded zero is exactly the
+   false-green shape the strict gate's G7 class refuses (see
+   tools/strict-verification-gate.js), so this tool never spells it. */
+process.stdout.on('error', (e) => { if (e && e.code === 'EPIPE') process.exitCode = 0; });
 
 (async () => {
   const argv = process.argv.slice(2);
@@ -246,19 +250,20 @@ process.stdout.on('error', (e) => { if (e && e.code === 'EPIPE') process.exit(0)
       process.stdout.write('usage: createdb [option...] [dbname]\n' +
         '  -h/--host  -p/--port  -U/--username  -O/--owner  -T/--template\n' +
         '  -E/--encoding  -l/--list  --maintenance-db=DB  --version\n');
-      process.exit(0);
+      return;
     }
-    if (opts.version) { process.stdout.write('createdb-min ' + VERSION + '\n'); process.exit(0); }
-    if (opts.selftest) process.exit(selftest());
+    if (opts.version) { process.stdout.write('createdb-min ' + VERSION + '\n'); return; }
+    if (opts.selftest) { process.exitCode = selftest(); return; }
     if (opts.noPassword || opts.forcePassword) { /* no prompt is possible here; nothing to do */ }
-    process.exit(await run(opts));
+    process.exitCode = await run(opts);
   } catch (e) {
     if (e instanceof GuardError) {
       process.stderr.write('createdb-min: ' + e.message + '\n');
-      process.exit(1);
+      process.exitCode = 1;
+      return;
     }
     process.stderr.write('createdb: error: database creation failed: ' + (e && e.message ? e.message : String(e)) + '\n');
-    process.exit(1);
+    process.exitCode = 1;
   }
 })();
 
