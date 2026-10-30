@@ -1,0 +1,41 @@
+#!/bin/sh
+# ═══════════════════════════════════════════════════════════════════
+#  tools/bin/createdb — PATH shim that fronts tools/createdb-min.js
+# ═══════════════════════════════════════════════════════════════════
+#  Same contract as tools/bin/psql: a real `createdb` found EARLIER in
+#  PATH wins and this shim steps aside, so the real client is never
+#  shadowed by a smaller implementation.
+# ═══════════════════════════════════════════════════════════════════
+set -eu
+
+here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+real=$(CDPATH= cd -- "$here/.." && pwd)          # tools/
+repo=$(CDPATH= cd -- "$real/.." && pwd)           # repository root
+
+case ":$PATH:" in
+  *":$here:"*)
+    prefix=${PATH%%":$here:"*}
+    ;;
+  *)
+    prefix=$PATH
+    ;;
+esac
+
+saved_ifs=$IFS
+IFS=:
+for dir in $prefix; do
+  IFS=$saved_ifs
+  [ -n "$dir" ] || continue
+  if [ -x "$dir/createdb" ] && [ ! "$dir" = "$here" ]; then
+    exec "$dir/createdb" "$@"
+  fi
+  IFS=:
+done
+IFS=$saved_ifs
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "tools/bin/createdb: node is required but was not found on PATH" >&2
+  exit 1
+fi
+
+exec node "$repo/tools/createdb-min.js" "$@"

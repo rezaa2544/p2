@@ -108,6 +108,30 @@ unknown option or meta-command is still a hard failure (`N13`/`N14`), the
 base-directory escape guard still applies to real `-f` paths (`N11`), and
 `\gset` / `:var` guards are untouched.
 
+### 4b. The sibling `createdb` shim (M15-01, 2026-10-30)
+
+The npm PostgreSQL bundle ships `initdb`, `pg_ctl` and `postgres` — and no client
+tools at all. `tests/chaos-drill-lib.js` provisions a private cluster and then
+calls `createdb -h … -p … -U … payesh`; without the client package that call
+died with `spawnSync createdb ENOENT` and **seven** chaos suites reported
+INFRA instead of exercising the failure they exist to prove (api-kill,
+redis-outage, pg-outage, queue-outage, network-degradation, disk-pressure and
+chaos-suite).
+
+`tools/createdb-min.js` + `tools/bin/createdb` implement exactly `createdb`:
+connect to the maintenance database, `CREATE DATABASE`, identifiers quoted, and
+the same G7 precedence rule (a real `createdb` earlier in `PATH` wins).
+Supported: `-h/--host`, `-p/--port`, `-U/--username`, `-O/--owner`,
+`-T/--template`, `-E/--encoding`, `-l/--list`, `--maintenance-db=DB`,
+`-w/-W`, `-e`, `--version`. Unknown options are hard failures.
+`--selftest` is **17/17** (9 positive, 8 negative — quoting/injection, port
+coercion, missing value, unknown flag, missing dbname, invalid encoding).
+
+Measured effect: with both shims on `PATH`,
+`chaos-drill-api-kill` runs 15 real checks (real SIGKILL of a real node process,
+detect 6 ms, recover 510 ms, PG state verified after restart) → **PASS**, and
+`chaos-suite` goes **19/19, exit 0**.
+
 **Deviation, stated rather than hidden:** psql's default `sslmode=prefer` tries
 TLS first and falls back to plaintext. This shim connects in plaintext first and
 retries once **with** TLS if the server demands it. The *outcome* is the same
