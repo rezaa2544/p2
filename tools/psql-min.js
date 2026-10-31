@@ -12,11 +12,35 @@
      on any machine without the psql binary. This closes that gap.
 
    Scope (intentionally narrow — this is NOT a psql reimplementation)
-     Supported : -v NAME=VALUE (repeatable), --quiet/-q, -f FILE,
-                 positional connection URL, \gset [prefix], :var / :'var' /
-                 :"var" interpolation, BEGIN/COMMIT, DO $$…$$,
-                 CREATE PROCEDURE with internal COMMIT, --selftest
-     Rejected  : every other meta-command (hard fail — see "honesty guards")
+     Supported : -v NAME=VALUE (repeatable), --quiet/-q, -f FILE, -f - (SQL on
+                 stdin), -c COMMAND, positional connection URL (or -d URL),
+                 -h/-p/-U/-d overrides, -t/--tuples-only, -A/--no-align,
+                 clustered short flags (-tA, -tAq), -w/-X (accepted no-ops:
+                 this client never prompts and reads no psqlrc), --version,
+                 \gset [prefix], :var / :'var' / :"var" interpolation,
+                 BEGIN/COMMIT, DO $$…$$, CREATE PROCEDURE with internal
+                 COMMIT, psql-shaped row output, --selftest
+     Rejected  : every other meta-command AND every other option (hard fail —
+                 silent guessing about what a flag means is how a stand-in
+                 starts lying; see "honesty guards")
+
+     M15-01 (2026-10-30): the option set above was widened because the shim's
+     stated purpose is "let suites that shell out to psql work on a machine
+     without the real binary", and five suites could not: n21-schema-drift,
+     n22-hydrate-cap, a35-regression, migration-012-crash-recovery-live and
+     wave23-norm-edge-mutations used -h/-p/-U/-d/-t/-A or `-f -` and got a
+     GuardError instead of a result. What changed is only the ARGUMENT and
+     CONNECTION surface plus row rendering; every guard below still holds, and
+     an unknown option or meta-command is still a hard failure.
+
+     TLS policy (explicit, because psql's default is not): sslmode is read from
+     the URL, --sslmode, PGSSLMODE, defaulting to `prefer`. `disable` and
+     `allow` connect without TLS; `prefer` connects without TLS and retries
+     once WITH TLS if the server demands it; `require` forces TLS without
+     certificate verification; `verify-ca`/`verify-full` force TLS with
+     verification. `prefer` therefore reaches the same *outcome* as psql
+     (connection succeeds when the server has no TLS) but does not attempt the
+     TLS handshake first — recorded in tools/PSQL_SHIM_GUIDE.md as a deviation.
 
    Honesty guards (the point of this file)
      G1 an unknown meta-command is a HARD FAILURE, never silently skipped
@@ -42,7 +66,7 @@
    in tools/ (not docs/) because a new docs/*.md is counted by
    tests/docs-freeze-marker.js and would need an rc bump to stay green.
 
-   --selftest output (33 checks: 21 positive, 12 negative), verified:
+   --selftest output (48 checks: 31 positive, 17 negative), verified:
 
      $ node tools/psql-min.js --selftest
      psql-min --selftest (pure; no database needed)
@@ -281,10 +305,18 @@ function assertGsetRows(rows, rowCount) {
    یعنی هر مصرف‌کننده‌ای که به `tools/bin/psql` (shimِ همین فایل) اتکا می‌کند —
    یعنی هر ماشینِ بدونِ psqlِ واقعی — روی ساده‌ترین شکلِ `-c` می‌شکست. مرزِ مسیر
    حفظ شده؛ فقط وقتی اعمال می‌شود که واقعاً `-f` داده شده باشد. */
-function resolveSqlSource(opts, baseDir, readFile) {
+function resolveSqlSource(opts, baseDir, readFile, readStdin) {
   const read = readFile || ((f) => fs.readFileSync(f, 'utf8'));
   const hasFile = opts.file !== null && opts.file !== undefined;
   if (hasFile) {
+    /* `-f -` is psql's documented "read the script from stdin". It is not a
+       path at all, so the base-directory escape guard below must not run on
+       it (it would either reject a legitimate stdin run or try to open a file
+       literally named "-"). */
+    if (String(opts.file) === '-') {
+      const readIn = readStdin || ((() => fs.readFileSync(0, 'utf8')));
+      return String(readIn());
+    }
     const filePath = path.resolve(baseDir, String(opts.file));
     if (filePath !== baseDir && !filePath.startsWith(baseDir + path.sep)) {
       throw new GuardError('refusing to read file outside the working directory: ' + opts.file);
@@ -294,6 +326,7 @@ function resolveSqlSource(opts, baseDir, readFile) {
   return opts.command !== null && opts.command !== undefined ? String(opts.command) : '';
 }
 
+const VERSION = '2.0.0';
 class GuardError extends Error {}
 class SqlError extends Error {}
 
@@ -301,23 +334,115 @@ function truthy(v) {
   return ['1', 'on', 'true', 'yes', 't'].includes(String(v).toLowerCase());
 }
 
-/* ── argument parsing ─────────────────────────────────────────────── */
+/* ── argument parsing ─────────────────────────────────────────────────
+   Shape rules, all of them psql's own:
+     • a flag and its value may be separate (`-h host`) or joined
+       (`-hhost`, `--host=host`);
+     • single-letter flags without a value may be clustered (`-tAq`);
+     • a cluster may END with a value-taking flag whose value is the next
+       argv token (`-tAf script.sql`), which is how psql reads it;
+     • anything not in the table below is REFUSED, never guessed. */
+const FLAGS_NO_VALUE = { t: 'tuplesOnly', A: 'unaligned', q: 'quiet', w: 'noPassword', X: 'noPsqlrc' };
+const LONG_FLAGS_NO_VALUE = {
+  '--tuples-only': 'tuplesOnly', '--no-align': 'unaligned', '--quiet': 'quiet',
+  '--no-password': 'noPassword', '--no-psqlrc': 'noPsqlrc', '--selftest': 'selftest'
+};
+const FLAGS_WITH_VALUE = { v: 'var', f: 'file', c: 'command', h: 'host', p: 'port', U: 'user', d: 'dbname', o: 'outFile' };
+const LONG_FLAGS_WITH_VALUE = {
+  '--file': 'file', '--command': 'command', '--host': 'host', '--port': 'port',
+  '--username': 'user', '--dbname': 'dbname', '--variable': 'var', '--pset': 'pset',
+  '--sslmode': 'sslmode', '--output': 'outFile'
+};
+
+function applyValue(opts, kind, value) {
+  if (kind === 'var') {
+    if (value === undefined) throw new GuardError('-v requires NAME=VALUE');
+    const eq = value.indexOf('=');
+    if (eq === -1) opts.vars[value] = ''; else opts.vars[value.slice(0, eq)] = value.slice(eq + 1);
+    return;
+  }
+  if (value === undefined || value === '') throw new GuardError('-' + kind + ' requires a value');
+  if (kind === 'file') { opts.file = value; return; }
+  if (kind === 'command') { opts.command = value; return; }
+  if (kind === 'host') { opts.host = value; return; }
+  if (kind === 'port') {
+    if (!/^\d+$/.test(value)) throw new GuardError('-p requires a numeric port');
+    opts.port = Number(value);
+    return;
+  }
+  if (kind === 'user') { opts.user = value; return; }
+  if (kind === 'dbname') {
+    /* psql -d accepts a database NAME or a conninfo string. */
+    if (/^postgres(ql)?:\/\//i.test(value)) opts.url = value; else opts.dbname = value;
+    return;
+  }
+  if (kind === 'sslmode') {
+    const m = String(value).toLowerCase();
+    if (!['disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full'].includes(m)) {
+      throw new GuardError('--sslmode must be one of disable|allow|prefer|require|verify-ca|verify-full');
+    }
+    opts.sslmode = m;
+    return;
+  }
+  if (kind === 'pset') {
+    /* -P pager=off / -P format=unaligned are the two shapes suites use. pager
+       is a no-op here (we never page); format is honoured for `unaligned`. */
+    const [k, ...rest] = String(value).split('=');
+    const v = rest.join('=');
+    if (k === 'pager') return;
+    if (k === 'format' && v === 'unaligned') { opts.unaligned = true; return; }
+    throw new GuardError('-P ' + k + ' is not supported by this shim — refusing to guess');
+  }
+  if (kind === 'outFile') { opts.outFile = value; return; }
+  throw new GuardError('unsupported option kind: ' + kind);
+}
+
 function parseArgs(argv) {
-  const opts = { vars: {}, quiet: false, file: null, url: null, selftest: false, command: null };
+  const opts = {
+    vars: {}, quiet: false, file: null, url: null, selftest: false, command: null,
+    tuplesOnly: false, unaligned: false, host: null, port: null, user: null,
+    dbname: null, sslmode: null, outFile: null, version: false
+  };
   for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
+    const a = String(argv[i]);
     if (a === '--selftest') { opts.selftest = true; continue; }
-    if (a === '--quiet' || a === '-q') { opts.quiet = true; continue; }
-    if (a === '-v') {
-      const kv = argv[++i];
-      if (kv === undefined) throw new GuardError('-v requires NAME=VALUE');
-      const eq = kv.indexOf('=');
-      if (eq === -1) opts.vars[kv] = ''; else opts.vars[kv.slice(0, eq)] = kv.slice(eq + 1);
+    if (a === '--version' || a === '-V') { opts.version = true; continue; }
+    if (a === '-q' || a === '--quiet') { opts.quiet = true; continue; }
+    if (a === '--tuples-only') { opts.tuplesOnly = true; continue; }
+    if (a === '--no-align') { opts.unaligned = true; continue; }
+
+    if (a.startsWith('--')) {
+      const eq = a.indexOf('=');
+      const name = eq === -1 ? a : a.slice(0, eq);
+      if (LONG_FLAGS_NO_VALUE[name] !== undefined) {
+        if (eq !== -1) throw new GuardError(name + ' does not take a value');
+        opts[LONG_FLAGS_NO_VALUE[name]] = true;
+        continue;
+      }
+      if (LONG_FLAGS_WITH_VALUE[name] !== undefined) {
+        applyValue(opts, LONG_FLAGS_WITH_VALUE[name], eq === -1 ? argv[++i] : a.slice(eq + 1));
+        continue;
+      }
+      throw new GuardError('unsupported psql option ' + a + ' — refusing to guess');
+    }
+
+    if (a.startsWith('-') && a.length > 1) {
+      const letters = a.slice(1).split('');
+      for (let j = 0; j < letters.length; j++) {
+        const ch = letters[j];
+        if (FLAGS_NO_VALUE[ch] !== undefined) { opts[FLAGS_NO_VALUE[ch]] = true; continue; }
+        if (FLAGS_WITH_VALUE[ch] !== undefined) {
+          const inline = letters.slice(j + 1).join('');
+          const value = inline !== '' ? inline : argv[++i];
+          applyValue(opts, FLAGS_WITH_VALUE[ch], value);
+          j = letters.length;   /* the cluster is consumed by the value-flag */
+          continue;
+        }
+        throw new GuardError('unsupported psql option -' + ch + ' — refusing to guess');
+      }
       continue;
     }
-    if (a === '-f') { opts.file = argv[++i]; if (!opts.file) throw new GuardError('-f requires a file'); continue; }
-    if (a === '-c') { opts.command = argv[++i]; if (!opts.command) throw new GuardError('-c requires a command'); continue; }
-    if (a.startsWith('-')) throw new GuardError('unsupported psql option ' + a + ' — refusing to guess');
+
     if (opts.url === null) { opts.url = a; continue; }
     throw new GuardError('unexpected extra argument: ' + a);
   }
@@ -325,6 +450,80 @@ function parseArgs(argv) {
 }
 
 /* ── the real run ─────────────────────────────────────────────────── */
+/* ── connection target ────────────────────────────────────────────────
+   Precedence, highest first: explicit flags (-h/-p/-U/-d) → the URL →
+   PG* environment variables. A URL is parsed here rather than handed to the
+   driver so that `sslmode` means exactly one documented thing (see the TLS
+   policy in the file header) instead of whatever the driver's query-string
+   support happens to do this release. */
+function parseConnUrl(raw) {
+  const s = String(raw || '');
+  if (!/^postgres(ql)?:\/\//i.test(s)) return null;
+  let u;
+  try { u = new URL(s.replace(/^postgres(ql)?:/i, 'http:')); } catch (e) { return null; }
+  const q = u.searchParams;
+  return {
+    host: u.hostname ? decodeURIComponent(u.hostname) : '',
+    port: u.port ? Number(u.port) : undefined,
+    user: u.username ? decodeURIComponent(u.username) : '',
+    password: u.password ? decodeURIComponent(u.password) : '',
+    database: decodeURIComponent(String(u.pathname || '').replace(/^\//, '')),
+    sslmode: q.get('sslmode') || ''
+  };
+}
+
+function buildClientConfig(opts, env) {
+  const e = env || process.env;
+  const fromUrl = opts.url ? parseConnUrl(opts.url) : null;
+  if (opts.url && !fromUrl) throw new GuardError('only postgres:// connection strings are supported');
+  const host = opts.host || (fromUrl && fromUrl.host) || e.PGHOST || '';
+  const port = opts.port || (fromUrl && fromUrl.port) || (e.PGPORT ? Number(e.PGPORT) : undefined);
+  const user = opts.user || (fromUrl && fromUrl.user) || e.PGUSER || '';
+  const password = (fromUrl && fromUrl.password) || e.PGPASSWORD || '';
+  const database = opts.dbname || (fromUrl && fromUrl.database) || e.PGDATABASE || '';
+  if (!host && !database) {
+    throw new GuardError('no connection target: pass a postgres:// URL, -d DBNAME (with -h), or PGHOST/PGDATABASE');
+  }
+  const sslmode = String(opts.sslmode || (fromUrl && fromUrl.sslmode) || e.PGSSLMODE || 'prefer').toLowerCase();
+  const cfg = { host: host || undefined, port, user: user || undefined, password, database: database || undefined, connectionTimeoutMillis: 20000 };
+  if (sslmode === 'require') cfg.ssl = { rejectUnauthorized: false };
+  else if (sslmode === 'verify-ca' || sslmode === 'verify-full') cfg.ssl = true;
+  else cfg.ssl = false;   /* disable | allow | prefer (prefer retries with TLS, below) */
+  return { cfg, sslmode, wantsTlsRetry: sslmode === 'prefer' };
+}
+
+/* psql-shaped row output. In tuples-only mode psql prints bare values; in
+   aligned mode it prints a header, a separator and a row-count footer. `-A`
+   swaps the padding for a `|` separator and keeps the header. Nothing is
+   printed for statements that return no rows. */
+function cellText(v) {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'object' && !(v instanceof Date)) return JSON.stringify(v);
+  if (v instanceof Date) return v.toISOString();
+  return String(v);
+}
+
+function renderResult(res, opts, write) {
+  const out = write || ((s) => process.stdout.write(s));
+  const rows = res && Array.isArray(res.rows) ? res.rows : [];
+  if (!rows.length) return;
+  const cols = (res.fields || []).map((f) => f.name);
+  if (opts.unaligned) {
+    if (!opts.tuplesOnly) out(cols.join('|') + '\n');
+    for (const r of rows) out(cols.map((c) => cellText(r[c])).join('|') + '\n');
+  } else {
+    const table = [cols].concat(rows.map((r) => cols.map((c) => cellText(r[c]))));
+    const width = cols.map((c, i) => Math.max(String(c).length, ...table.slice(1).map((row) => String(row[i]).length)));
+    const line = (cells) => cells.map((c, i) => String(c).padEnd(width[i])).join(' | ').replace(/\s+$/, '') + '\n';
+    if (!opts.tuplesOnly) {
+      out(line(cols));
+      out(width.map((w) => '-'.repeat(w)).join('-+-') + '\n');
+    }
+    for (const row of table.slice(1)) out(line(row));
+  }
+  if (!opts.quiet && !opts.tuplesOnly) out('(' + rows.length + (rows.length === 1 ? ' row' : ' rows') + ')\n');
+}
+
 async function run(opts) {
   let pg;
   try { pg = require('pg'); }
@@ -333,16 +532,42 @@ async function run(opts) {
   /* 🔴 مرزِ مسیر: -f FILE نسبت به دایرکتوریِ اجرایِ ابزار حل می‌شود و باید
      داخلِ همان دایرکتوری بماند (استفادهٔ مستند: -f migrations/NNN_name.sql).
      resolve + بررسیِ مالک، انحراف از مسیرِ پایه را غیرممکن می‌کند. */
+  /* psql: "If neither -c nor -f is specified, psql reads from standard input."
+     This shim used to hard-fail that shape, which made every caller that pipes
+     a script (`psql <url> -q < script.sql`) look like a broken client. A TTY
+     would block forever waiting for input, so an interactive invocation with
+     no source stays a guard error instead of hanging. */
+  if ((opts.file === null || opts.file === undefined) && (opts.command === null || opts.command === undefined)) {
+    if (process.stdin.isTTY) throw new GuardError('nothing to execute (need -f FILE, -c COMMAND, or SQL on stdin)');
+    opts.command = fs.readFileSync(0, 'utf8');
+  }
   const sql = resolveSqlSource(opts, path.resolve('.'));
   if (!sql) throw new GuardError('nothing to execute (need -f FILE or -c COMMAND)');
 
-  const client = new pg.Client({ connectionString: opts.url, connectionTimeoutMillis: 20000 });
+  const built = buildClientConfig(opts);
+  const client = new pg.Client(built.cfg);
   try {
     await client.connect();
   } catch (e) {
-    const err = new Error('cannot connect: ' + e.message);
-    err.notRun = true;
-    throw err;
+    if (built.wantsTlsRetry) {
+      /* sslmode=prefer: psql would have negotiated TLS first and fallen back.
+         Here the plain attempt ran first; retry once WITH TLS before calling
+         this a connection failure, so a TLS-only server still works. */
+      try {
+        const retry = new pg.Client(Object.assign({}, built.cfg, { ssl: { rejectUnauthorized: false } }));
+        await retry.connect();
+        built.cfg.ssl = { rejectUnauthorized: false };
+        Object.assign(client, retry);
+      } catch (e2) {
+        const err = new Error('cannot connect: ' + e.message + ' (TLS retry: ' + e2.message + ')');
+        err.notRun = true;
+        throw err;
+      }
+    } else {
+      const err = new Error('cannot connect: ' + e.message);
+      err.notRun = true;
+      throw err;
+    }
   }
 
   const vars = Object.assign({}, opts.vars);
@@ -370,12 +595,13 @@ async function run(opts) {
         for (const k of Object.keys(row)) {
           vars[prefix + k] = row[k] === null ? '' : row[k];
         }
-        if (!opts.quiet) console.log('[psql-min] \\gset set ' + Object.keys(row).map((k) => prefix + k).join(', '));
+        if (!opts.quiet) process.stderr.write('[psql-min] \\gset set ' + Object.keys(row).map((k) => prefix + k).join(', ') + '\n');
         continue;
       }
       const q = interpolate(scanSegments(stmt), vars);
       try {
-        await client.query(q, []);
+        const res = await client.query(q, []);
+        renderResult(res, opts);
         n++;
       } catch (e) {
         if (onErrorStop) throw new SqlError(e.message);
@@ -383,9 +609,11 @@ async function run(opts) {
       }
     }
   } finally {
-    try { await client.end(); } catch (e) {/* intentional no-op */}
+    try { await client.end(); } catch (e) {/* intentional no-op */ }
   }
-  if (!opts.quiet) console.log('[psql-min] ' + n + ' statements executed');
+  /* Informational, and on stderr: stdout now carries ONLY query output, which
+     is what a caller parsing `-tA -c 'SELECT count(*)'` is entitled to. */
+  if (!opts.quiet) process.stderr.write('[psql-min] ' + n + ' statements executed\n');
 }
 
 /* ── --selftest: pure, DB-free, so it never silently skips ─────────── */
@@ -533,6 +761,95 @@ function selftest() {
     assert.strictEqual(resolveSqlSource({ file: null, command: null }, '/repo'), '');
   });
 
+  /* ── M15-01 (2026-10-30): the widened option/connection surface ── */
+  t('P22 -h/-p/-U/-d and their long forms are parsed into connection fields', () => {
+    const o = parseArgs(['-h', '10.0.0.5', '-p', '6432', '-U', 'payesh', '-d', 'payesh_ci']);
+    assert.strictEqual(o.host, '10.0.0.5');
+    assert.strictEqual(o.port, 6432);
+    assert.strictEqual(o.user, 'payesh');
+    assert.strictEqual(o.dbname, 'payesh_ci');
+    const l = parseArgs(['--host=db', '--port=5433', '--username=u', '--dbname=d']);
+    assert.deepStrictEqual([l.host, l.port, l.user, l.dbname], ['db', 5433, 'u', 'd']);
+  });
+  t('P23 clustered short flags are expanded (-tAq, -tA)', () => {
+    const a = parseArgs(['-tAq']);
+    assert.ok(a.tuplesOnly && a.unaligned && a.quiet, 'cluster not expanded: ' + JSON.stringify(a));
+    const b = parseArgs(['-tA']);
+    assert.ok(b.tuplesOnly && b.unaligned && !b.quiet);
+  });
+  t('P24 a cluster may END with a value-taking flag (psql shape: -tAf file)', () => {
+    const o = parseArgs(['-tAf', 'migrations/001_initial.sql', 'postgres://h/db']);
+    assert.ok(o.tuplesOnly && o.unaligned);
+    assert.strictEqual(o.file, 'migrations/001_initial.sql');
+    assert.strictEqual(o.url, 'postgres://h/db');
+  });
+  t('P25 -d accepts a conninfo string as well as a bare database name', () => {
+    const asUrl = parseArgs(['-d', 'postgres://u:p@h:5432/db']);
+    assert.strictEqual(asUrl.url, 'postgres://u:p@h:5432/db');
+    assert.strictEqual(asUrl.dbname, null);
+    const asName = parseArgs(['-d', 'payesh_ci']);
+    assert.strictEqual(asName.dbname, 'payesh_ci');
+    assert.strictEqual(asName.url, null);
+  });
+  t('P26 `-f -` reads SQL from stdin, not from a file named -', () => {
+    let askedFor = null;
+    const sql = resolveSqlSource({ file: '-', command: null }, '/repo', (f) => { askedFor = f; return 'FROM FILE'; }, () => 'FROM STDIN');
+    assert.strictEqual(sql, 'FROM STDIN');
+    assert.strictEqual(askedFor, null, 'the stdin form must not touch the filesystem');
+  });
+  t('P27 the connection URL is parsed (host/port/user/password/db/sslmode)', () => {
+    const c = parseConnUrl('postgres://payesh:s3cr3t@db.internal:6543/payesh_ci?sslmode=require');
+    assert.deepStrictEqual([c.host, c.port, c.user, c.password, c.database, c.sslmode],
+      ['db.internal', 6543, 'payesh', 's3cr3t', 'payesh_ci', 'require']);
+  });
+  t('P28 the TLS policy is explicit: require/verify force TLS, prefer/allow/disable do not', () => {
+    const cfg = (sslmode) => buildClientConfig({ url: 'postgres://u@h/db', sslmode }, {});
+    assert.deepStrictEqual(cfg('require').cfg.ssl, { rejectUnauthorized: false });
+    assert.strictEqual(cfg('verify-full').cfg.ssl, true);
+    assert.strictEqual(cfg('disable').cfg.ssl, false);
+    assert.strictEqual(cfg('prefer').cfg.ssl, false);
+    assert.strictEqual(cfg('prefer').wantsTlsRetry, true, 'prefer must keep its one TLS retry');
+    assert.strictEqual(cfg('require').wantsTlsRetry, false);
+  });
+  t('P29 flags override the URL, and PG* env fills the gaps', () => {
+    const c = buildClientConfig({ url: 'postgres://url_user@url_host:1111/url_db', host: 'flag_host', port: 2222 },
+      { PGUSER: 'env_user', PGPASSWORD: 'env_pw' });
+    assert.strictEqual(c.cfg.host, 'flag_host');
+    assert.strictEqual(c.cfg.port, 2222);
+    assert.strictEqual(c.cfg.user, 'url_user');
+    assert.strictEqual(c.cfg.password, 'env_pw');
+    assert.strictEqual(c.cfg.database, 'url_db');
+  });
+  t('P30 tuples-only + unaligned renders bare values, one row per line', () => {
+    let out = '';
+    renderResult({ fields: [{ name: 'count' }], rows: [{ count: '7' }] }, { tuplesOnly: true, unaligned: true }, (s) => { out += s; });
+    assert.strictEqual(out, '7\n');
+    out = '';
+    renderResult({ fields: [{ name: 'a' }, { name: 'b' }], rows: [{ a: 1, b: null }] }, { tuplesOnly: true, unaligned: true }, (s) => { out += s; });
+    assert.strictEqual(out, '1|\n', 'null must render as an empty field, exactly like psql');
+  });
+  t('P31 aligned output keeps the header, the separator and the row-count footer', () => {
+    let out = '';
+    renderResult({ fields: [{ name: 'n' }], rows: [{ n: '2' }, { n: '3' }] }, {}, (s) => { out += s; });
+    assert.match(out, /^n\n-\n2\n3\n\(2 rows\)\n$/, JSON.stringify(out));
+  });
+
+  t('N13 an unknown LONG option is still a hard failure', () => {
+    throwsGuard(() => parseArgs(['--no-such-long-flag']));
+  });
+  t('N14 an unknown SHORT letter inside a cluster is still a hard failure', () => {
+    throwsGuard(() => parseArgs(['-tZq']));
+  });
+  t('N15 a non-numeric -p is refused instead of being sent to the driver', () => {
+    throwsGuard(() => parseArgs(['-p', 'notaport']));
+  });
+  t('N16 an unsupported --sslmode value is refused', () => {
+    throwsGuard(() => parseArgs(['--sslmode=maybe']));
+  });
+  t('N17 no connection target at all is a guard error, not a mystery failure', () => {
+    throwsGuard(() => buildClientConfig({ url: null }, {}));
+  });
+
   console.log('\npsql-min --selftest: ' + pass + '/' + (pass + fails.length)
     + (fails.length ? '  FAILED: ' + fails.join(' | ') : ''));
   return fails.length ? 1 : 0;
@@ -545,6 +862,13 @@ if (require.main === module) {
   catch (e) { console.error('psql-min: ' + e.message); process.exit(1); }
 
   if (opts.selftest) process.exit(selftest());
+  /* `psql --version` is how several suites probe "is a client installed?".
+     Answering it is not a claim to be PostgreSQL's psql: the string names this
+     tool, and the version it reports is the tool's own. */
+  if (opts.version) {
+    console.log('psql-min (PostgreSQL-compatible stand-in) ' + VERSION + ' — ' + process.version);
+    process.exit(0);
+  }
 
   run(opts).then(() => process.exit(0)).catch((e) => {
     if (e instanceof SqlError) { console.error('psql-min: ' + e.message); process.exit(3); }
@@ -557,5 +881,6 @@ if (require.main === module) {
 
 module.exports = {
   scanSegments, splitStatements, parseMeta, extractMeta, assertSupportedMeta, interpolate,
-  assertGsetRows, parseArgs, truthy, GuardError, SqlError, SUPPORTED_META, resolveSqlSource, selftest
+  assertGsetRows, parseArgs, truthy, GuardError, SqlError, SUPPORTED_META, resolveSqlSource,
+  buildClientConfig, parseConnUrl, renderResult, selftest, VERSION
 };

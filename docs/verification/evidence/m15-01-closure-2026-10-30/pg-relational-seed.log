@@ -1,0 +1,44 @@
+pg-relational-seed — relational seed, real foreign keys, tenant isolation
+
+  ✅ 1a the seeder exits 0 on a fresh schema
+  ✅ 1b the seeder prints its row counts
+  ✅ 1c migration 012 applies through the standard-SQL runner (psql-only meta-commands removed)
+  ✅ 1d no migration is reported FAILED
+  ✅ 2.0a the manifest exists
+  ✅ 2.0b the manifest parses as JSON
+  ✅ 2.0c the manifest self-hash verifies (documented recipe)
+  ✅ 2.0d the recorded seeder sha256 matches the file on disk
+  ✅ 2.0e the manifest is labelled demo-scale, NOT a national dataset
+  ✅ 2.0f the manifest makes no benchmark/capacity claim
+  ✅ 2.0g the manifest records 0 new migrations
+  ✅ 2.0h migration 012 is recorded as APPLIED standard SQL (no psql-only steps left)
+  ✅ 2.0i the manifest stores no credentials
+  ✅ 2.0j the manifest FK list matches the live schema count
+  ✅ 2.0k the manifest UNIQUE list matches the live schema count
+  ✅ 2.0l every FK the manifest lists as deferred IS deferred in the DB
+  ✅ 2.1 the manifest declares all seven seeded tables
+  ✅ 2 schools = 2
+  ✅ 2 users = 15
+  ✅ 2 subjects = 6
+  ✅ 2 classes = 4
+  ✅ 2 enrollments = 20
+  ✅ 2 attendance = 50
+  ✅ 2 grades = 30
+  ✅ 3a an orphan grades.student_id is rejected by a real FK
+  ✅ 3b an orphan classes.school_id is rejected by a real FK
+  ✅ 3c the seeded tables carry foreign-key constraints (count > 0)
+  ✅ 4a exactly two tenants exist
+  ✅ 4b tenant A has at least one student
+  ✅ 4c student of tenant A has 0 grades under tenant B
+  ✅ 4d student of tenant A has 0 attendance rows under tenant B
+  ✅ 4e student of tenant A has 0 enrollments under tenant B
+  ✅ 4f no enrollment row crosses tenants (student.school = enrollment.school)
+  ✅ 4g no enrollment points at another tenant's class
+  ✅ 4h no attendance row crosses tenants
+  ✅ 4i no grade row crosses tenants
+  ✅ 4j no grade uses another tenant's subject
+  ✅ 4k no grade is taught by another tenant's teacher
+  ✅ 5a re-running the seeder (no schema reset) still exits 0
+  ✅ 5b counts are identical after the re-run (no duplicate accumulation)
+
+pg-relational-seed: 40/40

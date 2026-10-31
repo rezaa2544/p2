@@ -1,0 +1,1379 @@
+{
+  "date": "2026-10-30T22:29:44.971Z",
+  "totals": {
+    "critical": 0,
+    "serious": 0,
+    "moderate": 0,
+    "minor": 0
+  },
+  "rules": [],
+  "results": [
+    {
+      "theme": "theme-1",
+      "role": "(login)",
+      "route": "login",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "manager",
+      "route": "dashboard",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "manager",
+      "route": "intelligence",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "manager",
+      "route": "atrisk",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "manager",
+      "route": "growth",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "manager",
+      "route": "reports",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "manager",
+      "route": "calendar",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "manager",
+      "route": "visitors",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "manager",
+      "route": "library",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "manager",
+      "route": "assets",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "manager",
+      "route": "dorm",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "teacher",
+      "route": "dashboard",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "teacher",
+      "route": "attendance",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "teacher",
+      "route": "multigrade",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "teacher",
+      "route": "grades",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "teacher",
+      "route": "schedule",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "teacher",
+      "route": "calendar",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "teacher",
+      "route": "meetings",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "teacher",
+      "route": "classes",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "teacher",
+      "route": "vclass",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "teacher",
+      "route": "exams",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "parent",
+      "route": "dashboard",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "parent",
+      "route": "children",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "parent",
+      "route": "exams",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "parent",
+      "route": "calendar",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "parent",
+      "route": "meetings",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "parent",
+      "route": "leaves",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "parent",
+      "route": "family",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "parent",
+      "route": "mytuition",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "parent",
+      "route": "announcements",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "parent",
+      "route": "notifications",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "student",
+      "route": "dashboard",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "student",
+      "route": "schedule",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "student",
+      "route": "calendar",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "student",
+      "route": "exams",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "student",
+      "route": "record",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "student",
+      "route": "leaves",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "student",
+      "route": "homework",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "student",
+      "route": "library",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "student",
+      "route": "mytuition",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "student",
+      "route": "announcements",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "counselor",
+      "route": "cqueue",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "counselor",
+      "route": "dashboard",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "counselor",
+      "route": "announcements",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-1",
+      "role": "counselor",
+      "route": "notifications",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "(login)",
+      "route": "login",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "manager",
+      "route": "dashboard",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "manager",
+      "route": "intelligence",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "manager",
+      "route": "atrisk",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "manager",
+      "route": "growth",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "manager",
+      "route": "reports",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "manager",
+      "route": "calendar",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "manager",
+      "route": "visitors",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "manager",
+      "route": "library",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "manager",
+      "route": "assets",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "manager",
+      "route": "dorm",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "teacher",
+      "route": "dashboard",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "teacher",
+      "route": "attendance",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "teacher",
+      "route": "multigrade",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "teacher",
+      "route": "grades",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "teacher",
+      "route": "schedule",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "teacher",
+      "route": "calendar",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "teacher",
+      "route": "meetings",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "teacher",
+      "route": "classes",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "teacher",
+      "route": "vclass",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "teacher",
+      "route": "exams",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "parent",
+      "route": "dashboard",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "parent",
+      "route": "children",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "parent",
+      "route": "exams",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "parent",
+      "route": "calendar",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "parent",
+      "route": "meetings",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "parent",
+      "route": "leaves",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "parent",
+      "route": "family",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "parent",
+      "route": "mytuition",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "parent",
+      "route": "announcements",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "parent",
+      "route": "notifications",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "student",
+      "route": "dashboard",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "student",
+      "route": "schedule",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "student",
+      "route": "calendar",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "student",
+      "route": "exams",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "student",
+      "route": "record",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "student",
+      "route": "leaves",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "student",
+      "route": "homework",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "student",
+      "route": "library",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "student",
+      "route": "mytuition",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "student",
+      "route": "announcements",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "counselor",
+      "route": "cqueue",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "counselor",
+      "route": "dashboard",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "counselor",
+      "route": "announcements",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-2",
+      "role": "counselor",
+      "route": "notifications",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "(login)",
+      "route": "login",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "manager",
+      "route": "dashboard",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "manager",
+      "route": "intelligence",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "manager",
+      "route": "atrisk",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "manager",
+      "route": "growth",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "manager",
+      "route": "reports",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "manager",
+      "route": "calendar",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "manager",
+      "route": "visitors",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "manager",
+      "route": "library",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "manager",
+      "route": "assets",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "manager",
+      "route": "dorm",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "teacher",
+      "route": "dashboard",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "teacher",
+      "route": "attendance",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "teacher",
+      "route": "multigrade",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "teacher",
+      "route": "grades",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "teacher",
+      "route": "schedule",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "teacher",
+      "route": "calendar",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "teacher",
+      "route": "meetings",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "teacher",
+      "route": "classes",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "teacher",
+      "route": "vclass",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "teacher",
+      "route": "exams",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "parent",
+      "route": "dashboard",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "parent",
+      "route": "children",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "parent",
+      "route": "exams",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "parent",
+      "route": "calendar",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "parent",
+      "route": "meetings",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "parent",
+      "route": "leaves",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "parent",
+      "route": "family",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "parent",
+      "route": "mytuition",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "parent",
+      "route": "announcements",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "parent",
+      "route": "notifications",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "student",
+      "route": "dashboard",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "student",
+      "route": "schedule",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "student",
+      "route": "calendar",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "student",
+      "route": "exams",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "student",
+      "route": "record",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "student",
+      "route": "leaves",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "student",
+      "route": "homework",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "student",
+      "route": "library",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "student",
+      "route": "mytuition",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "student",
+      "route": "announcements",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "counselor",
+      "route": "cqueue",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "counselor",
+      "route": "dashboard",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "counselor",
+      "route": "announcements",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    },
+    {
+      "theme": "theme-3",
+      "role": "counselor",
+      "route": "notifications",
+      "critical": 0,
+      "serious": 0,
+      "moderate": 0,
+      "minor": 0,
+      "items": []
+    }
+  ],
+  "conditions": {
+    "themes": [
+      "theme-1",
+      "theme-2",
+      "theme-3"
+    ],
+    "settle_css": "*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}",
+    "viewport": "1280x900",
+    "dpr": 1,
+    "reduced_motion": "reduce",
+    "tags": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa"
+    ]
+  }
+}
