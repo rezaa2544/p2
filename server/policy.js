@@ -599,7 +599,11 @@ function readOk(store, session, coll, rec, opts) {
   return Number(rec.school_id) === schoolId;
 }
 
-/** فیلترِ مجموعه‌محورِ خواند‌ن — با پیش‌محاسبهٔ مهارها (O(n) نه O(n²)). */
+/** فیلترِ مجموعه‌محورِ خواند‌ن — با پیش‌محاسبهٔ مهارها (O(n) نه O(n²)).
+
+   M15-03 — منبعِ یکتا: تمام قاعدّه‌هایِ دامنهٔ خواندَن (مدرسهٔ کاربر |
+   هندسهٔ دفتر | نقش) در یک تابع تصمیم گرفته می‌شوند؛ pull.js دیگر هیچ
+   قاعدهٔ اسکوپ موازی ندارد. */
 function filterReadable(store, session, coll, records) {
   if (!Array.isArray(records)) return [];
   if (!session) return [];
@@ -607,19 +611,59 @@ function filterReadable(store, session, coll, records) {
   if (role === 'superadmin') return records;
   const schoolId = num(session.school_id);
 
-  const isUsersLike = coll === 'users';
+  /* هندسهٔ دفتر (edu_office) — یک بار حل می‌شود (O(n) روی مدارک)،
+     بعد در همهٔ جمع‌هایِ اسکوپ دفتر مشترک است. */
+  const officeSchools = (role === 'edu_office') ? (() => {
+    const office = userOffice(store, session);
+    if (!office) return null;
+    return new Set(((store.schools) || []).filter((s) => officeCoversSchool(office, s)).map((s) => Number(s.id)));
+  })() : null;
+
+  const schoolRows = (rows) => rows.filter((r) => r.school_id != null && Number(r.school_id) === schoolId);
+  const officeRows = (rows) => {
+    if (officeSchools == null) return [];
+    return rows.filter((r) => r.school_id != null && officeSchools.has(Number(r.school_id)));
+  };
+
+  /* students: نما/رکوردِ دانش‌آموز — همان studentRecordOk که /api/students
+     هنوز دارد (بیرون‌مدرسه ⇒ رد — fail-closed). */
   if (coll === 'students') return records.filter((r) => studentRecordOk(store, session, r));
+
+  /* schools: خودِ مدرسه — هر کس مدرسۀ خود را می‌بیند (دفتر: مدارسی که
+     دفترش پوشش می‌دهد). رکوردهای مدرسه school_id ندارند (محورِ خودشناسی). */
+  if (coll === 'schools') {
+    return officeSchools != null
+      ? records.filter((r) => officeSchools.has(Number(r.id)))
+      : records.filter((r) => Number(r.id) === Number(schoolId));
+  }
+
+  /* notifications: پیامِ اعلانِ شخصی — فقط گیرندهٔ خودش (نشتِ جمعِ
+     مدرسه ممنوع). */
+  if (coll === 'notifications') return records.filter((r) => Number(r.user_id) === Number(session.id));
+
+  const isUsersLike = coll === 'users';
   if (isUsersLike) {
     if (role === 'student') return records.filter((r) => Number(r.id) === Number(session.id));
     if (role === 'parent') {
       const kids = childrenOfParent(store, session.id);
       return records.filter((r) => Number(r.id) === Number(session.id) || kids.has(Number(r.id)));
     }
-    if (role === 'teacher') {
-      return records.filter((r) => r.school_id != null && Number(r.school_id) === schoolId);
+    if (role === 'teacher') return schoolRows(records);
+    if (role === 'driver') {
+      /* N-27 — کمترینِ امتیاز: راننده فقط دانش‌آموزانِ مسیر، رانندگان
+         هم‌مدرسه و خودش — نه والدین/دبیران/مشاوران/مدیران. */
+      const self = Number(session.id);
+      return records.filter((r) => r.school_id != null && Number(r.school_id) === schoolId
+        && (Number(r.id) === self || r.role === 'student' || r.role === 'driver'));
     }
-    if (role === 'edu_office') return records.filter((r) => r.school_id != null && schoolInOfficeScope(store, session, r.school_id));
-    return records.filter((r) => r.school_id != null && Number(r.school_id) === schoolId);
+    if (role === 'guard') {
+      /* N-27 — کمترینِ امتیاز: نگهبان فقط مدیرانِ هم‌مدرسه و خودش. */
+      const self = Number(session.id);
+      return records.filter((r) => r.school_id != null && Number(r.school_id) === schoolId
+        && (Number(r.id) === self || r.role === 'manager'));
+    }
+    if (officeSchools != null) return officeRows(records);
+    return schoolRows(records); /* جهانی: مدیر/مشاور=مدرسهٔ خود، ناشناخته→خود (fail-closed) */
   }
 
   if (coll === 'classes') {
@@ -637,8 +681,8 @@ function filterReadable(store, session, coll, records) {
       return records.filter((r) => r.school_id != null && Number(r.school_id) === schoolId
         && (Number(r.homeroom_teacher_id) === Number(session.id) || taught.has(Number(r.id))));
     }
-    if (role === 'edu_office') return records.filter((r) => r.school_id != null && schoolInOfficeScope(store, session, r.school_id));
-    return records.filter((r) => r.school_id != null && Number(r.school_id) === schoolId);
+    if (officeSchools != null) return officeRows(records);
+    return schoolRows(records);
   }
 
   if (coll === 'attendance' || coll === 'grades' || coll === 'discipline') {
@@ -653,18 +697,21 @@ function filterReadable(store, session, coll, records) {
       return records.filter((r) => r.school_id != null && Number(r.school_id) === schoolId
         && (cls.has(Number(r.class_id)) || subs.has(Number(r.subject_id)) || Number(r.teacher_id) === Number(session.id)));
     }
-    if (role === 'edu_office') return records.filter((r) => r.school_id != null && schoolInOfficeScope(store, session, r.school_id));
-    return records.filter((r) => r.school_id != null && Number(r.school_id) === schoolId);
+    if (officeSchools != null) return officeRows(records);
+    return schoolRows(records);
   }
 
   if (coll === 'subjects') return records;
   if (coll === 'announcements') {
     return records.filter((r) => r.school_id == null
       ? GLOBAL_NULL_SCHOOL_READ.has('announcements')
-      : (role === 'edu_office' ? schoolInOfficeScope(store, session, r.school_id) : Number(r.school_id) === schoolId));
+      : (officeSchools != null ? officeSchools.has(Number(r.school_id)) : Number(r.school_id) === schoolId));
   }
-  /* پیش‌فرض عمومی — مهارِ سختِ مدرسه (بی‌مهار ⇒ حذف؛ fail-closed). */
-  return records.filter((r) => r.school_id != null && Number(r.school_id) === schoolId);
+
+  /* پیش‌فرض عمومی — مهارِ سختِ مدرسه (بی‌مهار ⇒ حذف؛ fail-closed).
+     دفترار: مدارسی که دفترش پوشش می‌دهد. */
+  if (officeSchools != null) return officeRows(records);
+  return schoolRows(records);
 }
 
 /* ── دروازهٔ یکپارچهٔ مسیرِ REST ────────────────────────────────────

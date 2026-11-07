@@ -172,149 +172,22 @@ function createPull(ctx) {
   }
 
   /**
-   * فیلتر کردن رکوردهای یک مجموعه بر اساس نقش و محدوده کاربر
+   * فیلترِ اسکوپ: یک‌بار، در policy.filterReadable. pull.js هیچ قاعدهٔ
+   * محدوهٔ دیگری ندارد — همان اسکوپی که REST و PG می‌زنند.
+   *
+   * استثنا: users — ورودیِ `filterReadable` رکوردِ کاملِ کاربر را
+   * می‌پذیرد ولی pull پروژکشنِ نقش می‌دهد (projectUserByRole — میدانِ
+   * استقرایی است نه اسکوپ). اینجا فقط همان پروژکشن را لایه‌ایِ بالا
+   * پیام می‌کند (قرارداد N-27/Wave-1).
    */
   function filterCollectionForSession(c, records, session) {
-    if (!Array.isArray(records)) return [];
-    const role = session.role;
-    const userId = Number(session.id);
-    const schoolId = session.school_id != null ? Number(session.school_id) : null;
-
-    if (role === 'superadmin') {
-      return records;
-    }
-
-    if (c === 'schools') {
-      return records.filter(s => Number(s.id) === schoolId);
-    }
-
+    const out = policy.filterReadable(store, session, c, records);
     if (c === 'users') {
-      if (role === 'manager' || role === 'counselor') {
-        return records.filter(u => Number(u.school_id) === schoolId).map(u => projectUserByRole(u, role));
-      }
-      if (role === 'teacher') {
-        return records.filter(u => Number(u.school_id) === schoolId).map(u => projectUserByRole(u, role));
-      }
-      if (role === 'student') {
-        return records.filter(u => Number(u.id) === userId).map(u => projectUserByRole(u, role));
-      }
-      if (role === 'parent') {
-        // اولیا به رکوردهای فرزندان و خودشان دسترسی دارند
-        /* P1: حلِ فرزندان باید از منبعِ یکتا (policy.childrenOfParent) بیاید
-           که parent_links را هم می‌بیند؛ users.parent_id به‌تنهایی در داده‌های
-           واقعی پر نیست و باعث می‌شد ولی نمرات/حضورِ فرزندش را نبیند. */
-        const childIds = policy.childrenOfParent(store, userId);
-        childIds.add(userId);
-        return records.filter(u => childIds.has(u.id)).map(u => projectUserByRole(u, role));
-      }
-      /* N-27 — کمترینِ امتیاز برای نقش‌های پشتیبانی. قبلاً هر نقشی که شاخهٔ
-         صریح نداشت (driver، guard، edu_office) به fallthrough می‌رسید و کلِ
-         دایرکتوریِ کاربرانِ مدرسه را می‌گرفت — حتی نقش‌های سطحِ ۱ که در
-         کلاینت اصلاً دایرکتوری را رندر نمی‌کنند. اکنون هر نقشِ قاعدهٔ صریح
-         خودش را دارد:
-         - driver: دانش‌آموزان + رانندگانِ هم‌مدرسه (روسترِ سرویس و انتخابِ
-           راننده در 48-bus-service) + خودش.
-         - guard: مدیرانِ هم‌مدرسه (تماسِ پذیرش در 53-visitors) + خودش.
-         - edu_office: مدارسِ داخلِ محدودهٔ دفتر (آینهٔ policy.filterReadable).
-         - هر نقشِ ناشناخته: فقط خودش — هیچ دایرکتوری‌ای بدونِ قاعدهٔ صریح
-           نشت نمی‌کند (fail-closed). */
-      if (role === 'driver') {
-        return records
-          .filter(u => Number(u.school_id) === schoolId
-            && (Number(u.id) === userId || u.role === 'student' || u.role === 'driver'))
-          .map(u => projectUserByRole(u, role));
-      }
-      if (role === 'guard') {
-        return records
-          .filter(u => Number(u.school_id) === schoolId
-            && (Number(u.id) === userId || u.role === 'manager'))
-          .map(u => projectUserByRole(u, role));
-      }
-      if (role === 'edu_office') {
-        return records
-          .filter(u => u.school_id != null && policy.schoolInOfficeScope(store, session, u.school_id))
-          .map(u => projectUserByRole(u, role));
-      }
-      return records.filter(u => Number(u.id) === userId).map(u => projectUserByRole(u, role));
+      return Array.isArray(out) ? out.map((r) => projectUserByRole(r, session.role)) : [];
     }
-
-    if (c === 'classes') {
-      if (role === 'manager' || role === 'counselor') {
-        return records.filter(cl => Number(cl.school_id) === schoolId);
-      }
-      if (role === 'teacher') {
-        // کلاس‌های سرپرستی یا تدریس
-        const schedules = (store.schedule || []).filter(sc => Number(sc.teacher_id) === userId);
-        const taughtClassIds = schedules.map(sc => Number(sc.class_id));
-        return records.filter(cl => Number(cl.school_id) === schoolId && (Number(cl.homeroom_teacher_id) === userId || taughtClassIds.includes(Number(cl.id))));
-      }
-      if (role === 'student') {
-        const enr = (store.enrollments || []).filter(e => Number(e.student_id) === userId);
-        const clsIds = enr.map(e => Number(e.class_id));
-        return records.filter(cl => clsIds.includes(Number(cl.id)));
-      }
-      if (role === 'parent') {
-        const childIds = policy.childrenOfParent(store, userId);
-        const enr = (store.enrollments || []).filter(e => childIds.has(Number(e.student_id)));
-        const clsIds = enr.map(e => Number(e.class_id));
-        return records.filter(cl => clsIds.includes(Number(cl.id)));
-      }
-      return records.filter(cl => Number(cl.school_id) === schoolId);
-    }
-
-    if (c === 'subjects') {
-      return records; // دروس عمومی و پایه
-    }
-
-    if (c === 'notifications') {
-      return records.filter(n => Number(n.user_id) === userId);
-    }
-
-    if (c === 'announcements') {
-      return records.filter(a => a.school_id == null || Number(a.school_id) === schoolId);
-    }
-
-    if (c === 'grades' || c === 'attendance' || c === 'discipline') {
-      if (role === 'manager' || role === 'counselor') {
-        return records.filter(r => Number(r.school_id) === schoolId);
-      }
-      if (role === 'teacher') {
-        // نمرات و حضور و غیاب کلاس‌های معلم
-        const schedules = (store.schedule || []).filter(sc => Number(sc.teacher_id) === userId);
-        const taughtClassIds = schedules.map(sc => Number(sc.class_id));
-        const taughtSubjectIds = schedules.map(sc => Number(sc.subject_id));
-        return records.filter(r => Number(r.school_id) === schoolId && (taughtClassIds.includes(Number(r.class_id)) || taughtSubjectIds.includes(Number(r.subject_id)) || Number(r.teacher_id) === userId));
-      }
-      if (role === 'student') {
-        return records.filter(r => Number(r.student_id) === userId);
-      }
-      if (role === 'parent') {
-        const childIds = policy.childrenOfParent(store, userId);
-        return records.filter(r => childIds.has(Number(r.student_id)));
-      }
-      return records.filter(r => Number(r.school_id) === schoolId);
-    }
-
-    /* P0 (حریمِ داده): ردیف‌های سراسری (school_id == null) نباید به هر
-       کاربری سرو شوند — این پیش از این، کلِ جدول‌های بدونِ مدرسه
-       (parent_links، parent_subscriptions، offices، bus_locations و ...)
-       را برای همهٔ نقش‌ها، حتی دانش‌آموز/ولیِ مدرسهٔ دیگر نشانت می‌داد.
-       فقط مجموعه‌هایی که صراحتاً «عمومیِ مدرسه‌ای»‌اند می‌توانند ردیفِ
-       سراسری داشته باشند؛ بقیه فقط ردیف‌های مدرسهٔ دامنهٔ کاربر را می‌دهند. */
-    const UNSCOPED_PUBLIC_COLLECTIONS = new Set(['subjects', 'announcements']);
-    if (UNSCOPED_PUBLIC_COLLECTIONS.has(c)) {
-      return records.filter(r => r.school_id == null || Number(r.school_id) === schoolId);
-    }
-    if (role === 'edu_office') {
-      /* edu_office مدرسهٔ واحدی ندارد؛ فقط مدارسِ زیرِ پوششِ جغرافیاییِ
-         دفترِ خودش را می‌بیند (همان دروازهٔ یکتا). */
-      const office = policy.userOffice(store, session);
-      const inOffice = (s) => office != null && policy.officeCoversSchool(office, s);
-      const officeSchoolIds = new Set(((store.schools) || []).filter(inOffice).map(s => Number(s.id)));
-      return records.filter(r => officeSchoolIds.has(Number(r.school_id)));
-    }
-    return records.filter(r => r.school_id != null && Number(r.school_id) === schoolId);
+    return Array.isArray(out) ? out : [];
   }
+
 
   /**
    * پردازش درخواست GET /api/v1/pull
