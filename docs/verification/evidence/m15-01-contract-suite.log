@@ -1,4 +1,4 @@
-# M15-01-EVIDENCE name=contract ts=2026-10-30T23:51:53.615Z exit=0 runtime=node:v22.22.3,os:linux,arch:x64 command="node tests/strict-verification-gate-a30.test.js"
+# M15-01-EVIDENCE name=contract ts=2026-11-11T17:06:21.489Z exit=0 runtime=node:v24.21.0,os:win32,arch:x64 command="node tests/strict-verification-gate-a30.test.js"
 OK positive valid contract passes
 contract reviewers: [arena] (from docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json)
 OK V01-empty-registry fails closed
@@ -23,3 +23,6 @@ OK honestly blocked registry is never reported VERIFIED
 OK V07 scanner catches injected false-green pattern
 OK V06 external intended-head mismatch fails closed
 CHECKS 21 FAIL 0
+warning: in the working copy of 'artifacts/arena.log', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/verification/FALSE_GREEN_ALLOWLIST.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'infra/observability/alert-rules.yml', LF will be replaced by CRLF the next time Git touches it
