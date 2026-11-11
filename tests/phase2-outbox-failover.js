@@ -105,6 +105,25 @@ let OBX_URL;
   fs.copyFileSync(path.join(ROOT, 'server', 'data', 'payesh.json'), STORE);   /* seed.js writes the default path only */
   spawnSync(NODE, ['tools/migrate-to-pg.js', '--execute'], { cwd: ROOT, env: Object.assign({}, process.env, { DATABASE_URL: OBX_URL, PAYESH_STORE: STORE }), stdio: 'pipe' });
   /* migrate-to-pg predates 015–019; Phase 7 refuses listen() without them. */
+  /* psql resolver: on Windows the PostgreSQL bin is not always on PATH — a
+     bare 'psql' spawn fails with status=null (ENOENT) and the migration error
+     surfaces as "failed: null" (observed in the registry collect child, whose
+     PATH lacks the PostgreSQL bin). Resolve explicitly; PATH first, then the
+     standard install locations, newest first. */
+  function psqlBin() {
+    const name = process.platform === 'win32' ? 'psql.exe' : 'psql';
+    if (spawnSync(name, ['--version'], { encoding: 'utf8' }).status === 0) return name;
+    if (process.platform === 'win32') {
+      for (let v = 18; v >= 12; v--) {
+        const p = 'C:\\Program Files\\PostgreSQL\\' + v + '\\bin\\psql.exe';
+        try {
+          if (fs.existsSync(p) && spawnSync(p, ['--version'], { encoding: 'utf8', shell: false }).status === 0) return p;
+        } catch (e) { /* try the next version */ }
+      }
+    }
+    return name; /* let the migration step fail loudly with the real binary name */
+  }
+  const PSQL = psqlBin();
   const migDir = path.join(ROOT, 'migrations');
   const extraMigs = fs.readdirSync(migDir)
     .filter((f) => /^\d{3}_.+\.sql$/.test(f) && !f.endsWith('.down.sql') && Number(f.slice(0, 3)) >= 15)
@@ -116,11 +135,11 @@ let OBX_URL;
     const migFile = path.resolve(migDir, f);
     if (path.dirname(migFile) !== path.resolve(migDir))
       throw new Error('phase2-obx: migration file escapes the migrations dir: ' + JSON.stringify(f));
-    const r = spawnSync('psql', ['-v', 'ON_ERROR_STOP=1', '-q', '-f', migFile], {
+    const r = spawnSync(PSQL, ['-v', 'ON_ERROR_STOP=1', '-q', '-f', migFile], {
       encoding: 'utf8',
       env: Object.assign({}, process.env, pgEnvFromUrl(OBX_URL)),
     });
-    if (r.status !== 0) throw new Error('migration ' + f + ' failed: ' + String(r.stderr || r.stdout || r.status).slice(0, 400));
+    if (r.status !== 0) throw new Error('migration ' + f + ' failed: ' + String(r.stderr || r.stdout || r.status).slice(0, 400) + ' (psql=' + PSQL + ')');
   }
 
   /* ── crash artifact: a pending event that the (dead) worker never saw ── */
@@ -135,18 +154,27 @@ let OBX_URL;
   const proc = await boot(env);
   chk('سرور بعد از «کرش» restart شد', !!proc, proc ? '' : (proc && proc.__log ? proc.__log().slice(-300) : ''));
   if (!proc) process.exit(1);
-  let replayed = null;
+  let replayed = null, replayErr = null;
   for (let i = 0; i < 16; i++) {
-    const r = await pgOne('SELECT status FROM server_outbox WHERE id = $1', [crashEvtId]);
+    const r = await pgOne('SELECT status, last_error FROM server_outbox WHERE id = $1', [crashEvtId]);
     replayed = r[0] && r[0].status;
+    replayErr = r[0] && r[0].last_error;
     if (replayed === 'processed') break;
     await sleep(500);
   }
-  chk('pending پس از restart replay و processed شد (worker از PG)', replayed === 'processed', 'status=' + replayed);
+  chk('pending پس از restart replay و processed شد (worker از PG)', replayed === 'processed', 'status=' + replayed + (replayErr ? ' last_error=' + String(replayErr).slice(0, 160) : ''));
 
   /* login + a REAL delete ⇒ real outbox event through the API path */
   const st = JSON.parse(fs.readFileSync(STORE, 'utf8'));
   const su = (st.users || []).find((u) => u.role === 'superadmin');
+  /* the OTP rate limiter is persistent in the shared staging Redis — a fixed
+     seeded phone makes consecutive runs rate-limit-dependent (observed: run B
+     429 after run A on the same phone). The drill gives the superadmin a
+     unique per-run phone (its own seed manipulation, like the unique outbox
+     rows) so the limiter window is always fresh and the drill is idempotent. */
+  const uniqPhone = '0912' + String(Date.now()).slice(-7);
+  const upd = await pgOne('UPDATE users SET phone = $1 WHERE id = $2 RETURNING id', [uniqPhone, su.id]);
+  if (upd && upd[0]) su.phone = uniqPhone;
   const sc = await req('POST', '/api/auth/send-code', { phone: su.phone });
   const lg = await req('POST', '/api/auth/login', { phone: su.phone, code: sc.json && sc.json.demo_code, national_id: su.national_id });
   const cookie = (lg.headers['set-cookie'] || []).map((c) => c.split(';')[0]).join('; ');
@@ -197,7 +225,7 @@ let OBX_URL;
     });
     if (out.error) throw out.error;
     dlqOk = /DLQ_RES:\{"ok":true/.test(String(out.stdout));
-    console.log('   ' + out.trim().split('\n').pop().slice(0, 120));
+    console.log('   ' + String(out.stdout || '').trim().split('\n').pop().slice(0, 120));
   } catch (e) { console.log('   DLQ probe failed: ' + String(e.stderr || e.message).slice(0, 200)); }
   chk('moveToDlq با idِ خام کار کرد (event object یا id)', dlqOk);
   const dlqRows = await pgOne('SELECT outbox_id, type, error_message FROM server_outbox_dlq WHERE outbox_id = $1', [poisonId]);

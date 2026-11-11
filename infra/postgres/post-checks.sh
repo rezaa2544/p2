@@ -7,7 +7,10 @@ FAILED=0
 note(){ if [ "$2" = "ok" ]; then echo "PASS: $1"; else echo "FAIL: $1"; FAILED=1; fi; }
 COMPOSE_DIR="$(cd "$(dirname "$0")" && pwd)"
 pg(){ # pg <service> <sql>
-  docker compose -f "$COMPOSE_DIR/docker-compose.ha.yml" exec -T "$1" \
+  docker compose -f "$COMPOSE_DIR/docker-compose.ha.yml" \
+    ${PGHA_COMPOSE_EXTRA:-} \
+    --env-file "${PGHA_ENV_FILE:-$COMPOSE_DIR/.env.ha}" \
+    exec -T "$1" \
     psql -U postgres -d payesh -tAc "$2" 2>/dev/null
 }
 

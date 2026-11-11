@@ -14,3 +14,10 @@ dist/payesh.html  eol=lf
 # a clean tree. Pin markdown (and the tools that hash it) to LF so the
 # manifest is byte-identical on every platform.
 *.md  eol=lf
+
+# Shell scripts MUST be LF in the worktree: they are executed by bash inside
+# Linux containers (infra/postgres entrypoints, wal-drill bootstrap, CI
+# runners) and by WSL. A CRLF checkout (core.autocrlf=true) makes every
+# bash invocation die with "set: pipefail: invalid option name" / $'\r'
+# syntax errors (g7/A-13 lesson, infra staging lesson). Pin to LF.
+*.sh  eol=lf

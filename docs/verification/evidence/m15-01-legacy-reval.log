@@ -1,0 +1,32 @@
+# M15-01-EVIDENCE name=legacy_reval ts=2026-11-11T22:56:10.073Z exit=0 runtime=node:v24.21.0,os:win32,arch:x64 envFrom=infra/postgres/.env.ha+infra/redis/.env.sentinel command="node tools/legacy-revalidation.js"
+==== LEGACY REVALIDATION (A-01..A-29) on current HEAD ====
+A-01 PASS — district_id=$1=true, REGION_COLL entries=6, loop-read=true, console.warn=4
+A-02 PASS — subject file removed; successor school-health-dashboard.js db-idiom hits=6, loader=true, loud-fallback=true — deferral discharged
+A-03 PASS — analytics.js warns=4, semantic-analytics.js warns=1
+A-04 PASS — lastIssued Map=true, Math.max guard=true, set=true
+A-05 PASS — startAutoBackup=true, PG-honest-warn=true, index wiring=true
+A-06 PASS — server/sms.js memo=true queueById=true nextId=true idempotency=true
+A-07 PASS — wave1-reads.js(skip=true,notrun=true) wave3-query2.js(skip=true,notrun=true) bell2.js(skip=true,notrun=true)
+A-08 PASS — flagged=0 [] undocumented=0
+A-09 PASS — max-allowed-issues=2655 (INT_MAX weakness fixed: true)
+A-10 PASS — echo-only stub removed=true, default-setup evidence note=true
+A-11 PASS — documented-skip contract verified on HEAD: skip=true, loud-not-green=true, substitute security program present=true | original vendor scope (real Fortify scan credentials) remains vendor-blocked — known limitation, VENDORS task
+A-12 PASS — package.json test:all=true, node.js.yml npm run test:all=true
+A-13 PASS — recursive=true, budget0=true, run exit=0 | TEST/CI parity: 47 pass / 0 fail
+A-14 PASS — __skip=true, date-dependent-skip=false
+A-15 PASS — S2c ok=true assertion present=true
+A-16 PASS — exit-code pg_ctl status check=true
+A-17 PASS — client-features real toast=true, multigrade2 real zeroing=true
+A-18 PASS — adversarial battery exit=0, A-18 covered=true | A-18..A-22 security battery: 21 checks passed
+A-19 PASS — idor.js gate=true, semantic-analytics refs=3
+A-20 PASS — battery exit=0, OCC-wired entities=5, negative present=true
+A-21 PASS — classes.js A-21 validation=true, battery A-21=true, battery exit=0
+A-22 PASS — commandTimeout=true, boot REDIS_URL-only gate=true
+A-23 PASS — exact guarded derivation=true
+A-24 PASS — A-18..A-22 battery green on current main=true
+A-25 PASS — wired=true, in-memory suite exit=0, real-PG crash/DLQ drill exit=0 | PHASE2 OUTBOX FAILOVER: 10/10 ════
+A-26 PASS — documented-skip contract verified on HEAD: codeql-stub-removed=true, fortify-documented-skip=true, codacy-threshold-sane=true | original vendor scope (vendor SaaS credentials) remains vendor-blocked — known limitation, VENDORS task
+A-27 RUNTIME-VERIFIED — staging DR environment note=true, live drill results recorded (outbox 10/10 + PROMOTE_OK + post-checks 6/6)=true
+A-28 DOCS-OK — authoritative design doc docs/design/control-plane-authority-mode.md = true (obligation documented; implementation tracked in Phase 8.3/C2)
+A-29 DOCS-OK — engines.node>=22, roadmap says Node 22=true
+CHECKS 29 FAIL 0

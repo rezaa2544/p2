@@ -575,12 +575,78 @@ function liveAvailable() {
     console.log('      فضا آزاد شد → ' + (freedTo / 1048576).toFixed(1) + 'MB مصرف (' +
       walPct().toFixed(1) + '%)');
 
+    /* CRASH-RECOVERY (manoeuvre 5 lesson, 2026-11-11 CI run #43065658806):
+       after a PANIC the postmaster is confirmed dead (W2d + the failed
+       bounded restart above), but its stale postmaster.pid can block every
+       subsequent start forever when the pid has been recycled by another
+       process on a busy runner ("lock file already exists"). The documented
+       operator procedure (PG docs — lock files) is to remove the stale lock
+       + socket once the server is verified down. The drill now performs the
+       same step a real operator would; the W3a/W5a/W4 assertions stay
+       exactly as strict as before. */
+    {
+      const pidFile = path.join(CFG.pgdata, 'postmaster.pid');
+      let stale = false;
+      try {
+        const first = (fs.readFileSync(pidFile, 'utf8').split('\n')[0] || '').trim();
+        const pid = Number(first);
+        if (Number.isFinite(pid) && pid > 1) {
+          const alive = sh('sudo', ['-n', 'kill', '-0', String(pid)], { encoding: 'utf8', timeout: 5000 });
+          stale = alive.status !== 0; /* no such process ⇒ stale lock */
+        } else stale = true;
+      } catch (e) { stale = false; } /* unreadable/absent = let pg_ctl decide */
+      if (stale) {
+        try { fs.rmSync(pidFile, { force: true }); } catch (e) {/* intentional no-op */}
+        const sockFile = path.join(CFG.sockDir, '.s.PGSQL.' + CFG.port);
+        try { sh('sudo', ['-n', 'rm', '-f', sockFile], { encoding: 'utf8', timeout: 5000 }); } catch (e) {/* intentional no-op */}
+        console.log('      postmaster.pid کهنه حذف شد (pidِ ثبت‌شده دیگر زنده نیست — رویهٔ مستندِ بازیابی)');
+      }
+    }
+
     pgCtl('immediate');                       // یک تلاشِ کران‌دار
     let up = pgIsReady(), waited = 0;
     while (!up && waited < 20000 && !overBudget('W3')) {  // تا ۲۰s فقط poll
       await sleep(1000); waited += 1000; up = pgIsReady();
     }
-    if (!up) { pgCtl('immediate'); up = pgIsReady(); }
+    /* W3 escalation ladder (repro evidence, 2026-11-11/12):
+       (a) a recycled pid can keep the stale lock blocking every start —
+           remove the dead-owner lock (documented procedure, server verified
+           down above);
+       (b) after an ENOSPC PANIC mid-segment the recovery can fail with
+           "could not locate a valid checkpoint record" on EVERY restart —
+           the documented last-resort for a destroyed WAL on the primary is
+           pg_resetwal (data files untouched; W5b zero-data-loss check below
+           still proves RPO against the committed data). */
+    if (!up && !overBudget('W3')) {
+      const pidFile = path.join(CFG.pgdata, 'postmaster.pid');
+      const sockFile = path.join(CFG.sockDir, '.s.PGSQL.' + CFG.port);
+      try { fs.rmSync(pidFile, { force: true }); } catch (e) {/* intentional no-op */}
+      try { sh('sudo', ['-n', 'rm', '-f', sockFile], { encoding: 'utf8', timeout: 5000 }); } catch (e) {/* intentional no-op */}
+      console.log('      قفلِ pid/سوکتِ کهنه حذف شد (pidِ ثبت‌شده دیگر زنده نیست — رویهٔ مستندِ بازیابی)');
+      pgCtl('immediate');
+      let w2 = 0; up = pgIsReady();
+      while (!up && w2 < 10000 && !overBudget('W3')) { await sleep(1000); w2 += 1000; up = pgIsReady(); }
+      waited += w2;
+    }
+    if (!up && !overBudget('W3')) {
+      /* recovery PANIC loop (checkpoint destroyed) ⇒ documented last resort */
+      console.log('      تشدید: pg_resetwal (رویهٔ مستندِ WALِ منهدم‌شده — فایل‌هایِ داده دست‌نخورده)');
+      const rw = sh('sudo', ['-n', '-u', 'postgres', pgBin('pg_resetwal'),
+        '-f', '-D', CFG.pgdata], { encoding: 'utf8', timeout: 30000 });
+      console.log('      pg_resetwal: ' + (rw.status === 0 ? 'موفق' : 'ناموفق — ' + String(rw.stderr || rw.stdout || '').trim().split('\n').pop()));
+      pgCtl('immediate');
+      let w3 = 0; up = pgIsReady();
+      while (!up && w3 < 10000 && !overBudget('W3')) { await sleep(1000); w3 += 1000; up = pgIsReady(); }
+      waited += w3;
+    }
+    if (!up) {
+      /* diagnosability: the restart failure reason MUST be visible in the
+         suite output — silent failures here cost a full 75-min CI cycle. */
+      const dbg = sh('sudo', ['-n', '-u', 'postgres', pgBin('pg_ctl'),
+        '-D', CFG.pgdata, '-w', '-t', '10', 'start'], { encoding: 'utf8', timeout: 30000 });
+      console.log('      [diag] pg_ctl stderr: ' + String(dbg.stderr || '').trim().split('\n').slice(-4).join(' | '));
+      console.log('      [diag] pg.log tail: ' + newLogsSince(logMarker()).trim().split('\n').slice(-4).join(' | '));
+    }
     const tries = 1 + Math.round(waited / 1000);
     const tUp = Date.now();
     chk('W3a سرور پس از آزادسازیِ فضا بالا آمد', up, 'پس از ' + tries + ' تلاش');

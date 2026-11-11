@@ -578,11 +578,45 @@ function generateExecutiveSummary(params = {}, options = {}) { void options;
   };
 }
 
+/* ═══ A-02 (re-audit remediation) — db-backed input loader ═══════════════
+   The legacy deferral ("health-index has no db access") is discharged here:
+   when PostgreSQL is live, the dashboard's inputs are read from the
+   authoritative tables; on any PG failure the in-memory mirror is served
+   LOUDLY (console.warn), never silently — the exact canonical pattern of
+   server/routes/semantic-analytics.js schoolRecords (A-01/A-03). */
+async function loadSchoolHealthInputs(schoolId, ctx) {
+  const store = (ctx && ctx.store) || {};
+  const db = (ctx && ctx.db) || null;
+  const pgLive = !!(db && typeof db.isPostgres === 'function' && db.isPostgres());
+  const tables = { attendance: 'attendance', grades: 'grades', classes: 'classes' };
+  const out = { school_id: Number(schoolId), from_pg: pgLive };
+  if (pgLive && typeof db.query === 'function') {
+    try {
+      for (const [key, table] of Object.entries(tables)) {
+        const r = await db.query('SELECT * FROM ' + table + ' WHERE school_id = $1', [Number(schoolId)]);
+        out[key] = (r && r.rows) || [];
+      }
+      return out;
+    } catch (e) {
+      /* A-03 lesson: the empty catch here would make the fallback invisible —
+         serve the mirror LOUDLY instead. */
+      console.warn('[school-health-dashboard] PG read failed for school', schoolId,
+        '— serving in-memory mirror:', (e && e.message) || e);
+    }
+  }
+  for (const [key, table] of Object.entries(tables)) {
+    out[key] = (store[table] || []).filter((r) => Number(r.school_id) === Number(schoolId));
+  }
+  out.from_pg = false;
+  return out;
+}
+
 module.exports = {
   calculateSchoolHealthIndex,
   detectSchoolCriticalIssues,
   generateDailyActionCenter,
   aggregateSchoolEducationalMetrics,
   generateExecutiveSummary,
-  enforceSchoolHealthTenantIsolation
+  enforceSchoolHealthTenantIsolation,
+  loadSchoolHealthInputs
 };
