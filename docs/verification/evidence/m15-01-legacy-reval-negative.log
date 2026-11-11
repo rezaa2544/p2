@@ -1,0 +1,18 @@
+# M15-01-EVIDENCE name=legacy_reval_neg ts=2026-11-11T23:45:26.196Z exit=0 runtime=node:v24.21.0,os:win32,arch:x64 command="node tests/legacy-reval-negative.test.js"
+==== legacy-reval-negative.test.js — harness mutation matrix ====
+✅ P1 control run executed (harness output parsed) — checks parsed=29
+✅ P1a A-28 DOCS-OK in control — DOCS-OK
+✅ P1b A-02 non-FAIL in control — PASS
+✅ P1c A-12 non-FAIL in control — PASS
+✅ M1 design doc removed → A-28 flips red — DEFECT-OPEN
+✅ M1 collateral-free: A-12 unchanged — control=PASS mutated=PASS
+✅ M1 collateral-free: A-02 unchanged — control=PASS mutated=PASS
+✅ M2 canonical-runner wiring removed from workflow → A-12 flips red — DEFECT-OPEN
+✅ M2 collateral-free: A-28 unchanged — control=DOCS-OK mutated=DOCS-OK
+✅ M2 collateral-free: A-02 unchanged — control=PASS mutated=PASS
+✅ M3 A-02 canonical pgLive pattern broken → A-02 flips red — DEFECT-OPEN
+✅ M3 collateral-free: A-28 unchanged — control=DOCS-OK mutated=DOCS-OK
+✅ M3 collateral-free: A-12 unchanged — control=PASS mutated=PASS
+────────────────────────────────────────────
+legacy-reval-negative: 13 pass / 0 fail
+CHECKS 13 FAIL 0

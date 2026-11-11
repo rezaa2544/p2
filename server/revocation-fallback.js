@@ -66,7 +66,13 @@ const path = require('path');
 const JOURNAL_NAME = 'revocation-journal.json';
 const LOCK_NAME = 'revocation-journal.lock';
 const LOCK_STALE_MS = 5000;
-const LOCK_WAIT_MS = 2500;
+/* Lock wait budget. 2500ms was proven too tight for the legitimate worst case:
+   8 server processes appending concurrently under load (the A-22 multi-process
+   drill) serializes 120 lock acquisitions; the last contender can exceed 2.5s
+   on a loaded host and its logout would FAIL CLOSED with a lost revocation —
+   a security gap, not a perf tradeoff. 10s bounds the wait while the hold time
+   itself stays a single-file rename (~ms). */
+const LOCK_WAIT_MS = 10000;
 const LOCK_SLEEP_BUF = new Int32Array(new globalThis.SharedArrayBuffer(4));
 
 /* Bound the journal so a long outage cannot grow it without limit. Entries

@@ -67,6 +67,15 @@ const EVIDENCE = {
     command: 'node tools/legacy-revalidation.js',
     stagingEnv: true,
     timeoutMs: 900000
+  },
+  /* Negative proof for the legacy revalidation harness itself (V-11: a
+     verifying item must carry BOTH positive and adversarial evidence): the
+     mutation matrix proves each harness check flips red when its evidence
+     source is absent/broken and no collateral check moves. */
+  legacy_reval_neg: {
+    file: 'm15-01-legacy-reval-negative.log',
+    command: 'node tests/legacy-reval-negative.test.js',
+    timeoutMs: 600000
   }
 };
 
@@ -232,6 +241,7 @@ function legacyItems(head, archive, note, reval) {
     const promote = !!(v && PROMOTABLE[v.verdict]);
     if (promote) {
       const evObj = Object.assign({}, reval.evidence, { kind: 'positive_test' });
+      const evNeg = Object.assign({}, revalNeg.evidence, { kind: 'negative_test' });
       const limitations = [
         'Executed and reviewed by the same Arena session — self-review, not an independent review',
         'Verified on the bound HEAD by the legacy-revalidation harness (scope token ' + id +
@@ -254,8 +264,8 @@ function legacyItems(head, archive, note, reval) {
         known_limitations: limitations,
         blocked: false,
         owner_decision_required: false,
-        evidence: [evObj],
-        arena: { status: 'PASS', evidence: [Object.assign({}, evObj)] },
+        evidence: [evObj, evNeg],
+        arena: { status: 'PASS', evidence: [Object.assign({}, evObj), Object.assign({}, evNeg)] },
         legacy_record: {
           source: LEGACY_ARCHIVE_REL,
           atria_status: atria,
@@ -315,6 +325,7 @@ function emit(head, outPath) {
   const revalLogPath = path.join(EVIDENCE_DIR, EVIDENCE.legacy_reval.file);
   const revalText = fs.readFileSync(revalLogPath, 'utf8');
   const reval = { parsed: parsed.legacy_reval, text: revalText, evidence: evidenceObject(head, parsed.legacy_reval, 'positive_test') };
+  const revalNeg = { evidence: evidenceObject(head, parsed.legacy_reval_neg, 'negative_test') };
 
   const items = legacyItems(head, archive, legacyNote, reval);
   const m15 = [

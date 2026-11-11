@@ -1,4 +1,4 @@
-# M15-01-EVIDENCE name=contract ts=2026-11-11T22:55:28.015Z exit=0 runtime=node:v24.21.0,os:win32,arch:x64 command="node tests/strict-verification-gate-a30.test.js"
+# M15-01-EVIDENCE name=contract ts=2026-11-11T23:44:45.964Z exit=0 runtime=node:v24.21.0,os:win32,arch:x64 command="node tests/strict-verification-gate-a30.test.js"
 OK positive valid contract passes
 contract reviewers: [arena] (from docs/verification/VERIFICATION_EVIDENCE_SCHEMA.json)
 OK V01-empty-registry fails closed

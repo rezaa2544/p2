@@ -1,4 +1,4 @@
-# M15-01-EVIDENCE name=legacy_reval ts=2026-11-11T22:56:10.073Z exit=0 runtime=node:v24.21.0,os:win32,arch:x64 envFrom=infra/postgres/.env.ha+infra/redis/.env.sentinel command="node tools/legacy-revalidation.js"
+# M15-01-EVIDENCE name=legacy_reval ts=2026-11-11T23:45:24.216Z exit=0 runtime=node:v24.21.0,os:win32,arch:x64 envFrom=infra/postgres/.env.ha+infra/redis/.env.sentinel command="node tools/legacy-revalidation.js"
 ==== LEGACY REVALIDATION (A-01..A-29) on current HEAD ====
 A-01 PASS — district_id=$1=true, REGION_COLL entries=6, loop-read=true, console.warn=4
 A-02 PASS — subject file removed; successor school-health-dashboard.js db-idiom hits=6, loader=true, loud-fallback=true — deferral discharged

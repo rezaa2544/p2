@@ -121,5 +121,7 @@ function runHarness(dir) {
   }
   console.log('────────────────────────────────────────────');
   console.log('legacy-reval-negative: ' + pass + ' pass / ' + fail + ' fail');
+  /* machine-parsable contract line (the registry builder's parseLog reads it) */
+  console.log('CHECKS ' + (pass + fail) + ' FAIL ' + fail);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error('negative-test crashed: ' + (e && e.stack || e)); process.exit(1); });

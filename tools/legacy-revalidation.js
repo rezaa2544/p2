@@ -66,6 +66,15 @@ function battery() {
   if (batteryRun === null) batteryRun = runNode('tests/security-adversarial-a18-a22.test.js', {}, 300000);
   return batteryRun;
 }
+/* diagnosability: a failed child's reason MUST be visible in the harness output —
+   silent exit codes cost a full re-run cycle (observed: the adversarial battery
+   flaked red under harness load with its output swallowed). */
+function batteryTail(b) {
+  if (b.exit === 0) return '';
+  const lines = String(b.out || '').trim().split('\n').filter((l) => l.trim());
+  const red = lines.filter((l) => /FAIL|❌|not ok|Error/i.test(l)).slice(-4);
+  return ' | battery tail: ' + (red.length ? red : lines.slice(-3)).join(' ;; ').slice(0, 400);
+}
 
 const CHECKS = [];
 function add(id, fn) { CHECKS.push({ id: id, fn: fn }); }
@@ -340,7 +349,7 @@ add('A-18', () => {
   const a18 = /A-18/.test(r.out);
   const ok = green && a18;
   return { ok: ok, verdict: ok ? 'PASS' : 'FAIL',
-    detail: 'adversarial battery exit=' + r.exit + ', A-18 covered=' + a18 + ' | ' + (r.out.match(/A-18\.\.A-22 security battery: [^\n]*/) || ['(no summary)'])[0] };
+    detail: 'adversarial battery exit=' + r.exit + ', A-18 covered=' + a18 + ' | ' + (r.out.match(/A-18\.\.A-22 security battery: [^\n]*/) || ['(no summary)'])[0] + batteryTail(r) };
 });
 
 /* ── A-19 — studentRecordOk canonical gate (idor + semantic-analytics + battery) ── */
@@ -363,7 +372,7 @@ add('A-20', () => {
   const neg = /A-20 negative: production PATCH without base_version is rejected/.test(r.out);
   const ok = green && inv >= 5 && neg;
   return { ok: ok, verdict: ok ? 'PASS' : 'FAIL',
-    detail: 'battery exit=' + r.exit + ', OCC-wired entities=' + inv + ', negative present=' + neg };
+    detail: 'battery exit=' + r.exit + ', OCC-wired entities=' + inv + ', negative present=' + neg + batteryTail(r) };
 });
 
 /* ── A-21 — same-school homeroom + enrolled-class + class/subject validation ── */
@@ -375,7 +384,7 @@ add('A-21', () => {
   const batteryA21 = /A-21 positive: same-school teacher binding succeeds/.test(batt.out);
   const ok = a21 && batteryA21 && batt.exit === 0;
   return { ok: ok, verdict: ok ? 'PASS' : 'FAIL',
-    detail: 'classes.js A-21 validation=' + a21 + ', battery A-21=' + batteryA21 + ', battery exit=' + batt.exit };
+    detail: 'classes.js A-21 validation=' + a21 + ', battery A-21=' + batteryA21 + ', battery exit=' + batt.exit + batteryTail(batt) };
 });
 
 /* ── A-22 — redis commandTimeout + boot fail-fast REDIS_URL-only shape ── */
@@ -405,7 +414,7 @@ add('A-24', () => {
   const r = battery();
   const ok = r.exit === 0;
   return { ok: ok, verdict: ok ? 'PASS' : 'FAIL',
-    detail: 'A-18..A-22 battery green on current main=' + (r.exit === 0) };
+    detail: 'A-18..A-22 battery green on current main=' + (r.exit === 0) + batteryTail(r) };
 });
 
 /* ── A-25 — outbox presence + wiring + real-PG crash/DLQ drill ── */
