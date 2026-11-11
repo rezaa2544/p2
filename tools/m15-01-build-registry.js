@@ -221,7 +221,7 @@ function evidenceObject(head, parsed, kind) {
   };
 }
 
-function legacyItems(head, archive, note, reval) {
+function legacyItems(head, archive, note, reval, revalNeg) {
   const items = [];
   /* Per-check verdicts from the reval harness log: each check prints
      `A-XX <VERDICT> — <detail>`; the promotion reads ONLY this measured
@@ -327,7 +327,7 @@ function emit(head, outPath) {
   const reval = { parsed: parsed.legacy_reval, text: revalText, evidence: evidenceObject(head, parsed.legacy_reval, 'positive_test') };
   const revalNeg = { evidence: evidenceObject(head, parsed.legacy_reval_neg, 'negative_test') };
 
-  const items = legacyItems(head, archive, legacyNote, reval);
+  const items = legacyItems(head, archive, legacyNote, reval, revalNeg);
   const m15 = [
     {
       id: 'M15-01-A',
