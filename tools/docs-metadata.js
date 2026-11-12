@@ -29,7 +29,11 @@ function listDocs() {
     const p = path.join(DOCS, sub);
     if (!fs.statSync(p).isDirectory() || sub.startsWith('_')) continue;
     for (const f of fs.readdirSync(p)) {
-      if (f.endsWith('.md') && !f.startsWith('_')) out.push(path.join(sub, f));
+      if (f.endsWith('.md') && !f.startsWith('_')) {
+        /* مسیرها همیشه با «/» — path.join در ویندوز «\» می‌دهد و کل کاتالوگ
+           (تطبیق نمایه، ورودی/خروجی، یتیم‌ها، READMEهای زیرپوشه) ناسازگار می‌شود */
+        out.push(path.join(sub, f).replace(/\\/g, '/'));
+      }
     }
   }
   return out.sort();
