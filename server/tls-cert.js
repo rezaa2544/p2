@@ -22,6 +22,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 const crypto = require('crypto');
+const logger = require('./logger');
 const fs = require('fs');
 const path = require('path');
 
@@ -132,11 +133,11 @@ if(require.main === module){
   fs.writeFileSync(key, keyPem, { mode: 0o600 });
   /* sanity: Node must be able to parse what we just wrote */
   const x509 = new crypto.X509Certificate(certPem);
-  console.log('self-signed cert written:');
-  console.log('  cert : ' + crt + '  (CN=' + x509.subjectCN + ', '
+  logger.info('self-signed cert written:');
+  logger.info('  cert : ' + crt + '  (CN=' + x509.subjectCN + ', '
     + x509.validFrom + ' .. ' + x509.validTo + ')');
-  console.log('  key  : ' + key);
-  console.log('start TLS:  PAYESH_TLS_CERT=' + crt + ' PAYESH_TLS_KEY=' + key + ' node server/index.js');
+  logger.info('  key  : ' + key);
+  logger.info('start TLS:  PAYESH_TLS_CERT=' + crt + ' PAYESH_TLS_KEY=' + key + ' node server/index.js');
 }
 
 module.exports = { makeSelfSigned, tlv, seq, derInt, derUtc, derUtf8, derBitString };

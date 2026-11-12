@@ -29,6 +29,7 @@ const path = require('path'); void path;
 /* ویو ۱۴ (Observability) — سیگنالِ metrics برای لایهٔ دیتابیس. بدون
    وابستگیِ بیرونی؛ metrics.js فقط crypto را require می‌کند (بدون چرخه). */
 const metrics = require('./metrics');
+const logger = require('./logger');
 
 /* آستانهٔ «کوئریِ کند» — فقط برای شمارش، نه برای تغییرِ رفتار. */
 const DB_SLOW_MS = (Number(process.env.PAYESH_DB_SLOW_MS) > 0)
@@ -349,7 +350,7 @@ function scheduleReconnect() {
     try {
       await init(memoryStore);
       if (isPgActive) {
-        console.log('[DB] Successfully reconnected to PostgreSQL database');
+        logger.info('[DB] Successfully reconnected to PostgreSQL database');
       }
     } catch (e) {/* swallowed: intentional — e unused */}
   }, 10000).unref();
@@ -380,7 +381,7 @@ function scheduleReplicaReprobe() {
       try { await rc.query('SELECT 1 AS ping'); }
       finally { try { rc.release(); } catch (e) {/* swallowed: intentional — e unused */} }
       readPoolActive = true;
-      console.log('[DB] Read replica recovered; routing reads back to replica');
+      logger.info('[DB] Read replica recovered; routing reads back to replica');
     } catch (e) {
       scheduleReplicaReprobe();   /* هنوز خواب است — بعداً دوباره */
     }

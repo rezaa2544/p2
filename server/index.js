@@ -49,6 +49,8 @@ const { weakJwtKeyReason } = require('./key-strength');
    fixed-window limiter as auth (Redis live, in-memory dev fallback). */
 const rateLimit = require('./rate-limit');
 const revocation = require('./revocation'); /* Wave 6: ابطالِ توزیع‌شدهٔ مرحلهٔ REVOKE */
+/* A-39: structured JSON-lines logger with request correlation (no new deps). */
+const logger = require('./logger');
 
 const { createStudentRoutes } = require('./routes/students');
 const { createClassRoutes } = require('./routes/classes');
@@ -125,7 +127,7 @@ function loadStore(){
     /* Wave 1: with PostgreSQL configured, the file is only a bootstrap
        artifact — boot from an empty skeleton and hydrate from PG below. */
     if(process.env.DATABASE_URL){
-      console.log('[store] no JSON file; DATABASE_URL set — booting skeleton for PG hydration');
+      logger.info('[store] no JSON file; DATABASE_URL set — booting skeleton for PG hydration');
       return { __processed_uids: {}, __revoked_jti: {}, __auth: { codes: {}, login_fail: {}, code_rate: {}, enum: {} } };
     }
     console.error('no store found: ' + STORE_FILE);
@@ -360,7 +362,7 @@ const dbReady = db.init(store)
       return info;
     }
     if (info.driver === 'postgres') {
-      console.log('[DB] Connected to PostgreSQL relational engine');
+      logger.info('[DB] Connected to PostgreSQL relational engine');
       /* Migration-012 contract, self-configured (Chat 2 remediation): on a chain-
          migrated database the grades/attendance tables are partitioned with PK
          (id, created_at) — writes only stay correct when PAYESH_PARTITIONED_TABLES
@@ -375,7 +377,7 @@ const dbReady = db.init(store)
           const merged = [...new Set([...cur, ...parts])].join(',');
           if (cur.join(',') !== merged) {
             process.env.PAYESH_PARTITIONED_TABLES = merged;
-            console.log('[DB] partitioned tables detected — PAYESH_PARTITIONED_TABLES=' + merged + ' (auto-configured, migration 012 contract)');
+            logger.info('[DB] partitioned tables detected — PAYESH_PARTITIONED_TABLES=' + merged + ' (auto-configured, migration 012 contract)');
           }
         }
       } catch (e) { /* pre-012 database — nothing to configure */ }
@@ -395,7 +397,7 @@ const dbReady = db.init(store)
           && process.env.PAYESH_FORCE_HYDRATION !== '1';   /* B7: explicit force overrides the guard */
       } catch (e) { /* tables missing ⇒ not a clean-empty PG — hydrate as before */ }
       if (keepBootstrap) {
-        console.log('[store] PG is empty and a bootstrap JSON store is present — hydration SKIPPED (P0-BUG-04 guard); seeding PG from the bootstrap store now (one-time)...');
+        logger.info('[store] PG is empty and a bootstrap JSON store is present — hydration SKIPPED (P0-BUG-04 guard); seeding PG from the bootstrap store now (one-time)...');
         /* N-09: the seed must never abort the boot. seedPgFromBootstrap throws
            bootstrap_seed_incomplete when a row/sequence operation cannot map —
            one permanently unmappable row escaping into dbReady's catch makes
@@ -407,7 +409,7 @@ const dbReady = db.init(store)
            from overwriting the store file on exit. */
         try {
           const r = await seedPgFromBootstrap(store, db);
-          console.log('[store] bootstrap→PG seed done: ' + r.rows + ' row(s) / ' + r.tables + ' table(s)' +
+          logger.info('[store] bootstrap→PG seed done: ' + r.rows + ' row(s) / ' + r.tables + ' table(s)' +
             (r.skipped ? ' (skipped: ' + r.skipped + ')' : ''));
         } catch (seedErr) {
           const detail = seedErr && seedErr.code === 'bootstrap_seed_incomplete'
@@ -427,7 +429,7 @@ const dbReady = db.init(store)
           if (db.hydrationUsersCapped && db.hydrationUsersCapped(h)) {
             console.warn('[store] WARNING: users hydration is capped — users beyond the cap CANNOT authenticate; PAYESH_PG_HYDRATE_LIMIT is for load-test/staging sandboxes only (see docs/WAVE18_LOAD_TEST_REPORT.md §5-4)');
           }
-          console.log('[DB] Hydrated ' + h.hydrated + ' collections from PostgreSQL' +
+          logger.info('[DB] Hydrated ' + h.hydrated + ' collections from PostgreSQL' +
             (h.skipped.length ? ' (skipped: ' + h.skipped.join(',') + ')' : '') +
             (h.capped && h.capped.length ? ' (capped: ' + h.capped.join(',') + ')' : '') +
             (h.env_skipped && h.env_skipped.length ? ' (env-skipped: ' + h.env_skipped.join(',') + ')' : ''));
@@ -438,7 +440,7 @@ const dbReady = db.init(store)
       try {
         require('./infrastructure/ops-kv').attach(db);
         await require('./infrastructure/national-traffic-fabric').refreshTrafficFromSoT();
-        console.log('[OPS-KV] attached — Phase-5 traffic fabric hydrates from phase6_ops_kv');
+        logger.info('[OPS-KV] attached — Phase-5 traffic fabric hydrates from phase6_ops_kv');
       } catch (e) {
         console.error('[OPS-KV] attach/hydrate failed:', e && e.message);
         if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production') throw e;
@@ -446,7 +448,7 @@ const dbReady = db.init(store)
       try {
         authority.attach(db);
         await authority.hydrateControlPlane();
-        console.log('[AUTHORITY] attached + control-plane hydrated from PostgreSQL');
+        logger.info('[AUTHORITY] attached + control-plane hydrated from PostgreSQL');
       } catch (e) {
         console.error('[AUTHORITY] attach/hydrate failed:', e && e.message);
         if (process.env.DATABASE_URL) throw e;
@@ -506,7 +508,7 @@ const cacheReady = cache.init().then((r) => {
     return;
   }
   if (redis.isRedis()) {
-    console.log('[Cache] Redis distributed caching and pub/sub active');
+    logger.info('[Cache] Redis distributed caching and pub/sub active');
   }
 }).catch((err) => {
   console.error('[FATAL] Cache init crashed:', (err && err.message) || err);
@@ -694,7 +696,7 @@ if(!JWT_SECRET){
     JWT_SECRET = crypto.randomBytes(32).toString('hex');
     fs.mkdirSync(path.dirname(KEY_FILE), { recursive: true });
     fs.writeFileSync(KEY_FILE, JWT_SECRET, { mode: 0o600 });
-    console.log('generated JWT secret -> ' + KEY_FILE);
+    logger.info('generated JWT secret -> ' + KEY_FILE);
   }
 }
 /* R96 P0-3 + N-06: کلیدِ HS256 باید حداقل ۲۵۶ بیت باشد و نباید یک placeholder
@@ -903,7 +905,7 @@ worker.start();
 dbReady.then(async () => {
   try {
     const rp = await outbox.replayPendingFromPg();
-    if (rp && rp.replayed > 0) console.log('[outbox] replayed ' + rp.replayed + ' pending event(s) from server_outbox after restart');
+    if (rp && rp.replayed > 0) logger.info('[outbox] replayed ' + rp.replayed + ' pending event(s) from server_outbox after restart');
     else if (rp && rp.ok === false) console.warn('[outbox] pending replay failed (will stay best-effort):', rp.error);
   } catch (e) { console.warn('[outbox] pending replay error:', String((e && e.message) || e).slice(0, 140)); }
 });
@@ -943,7 +945,7 @@ const canaryHydrated = db
       .then(() => globalCanaryEngine.initDb(db))
       .then(() => {
         /* observable proof the SSoT load ran (silence here hid regressions) */
-        console.log('[CANARY] weights hydrated from PostgreSQL (cluster_weights SSoT, ' + globalCanaryEngine.clusters.size + ' clusters)');
+        logger.info('[CANARY] weights hydrated from PostgreSQL (cluster_weights SSoT, ' + globalCanaryEngine.clusters.size + ' clusters)');
       })
       .catch((e) => {
         console.error('[CANARY] PostgreSQL hydration FAILED — serving traffic with persisted-weight UNKNOWN; rerouting decisions may diverge from cluster_weights:', e.message);
@@ -963,7 +965,7 @@ const CURSOR_KEY_SOURCE = !pullRoute.cursor.enabled
   : (Buffer.byteLength(String(process.env.PAYESH_CURSOR_SECRET || ''), 'utf8') >= 32
       ? 'env_cursor'
       : (JWT_KEY_ORIGIN === 'env' ? 'env_jwt' : 'keyfile'));
-console.log('  cursor : ' + (pullRoute.cursor.enabled
+logger.info('  cursor : ' + (pullRoute.cursor.enabled
   ? 'enabled — key=' + CURSOR_KEY_SOURCE + ' (signed cursors survive restarts, ttl=' + pullRoute.cursor.ttlS + 's)'
   : 'DISABLED — set PAYESH_CURSOR_SECRET (>=32 bytes) or provide a JWT key; pull keeps working via legacy since'));
 
@@ -1393,6 +1395,11 @@ const onRequest = async (req, res) => {
       if(!s) return sendJson(res, 401, { ok: false, code: 'unauthorized', message: 'احراز هویت الزامی است' });
       req.user = s;
       req.session = s;
+      /* A-39: bind tenant/user into the request logger — every subsequent
+         line of this request is searchable by tenant + user + request_id. */
+      if (req.log && req.log.child) {
+        req.log = req.log.child({ tenant: s.school_id != null ? String(s.school_id) : undefined, user: (s.user_id != null ? String(s.user_id) : (s.id != null ? String(s.id) : undefined)) });
+      }
 
       // Phase 6 (B8): Zero-Trust Tenant & Provincial Isolation Guardrail
       const targetSchool = url.searchParams.get('school_id') || req.headers['x-school-id'];
@@ -1933,13 +1940,23 @@ const SHUTDOWN_TIMEOUT_MS = Math.max(500, Number(process.env.PAYESH_SHUTDOWN_TIM
 const wrappedRequest = async (req, res) => {
   inFlight++;
   res.on('close', () => { inFlight = Math.max(0, inFlight - 1); });
+  /* A-39: correlation id for EVERY request — the incoming x-request-id is
+     honored (the edge/proxy may own it), otherwise a UUID is minted; the id
+     is echoed on the response and bound into the structured logger so every
+     line of this request is searchable by request_id (plus tenant/user once
+     the session resolves). */
+  const requestId = String(req.headers['x-request-id'] || '').trim() || logger.newRequestId();
+  req.requestId = requestId;
+  res.setHeader('x-request-id', requestId);
+  const reqLog = logger.child({ request_id: requestId });
+  req.log = reqLog;
   /* S7-1: fail-safe — a rejection from any request handler must never reach the
      process-level unhandledRejection path (Node ≥15 exits the process there).
      One bad request may fail; it may not take the service down with it. */
   try{
     await onRequest(req, res);
   }catch(e){
-    try{ console.error('[request] unhandled handler error:', (e && e.message) || e); }catch(_){/* swallowed: intentional — _ unused */}
+    try{ reqLog.error('[request] unhandled handler error: ' + ((e && e.message) || e)); }catch(_){/* swallowed: intentional — _ unused */}
     try{ if(!res.writableEnded) sendJson(res, 500, { ok: false, code: 'internal_error' }); }catch(_){/* intentional no-op */}
   }
 };
@@ -2028,7 +2045,7 @@ function handleShutdown(signal, exitCode) {
   draining = true;
   const t0 = Date.now();
   const started = inFlight;
-  console.log('[shutdown] ' + signal + ' received — draining ' + started + ' in-flight request(s), budget ' + SHUTDOWN_TIMEOUT_MS + 'ms');
+  logger.info('[shutdown] ' + signal + ' received — draining ' + started + ' in-flight request(s), budget ' + SHUTDOWN_TIMEOUT_MS + 'ms');
   try { if (server.closeIdleConnections) server.closeIdleConnections(); } catch (e) {/* swallowed: intentional — e unused */}
   try { server.close(() => {/* swallowed: intentional — e unused */}); } catch (e) {/* intentional no-op */} /* ERR_SERVER_NOT_RUNNING — context تست */
   let done = false;
@@ -2049,7 +2066,7 @@ function handleShutdown(signal, exitCode) {
     (async () => {
       try { await db.close(); } catch (e) {/* swallowed: intentional — e unused */}
       try { await redis.close(); } catch (e) {/* swallowed: intentional — e unused */}
-      console.log('[shutdown] dependencies closed in ' + (Date.now() - t0) + 'ms; exit ' + code);
+      logger.info('[shutdown] dependencies closed in ' + (Date.now() - t0) + 'ms; exit ' + code);
       process.exit(code);
     })();
   }
@@ -2144,20 +2161,20 @@ if(require.main === module){
     }
     server.listen(PORT, HOST, () => {
     const proto = (TLS_CERT && TLS_KEY) ? 'https' : 'http';
-    console.log('payesh-server (phase 1' + (TLS_CERT ? ' + TLS' : '') + ') on ' + proto + '://' + HOST + ':' + PORT);
-    console.log('  static : ' + path.join(ROOT, 'index.html'));
-    console.log('  api    : /api/health /api/readiness /api/liveness /api/auth/* /api/sync /api/sync/conflicts /api/sync/resolve-conflict /api/students/:id /api/bell/now /api/public-report /api/admin/{backup,restore} /api/sms/send');
-    console.log('  metrics: /metrics (' + (process.env.PAYESH_METRICS_TOKEN ? 'bearer token' : (process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production') ? 'DISABLED — set PAYESH_METRICS_TOKEN' : 'loopback only') + ')');
-    console.log('  store  : ' + STORE_FILE + '  (' + (store.users || []).length + ' users)');
+    logger.info('payesh-server (phase 1' + (TLS_CERT ? ' + TLS' : '') + ') on ' + proto + '://' + HOST + ':' + PORT);
+    logger.info('  static : ' + path.join(ROOT, 'index.html'));
+    logger.info('  api    : /api/health /api/readiness /api/liveness /api/auth/* /api/sync /api/sync/conflicts /api/sync/resolve-conflict /api/students/:id /api/bell/now /api/public-report /api/admin/{backup,restore} /api/sms/send');
+    logger.info('  metrics: /metrics (' + (process.env.PAYESH_METRICS_TOKEN ? 'bearer token' : (process.env.PAYESH_ENV === 'production' || process.env.NODE_ENV === 'production') ? 'DISABLED — set PAYESH_METRICS_TOKEN' : 'loopback only') + ')');
+    logger.info('  store  : ' + STORE_FILE + '  (' + (store.users || []).length + ' users)');
     if(BACKUP_EVERY_MS > 0){
       /* A-05b: در حالتِ PG-live، تایمرِ بکاپ عمداً مسلح نمی‌شود (PG مرجع
          است — admin.startAutoBackup هیچ‌وقت فایل نمی‌نویسد). چاپِ «automatic
          every N min» در این حالت یک قولِ دروغ بود. */
       if (db && typeof db.isPostgres === 'function' && db.isPostgres()) {
-        console.log('  backup : in-process JSON export refused in PG mode — timer NOT armed. ' +
+        logger.info('  backup : in-process JSON export refused in PG mode — timer NOT armed. ' +
           'Use pg_dump / pgBackRest / WAL-G at the infrastructure level (docs/RELIABILITY_DR_PLAN.md).');
       } else {
-        console.log('  backup : automatic every ' + Math.round(BACKUP_EVERY_MS / 60000) + ' min (retention ' + 10 + ')');
+        logger.info('  backup : automatic every ' + Math.round(BACKUP_EVERY_MS / 60000) + ' min (retention ' + 10 + ')');
       }
     } else if (process.env.NODE_ENV === 'production' || process.env.PAYESH_ENV === 'production' || process.env.DATABASE_URL) {
       /* A-05: بکاپِ خودکار پیش‌فرض خاموش است و تا پیش از این در زمانِ بوتِ

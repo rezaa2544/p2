@@ -11,6 +11,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 const fs = require('fs');
+const logger = require('./logger');
 const path = require('path');
 const { validate } = require('./validate');
 
@@ -190,7 +191,7 @@ function createAdmin(ctx){
     }
     const t = setInterval(() => {
       Promise.resolve(backupNow('auto', null)).then((r) => {
-        if(r) console.log('auto-backup: ' + r.name + ' (count ' + r.count + ')');
+        if(r) logger.info('auto-backup: ' + r.name + ' (count ' + r.count + ')');
         else console.warn('auto-backup: tick produced no backup file (workers/in-process path failed) — investigate.');
       }).catch(() => {});
     }, ms);

@@ -27,6 +27,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 const fs = require('fs');
+const logger = require('./logger');
 const path = require('path');
 const vm = require('vm');
 
@@ -88,13 +89,13 @@ function saveDb(db) {
   fs.renameSync(tmp, OUT);
   try { fs.chmodSync(OUT, 0o600); } catch (e) {/* intentional no-op */}
   const kb = (Buffer.byteLength(JSON.stringify(db), 'utf8') / 1024).toFixed(0);
-  console.log('✅ store written: ' + OUT + '  (' + kb + ' KB)');
-  console.log('   users: ' + db.users.length +
+  logger.info('✅ store written: ' + OUT + '  (' + kb + ' KB)');
+  logger.info('   users: ' + db.users.length +
     ' | schools: ' + db.schools.length +
     ' | classes: ' + db.classes.length +
     ' | parent_links: ' + db.parent_links.length);
-  console.log('   ⚠️ PUB-01: this dataset is deterministic and reproducible from the public repo —');
-  console.log('      demo data only; never the identity base of a real deployment.');
+  logger.info('   ⚠️ PUB-01: this dataset is deterministic and reproducible from the public repo —');
+  logger.info('      demo data only; never the identity base of a real deployment.');
 }
 
 function seedWithVm() {
@@ -169,7 +170,7 @@ try {
       const db = dom.window.eval(DB_LOOKUP_SRC);
       saveDb(db);
     }catch(e){
-      console.log('jsdom execution failed, falling back to VM runner:', e.message);
+      logger.info('jsdom execution failed, falling back to VM runner:', e.message);
       dom.window.close();
       seedWithVm();
       return;
