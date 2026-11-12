@@ -1997,7 +1997,10 @@ try{
    اگر listener اصلاً شروع نشده باشد (تستِ درون‌فرایند)، server.close()
    بی‌اثر است و توالی به‌همان‌ترتیب انجام می‌شود. */
 let shutdownRunning = false;
-function handleShutdown(signal) {
+function handleShutdown(signal, exitCode) {
+  /* exitCode: 0 = ختمِ تمیز (SIGTERM/SIGINT)؛ 1 = خاموشیِ خطادار
+     (uncaughtException — مانیتورینگ باید تفاوت را ببیند). */
+  const code = Number(exitCode) === 1 ? 1 : 0;
   if (draining || shutdownRunning) return;
   shutdownRunning = true;
   draining = true;
@@ -2024,8 +2027,8 @@ function handleShutdown(signal) {
     (async () => {
       try { await db.close(); } catch (e) {/* swallowed: intentional — e unused */}
       try { await redis.close(); } catch (e) {/* swallowed: intentional — e unused */}
-      console.log('[shutdown] clean — dependencies closed in ' + (Date.now() - t0) + 'ms; exit 0');
-      process.exit(0);
+      console.log('[shutdown] dependencies closed in ' + (Date.now() - t0) + 'ms; exit ' + code);
+      process.exit(code);
     })();
   }
   /* بدونِ listenerِ فعال، close() هرگز کامل نمی‌شود — اگر الان هم درحالت
@@ -2034,6 +2037,30 @@ function handleShutdown(signal) {
 }
 process.on('SIGTERM', () => { handleShutdown('SIGTERM'); });
 process.on('SIGINT', () => { handleShutdown('SIGINT'); });
+
+/* ── A-34: سیاست خطای سطح‌پروسس (async paths خارج از مرزِ درخواست) ──
+   S7-1 درخواست‌ها را ایزوله می‌کند، اما مسیرهای پس‌زمینه (ورکر، تایمرِ
+   بکاپ، pub/sub) می‌توانند به handlerهای سطح‌پروسس برسند:
+     · unhandledRejection (پیش‌فرض Node ≥15: خروج) → ممیزی بلند + زنده‌ماندن.
+       ردِ یک کار پس‌زمینه نباید سرویس را بیندازد — همان فلسفهٔ S7-1.
+     · uncaughtException (حالتِ sync ناشناخته — سلامتِ وضعیت نامعلوم) →
+       ممیزی بلند + خاموشیِ زشت‌نکن با drain (همان توالی SIGTERM) و خروجِ
+       غیرصفر؛ fail-fast بدونِ قطعِ درخواست‌های درحالت‌پرواز. */
+process.on('unhandledRejection', (reason) => {
+  try {
+    const msg = String((reason && reason.message) || reason).slice(0, 200);
+    console.error('[process] unhandledRejection (kept alive): ' + msg);
+    try { audit('unhandled_rejection', { msg: msg.slice(0, 120) }); } catch (_e) {/* intentional no-op */}
+  } catch (_e) {/* intentional no-op */}
+});
+process.on('uncaughtException', (err) => {
+  try {
+    const msg = String((err && err.message) || err).slice(0, 200);
+    console.error('[process] uncaughtException — initiating graceful shutdown: ' + msg);
+    try { audit('uncaught_exception', { msg: msg.slice(0, 120) }); } catch (_e) {/* intentional no-op */}
+  } catch (_e) {/* intentional no-op */}
+  handleShutdown('uncaughtException', 1);
+});
 
 /* ── بکاپِ دوره‌ایِ خودکار (باقی‌ماندهٔ 2.4) — درون‌پروسه ─────────
    PAYESH_BACKUP_EVERY_HOURS (production، مثلاً 24) یا
