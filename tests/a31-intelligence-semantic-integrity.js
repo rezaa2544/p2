@@ -249,9 +249,12 @@ function partA() {
 
 /* ── بخش B — سرور زنده روی PostgreSQL واقعی (بدون ماک) ─────────────── */
 const MIG_DIR = path.join(ROOT, 'migrations');
-const ADMIN_URL = 'postgres://payesh:payesh@127.0.0.1:5432/payesh_ci';
+/* پیش‌فرض = شکل CI (سرویس postgres:17 با payesh/payesh روی 127.0.0.1:5432).
+   PAYESH_A31_ADMIN_URL فقط مسیرِ توسعهٔ محلی را باز می‌کند (مثلاً PG داخل
+   WSL که از ویندوز مستقیم قابل‌دید است) — قراردادِ CI دست‌نخورده می‌ماند. */
+const ADMIN_URL = process.env.PAYESH_A31_ADMIN_URL || 'postgres://payesh:payesh@127.0.0.1:5432/payesh_ci';
 const DB_NAME = 'payesh_a31_' + process.pid;
-const DB_URL = `postgres://payesh:payesh@127.0.0.1:5432/${DB_NAME}`;
+const DB_URL = ADMIN_URL.replace(/\/[^/?]*$/, '/' + DB_NAME);
 
 async function pgQ(connStr, sql, params) {
   const { Client } = require('pg');
@@ -312,7 +315,9 @@ async function partB() {
   await seedDb();
 
   process.env.DATABASE_URL = DB_URL;
-  process.env.REDIS_URL = 'redis://127.0.0.1:6379';
+  /* پیش‌فرض = شکل CI (سرویس redis روی 127.0.0.1:6379)؛ override محلی همسایهٔ
+     PAYESH_A31_ADMIN_URL — قرارداد CI دست‌نخورده می‌ماند. */
+  process.env.REDIS_URL = process.env.PAYESH_A31_REDIS_URL || 'redis://127.0.0.1:6379';
   /* N-06: the boot gate now rejects low-entropy keys ('aaaa…bbbb' has only two
      distinct characters). Use a real random key instead. */
   process.env.PAYESH_JWT_SECRET = require('crypto').randomBytes(32).toString('hex');
