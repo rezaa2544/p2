@@ -3,14 +3,14 @@
   "policy": "docs/STRICT_VERIFICATION_GATE.md",
   "status": "RUNTIME_VERIFIED",
   "note": "Arena is the sole required AI reviewer. Legacy A-01..A-29 were re-validated on the bound HEAD by the legacy-revalidation harness (docs/verification/evidence/m15-01-legacy-reval.log): each item carries that harness run as its evidence with a per-item scope token, and items whose harness verdict is a verifying state are emitted RUNTIME_VERIFIED. Items whose verdict is DEFECT-OPEN / RUNTIME-PENDING / FAIL stay BLOCKED/UNKNOWN — the builder never promotes a non-verifying state. The registry headline equals the weakest recorded item (V-15) and is computed from the items, never claimed. The vendor-gated scopes (A-11 Fortify credentials, A-26 vendor SaaS credentials) remain declared known limitations (VENDORS task); the verified requirement for those ids is the documented-skip substitute contract, which the harness exercises on this HEAD. No human signature is required for any of this (owner ruling 2026-10-27, retired V-10).",
-  "head_bound": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
-  "head_basis": "Evidence for M15-01-A..C, the legacy inventory and the legacy revalidation was produced on 5b913a9bd245fb12379465be9df549c5fbb66e3f, the source commit that this registry-only metadata commit follows. Any code/test change after that SHA invalidates the binding and the tests must be re-run before the registry is rebound.",
+  "head_bound": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
+  "head_basis": "Evidence for M15-01-A..C, the legacy inventory and the legacy revalidation was produced on 1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e, the source commit that this registry-only metadata commit follows. Any code/test change after that SHA invalidates the binding and the tests must be re-run before the registry is rebound.",
   "required_reviewers": [
     "arena"
   ],
   "reviews_recorded": {
     "arena": [
-      "M15-01 Chat 1 self-review on 5b913a9bd245fb12379465be9df549c5fbb66e3f: focused acceptance suite, A-30 fixtures (mutation-verified), the legacy inventory and the legacy revalidation harness were executed and their output committed under docs/verification/evidence/. This record is Arena reviewing Arena; it is not independent verification."
+      "M15-01 Chat 1 self-review on 1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e: focused acceptance suite, A-30 fixtures (mutation-verified), the legacy inventory and the legacy revalidation harness were executed and their output committed under docs/verification/evidence/. This record is Arena reviewing Arena; it is not independent verification."
     ]
   },
   "allowed_statuses": [
@@ -115,7 +115,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-01: routes/analytics.js schools query uses WHERE district_id = $1; six collections via db.readCollection with per-collection console.warn fallback",
       "scope": "legacy-reval A-01",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -135,7 +135,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -152,7 +152,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -173,7 +173,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -190,7 +190,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -211,7 +211,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-02: server/analytics/health-index.js still has no db access (grep for db./isPostgres/readCollection returns zero hits)",
       "scope": "legacy-reval A-02",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -231,7 +231,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -248,7 +248,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -269,7 +269,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -286,7 +286,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -307,7 +307,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-03: routes/analytics.js + semantic-analytics.js fallback paths now console.warn",
       "scope": "legacy-reval A-03",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -327,7 +327,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -344,7 +344,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -365,7 +365,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -382,7 +382,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -403,7 +403,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-04: ids.js lastIssued monotonic counter present (ids.js:28,93-95)",
       "scope": "legacy-reval A-04",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -423,7 +423,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -440,7 +440,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -461,7 +461,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -478,7 +478,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -499,7 +499,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-05: admin.js startAutoBackup returns null with warning in PG-live; index.js banner is honest",
       "scope": "legacy-reval A-05",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -519,7 +519,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -536,7 +536,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -557,7 +557,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -574,7 +574,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -595,7 +595,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-06: sms.js per-request memoization, queueById Map, monotonic nextId, idempotency index",
       "scope": "legacy-reval A-06",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -615,7 +615,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -632,7 +632,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -653,7 +653,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -670,7 +670,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -691,7 +691,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-07: wave1-reads/wave3-query2/bell2 use the __skip sentinel + independent NOT-RUN counter",
       "scope": "legacy-reval A-07",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -711,7 +711,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -728,7 +728,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -749,7 +749,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -766,7 +766,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -787,7 +787,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-08: exit(0)-before-any-check heuristic sweep over 964 test files produced 13 flags; the two smallest inspected (demo-thursday.js, session8-gc.js) are LEGITIMATE (real assertions with non-chk idioms / exit-code semantics)",
       "scope": "legacy-reval A-08",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -807,7 +807,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -824,7 +824,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -845,7 +845,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -862,7 +862,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -883,7 +883,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-09: .github/workflows/codacy.yml:55 still max-allowed-issues: 2147483647; Codacy run is honestly red by design (MalformedInputException on non-ASCII files)",
       "scope": "legacy-reval A-09",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -903,7 +903,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -920,7 +920,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -941,7 +941,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -958,7 +958,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -979,7 +979,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-10: .github/workflows/codeql.yml still only echoes 'Default CodeQL setup is enabled in repository settings' (line 10)",
       "scope": "legacy-reval A-10",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -999,7 +999,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1016,7 +1016,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1037,7 +1037,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1054,7 +1054,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1075,7 +1075,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-11: .github/workflows/fortify.yml skips the scan when credentials are absent (echo 'Skipping Fortify scan... NOT EXECUTED')",
       "scope": "legacy-reval A-11",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -1095,7 +1095,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1112,7 +1112,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1133,7 +1133,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1150,7 +1150,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1171,7 +1171,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-12: scripts/run-all-tests.sh still not invoked by package.json or any workflow",
       "scope": "legacy-reval A-12",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -1191,7 +1191,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1208,7 +1208,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1229,7 +1229,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1246,7 +1246,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1267,7 +1267,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-13: ci-test-parity-contract still non-recursive; 30 suites under tests/api/ are invisible to it AND red (see FG-1)",
       "scope": "legacy-reval A-13",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -1287,7 +1287,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1304,7 +1304,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1325,7 +1325,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1342,7 +1342,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1363,7 +1363,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-14: bell2 date-dependent skip replaced by explicit NOT-RUN reporting",
       "scope": "legacy-reval A-14",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -1383,7 +1383,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1400,7 +1400,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1421,7 +1421,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1438,7 +1438,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1459,7 +1459,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-15: offline-sync-drill S2c now verifies all three ok=true responses",
       "scope": "legacy-reval A-15",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -1479,7 +1479,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1496,7 +1496,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1517,7 +1517,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1534,7 +1534,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1555,7 +1555,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-16: chaos-drill-lib pg status uses exit code, not a dead buffer comparison",
       "scope": "legacy-reval A-16",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -1575,7 +1575,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1592,7 +1592,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1613,7 +1613,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1630,7 +1630,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1651,7 +1651,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-17: client-features.js asserts the real toast; multigrade2.js asserts real class_subject_members zeroing",
       "scope": "legacy-reval A-17",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -1671,7 +1671,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1688,7 +1688,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1709,7 +1709,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1726,7 +1726,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1747,7 +1747,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-18: conflicts.js resolves with monotonic nextVer = max(target.version, server_version)+1 and a manager school-scope check on the TARGET record",
       "scope": "legacy-reval A-18",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -1767,7 +1767,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1784,7 +1784,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1805,7 +1805,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1822,7 +1822,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1843,7 +1843,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-19: student-timeline routed through the canonical policy.studentRecordOk gate (idor.js:68; semantic-analytics.js:256)",
       "scope": "legacy-reval A-19",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -1863,7 +1863,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1880,7 +1880,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1901,7 +1901,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1918,7 +1918,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -1939,7 +1939,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-20: VERDICT OVERTURNED. The backward-compat contract is real (occ.js:8-10) but was applied to only 4 of 5 PATCH paths. grades passed isVersioned=true; students/users/classes/attendance did not, so in strict mode grades rejected a version-less write while the other four accepted it. A version-less PATCH silently destroys a concurrent edit.",
       "scope": "legacy-reval A-20",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -1959,7 +1959,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1976,7 +1976,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -1997,7 +1997,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2014,7 +2014,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2035,7 +2035,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-21: classes.js homeroom_teacher_id must be a same-school teacher on create and update; attendance.js class_id must be the student's enrolled class; grades.js class_id + subject_id validated",
       "scope": "legacy-reval A-21",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -2055,7 +2055,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2072,7 +2072,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2093,7 +2093,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2110,7 +2110,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2131,7 +2131,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-22: VERDICT PARTIALLY OVERTURNED. The fail-open trade-off is documented (revocation.js header) and the compensating controls are real and now runtime-tested, BUT two concrete holes existed: (1) the boot fail-fast predicate in index.js did not cover the REDIS_URL-only shape, so a configured-but-dead Redis booted, reported health=503, and still served with per-request fail-open revocation; (2) no comman",
       "scope": "legacy-reval A-22",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -2151,7 +2151,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2168,7 +2168,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2189,7 +2189,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2206,7 +2206,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2227,7 +2227,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-23: regional-intelligence-network.js average_difficulty_p_value derived from totalHard/totalExams, null when no exams",
       "scope": "legacy-reval A-23",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -2247,7 +2247,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2264,7 +2264,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2285,7 +2285,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2302,7 +2302,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2323,7 +2323,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-24: No sync/offline remediation branch exists on origin (only main); A-18/A-20 re-proven on current main by this audit",
       "scope": "legacy-reval A-24",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -2343,7 +2343,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2360,7 +2360,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2381,7 +2381,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2398,7 +2398,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2419,7 +2419,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-25: server/outbox.js present and wired into index.js (13 references); tests/phase2-outbox-failover.js and outbox-runtime-reliability.test.js exist",
       "scope": "legacy-reval A-25",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -2439,7 +2439,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2456,7 +2456,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2477,7 +2477,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2494,7 +2494,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2515,7 +2515,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-26: codeql.yml echo-only (A-10), fortify.yml documented skip (A-11), codacy INT_MAX (A-09) — all re-confirmed on e4584806; no blanket allowlist created by this audit",
       "scope": "legacy-reval A-26",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -2535,7 +2535,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2552,7 +2552,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2573,7 +2573,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2590,7 +2590,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2611,7 +2611,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-27: No real PG/Redis DR environment in this sandbox",
       "scope": "legacy-reval A-27",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -2631,7 +2631,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2648,7 +2648,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2669,7 +2669,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2686,7 +2686,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2707,7 +2707,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-28: RAM-authoritative control planes, authority mode, legacy tenant enforcement remain design/documentation obligations",
       "scope": "legacy-reval A-28",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -2728,7 +2728,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2745,7 +2745,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2766,7 +2766,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2783,7 +2783,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2804,7 +2804,7 @@
       "status": "RUNTIME_VERIFIED",
       "requirement": "Legacy carry-over A-29: Roadmap/Redis-Node version drift and Phase 9.0 wording remain documentation reconciliation work",
       "scope": "legacy-reval A-29",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -2825,7 +2825,7 @@
           "checks_passed": 29,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
           "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2842,7 +2842,7 @@
           "checks_passed": 13,
           "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
           "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2863,7 +2863,7 @@
             "checks_passed": 29,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval.log",
             "sha256": "188d2f93f8af96de423048e4ca2bd2b8eeaa3fab7c6f8fc71ed4bff9d3400f67",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2880,7 +2880,7 @@
             "checks_passed": 13,
             "artifact": "docs/verification/evidence/m15-01-legacy-reval-negative.log",
             "sha256": "544ccaf1a58b99ff17d1ec9d955322d4a203a4a5b7905a1dd3e51d7721aad5c1",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2900,7 +2900,7 @@
       "id": "M15-01-A",
       "status": "RUNTIME_VERIFIED",
       "requirement": "Evidence binds to the immutable SHA it was produced on: every artifact must exist in that commit with the declared sha256, exit_code must be 0 and checks_passed must equal checks_total. A stale or foreign SHA is rejected, not warned about.",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -2921,7 +2921,7 @@
           "checks_passed": 32,
           "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
           "sha256": "a5940ae2fc2f3c28e59e615f4e1e161d17def0e33629e92bffa05d49fdf914fb",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2938,7 +2938,7 @@
           "checks_passed": 55,
           "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
           "sha256": "3a5e694ed0f580f0dfbbf0fa88b84b3234960d9da22a26e10c79b2d84961312a",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -2959,7 +2959,7 @@
             "checks_passed": 32,
             "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
             "sha256": "a5940ae2fc2f3c28e59e615f4e1e161d17def0e33629e92bffa05d49fdf914fb",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2976,7 +2976,7 @@
             "checks_passed": 55,
             "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
             "sha256": "3a5e694ed0f580f0dfbbf0fa88b84b3234960d9da22a26e10c79b2d84961312a",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -2991,7 +2991,7 @@
       "id": "M15-01-B",
       "status": "RUNTIME_VERIFIED",
       "requirement": "Registry completeness is provable in both directions: every expected id exists, every item is declared, no id is duplicated, and the live registry items are the declared contract.",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -3012,7 +3012,7 @@
           "checks_passed": 32,
           "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
           "sha256": "a5940ae2fc2f3c28e59e615f4e1e161d17def0e33629e92bffa05d49fdf914fb",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -3029,7 +3029,7 @@
           "checks_passed": 55,
           "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
           "sha256": "3a5e694ed0f580f0dfbbf0fa88b84b3234960d9da22a26e10c79b2d84961312a",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -3050,7 +3050,7 @@
             "checks_passed": 32,
             "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
             "sha256": "a5940ae2fc2f3c28e59e615f4e1e161d17def0e33629e92bffa05d49fdf914fb",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -3067,7 +3067,7 @@
             "checks_passed": 55,
             "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
             "sha256": "3a5e694ed0f580f0dfbbf0fa88b84b3234960d9da22a26e10c79b2d84961312a",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -3082,7 +3082,7 @@
       "id": "M15-01-C",
       "status": "RUNTIME_VERIFIED",
       "requirement": "Status discipline: a blocked or unverified item can never be reported as CERTIFIED, the registry headline may not out-claim its weakest item, a human decision in the registry is not a gate condition (owner ruling 2026-10-27) and is neither required nor sufficient to raise anything, and a registry that verifies nothing is not a green gate.",
-      "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+      "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
       "reviews": [
         "arena"
       ],
@@ -3103,7 +3103,7 @@
           "checks_passed": 32,
           "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
           "sha256": "a5940ae2fc2f3c28e59e615f4e1e161d17def0e33629e92bffa05d49fdf914fb",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -3120,7 +3120,7 @@
           "checks_passed": 21,
           "artifact": "docs/verification/evidence/m15-01-contract-suite.log",
           "sha256": "473c268ee660cbc5884cf5f2f553c946d050acd710177fb33ba6e7f30634c25b",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -3137,7 +3137,7 @@
           "checks_passed": 55,
           "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
           "sha256": "3a5e694ed0f580f0dfbbf0fa88b84b3234960d9da22a26e10c79b2d84961312a",
-          "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+          "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
           "runtime": {
             "node": "v24.21.0",
             "os": "win32",
@@ -3158,7 +3158,7 @@
             "checks_passed": 32,
             "artifact": "docs/verification/evidence/m15-01-focused-suite.log",
             "sha256": "a5940ae2fc2f3c28e59e615f4e1e161d17def0e33629e92bffa05d49fdf914fb",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -3175,7 +3175,7 @@
             "checks_passed": 21,
             "artifact": "docs/verification/evidence/m15-01-contract-suite.log",
             "sha256": "473c268ee660cbc5884cf5f2f553c946d050acd710177fb33ba6e7f30634c25b",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
@@ -3192,7 +3192,7 @@
             "checks_passed": 55,
             "artifact": "docs/verification/evidence/m15-01-negative-fixtures.log",
             "sha256": "3a5e694ed0f580f0dfbbf0fa88b84b3234960d9da22a26e10c79b2d84961312a",
-            "head_sha": "5b913a9bd245fb12379465be9df549c5fbb66e3f",
+            "head_sha": "1bafcac3d248d91f21ddcf00cf6d3aaf3e03432e",
             "runtime": {
               "node": "v24.21.0",
               "os": "win32",
