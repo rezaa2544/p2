@@ -8,7 +8,7 @@
 
 **نسخهٔ قفل:** ۱.۰.۰-rc44 | **تاریخ قفل:** ۲۰۲۶-۰۹-۱۳ | **مالک:** همگراییِ قفل پس از بازپایه روی main — چت ۶ (Arena)
 **وضعیت:** این سند نقطهٔ انجماد رسمی و **جاری** کتابخانهٔ مستندات است و جایگزین
-`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۴۸۶ سند ریشهٔ**
+`DOCS_FREEZE_v1.0.0-rc1.md` تا `rc41` (تاریخی) می‌شود. فهرست زیر **همهٔ ۴۸۷ سند ریشهٔ**
 `docs/*.md` را در لحظهٔ قفل با هش دقیق ثبت می‌کند؛ خود این سند عمداً بیرون فهرست
 است (خودارجاعی ممکن نیست).
 
@@ -69,7 +69,7 @@
   (دست‌نخورده‌بودن با تاریخچهٔ کامیت و مرجِ ثبت‌شده در GitHub قابل اثبات است)؛
 - فهرست هش‌های زیر، اثرِ هر سند را به‌تنهایی قابل راستی‌آزمایی می‌کند؛
 - یکپارچگی کامل کتابخانه در `docs/POST_RESET_INTEGRITY_REPORT.md` ممیزی شده است.
-## ۳) فهرست اسناد ریشه با هش (شمار: ۴۸۶)
+## ۳) فهرست اسناد ریشه با هش (شمار: ۴۸۷)
 
 | سند | اثر (SHA-256) |
 |---|---|
@@ -205,11 +205,11 @@
 | `DOCS_FREEZE_v1.0.0-rc9.md` | `sha256:854b8da74ff9cb7a746499afe532610ee4adb569736f07a2eb8f5eb133f378ab` |
 | `DOCS_HEALTH_REPORT.md` | `sha256:36bf496d42732300a7872e76e6a3ce64dca6d52ed20eb1d9621fdce63f3d4169` |
 | `DOCS_INDEX.md` | `sha256:711a37f4b3272ce438ca7f90e5dee0e5e65cb135991a75b61f744af2ee7baee6` |
-| `DOCS_METRICS.md` | `sha256:fc2a7070bb2dae81dbf2e57dfbb4bdfa0112dfc55e4ac871456313bdeca4eaf0` |
+| `DOCS_METRICS.md` | `sha256:607c251de18ed952d72dfaf3151424d10c7ada3b39d2a27864b473cc86d0b584` |
 | `DOCUMENTATION_GOVERNANCE.md` | `sha256:01a5156c69ff0572f2b49dc2ce31453fdf59bfe30cec1a17f2d70a1dd4cfd3fd` |
 | `DOCUMENTATION_HANDOVER.md` | `sha256:e57a7e15f1b03c7ba8b5ed756dbc7c74f947086ad5ce45e4f5ecf6914977a2f4` |
 | `DOCUMENTATION_MAINTENANCE.md` | `sha256:dff12b6227b14b69e66d38bbe813d5365688ff8ce482a6fc9bbb2f12f855036e` |
-| `DOCUMENTATION_MAP.md` | `sha256:afd22b5c38d94799feeed3a4e284f9d30b95305bd6fa5d78135ee527a8e365b8` |
+| `DOCUMENTATION_MAP.md` | `sha256:10710066cc28e13be965c70138efe76b997d64b07d6f2ef72e0c1e100fde9649` |
 | `DR_RUNBOOK.md` | `sha256:eba33f0ad562941cf8aea2087dae1318628708cb37b1330aa0bc1cb34c81cc89` |
 | `D_MAPPING_CLARIFICATION.md` | `sha256:3a46eb50802790fc057c021a1f3012dc1e5b30395e0fef7a864a0a0ecece8b7b` |
 | `D_OFFICE_LEVEL_ANALYSIS.md` | `sha256:339579559535bbd57556f6efae8ccdb4ff601984f01457a2a04a97b6ce6db826` |
@@ -464,6 +464,7 @@
 | `REPORT_UI_REVIEW_2026-09-05.md` | `sha256:7870b4de011dd12dd4cbce88baa1b86005d036a059ddf6877310ea252a1986b0` |
 | `REPOSITORY_MAP.md` | `sha256:f060ff4bbb333f3636f2b1e73874b1e11ba76c3c3967ff525f65c25aa8b27661` |
 | `RESEARCH_2026-09-05_UNIFIED_EDU_ROADMAP.md` | `sha256:95367f41cee304112aa091f10401669596a3c38edfd39a24b0bf6a1f18248c86` |
+| `REVAL_PERFORMANCE.md` | `sha256:1cf9a80fb7a11f595e380c5b1e12b1dcd4c8b4b2a1f1b8c3a2133026d5d1a52b` |
 | `REVIEW_PR2_FOR_SUPERVISOR.md` | `sha256:b64f2e6b188affb37f3762a69bd73fb940696d152bc7e9a7dbb52b124e1d66c1` |
 | `RISK_REGISTER.md` | `sha256:f0ae453f6f878572a482f6a48748f8c77aaae948515ba534963f9864b46a9840` |
 | `ROADMAP.md` | `sha256:8458d802c04d9b038d42796a171c11073bc5ff9a1ee44deb5ac7441f3c83a6cd` |
