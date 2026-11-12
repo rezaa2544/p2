@@ -18,12 +18,14 @@ jobs:
     timeout-minutes: 180
     strategy:
       matrix:
-        node-version: [22.x]
-        # Release-gate honest matrix: package engines is >=22 and jsdom 30
-        # requires >=22 — on 18/20 the smoke suite silently skips (exit 0),
-        # which produced fake-green CI lanes. Node 18/20 lanes removed.
+        # CI-02/RC44 honest matrix: engines is >=22, so BOTH supported LTS lines
+        # (22 maintenance-LTS and 24 active-LTS) are first-class lanes. The
+        # whole suite runs green on Node 24 locally (DSH runtime 24.21).
+        # 18/20 lanes stay REMOVED: engines >=22 + jsdom 30 reject them, and on
+        # old Node the smoke suite silently skipped (exit 0) — fake-green lanes.
         # P1-GAP-02 (Chat 2 remediation): engines >=22 is additionally ENFORCED
         # in tests/run.js — an old Node now fails loudly instead of skipping.
+        node-version: [22.x, 24.x]
 
     services:
       # P1-GAP-01 (Chat 2 remediation): the live-PG suites are first-class CI
