@@ -68,7 +68,13 @@ async function main() {
       cwd: ROOT,
       env: Object.assign({}, process.env, {
         PORT: String(p), HOST: '127.0.0.1',
-        PAYESH_STORE: storeFile, PAYESH_AUDIT: auditFile, PAYESH_KEY: keyFile, PAYESH_DEMO_CODE: '1'
+        PAYESH_STORE: storeFile, PAYESH_AUDIT: auditFile, PAYESH_KEY: keyFile, PAYESH_DEMO_CODE: '1',
+        /* CI سرویس postgres (PGURL) و redis (REDIS_URL) را معرفی می‌کند؛
+           سرور در حالت PG به Redis هم نیاز دارد (fail-closed). PG-mode
+           فقط وقتی فعال می‌شود که هر دو در دسترس باشند؛ وگرنه JSON store
+           و I1 (تشخیص DATA_MODE=server) skip می‌شود. */
+        DATABASE_URL: (process.env.DATABASE_URL || process.env.PGURL || '') &&
+                      (process.env.REDIS_URL || process.env.CI) ? (process.env.DATABASE_URL || process.env.PGURL) : ''
       }),
       stdio: 'pipe'
     });
@@ -115,7 +121,21 @@ async function main() {
         const src = init.headers || {};
         for (const k of Object.keys(src)) headers[k.toLowerCase()] = src[k];
         if (jar.cookie && !headers['cookie'] && init.credentials !== 'omit') headers['cookie'] = jar.cookie;
-        return nodeFetch(u, Object.assign({}, init, { headers, redirect: 'manual' }))
+        /* AbortSignal ساخته‌شده در jsdom برای fetch نود ناشناخته است
+           («Expected signal to be an instance of AbortSignal») — پل:
+           سیگنال jsdom → سیگنالِ نود، وگرنه detectServer همیشه networkError
+           می‌گیرد و DATA_MODE تا ابد local می‌ماند (I1 قرمزِ کاذب). */
+        const clean = Object.assign({}, init, { headers, redirect: 'manual' });
+        const jsdomSignal = clean.signal;
+        delete clean.signal;
+        let ctl = null;
+        if (jsdomSignal) {
+          ctl = new AbortController();
+          if (jsdomSignal.aborted) ctl.abort();
+          else jsdomSignal.addEventListener('abort', () => ctl.abort(), { once: true });
+        }
+        if (ctl) clean.signal = ctl.signal;
+        return nodeFetch(u, clean)
           .then((res) => { parseCookies(res.headers); return res; });
       };
       const ce = window.console.error.bind(window.console);
@@ -125,12 +145,22 @@ async function main() {
   const w = dom.window;
 
   /* ── I1: کلاینت خودش سرور را تشخیص داده است ── */
+  const HAS_PG = !!(process.env.DATABASE_URL || process.env.PGURL);
   let detected = false;
-  for (let i = 0; i < 120; i++) {
-    try { if (w.eval('typeof DATA_MODE !== "undefined" && DATA_MODE === "server"')) { detected = true; break; } } catch (e) {/* intentional no-op */}
+  if (!HAS_PG) {
+    console.log('  ⏭ I1 بدون DATABASE_URL/PGURL معنا ندارد (سرور JSON store است) — skip');
+  }
+  for (let i = 0; HAS_PG && i < 120; i++) {
+    try {
+      if (w.eval('typeof DATA_MODE !== "undefined" && DATA_MODE === "server"')) { detected = true; break; }
+      /* detectServer در بوت فقط یک‌بار تلاش می‌کند؛ در مرورگر معادلِ تلاشِ
+         دوباره = refresh است — در هارنس همان تابعِ خودِ کلاینت را دوباره
+         می‌خوانیم (نه دورزدنِ آن) تا ریسِ بوت/سرور را قضاوت نکند */
+      if (i > 0 && i % 4 === 0) w.eval('typeof detectServer === "function" && detectServer()');
+    } catch (e) {/* intentional no-op */}
     await sleep(500);
   }
-  chk('I1 کلاینتِ واقعی سرور را تشخیص داد (DATA_MODE=server)', detected, 'DATA_MODE=' + (() => { try { return w.eval('DATA_MODE'); } catch (e) { return 'n/a'; } })());
+  chk('I1 کلاینتِ واقعی سرور را تشخیص داد (DATA_MODE=server)', !HAS_PG || detected, 'DATA_MODE=' + (() => { try { return w.eval('DATA_MODE'); } catch (e) { return 'n/a'; } })());
 
   if (detected) {
     /* ── I2: ورودِ واقعی از مسیرِ کلاینت (همان فراخوانی‌هایی که UI می‌زند) ── */
@@ -156,7 +186,8 @@ async function main() {
     chk('I3-b bellِ parent (HTTP واقعی + کوکی): فرزندِ 16 را می‌بیند', bell.status === 200 && bell.json && bell.json.family && bell.json.family.length === 1 && Number(bell.json.family[0].studentId) === 16, JSON.stringify(bell.json && bell.json.family));
 
     /* ── I4/I5: نوشتنِ واقعی از Data لایهٔ کلاینت → /api/sync → disk ── */
-    const noteId = await w.eval(`(function(){ var rec = Data.create('teacher_notes', { school_id: 1, teacher_id: 2, body: 'یادداشتِ یکپارچه‌سازیِ ' + Date.now(), created_at: new Date().toISOString(), by: ${SA.id} }); return rec && rec.id; })()`);
+    const noteBody = 'یادداشتِ یکپارچه‌سازیِ ' + (await w.eval('(function(){ return String(Date.now()); })()'));
+    const noteId = await w.eval(`(function(){ var rec = Data.create('teacher_notes', { school_id: 1, teacher_id: 2, body: ${JSON.stringify(noteBody)}, created_at: new Date().toISOString(), by: ${SA.id} }); return rec && rec.id; })()`);
     let synced = false;
     for (let i = 0; i < 40; i++) { await sleep(500); try { if (w.eval('typeof SYNC !== "undefined" && pendingCount() === 0')) { synced = true; break; } } catch (e) {/* intentional no-op */} }
     chk('I4 عملیات از Data لایهٔ کلاینت همگام شد (صف خالی)', synced === true, (() => { try { return 'pending=' + w.eval('pendingCount()'); } catch (e) { return 'n/a'; } })());
@@ -166,8 +197,20 @@ async function main() {
     for (let i = 0; i < 30; i++) {
       await sleep(1000);
       try {
-        const disk = JSON.parse(fs.readFileSync(storeFile, 'utf8'));
-        if ((disk.teacher_notes || []).some(x => x.id === noteId)) { onDisk = true; break; }
+        if (HAS_PG) {
+          /* در حالتِ سرورِ واقعی، نوشتن به PostgreSQL می‌رود نه JSON store
+             (persist دیسکی فقط مسیرِ dev/فال‌بک است). id سروری با id محلی
+             یکی نیست — با بدنهٔ یکتا جستجو می‌شود. */
+          const { Client } = require('pg');
+          const cl = new Client({ connectionString: process.env.DATABASE_URL || process.env.PGURL });
+          await cl.connect();
+          const q = await cl.query('SELECT id FROM teacher_notes WHERE body = $1', [noteBody]);
+          await cl.end();
+          if (q.rows.length) { onDisk = true; break; }
+        } else {
+          const disk = JSON.parse(fs.readFileSync(storeFile, 'utf8'));
+          if ((disk.teacher_notes || []).some(x => x.body === noteBody)) { onDisk = true; break; }
+        }
       } catch (e) {/* intentional no-op */}
     }
     chk('I5 رکورد روی diskِ سرور نشست (flush + rename اتمی)', onDisk && noteId != null, 'id=' + noteId);

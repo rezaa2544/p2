@@ -7,7 +7,9 @@ const tool = require('../tools/supply-chain-audit');
 
 const ROOT = path.join(__dirname, '..');
 const docs = (name) => path.join(ROOT, 'docs', name);
-const lockText = fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8');
+/* اثر انگشت = مستقل از پلتفرم (LF نرمال) — هم‌سو با tools/supply-chain-audit.js:
+   با autocrlf ویندوز، خواندنِ خام CRLF می‌دهد و اثر انگشت با مخزن/CI نمی‌خواند */
+const lockText = fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8').replace(/\r\n/g, '\n');
 const lock = JSON.parse(lockText);
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const baseline = JSON.parse(fs.readFileSync(docs('DEPENDENCY_DRIFT_BASELINE.json'), 'utf8'));

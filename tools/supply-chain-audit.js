@@ -19,6 +19,11 @@ const LICENSES_PATH = path.join(DOCS, 'THIRD_PARTY_LICENSES.md');
 const AUDIT_PATH = path.join(DOCS, 'NPM_AUDIT_2026_Q3.json');
 
 function sha256(value) { return crypto.createHash('sha256').update(value).digest('hex'); }
+/* اثر انگشتِ قفل باید مستقل از پلتفرم باشد: با autocrlf ویندوز، فایل روی
+   دیسک CRLF است و در مخزن LF — بدونِ نرمال‌سازی، اثر انگشتِ نوشته‌شده در
+   ویندوز هرگز در CI لینوکس سبز نمی‌شود (SC-01/SC-05 «stale» کاذب). */
+function lockFingerprintText(rawText) { return String(rawText).replace(/\r\n/g, '\n'); }
+function readLockText() { return lockFingerprintText(fs.readFileSync(LOCK_PATH, 'utf8')); }
 function readJson(file) { return JSON.parse(fs.readFileSync(file, 'utf8')); }
 function packageId(index) { return 'SPDXRef-Package-' + String(index + 1); }
 function purl(name, version) {
@@ -155,7 +160,7 @@ function validateSbom(sbom, lockText, lock, pkg) {
   return { ok: errors.length === 0, errors, actual };
 }
 function writeArtifacts() {
-  const lockText = fs.readFileSync(LOCK_PATH, 'utf8');
+  const lockText = readLockText();
   const lock = JSON.parse(lockText);
   const pkg = readJson(PACKAGE_PATH);
   fs.mkdirSync(DOCS, { recursive: true });
@@ -165,7 +170,7 @@ function writeArtifacts() {
   console.log('Wrote SPDX SBOM, license inventory, and drift baseline for ' + inventory(lock).length + ' packages.');
 }
 function checkArtifacts() {
-  const lockText = fs.readFileSync(LOCK_PATH, 'utf8');
+  const lockText = readLockText();
   const lock = JSON.parse(lockText);
   const pkg = readJson(PACKAGE_PATH);
   const baseline = fs.existsSync(BASELINE_PATH) ? readJson(BASELINE_PATH) : null;

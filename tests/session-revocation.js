@@ -158,7 +158,11 @@ async function bootApp(port, tmp, extraEnv) {
       PORT: String(port), HOST: '127.0.0.1', PAYESH_STORE: storeP,
       PAYESH_AUDIT: path.join(tmp, 'a-' + port + '.log'),
       PAYESH_KEY: path.join(tmp, 'k-' + port + '.key'),
-      PAYESH_DEMO_CODE: '1', PAYESH_SMS_COOLDOWN_S: '0'
+      PAYESH_DEMO_CODE: '1', PAYESH_SMS_COOLDOWN_S: '0',
+      /* این سوئیت مکانیکِ نشست را آزمون می‌کند نه سقفِ پیامک/آی‌پی —
+         ورودهای متوالیِ گروه‌های HTTP+DIST سقفِ پیش‌فرض (۵/۹۰۰s) را می‌ترکاند (S2c A=429) */
+      PAYESH_SMS_PHONE_LIMIT: '999', PAYESH_SMS_IP_LIMIT: '999',
+      PAYESH_TENANT_API_LIMIT: '99999'
     }, extraEnv || {}),
     stdio: ['ignore', 'ignore', 'ignore']
   });
