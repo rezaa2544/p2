@@ -164,7 +164,7 @@ runner تنها وقتی سبز می‌دهد که **همهٔ** شرایط زی�
 | `tests/security` | **unwired** | ۱۱ | هیچ گیتی ارجاع نمی‌دهد |
 | `tests/fixtures` | support | ۰ | دادهٔ fixture |
 | `tests/helpers` | support | ۶ | helper مشترک |
-| `tests/performance` | support | ۱۹ | harness بار k6 (دستی، طبق طراحی) |
+| `tests/performance` | support | ۲۰ | harness بار k6 + بنچ صدک in-process reval (دستی، طبق طراحی) |
 
 **۱۹ aggregator تودرتو** در `DECLARED_UNWIRED_NESTED_AGGREGATORS` نام‌برده شده‌اند:
 ۱۰ مورد در اجرای دستی ۲۰۲۶-۱۰-۲۶ سبز بودند، ۹ مورد قرمز. این اعلان یعنی «شناخته‌شده و

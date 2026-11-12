@@ -2,9 +2,9 @@
 
 > Generated from `package-lock.json` by `node tools/supply-chain-audit.js --write`. Do not hand-edit.
 
-Lockfile SHA256: `b7b13ed2d02121de6b12db576f0acd200449cc3706aa2bcded2d1b346334f701`  
+Lockfile SHA256: `6e85349c743148d6b8c6f730be31f2879d83ad1f56ee3ef2d830a9c5ba1b0250`  
 Inventory date: 2026-09-11  
-Packages inventoried: **194**
+Packages inventoried: **234**
 
 ## License distribution
 
@@ -12,11 +12,11 @@ Packages inventoried: **194**
 |---|---:|
 | Apache-2.0 | 33 |
 | BSD-2-Clause | 8 |
-| BSD-3-Clause | 4 |
-| BlueOak-1.0.0 | 2 |
+| BSD-3-Clause | 7 |
+| BlueOak-1.0.0 | 5 |
 | CC0-1.0 | 2 |
-| ISC | 9 |
-| MIT | 133 |
+| ISC | 20 |
+| MIT | 156 |
 | MIT-0 | 2 |
 | Public Domain | 1 |
 
@@ -26,6 +26,7 @@ Packages inventoried: **194**
 |---|---|---|---|
 | `@asamuzakjp/css-color` | `7.1.5` | MIT | development |
 | `@asamuzakjp/dom-selector` | `10.0.3` | MIT | development |
+| `@bcoe/v8-coverage` | `1.0.2` | MIT | development |
 | `@bramus/specificity` | `2.4.2` | MIT | development |
 | `@cacheable/memory` | `2.2.0` | MIT | development |
 | `@cacheable/utils` | `2.5.0` | MIT | development |
@@ -50,6 +51,10 @@ Packages inventoried: **194**
 | `@humanwhocodes/module-importer` | `1.0.1` | Apache-2.0 | development |
 | `@humanwhocodes/retry` | `0.4.3` | Apache-2.0 | development |
 | `@ioredis/commands` | `2.0.0` | MIT | runtime |
+| `@istanbuljs/schema` | `0.1.6` | MIT | development |
+| `@jridgewell/resolve-uri` | `3.1.2` | MIT | development |
+| `@jridgewell/sourcemap-codec` | `1.6.0` | MIT | development |
+| `@jridgewell/trace-mapping` | `0.3.31` | MIT | development |
 | `@keyv/bigmap` | `1.3.1` | MIT | development |
 | `@keyv/serialize` | `1.1.1` | MIT | development |
 | `@opentelemetry/api` | `1.9.1` | Apache-2.0 | runtime |
@@ -70,21 +75,28 @@ Packages inventoried: **194**
 | `@opentelemetry/semantic-conventions` | `1.43.0` | Apache-2.0 | runtime |
 | `@types/esrecurse` | `4.3.1` | MIT | development |
 | `@types/estree` | `1.0.9` | MIT | development |
+| `@types/istanbul-lib-coverage` | `2.0.6` | MIT | development |
 | `@types/json-schema` | `7.0.15` | MIT | development |
 | `@vercel/analytics` | `2.0.1` | MIT | runtime |
 | `acorn` | `8.18.0` | MIT | development |
 | `acorn-jsx` | `5.3.2` | MIT | development |
 | `ajv` | `6.15.0` | MIT | development |
+| `ansi-regex` | `6.6.0` | MIT | development |
+| `ansi-styles` | `6.2.3` | MIT | development |
 | `balanced-match` | `4.0.4` | MIT | development |
 | `bidi-js` | `1.1.0` | MIT | development |
 | `brace-expansion` | `5.0.12` | MIT | development |
+| `c8` | `12.0.0` | ISC | development |
 | `cacheable` | `2.5.0` | MIT | development |
 | `call-bind` | `1.0.9` | MIT | development |
 | `call-bind-apply-helpers` | `1.0.2` | MIT | development |
 | `call-bound` | `1.0.4` | MIT | development |
 | `cjs-module-lexer` | `2.3.0` | MIT | runtime |
+| `cliui` | `9.0.1` | ISC | development |
+| `cliui/node_modules/string-width` | `7.2.0` | MIT | development |
 | `cluster-key-slot` | `1.1.1` | Apache-2.0 | runtime |
 | `commander` | `2.20.3` | MIT | development |
+| `convert-source-map` | `2.0.0` | MIT | development |
 | `cross-spawn` | `7.0.6` | MIT | development |
 | `css-tree` | `3.2.1` | MIT | development |
 | `data-urls` | `8.0.0` | MIT | development |
@@ -95,11 +107,13 @@ Packages inventoried: **194**
 | `denque` | `2.1.0` | Apache-2.0 | runtime |
 | `discontinuous-range` | `1.0.0` | MIT | development |
 | `dunder-proto` | `1.0.1` | MIT | development |
+| `emoji-regex` | `10.6.0` | MIT | development |
 | `entities` | `8.1.0` | BSD-2-Clause | development |
 | `es-define-property` | `1.0.1` | MIT | development |
 | `es-errors` | `1.3.0` | MIT | development |
 | `es-module-lexer` | `3.0.3` | MIT | runtime |
 | `es-object-atoms` | `1.1.2` | MIT | development |
+| `escalade` | `3.2.0` | MIT | development |
 | `escape-string-regexp` | `4.0.0` | MIT | development |
 | `eslint` | `10.13.0` | MIT | development |
 | `eslint-scope` | `9.1.2` | BSD-2-Clause | development |
@@ -118,20 +132,26 @@ Packages inventoried: **194**
 | `find-up` | `5.0.0` | MIT | development |
 | `flat-cache` | `6.1.23` | MIT | development |
 | `flatted` | `3.4.4` | ISC | development |
+| `foreground-child` | `3.3.1` | ISC | development |
 | `forwarded-parse` | `2.1.2` | MIT | runtime |
 | `function-bind` | `1.1.2` | MIT | development |
 | `functional-red-black-tree` | `1.0.1` | MIT | development |
+| `get-caller-file` | `2.0.5` | ISC | development |
+| `get-east-asian-width` | `1.7.0` | MIT | development |
 | `get-intrinsic` | `1.3.0` | MIT | development |
 | `get-proto` | `1.0.1` | MIT | development |
+| `glob` | `13.0.7` | BlueOak-1.0.0 | development |
 | `glob-parent` | `6.0.2` | ISC | development |
 | `globals` | `17.13.0` | MIT | development |
 | `gopd` | `1.2.0` | MIT | development |
+| `has-flag` | `4.0.0` | MIT | development |
 | `has-property-descriptors` | `1.0.2` | MIT | development |
 | `has-symbols` | `1.1.0` | MIT | development |
 | `hashery` | `1.5.1` | MIT | development |
 | `hasown` | `2.0.4` | MIT | development |
 | `hookified` | `1.15.1` | MIT | development |
 | `html-encoding-sniffer` | `7.0.0` | MIT | development |
+| `html-escaper` | `2.0.2` | MIT | development |
 | `ignore` | `5.3.2` | MIT | development |
 | `immutable` | `4.3.9` | MIT | development |
 | `import-in-the-middle` | `3.5.2` | Apache-2.0 | runtime |
@@ -142,6 +162,9 @@ Packages inventoried: **194**
 | `is-potential-custom-element-name` | `1.0.1` | MIT | development |
 | `isarray` | `2.0.5` | MIT | development |
 | `isexe` | `2.0.0` | ISC | development |
+| `istanbul-lib-coverage` | `3.2.2` | BSD-3-Clause | development |
+| `istanbul-lib-report` | `3.0.1` | BSD-3-Clause | development |
+| `istanbul-reports` | `3.2.0` | BSD-3-Clause | development |
 | `jsdom` | `30.1.3` | MIT | development |
 | `json-schema-traverse` | `0.4.1` | MIT | development |
 | `json-stable-stringify` | `1.3.0` | MIT | development |
@@ -151,9 +174,11 @@ Packages inventoried: **194**
 | `levn` | `0.4.1` | MIT | development |
 | `locate-path` | `6.0.0` | MIT | development |
 | `lru-cache` | `11.5.3` | BlueOak-1.0.0 | development |
+| `make-dir` | `4.0.0` | MIT | development |
 | `math-intrinsics` | `1.1.0` | MIT | development |
 | `mdn-data` | `2.27.1` | CC0-1.0 | development |
 | `minimatch` | `10.2.6` | BlueOak-1.0.0 | development |
+| `minipass` | `7.1.3` | BlueOak-1.0.0 | development |
 | `module-details-from-path` | `1.0.4` | MIT | runtime |
 | `moment` | `2.30.1` | MIT | development |
 | `moo` | `0.5.3` | BSD-3-Clause | development |
@@ -168,6 +193,7 @@ Packages inventoried: **194**
 | `parse5` | `8.0.1` | MIT | development |
 | `path-exists` | `4.0.0` | MIT | development |
 | `path-key` | `3.1.1` | MIT | development |
+| `path-scurry` | `2.0.2` | BlueOak-1.0.0 | development |
 | `pg` | `8.23.1` | MIT | runtime |
 | `pg-cloudflare` | `1.4.1` | MIT | runtime |
 | `pg-connection-string` | `2.14.1` | MIT | runtime |
@@ -194,12 +220,18 @@ Packages inventoried: **194**
 | `require-in-the-middle` | `8.0.1` | MIT | runtime |
 | `ret` | `0.1.15` | MIT | development |
 | `saxes` | `6.0.0` | ISC | development |
+| `semver` | `7.8.6` | ISC | development |
 | `set-function-length` | `1.2.2` | MIT | development |
 | `shebang-command` | `2.0.0` | MIT | development |
 | `shebang-regex` | `3.0.0` | MIT | development |
+| `signal-exit` | `4.1.0` | ISC | development |
 | `source-map-js` | `1.2.2` | BSD-3-Clause | development |
 | `split2` | `4.2.0` | ISC | runtime |
 | `standard-as-callback` | `2.1.0` | MIT | runtime |
+| `string-width` | `8.3.0` | MIT | development |
+| `strip-ansi` | `7.2.0` | MIT | development |
+| `supports-color` | `7.2.0` | MIT | development |
+| `test-exclude` | `8.0.0` | ISC | development |
 | `tldts` | `7.4.12` | MIT | development |
 | `tldts-core` | `7.4.12` | MIT | development |
 | `tough-cookie` | `6.0.2` | BSD-3-Clause | development |
@@ -207,14 +239,22 @@ Packages inventoried: **194**
 | `type-check` | `0.4.0` | MIT | development |
 | `undici` | `8.12.2` | MIT | development |
 | `uri-js` | `4.4.1` | BSD-2-Clause | development |
+| `v8-to-istanbul` | `9.3.0` | ISC | development |
 | `w3c-xmlserializer` | `6.0.0` | MIT | development |
 | `webidl-conversions` | `8.0.1` | BSD-2-Clause | development |
 | `whatwg-mimetype` | `5.0.0` | MIT | development |
 | `whatwg-url` | `17.2.0` | MIT | development |
 | `which` | `2.0.2` | ISC | development |
 | `word-wrap` | `1.2.5` | MIT | development |
+| `wrap-ansi` | `9.0.2` | MIT | development |
+| `wrap-ansi/node_modules/string-width` | `7.2.0` | MIT | development |
+| `ws` | `8.22.2` | MIT | runtime |
 | `xml-name-validator` | `5.0.0` | Apache-2.0 | development |
 | `xmlchars` | `2.2.0` | MIT | development |
 | `xtend` | `4.0.2` | MIT | runtime |
+| `y18n` | `5.0.8` | ISC | development |
 | `yallist` | `4.0.0` | ISC | development |
+| `yargs` | `18.2.0` | MIT | development |
+| `yargs-parser` | `21.1.1` | ISC | development |
+| `yargs/node_modules/yargs-parser` | `22.0.0` | ISC | development |
 | `yocto-queue` | `0.1.0` | MIT | development |

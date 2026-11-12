@@ -270,7 +270,7 @@ const NESTED_TREE_REGISTER = [
   { path: 'tests/security', status: 'unwired', js: 11, by: 'no gate references this tree' },
   { path: 'tests/fixtures', status: 'support', js: 0, by: 'data fixtures, not suites' },
   { path: 'tests/helpers', status: 'support', js: 6, by: 'shared helpers, not suites' },
-  { path: 'tests/performance', status: 'support', js: 19, by: 'k6 load harness, manual by design' }
+  { path: 'tests/performance', status: 'support', js: 20, by: 'k6 load harness + reval-p99-bench (in-process percentile bench, task 18), manual by design' }
 ];
 /* M15-01 / Chat 2 (2026-10-27): measured false-red in CI run 40437692287.
    `tests/tracing-integration.js` downloads the Jaeger bundle into

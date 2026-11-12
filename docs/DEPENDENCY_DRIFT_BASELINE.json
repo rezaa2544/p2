@@ -3,8 +3,8 @@
   "generated_at": "2026-09-11",
   "lockfile": "package-lock.json",
   "lockfile_version": 3,
-  "lockfile_sha256": "b7b13ed2d02121de6b12db576f0acd200449cc3706aa2bcded2d1b346334f701",
-  "package_count": 194,
+  "lockfile_sha256": "6e85349c743148d6b8c6f730be31f2879d83ad1f56ee3ef2d830a9c5ba1b0250",
+  "package_count": 234,
   "direct_dependencies": {
     "@eslint/js": {
       "declared": "^10.0.1",
@@ -42,6 +42,10 @@
       "declared": "^2.0.1",
       "resolved": "2.0.1"
     },
+    "c8": {
+      "declared": "^12.0.0",
+      "resolved": "12.0.0"
+    },
     "eslint": {
       "declared": "^10.13.0",
       "resolved": "10.13.0"
@@ -65,6 +69,10 @@
     "pg-mem": {
       "declared": "^3.0.14",
       "resolved": "3.0.14"
+    },
+    "ws": {
+      "declared": "^8.22.2",
+      "resolved": "8.22.2"
     }
   }
 }

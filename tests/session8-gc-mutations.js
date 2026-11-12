@@ -48,7 +48,11 @@ try {
     const mcopy = kit.mutant(FILE, original.replace(mutant.from, mutant.to)); /* کپیِ جدا؛ سورس اصلی دست‌نخورده */
     try { fs.chmodSync(mcopy, fs.statSync(FILE).mode); } catch (_) {/* intentional no-op */}
     const result = run(kit.env());
-    if (result.code !== 0 && /AssertionError|checks/.test(result.output)) {
+    /* گیرندهٔ kill: خروجِ غیرصفر + شاهدِ برخورد با assert. هندلرِ
+       graceful-shutdown متن AssertionError را بلعیده و فقط پیام assert و
+       «uncaughtException» چاپ می‌کند — رجکسِ قبلی (/AssertionError|checks/)
+       منقضی بود و جهشِ واقعاً کشته‌شده را «survived» گزارش می‌داد. */
+    if (result.code !== 0 && /AssertionError|uncaughtException|checks/.test(result.output)) {
       killed++;
       console.log('  ✅ ' + mutant.name + ' — killed');
     } else {
