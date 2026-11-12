@@ -81,9 +81,10 @@ function runChild(stage) {
     console.log('⏭ P3 skipped: Windows cannot deliver SIGTERM (TerminateProcess has no handler phase) — the Linux CI lanes exercise this check');
   } else {
     const r3 = await new Promise((resolve) => {
+      /* no fallback exit(0) here: if the SIGTERM handler is broken, the
+         parent's hard cap resolves TIMEOUT and this check fails honestly */
       const child = spawn(process.execPath, ['-e', `
         require(${JSON.stringify(path.join(ROOT, 'server', 'index.js'))});
-        setTimeout(() => process.exit(0), 3000); /* fallback clean exit */
       `], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe', 'ipc'], env: Object.assign({}, process.env, { PAYESH_DEMO_CODE: '1', PAYESH_JWT_SECRET: crypto.randomBytes(32).toString('hex') }) });
       let out = '';
       child.stdout.on('data', (d) => { out += d; });
