@@ -1,0 +1,18 @@
+[
+  { "$comment": "M15-04 — قواعد صفت‌محور لایهٔ ABAC. deny مقدم بر allow؛ عملیاتِ بدون قاعده به RBAC واگذار می‌شود (defer).", "$schema": "payesh-abac/v1" },
+
+  { "id": "aba-01", "action": "grades:write", "resource": "grade", "effect": "deny",
+    "when": { "school_id": "self", "grade": [12, 11, 10] }, "reason": "ثبتِ نمرهٔ سال‌های پایانی فقط از مسیرِ تأییدِ اداره (قاعدهٔ صفت‌محور)" },
+
+  { "id": "aba-02", "action": "grades:write", "resource": "grade", "effect": "allow",
+    "when": { "school_id": "self" } },
+
+  { "id": "aba-03", "action": "exams:write", "resource": "exam", "effect": "deny",
+    "when": { "exam_type": "national" }, "reason": "آزمونِ نهایی/نشان فقط از مسیرِ ثبتِ استان/کشور" },
+
+  { "id": "aba-04", "action": "exams:write", "resource": "exam", "effect": "allow",
+    "when": { "exam_type": ["school", "class"] } },
+
+  { "id": "aba-05", "action": "reports:read", "resource": "report", "effect": "deny",
+    "when": { "school_id": "self" }, "reason": "گزارشِ مدیریتی فقط برای نقشِ مجاز — در این قاعده مثالِ deny مطلق" }
+]
