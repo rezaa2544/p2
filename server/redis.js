@@ -481,6 +481,83 @@ async function sRem(key, ...members) {
   return n;
 }
 
+/* ── A-35: پایه‌های sorted-set برای پنجرهٔ لغزان (sliding window) ──────
+   memZsets: key -> آرایهٔ {score, member} — همان معناشناسیِ ZSET محدود به
+   آنچه limiter لازم دارد (افزودن، پاک‌سازی بر اساس score، شمارش). TTL کلید
+   در حالت حافظه با memExpiry هماهنگ است. */
+let memZsets = new Map();
+
+function memZsetAlive(key) {
+  const exp = memExpiry.get(key);
+  if (exp !== undefined && Date.now() >= exp) { memZsets.delete(key); memExpiry.delete(key); }
+  return memZsets.get(key);
+}
+
+/**
+ * Add one member with its score and (re)arm the key TTL.
+ * Real mode: ZADD + PEXPIRE (two round trips — the tenant limiter is coarse,
+ * bounded overshoot is documented at the call site).
+ */
+async function zAddTtl(key, score, member, ttlSeconds) {
+  if (isRedis()) {
+    try {
+      await client.zadd(key, Number(score), String(member));
+      if (Number(ttlSeconds) > 0) await client.pexpire(key, Math.round(Number(ttlSeconds) * 1000));
+      return 1;
+    } catch (err) {
+      prodRethrow(err);
+    }
+  }
+  prodNoRedis('zAddTtl');
+  cleanExpiredMem();
+  let z = memZsetAlive(key);
+  if (!z) { z = []; memZsets.set(key, z); }
+  const m = String(member);
+  const idx = z.findIndex((e) => e.member === m);
+  if (idx >= 0) z.splice(idx, 1);
+  z.push({ score: Number(score), member: m });
+  if (Number(ttlSeconds) > 0) memExpiry.set(key, Date.now() + Number(ttlSeconds) * 1000);
+  return 1;
+}
+
+/**
+ * Remove members with score <= maxScore (inclusive) — returns count removed.
+ */
+async function zRemByScoreMax(key, maxScore) {
+  if (isRedis()) {
+    try {
+      return await client.zremrangebyscore(key, '-inf', Number(maxScore));
+    } catch (err) {
+      prodRethrow(err);
+    }
+  }
+  prodNoRedis('zRemByScoreMax');
+  cleanExpiredMem();
+  const z = memZsetAlive(key);
+  if (!z) return 0;
+  const keep = z.filter((e) => e.score > Number(maxScore));
+  const removed = z.length - keep.length;
+  if (keep.length) memZsets.set(key, keep); else { memZsets.delete(key); memExpiry.delete(key); }
+  return removed;
+}
+
+/**
+ * Number of members (0 when missing/expired).
+ */
+async function zCard(key) {
+  if (isRedis()) {
+    try {
+      return await client.zcard(key);
+    } catch (err) {
+      prodRethrow(err);
+    }
+  }
+  prodNoRedis('zCard');
+  cleanExpiredMem();
+  const z = memZsetAlive(key);
+  return z ? z.length : 0;
+}
+
 /**
  * Delete one or multiple keys
  * @param {...string} keys 
@@ -886,6 +963,10 @@ module.exports = {
   sAdd,
   sMembers,
   sRem,
+  /* A-35: sorted-set primitives for the sliding-window limiter */
+  zAddTtl,
+  zRemByScoreMax,
+  zCard,
   close,
   __setClientForTests
 };

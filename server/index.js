@@ -1425,6 +1425,28 @@ const onRequest = async (req, res) => {
         }
       }
 
+      // A-35: per-tenant sliding-window rate limit on /api/v1/* — the tenant
+      // bucket = the effective school (the admin acting on a school counts
+      // against THAT school's bucket; the superadmin = its own global bucket).
+      // Redis error = the B5 contract (configured = fail-closed 503); the
+      // unexpected limiter error = fail-open (the edge owns the hard limit).
+      try {
+        const trl = await rateLimit.checkTenantRateLimit({
+          schoolId: targetSchool || s.school_id,
+          routeClass: 'api-v1',
+          limit: Number(process.env.PAYESH_TENANT_API_LIMIT) || 600,
+          windowSeconds: Number(process.env.PAYESH_TENANT_API_WINDOW_S) || 60
+        });
+        if (!trl.allowed) {
+          return sendJson(res, 429, { ok: false, code: 'rate_limited', retry_after_s: trl.reset });
+        }
+      } catch (err) {
+        if (err && err.code === 'REDIS_UNAVAILABLE') {
+          return sendJson(res, 503, { ok: false, code: 'REDIS_UNAVAILABLE' });
+        }
+        /* fail-open: a limiter bug must not take the API down (documented) */
+      }
+
       // /api/v1/bootstrap
       if(p === '/api/v1/bootstrap' && req.method === 'GET'){
         const r = await bootstrapRoute.getBootstrapData(req);
