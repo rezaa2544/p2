@@ -27,11 +27,11 @@ written through to PostgreSQL on every decision.
 Ground truth from docs/PHASE_8_ENTRY_AUDIT_REPORT.md (R1) and
 docs/PHASE_8.1_REMEDIATION_AUDIT_REPORT.md — verified to remain at this HEAD:
 
-1. `server/provincial-pilot-scaling.js` — `_provincialStateStore`
-2. `server/change-management.js` — `changeRegistry`
-3. `server/national-capacity-enforcement.js` — `activeReservations`
-4. `server/national-operations-center.js` — `activeIncidents`
-5. `server/event-processing-layer.js` — `processedIdempotencyKeys`
+1. `server/infrastructure/provincial-pilot-scaling.js` — `_provincialStateStore`
+2. `server/infrastructure/change-management.js` — `changeRegistry`
+3. `server/infrastructure/national-capacity-enforcement.js` — `activeReservations`
+4. `server/operations/national-operations-center.js` — `activeIncidents`
+5. `server/infrastructure/event-processing-layer.js` — `processedIdempotencyKeys`
 
 Shared properties (documented honestly, not hidden): they boot-hydrate from
 `authority_state`, some transitions write through (`persistChange` →
