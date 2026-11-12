@@ -438,6 +438,81 @@ function createOutbox({ store, db }) {
   }
 
   /* ════════════════════════════════════════════════════════════════
+     LETTA / #454 — مدیریتِ DLQ: فهرست و بازگشتِ رویداد به صف
+     ────────────────────────────────────────────────────────────────
+     dead_letter ترمینال است و worker هرگز آن را claim نمی‌کند (قراردادِ
+     outbox-runtime-reliability)، اما وقتی اپراتور علتِ خطا را رفع کرد،
+     رویداد باید مسیرِ بازگشتِ ممیزی‌شده داشته باشد. requeueDead:
+       · فقط ردیفِ dead_letter را می‌پذیرد (هر وضعیت دیگر = ردِ صریح)
+       · ردیفِ DLQ را حذف می‌کند — الزامی: UNIQUE(outbox_id) با
+         ON CONFLICT DO NOTHING یعنی اگر ردیفِ DLQ بماند، DLQ شدنِ دوبارهٔ
+         همین رویداد در آینده بی‌سروصدا no-op می‌شود؛
+       · source را pending می‌کند (retry_count و last_error ریست — اپراتور
+         علت را رفع کرده؛ بودجهٔ تلاش تازه معنا دارد)؛
+       · کلِ انتقال = یک تراکنش اتمیک در PG (حذفِ DLQ + به‌روزرسانیِ source
+         با هم یا هیچ‌کدام).
+     بازگشتِ خودِ رویداد به مصرف، همان مسیرِ عادیِ worker است (claim
+     pending) — هیچ مسیرِ موازی‌ای ساخته نمی‌شود. */
+  async function listDead(limit) {
+    const n = Math.min(500, Math.max(1, Number(limit) || 100));
+    if (isPg()) {
+      try {
+        const r = await db.query(
+          `SELECT outbox_id, type, collection, record_id, actor_id, version, payload,
+                  error_message, retry_count, failed_at
+             FROM server_outbox_dlq ORDER BY failed_at DESC LIMIT $1;`, [n]);
+        return (r && r.rows) || [];
+      } catch (e) { return []; }
+    }
+    return (store.outbox_dlq || []).slice(-n).reverse();
+  }
+
+  async function requeueDead(ref) {
+    if (ref == null) return { ok: false, reason: 'REF_REQUIRED' };
+    if (isPg()) {
+      if (!db || typeof db.transaction !== 'function') {
+        return { ok: false, reason: 'DLQ_TRANSACTION_UNAVAILABLE' };
+      }
+      try {
+        return await db.transaction(async (client) => {
+          const find = await client.query(
+            `SELECT outbox_id FROM server_outbox_dlq WHERE outbox_id = $1 OR id = $1 LIMIT 1;`,
+            [Number(ref)]);
+          if (!find.rows.length) return { ok: false, reason: 'NOT_IN_DLQ', ref: ref };
+          const outboxId = Number(find.rows[0].outbox_id);
+          const del = await client.query('DELETE FROM server_outbox_dlq WHERE outbox_id = $1;', [outboxId]);
+          const upd = await client.query(
+            `UPDATE server_outbox
+                SET status = 'pending', retry_count = 0, last_error = NULL,
+                    processing_at = NULL, processing_token = NULL
+              WHERE id = $1 AND status = 'dead_letter';`, [outboxId]);
+          if (!upd || Number(upd.rowCount) !== 1) {
+            return { ok: false, reason: 'SOURCE_NOT_DEAD_LETTER', id: outboxId };
+          }
+          return { ok: true, id: outboxId, status: 'pending', removed: Number(del.rowCount) };
+        });
+      } catch (e) {
+        console.warn('[Outbox DLQ] requeue rolled back:', e.message);
+        return { ok: false, reason: e.message };
+      }
+    }
+    const want = Number(ref);
+    const idx = (store.outbox_dlq || []).findIndex(
+      (row) => Number(row.outbox_id != null ? row.outbox_id : row.id) === want || Number(row.id) === want);
+    if (idx < 0) return { ok: false, reason: 'NOT_IN_DLQ', ref: ref };
+    const row = store.outbox_dlq[idx];
+    const evt = (store.outbox || []).find((e) => Number(e.id) === Number(row.outbox_id != null ? row.outbox_id : row.id));
+    if (!evt || evt.status !== 'dead_letter') return { ok: false, reason: 'SOURCE_NOT_DEAD_LETTER', id: row.outbox_id };
+    store.outbox_dlq.splice(idx, 1);
+    evt.status = 'pending';
+    evt.retry_count = 0;
+    evt.last_error = null;
+    evt.processing_at = null;
+    evt.processing_token = null;
+    return { ok: true, id: evt.id, status: 'pending', removed: 1 };
+  }
+
+  /* ════════════════════════════════════════════════════════════════
      N-36 / M15-05 — مسیرِ بازپخشِ دوام‌دار (replicate-to-all)
      ───────────────────────────────────────────────────────────────
      رویدادهای `cache.*` برخلافِ `*.deleted` مصرف‌کنندهٔ رقابتی نیستند:
@@ -556,6 +631,8 @@ function createOutbox({ store, db }) {
   /* N-36: ثبتِ این نمونه برای activeBacklog() (metrics probe). آخرین
      نمونه برنده است — در هر پروسه فقط یک outbox واقعی ساخته می‌شود. */
   const api = { append, mark, depth, replayPendingFromPg, fetchPendingBatch, moveToDlq,
+    /* LETTA / #454 — DLQ management */
+    listDead, requeueDead,
     /* N-36 / M15-05 */
     fetchReplicateBatch, advanceWatermark, readWatermark, replicateBacklog,
     reapProcessed, instanceId: () => INSTANCE_ID,
