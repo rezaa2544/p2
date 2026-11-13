@@ -51,8 +51,13 @@ const PG_TOOLS = new Set(['initdb', 'pg_ctl', 'createdb', 'psql', 'pg_dump', 'pg
 const PG_DEFAULT_BIN = '/usr/lib/postgresql/17/bin';
 function pgBin(n) {
   if (!PG_TOOLS.has(n)) throw new Error('disallowed pg tool: ' + n);
-  const dir = (CFG.bin === PG_DEFAULT_BIN) ? PG_DEFAULT_BIN : null;
-  if (dir && fs.existsSync(path.join(dir, n))) return path.join(dir, n);
+  /* هرگاه دوتایی در دایرکتوریِ مشخص وجود داشت، مسیرِ مطلق برگردانده شود —
+     sudo با secure_path نامِ برهنه را پیدا نمی‌کند ('command not found'،
+     بازتولیدشده در لاینِ Node-24 که PGBIN به جدیدترین pg اشاره می‌کند نه
+     symlinkِ 17). دروازهٔ امنیتی همان allowlistِ نامِ literal است؛ فقط
+     «دایرکتوری» حل می‌شود (همان اعتمادِ قبلی + existsSync). */
+  if (CFG.bin && fs.existsSync(path.join(CFG.bin, n))) return path.join(CFG.bin, n);
+  if (fs.existsSync(path.join(PG_DEFAULT_BIN, n))) return path.join(PG_DEFAULT_BIN, n);
   return n;
 }
 const SKIP_LIVE = process.argv.includes('--skip-live');
