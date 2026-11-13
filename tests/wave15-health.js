@@ -241,7 +241,9 @@ async function main(){
   }
 
   /* ── S1 SIGTERM بدونِ ترافیک → خروجِ تمیز ─────────────────────── */
-  {
+  if (process.platform !== 'win32') {
+    /* ویندوز SIGTERM را TerminateProcess پیاده می‌کند — handlerِ [shutdown]
+       هرگز اجرا نمی‌شود؛ قراردادِ خروجِ تمیز فقط POSIX است (CI = لینوکس). */
     const c = await runChild('shutdown', 15000);
     try{
       const l = await fetch('http://localhost:' + c.port + '/api/liveness');
@@ -253,7 +255,8 @@ async function main(){
       assert(Date.now() - t0 < 10000, 'exited in budget');
       const all = c.out.join('\n');
       assert(/\[shutdown\] SIGTERM received/.test(all), 'SIGTERM marker missing: ' + all.slice(-300));
-      assert(/\[shutdown\] clean — dependencies closed/.test(all), 'clean marker missing');
+      /* مارکر در a34 (557bcdb1) به قالبِ «dependencies closed in Nms; exit N» تغییر کرد */
+      assert(/\[shutdown\] dependencies closed in \d+ms; exit 0/.test(all), 'clean marker missing: ' + all.slice(-300));
       assert(/exit 0/.test(all), 'exit-0 marker missing');
       pass++; console.log('  ✅ S1 child SIGTERM: exit 0 + [shutdown] SIGTERM + clean + exit 0 markers');
     } finally {
@@ -262,7 +265,7 @@ async function main(){
   }
 
   /* ── S2 SIGTERM در حینِ درخواستِ طولانی → drain ───────────────── */
-  {
+  if (process.platform !== 'win32') {
     const c = await runChild('drain', 15000);
     try{
       /* درخواستِ ۱۵۰۰ms — هنوز در‌حالتِ پرواز است وقتی SIGTERM می‌رسد */
@@ -292,7 +295,8 @@ async function main(){
       assert(Date.now() - t0 < 10000, 'drain within budget');
       const all = c.out.join('\n');
       assert(/\[shutdown\] SIGTERM received — draining 1 in-flight/.test(all), 'draining-1 marker: ' + all.slice(-300));
-      assert(/\[shutdown\] clean — dependencies closed/.test(all), 'clean marker');
+      /* مارکر در a34 (557bcdb1) به قالبِ «dependencies closed in Nms; exit N» تغییر کرد */
+      assert(/\[shutdown\] dependencies closed in \d+ms; exit 0/.test(all), 'clean marker: ' + all.slice(-300));
       pass++; console.log('  ✅ S2 child SIGTERM در حینِ ترافیک: در‌حالت‌پرواز کامل شد + اتصالِ تازه reject + exit 0');
     } finally {
       try { c.proc.kill('SIGKILL'); } catch (e) {/* intentional no-op */}

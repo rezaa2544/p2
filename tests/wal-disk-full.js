@@ -47,7 +47,7 @@ const CFG = {
 /* 🔴 دروازهٔ امنیتی: مسیرِ کاملِ آمده از env قابل اجرا نیست (untrusted program
    selection). فقط نامِ مجازِ literal اجرا می‌شود. مسیرِ مطلقِ پیش‌فرض مجاز
    است؛ در غیرِ آن صورت نامِ ساده از PATH حل می‌شود. */
-const PG_TOOLS = new Set(['initdb', 'pg_ctl', 'createdb', 'psql', 'pg_dump', 'pg_isready', 'pg_basebackup', 'postgres']);
+const PG_TOOLS = new Set(['initdb', 'pg_ctl', 'createdb', 'psql', 'pg_dump', 'pg_isready', 'pg_basebackup', 'postgres', 'pg_resetwal']); /* pg_resetwal = تشدیدِ مستندِ W3 برای WALِ منهدم‌شده (فایل‌هایِ داده دست‌نخورده) */
 const PG_DEFAULT_BIN = '/usr/lib/postgresql/17/bin';
 function pgBin(n) {
   if (!PG_TOOLS.has(n)) throw new Error('disallowed pg tool: ' + n);

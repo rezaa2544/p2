@@ -175,13 +175,15 @@ process.on('exit', () => { try { fs.rmSync(tmp, { recursive: true, force: true }
     restBad.status === 409 && restBad.json && restBad.json.code === 'corrupt_backup' &&
     (disk2.attendance || []).some(a => a.student_id === 99901), restBad.raw);
 
-  // B6: آدیت
+  // B6: آدیت — تفکیکِ زیرشرط‌ها برای تشخیص‌پذیریِ CI (خطِ متخلف نشان داده شود)
   const auditTxt = fs.existsSync(auditFile) ? fs.readFileSync(auditFile, 'utf8') : '';
   const sa = su.users.find(u => u.role === 'superadmin');
+  const b6HasBackup = /backup_created/.test(auditTxt);
+  const b6HasRestore = /restore_completed/.test(auditTxt);
+  const b6LeakLine = auditTxt.split('\n').find(l => (sa.phone && l.indexOf(sa.phone) !== -1) || (sa.national_id && l.indexOf(sa.national_id) !== -1));
   chk('B6 آدیت: backup_created + restore_completed، بدون phone/nid',
-    /backup_created/.test(auditTxt) && /restore_completed/.test(auditTxt) &&
-    auditTxt.indexOf(sa.phone) === -1 && auditTxt.indexOf(sa.national_id) === -1,
-    auditTxt.slice(-220));
+    b6HasBackup && b6HasRestore && !b6LeakLine,
+    'backup=' + b6HasBackup + ' restore=' + b6HasRestore + ' leak=' + (b6LeakLine ? b6LeakLine.slice(0, 300) : 'none') + ' | tail: ' + auditTxt.slice(-160));
 
   srv.kill('SIGKILL');
   await sleep(200);

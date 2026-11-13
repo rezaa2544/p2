@@ -162,6 +162,10 @@ async function bootApp(port, tmp, extraEnv) {
       /* این سوئیت مکانیکِ نشست را آزمون می‌کند نه سقفِ پیامک/آی‌پی —
          ورودهای متوالیِ گروه‌های HTTP+DIST سقفِ پیش‌فرض (۵/۹۰۰s) را می‌ترکاند (S2c A=429) */
       PAYESH_SMS_PHONE_LIMIT: '999', PAYESH_SMS_IP_LIMIT: '999',
+      /* سقف‌های LOGIN جدا از SMS هستند (auth.js:225-226) و شمارنده‌شان در Redis
+         بین نمونه‌های سوئیت مشترک است — جمع لاگین‌ها از ۱۰ می‌گذرد (S2c A=429) */
+      PAYESH_LOGIN_IP_LIMIT: '99999', PAYESH_LOGIN_PHONE_LIMIT: '99999',
+      PAYESH_LOGIN_TRIES: '999',
       PAYESH_TENANT_API_LIMIT: '99999'
     }, extraEnv || {}),
     stdio: ['ignore', 'ignore', 'ignore']

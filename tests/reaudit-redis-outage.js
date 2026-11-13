@@ -56,11 +56,12 @@ function signToken(secret, payload) {
 function makeRedis(port) {
   const kv = new Map();
   const exp = new Map(); /* key -> ms انقضا */
+  const zsets = new Map(); /* key -> Map(member -> score) — برایِ لیمیترِ tenant (A-35) */
   const socks = new Set();
   let partitioned = false;
   function sweep(k) {
     const e = exp.get(k);
-    if (e && Date.now() >= e) { kv.delete(k); exp.delete(k); }
+    if (e && Date.now() >= e) { kv.delete(k); zsets.delete(k); exp.delete(k); }
   }
   const server = net.createServer((sock) => {
     socks.add(sock);
@@ -146,6 +147,26 @@ function makeRedis(port) {
         return ':1\r\n';
       }
       case 'EVALSHA': return '-NOSCRIPT ERR Please use EVAL instead of EVALSHA\r\n';
+      /* لیمیترِ tenant (A-35) مسیرِ sliding-window = ZSET — بدونِ این‌ها ZCARD
+         به‌جایِ عدد '+OK' می‌گیرد ⇒ NaN ⇒ 429 همیشگی (S6b قرمزِ کاذب). */
+      case 'ZADD': {
+        const zk = args[1], sc = parseFloat(args[2]), m = args[3];
+        if (zk === undefined || !Number.isFinite(sc) || m === undefined) return '-ERR ZADD syntax\r\n';
+        let z = zsets.get(zk); if (!z) { z = new Map(); zsets.set(zk, z); }
+        z.set(String(m), sc); return ':1\r\n';
+      }
+      case 'ZCARD': { sweep(args[1]); const z = zsets.get(args[1]); return ':' + (z ? z.size : 0) + '\r\n'; }
+      case 'ZREMRANGEBYSCORE': {
+        const zk = args[1];
+        const mn = args[2] === '-inf' ? -Infinity : parseFloat(args[2]);
+        const mx = args[3] === '+inf' ? Infinity : parseFloat(args[3]);
+        const z = zsets.get(zk); if (!z) return ':0\r\n';
+        let n = 0;
+        for (const [m, sc] of z) { if (sc >= mn && sc <= mx) { z.delete(m); n++; } }
+        if (z.size === 0) zsets.delete(zk);
+        return ':' + n + '\r\n';
+      }
+      case 'PEXPIRE': exp.set(args[1], Date.now() + (parseInt(args[2], 10) || 60000)); return ':1\r\n';
       case 'SUBSCRIBE': { const ch = args[1]; return '*3\r\n$9\r\nsubscribe\r\n' + s(ch) + ':1\r\n'; }
       default: return '+OK\r\n';
     }
@@ -166,7 +187,17 @@ function bootInstance(port, redisUrl, storeFile, auditFile, keyFile, extra) {
     PAYESH_STORE: storeFile,
     PAYESH_AUDIT: auditFile,
     PAYESH_KEY: keyFile,
-    PAYESH_DEMO_CODE: '1'
+    PAYESH_DEMO_CODE: '1', PAYESH_SMS_COOLDOWN_S: '0',
+    /* این سوئیت مکانیکِ قطعیِ ردیس/نشست را آزمون می‌کند نه سقف‌ها —
+       (۱) cooldown پیش‌فرضِ ۶۰s پیامک، send_codeِ دومِ همان شماره (S2c پس از
+       S2b، و S6b پس از آن‌ها) را 429 می‌کند؛
+       (۲) شمارنده‌های LOGIN در Redis بین نمونه‌های CI مشترک‌اند
+       (auth.js:225-226، سقفِ پیش‌فرضِ IP=10/900s) و لاگین‌های سوئیت‌های
+       قبلی سهمیه را می‌سوزانند. سوئیت‌های اختصاصیِ سقف، حدِ خودشان را
+       صریح ست می‌کنند. */
+    PAYESH_SMS_PHONE_LIMIT: '99999', PAYESH_SMS_IP_LIMIT: '99999',
+    PAYESH_LOGIN_IP_LIMIT: '99999', PAYESH_LOGIN_PHONE_LIMIT: '99999',
+    PAYESH_LOGIN_TRIES: '9999', PAYESH_TENANT_API_LIMIT: '99999'
   });
   if (redisUrl) env.REDIS_URL = redisUrl; else delete env.REDIS_URL;
   delete env.NODE_ENV; delete env.PAYESH_ENV; delete env.PAYESH_JWT_SECRET;
@@ -434,7 +465,8 @@ async function main() {
       const cookie = await login(req);
       if (cookie) {
         const base = await authed(req, cookie);
-        chk('S6b قبل از پارتیشن، درخواست سریع است', base.status === 200);
+        chk('S6b قبل از پارتیشن، درخواست سریع است', base.status === 200,
+          'status=' + base.status + ' body=' + String(base.body).slice(0, 160));
         const t0 = Date.now();
         fake.partition(); /* بلک‌هول: می‌خواند ولی جواب نمی‌دهد */
         const reqT = makeReq(8991, 20000); /* تایم‌اوتِ کلاینتِ دور، برای سنجشِ کرَل */
