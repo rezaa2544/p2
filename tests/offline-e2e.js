@@ -76,13 +76,6 @@ function makeServer() {
   };
   const persisted = [];            /* ژورنالِ persistence (آینهٔ PG در حالتِ live) */
   let failNextBatches = 0;         /* شکستِ گذرایِ قابل‌برنامه‌ریزی */
-  /* گیتِ پاسخ: بوتِ باندل خودش syncNow را زمان‌بندی می‌کند (initSync:
-     scheduleSync(1500) در index.html:3759) و خوابِ 1700ms بوت گاهی
-     (رانرِ سریع CI) زودتر تمام می‌شود ⇒ پاسخ، صف را پیش از E4 پاک می‌کند
-     (فلِیکِ CI: E4 قرمز، E5+ سبز). گیتِ بسته = پاسخِ auto-sync معلق می‌ماند
-     و E4 قطعی می‌شود؛ پس از E4 باز می‌شود. */
-  let gateOpen = true;
-  const gateWaiters = [];
   let currentSession = { id: 5, role: 'manager', school_id: 1 };
   const ctx = {
     store,
@@ -101,10 +94,7 @@ function makeServer() {
     store, persisted,
     setSession: (s) => { currentSession = s; },
     failNext: (n) => { failNextBatches = n; },
-    closeGate: () => { gateOpen = false; },
-    openGate: () => { gateOpen = true; while (gateWaiters.length) gateWaiters.shift()(); },
     handle: async (bodyStr) => {
-      if (!gateOpen) await new Promise((r) => gateWaiters.push(r));
       if (failNextBatches > 0) { failNextBatches--; return { status: 503, body: { ok: false, code: 'transient' } }; }
       const res = {};
       await sync.apiSync({}, res, JSON.parse(bodyStr));
@@ -126,6 +116,18 @@ async function bootBrowser(sharedStorage, server, opts) {
     runScripts: 'dangerously', url: 'http://localhost/', pretendToBeVisual: true,
     beforeParse(w) {
       w.scrollTo = () => {};
+      /* بوتِ بی‌syncِ خودکار: باندل در initSync اگر صفِ احیاشده و SYNC.online
+         ببیند خودش syncNow را زمان‌بندی می‌کند (index.html:3759
+         scheduleSync(1500)) — با بوتِ سریعِ CI، مسابقه با ارزیابی‌هایِ تست
+         می‌سازد (E4/E6-E16 فلِیک‌هایِ ران‌های 43556332277/43494805124).
+         راه‌حل: navigator.onLine=false فقط برایِ لحظهٔ init باندل — بوت
+         آفلاین می‌شود، هیچ auto-syncی زمان‌بندی نمی‌شود؛ شبکه (fetch) سالم
+         می‌ماند و تست، sync را صریح و خودش می‌راند. */
+      if (opts.navigatorOnline === false) {
+        try {
+          Object.defineProperty(w.navigator, 'onLine', { get: () => false, configurable: true });
+        } catch (_) { /* jsdom قدیمی — گیتِ سرور جایگزین می‌شود */ }
+      }
       /* دیسکِ ماندگارِ مشترک — نمونهٔ jsdom خودش localStorage جدا می‌سازد؛
          override تا هر دو «مرورگر» یک پروفایلِ دیسک ببینند. */
       Object.defineProperty(w, 'localStorage', { value: sharedStorage, configurable: true });
@@ -173,14 +175,16 @@ async function bootBrowser(sharedStorage, server, opts) {
 
   /* ════ مرحلهٔ ۲: «restart» — مرورگرِ دوم از صفر، فقط دیسکِ مشترک ════ */
   console.log('▸ مرحلهٔ ۲ — restart: مرورگرِ #۲ (نمونهٔ jsdom مستقل) صف را از دیسک احیا می‌کند');
-  server.closeGate(); /* پاسخِ auto-syncِ بوت (initSync → scheduleSync(1500)) معلق بماند تا E4 قطعی شود */
-  const b2 = await bootBrowser(disk, server, { online: true });
+  const b2 = await bootBrowser(disk, server, { online: true, navigatorOnline: false });
   b2.W(`S.user = { id: 5, role: 'manager', school_id: 1, username: 'm1' };
         SYNC.demoMode = false; SYNC.serverUrl = '/api/sync';
         loadQueue(); clearTimeout(SYNC.autoTimer); SYNC.autoTimer = null; 0;`);
   chk('E4 صف پس از restart از بک‌استور بازیابی شد (همان uid — نه حافظهٔ مشترک)',
     b2.W(`SYNC.queue.length === 1 && SYNC.queue[0].uid`) === uid1);
-  server.openGate(); /* پاسخِ معلقِ auto-sync آزاد شود — ادامهٔ جریان عادی */
+  /* شاهدِ ضدِ false-green: بوتِ آفلاینِ b2 نباید هیچ تماسی زده باشد — اگر
+     overrideِ navigator در jsdom کار نکرده بود، initSync auto-sync را
+     زمان‌بندی می‌کرد و این چک قرمز می‌شد (تعیین‌کنندگیِ بوت، اثبات‌شده) */
+  chk('E4b بوتِ آفلاینِ b2 هیچ auto-syncی نزد', b2.net.syncCalls === 0, 'calls=' + b2.net.syncCalls);
 
   /* ════ مرحلهٔ ۳: ONLINE → sync → سرورِ واقعی → persistence → response ════ */
   console.log('▸ مرحلهٔ ۳ — آنلاین‌شدن، ارسال به server/sync.js واقعی');
