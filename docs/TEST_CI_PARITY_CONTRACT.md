@@ -163,7 +163,7 @@ runner تنها وقتی سبز می‌دهد که **همهٔ** شرایط زی�
 | `tests/monitoring` | **unwired** | ۱۰ | هیچ گیتی ارجاع نمی‌دهد |
 | `tests/security` | **unwired** | ۱۱ | هیچ گیتی ارجاع نمی‌دهد |
 | `tests/fixtures` | support | ۰ | دادهٔ fixture |
-| `tests/helpers` | support | ۶ | helper مشترک |
+| `tests/helpers` | support | ۷ | helper مشترک (mutant-kit، retention-fake-pg و…) |
 | `tests/performance` | support | ۲۰ | harness بار k6 + بنچ صدک in-process reval (دستی، طبق طراحی) |
 
 **۱۹ aggregator تودرتو** در `DECLARED_UNWIRED_NESTED_AGGREGATORS` نام‌برده شده‌اند:

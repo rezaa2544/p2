@@ -76,6 +76,13 @@ function makeServer() {
   };
   const persisted = [];            /* ژورنالِ persistence (آینهٔ PG در حالتِ live) */
   let failNextBatches = 0;         /* شکستِ گذرایِ قابل‌برنامه‌ریزی */
+  /* گیتِ پاسخ: بوتِ باندل خودش syncNow را زمان‌بندی می‌کند (initSync:
+     scheduleSync(1500) در index.html:3759) و خوابِ 1700ms بوت گاهی
+     (رانرِ سریع CI) زودتر تمام می‌شود ⇒ پاسخ، صف را پیش از E4 پاک می‌کند
+     (فلِیکِ CI: E4 قرمز، E5+ سبز). گیتِ بسته = پاسخِ auto-sync معلق می‌ماند
+     و E4 قطعی می‌شود؛ پس از E4 باز می‌شود. */
+  let gateOpen = true;
+  const gateWaiters = [];
   let currentSession = { id: 5, role: 'manager', school_id: 1 };
   const ctx = {
     store,
@@ -94,7 +101,10 @@ function makeServer() {
     store, persisted,
     setSession: (s) => { currentSession = s; },
     failNext: (n) => { failNextBatches = n; },
+    closeGate: () => { gateOpen = false; },
+    openGate: () => { gateOpen = true; while (gateWaiters.length) gateWaiters.shift()(); },
     handle: async (bodyStr) => {
+      if (!gateOpen) await new Promise((r) => gateWaiters.push(r));
       if (failNextBatches > 0) { failNextBatches--; return { status: 503, body: { ok: false, code: 'transient' } }; }
       const res = {};
       await sync.apiSync({}, res, JSON.parse(bodyStr));
@@ -163,12 +173,14 @@ async function bootBrowser(sharedStorage, server, opts) {
 
   /* ════ مرحلهٔ ۲: «restart» — مرورگرِ دوم از صفر، فقط دیسکِ مشترک ════ */
   console.log('▸ مرحلهٔ ۲ — restart: مرورگرِ #۲ (نمونهٔ jsdom مستقل) صف را از دیسک احیا می‌کند');
+  server.closeGate(); /* پاسخِ auto-syncِ بوت (initSync → scheduleSync(1500)) معلق بماند تا E4 قطعی شود */
   const b2 = await bootBrowser(disk, server, { online: true });
   b2.W(`S.user = { id: 5, role: 'manager', school_id: 1, username: 'm1' };
         SYNC.demoMode = false; SYNC.serverUrl = '/api/sync';
         loadQueue(); clearTimeout(SYNC.autoTimer); SYNC.autoTimer = null; 0;`);
   chk('E4 صف پس از restart از بک‌استور بازیابی شد (همان uid — نه حافظهٔ مشترک)',
     b2.W(`SYNC.queue.length === 1 && SYNC.queue[0].uid`) === uid1);
+  server.openGate(); /* پاسخِ معلقِ auto-sync آزاد شود — ادامهٔ جریان عادی */
 
   /* ════ مرحلهٔ ۳: ONLINE → sync → سرورِ واقعی → persistence → response ════ */
   console.log('▸ مرحلهٔ ۳ — آنلاین‌شدن، ارسال به server/sync.js واقعی');

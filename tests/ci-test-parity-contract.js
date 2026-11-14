@@ -269,7 +269,7 @@ const NESTED_TREE_REGISTER = [
   { path: 'tests/monitoring', status: 'unwired', js: 10, by: 'no gate references this tree' },
   { path: 'tests/security', status: 'unwired', js: 11, by: 'no gate references this tree' },
   { path: 'tests/fixtures', status: 'support', js: 0, by: 'data fixtures, not suites' },
-  { path: 'tests/helpers', status: 'support', js: 6, by: 'shared helpers, not suites' },
+  { path: 'tests/helpers', status: 'support', js: 7, by: 'shared helpers, not suites (mutant-kit, retention-fake-pg, ...)' },
   { path: 'tests/performance', status: 'support', js: 20, by: 'k6 load harness + reval-p99-bench (in-process percentile bench, task 18), manual by design' }
 ];
 /* M15-01 / Chat 2 (2026-10-27): measured false-red in CI run 40437692287.
