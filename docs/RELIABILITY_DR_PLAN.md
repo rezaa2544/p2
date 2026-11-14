@@ -100,6 +100,15 @@
 3. یک سوئیت تست دود (Smoke Test) روی دیتای بازیابی‌شده اجرا می‌شود.
 4. گزارش موفقیت یا هشدار خطا به کانال مانیتورینگ ارسال می‌شود.
 
+**پیاده‌سازی (زیرساختِ مخزن):** زمان‌بندیِ شبانه در `infra/cron/backup-verify.cron`
+ثبت شده است — `tools/pitr-restore.sh --latest` آخرین پشتیبان را در محیطِ ایزولهٔ
+سنجش (`PBR_DEST_ROOT` پیش‌فرض + پورتِ 54329) restore و promote می‌کند و بلافاصله
+`tools/pitr-verify.sh` (جداولِ حیاتی، سقفِ زمانیِ TIMESTAMPTZ، checksum نمونه،
+سوئیتِ دودِ دیتای بازیابی‌شده) را اجرا می‌کند؛ هر گامِ ناموفق fail-closed و کدِ
+خروج ۱ است و گزارش به `/var/log/payesh/pitr-drill.log` می‌رود. قراردادِ این
+زمان‌بندی در `tests/drill-cron-contract.js` قفل شده است (حذفِ --latest،
+افزودنِ --no-verify یا تعویضِ پورت به تولید ⇒ قرمز).
+
 ---
 
 ## ۴. مانورهای دوره‌ای بازیابی (Restore Drills & SLA Validation)

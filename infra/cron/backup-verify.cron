@@ -1,0 +1,20 @@
+# ═══════════════════════════════════════════════════════════════════
+# backup-verify.cron — مانورِ شبانهٔ خودکارِ تأییدِ پشتیبان (DR §۳.۱)
+# ───────────────────────────────────────────────────────────────────
+# «پشتیبان‌گیری بدونِ راستی‌آزمایی، غیرقابلِ اعتماد است» — هر شب 03:00:
+# آخرین base backup از مخزنِ pgbackrest (S3/MinIO) در محیطِ ایزولهٔ سنجش
+# restore می‌شود، promote می‌شود و pitr-verify.sh (جدول‌هایِ حیاتی، سقفِ
+# زمانیِ TIMESTAMPTZ، checksum نمونه) اجرا می‌شود.
+#
+# نصب (روی میزبانِ استقرار؛ pgbackrest با دسترسیِ مخزنِ S3 لازم است):
+#   crontab -e   و افزودنِ خطِ زیر
+#
+# خطاهای ممکن: restore ناموفق / بوتِ ناموفق / verify ناموفق — هر سه
+# fail-closed و کدِ خروج ۱ → مانیتورِ cron باید کدِ خروج را ببیند.
+# محیطِ سنجش: PBR_DEST_ROOT (پیش‌فرض /var/backups/payesh-pitr) و
+# PBR_PORT=54329 — هرگز خطِ تولید را لمس نمی‌کند.
+#
+# گامِ کم‌ریسکِ اکتشافی (هر شنبه 03:15، اختیاری): فقط restoreِ
+# --no-start برای سنجشِ سلامتِ مخزن بدونِ بوت:
+#   15 3 * * 6 cd /opt/payesh && set -a && . .env && set +a && bash tools/pitr-restore.sh --latest --no-start >> /var/log/payesh/pitr-drill-soft.log 2>&1
+0 3 * * * cd /opt/payesh && set -a && . .env && set +a && bash tools/pitr-restore.sh --latest --port 54329 >> /var/log/payesh/pitr-drill.log 2>&1
