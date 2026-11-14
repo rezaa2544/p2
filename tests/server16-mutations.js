@@ -70,9 +70,12 @@ for (const m of MUTS) {
   const abs = path.join(ROOT, m.file);
   if (prevFile && prevFile !== abs) kit.clear(prevFile); /* فقط جهشِ جاری فعال */
   prevFile = abs;
-  const src0 = fs.readFileSync(abs, 'utf8');
+  /* نرمال‌سازی CRLF→LF: چک‌اوتِ ویندوزی سوزن‌های \n را نمی‌یافت
+     («الگوی اصلی پیدا نشد» — بازتولیدِ محلی 2026-11-13؛ CI همان لاین را
+     با LF سبز می‌گذاشت — همان عیب، دو چهره) */
+  const src0 = fs.readFileSync(abs, 'utf8').replace(/\r\n/g, '\n');
   const n = src0.indexOf(m.bad);
-  if (n < 0) { console.log('  ❌ ' + m.name + ': الگوی اصلی پیدا نشد در ' + m.file); continue; }
+  if (n < 0) { console.log('  ❌ ' + m.name + ': الگوی اصلی پیدا نشد در ' + m.file + ' — جهش ناممکن، شمارشِ کشته‌نشدہ'); continue; }
   kit.mutant(abs, src0.replace(m.bad, m.mut, 1)); /* کپی جدا؛ سورس اصلی دست‌نخورده */
   let out = '', crashed = false;
   const args = ['--max-old-space-size=1500', m.suite];
@@ -93,9 +96,24 @@ for (const m of MUTS) {
 }
 
 console.log('\nبازبینیِ خطِ پایه (بدون جهش):');
-const o16 = execFileSync('node', ['--max-old-space-size=1500', 'tests/server16.js'], { stdio: 'pipe' }).toString();
-console.log('  server16: ' + (o16.split('\n').find(l => l.includes('سبز')) || o16.slice(-120)).trim());
-const o17 = execFileSync('node', ['--max-old-space-size=1500', 'tests/server17.js'], { stdio: 'pipe' }).toString();
-console.log('  server17: ' + (o17.split('\n').find(l => l.includes('سبز')) || o17.slice(-120)).trim());
-console.log(killed === MUTS.length ? 'همهٔ ' + MUTS.length + ' جهش کشته شدند ✅' : 'فقط ' + killed + '/' + MUTS.length + ' جهش کشته شد ❌');
-process.exit(killed === MUTS.length ? 0 : 1);
+/* اجرای خطِ پایه هم داخلِ catch: خروجِ غیرصفرِ سوئیتِ پایه نباید هارنس را
+   با آبجکتِ خامِ spawnSync منفجر کند (بازتولید CI: run 43494805124،
+   481s + dumpِ 4KBِ بایت‌ها) — باید ❌ خوانا و خروجِ صریح بدهد. */
+let baseFail = false;
+const baseRun = (label, args) => {
+  try {
+    const o = execFileSync('node', args, { stdio: 'pipe' }).toString();
+    console.log('  ' + label + ': ' + (o.split('\n').find(l => l.includes('سبز')) || o.slice(-120)).trim());
+  } catch (e) {
+    const out = String(e.stdout || '') + String(e.stderr || '');
+    baseFail = true;
+    console.log('  ' + label + ': ❌ خطِ پایه شکست (exit=' + (e.status == null ? '?' : e.status) + ')');
+    const bads = out.split('\n').filter(l => l.includes('❌'));
+    for (const b of bads.slice(0, 6)) console.log('    ' + b.trim().slice(0, 200));
+    if (!bads.length) console.log('    ' + out.slice(-300).replace(/\n+/g, ' | ').slice(0, 300));
+  }
+};
+baseRun('server16', ['--max-old-space-size=1500', 'tests/server16.js']);
+baseRun('server17', ['--max-old-space-size=1500', 'tests/server17.js']);
+console.log(killed === MUTS.length && !baseFail ? 'همهٔ ' + MUTS.length + ' جهش کشته شدند ✅' : 'فقط ' + killed + '/' + MUTS.length + ' جهش کشته شد' + (baseFail ? ' + خطِ پایه شکست' : '') + ' ❌');
+process.exit(killed === MUTS.length && !baseFail ? 0 : 1);
