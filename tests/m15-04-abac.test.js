@@ -57,12 +57,14 @@ const SA = { user_id: 9, role: 'superadmin', school_id: null };
     check('B3 the superadmin bypasses the tenant scoping', d.decision === 'allow', JSON.stringify(d));
   }
 
-  /* B4 — the field conditions */
+  /* B4 — the field conditions (the REAL product model: the exam TYPE lives
+     on GRADES rows; the client EXAM_TYPES are Persian, the national type =
+     «امتحان نهایی»; the exams collection = the schedule only) */
   {
-    const natl = abac.evaluate({ action: 'exams:write', session: T1, resource: { type: 'exam', school_id: 100, exam_type: 'national' } });
-    const cls = abac.evaluate({ action: 'exams:write', session: T1, resource: { type: 'exam', school_id: 100, exam_type: 'class' } });
-    check('B4a national exam = denied', natl.decision === 'deny');
-    check('B4b class exam = allowed', cls.decision === 'allow');
+    const natl = abac.evaluate({ action: 'grades:write', session: T1, resource: { type: 'grade', school_id: 100, exam_type: 'امتحان نهایی' } });
+    const cls = abac.evaluate({ action: 'exams:write', session: T1, resource: { type: 'exam', school_id: 100 } });
+    check('B4a national-exam score («امتحان نهایی» on grades) = denied', natl.decision === 'deny');
+    check('B4b own-tenant exam-schedule write = allowed', cls.decision === 'allow');
     const grade99 = abac.evaluate({ action: 'grades:write', session: T1, resource: { type: 'grade', school_id: 100, grade: 9 } });
     check('B4c the grade outside the deny list = allowed (falls to allow)', grade99.decision === 'allow');
   }

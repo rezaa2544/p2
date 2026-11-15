@@ -46,6 +46,13 @@ const metrics = require('./metrics');
    صریحِ «اکشن ← نقش‌ها + مجموعه‌هایِ قابلِ نوشتن» است. */
 const WR = require('../authz/write-perms.json');
 const policy = require('./policy'); /* ویو ۵ — مدل یکتای محدوده/مالکیت */
+/* M15-04 — موتورِ ABAC روی RBAC: بوتِ fail-fast (سیاستِ ناخوانا = کرشِ بوت،
+   نه اجازهٔ خاموش). decisions: allow/deny/defer — فقط deny در این‌جا رد می‌کند. */
+const { createAbac } = require('./abac');
+const ABAC = createAbac();
+/* نگاشتِ collection → resource.type در سیاست‌هایِ منتخب (abac-policies.json)؛
+   مجموعه‌هایِ بی‌نگاشت = type با نامِ خودشان → هیچ قاعده‌ای نمی‌گیرد → defer. */
+const ABAC_RESOURCE = { grades: 'grade', exams: 'exam', reports: 'report' };
 const AUTHZ = (function(){
   const out = {};
   for (const c of Object.keys(WR.ops)){
@@ -123,10 +130,31 @@ const STATUS_UPD_ROLE = {
  *      leaves — FIELD_ALLOWLISTSِ موجود)
  * خروجی: null = عبور (و مشتق‌ها روی op.data اعمال شده) یا {code,msg}.
  * `exc` = استثنایِ IEP/DROP (users) که پیش‌تر اعطا شده است.
+ * `abacGrade` = پایهٔ حل‌شدهٔ منبع (برایِ grades از کلاسِ هدف — در call-site).
  */
-function fieldGate(op, s, exc){
+function fieldGate(op, s, exc, abacGrade){
   const def = AUTHZ[op.c];
   if(!def) return { code: 'unknown_collection', msg: 'این مجموعه در مدلِ مجوز نیست' };
+  /* M15-04 — لایهٔ ABAC (deny مقدم بر allow؛ بدونِ قاعده = defer به RBAC):
+     نگاشتِ action = <collection>:write|delete؛ resource.type از ABAC_RESOURCE؛
+     attrs: school_id (داده یا نشست)، grade (پایهٔ حل‌شده)، exam_type (داده).
+     deny = ردِ عملیات‌محور (abac_denied) — الگویِ «۲۰۰ + ok:false» حفظ می‌شود
+     و کل دسته نمی‌میرد؛ audit در call-site (sync_field_gate) ثبت می‌شود. */
+  {
+    const abacAction = op.c + ':' + (op.t === 'del' ? 'delete' : 'write');
+    const abacDec = ABAC.evaluate({
+      action: abacAction,
+      session: s,
+      resource: {
+        type: ABAC_RESOURCE[op.c] || op.c,
+        school_id: (op.data && op.data.school_id != null) ? op.data.school_id : s.school_id,
+        grade: (abacGrade != null) ? abacGrade : (op.data && op.data.grade),
+        exam_type: op.data && op.data.exam_type
+      }
+    });
+    if (abacDec.decision === 'deny')
+      return { code: 'abac_denied', msg: 'این عملیات با سیاستِ صفت‌محور مجاز نیست: ' + abacDec.reason };
+  }
   if(op.t === 'del'){
     /* del هم تحتِ مجوزِ مدل است (مثلِ legacy) — نه صرفاً scope */
     if(!canOp(s.role, op.c, 'del')) return { code: 'role_denied', msg: 'این عملیات برای نقش شما مجاز نیست' };
@@ -865,7 +893,16 @@ function createSync(ctx){
       /* R96 P0-2 — دروازهٔ فیلد: فیلدِ ناشناخته / ارتقاءِ نقش / مالکیت /
          status. استثنایِ IEP/DROP (users) که در گِیتِ قبلی اعطا شده،
          از canOp/phone-nid معاف است ولی فیلدِ ناشناخته را نمی‌شود. */
-      const fv = fieldGate(op, s, iepUsersUpdate(s, op) || dropUsersUpdate(s, op));
+      /* M15-04 — پایهٔ منبع برایِ قواعدِ صفت‌محورِ ABAC: ردیفِ grades پایه را
+         حمل نمی‌کند (پایه روی classes است)؛ از کلاسِ هدف حل می‌شود. کلاسِ
+         نایافتنی/بی‌پایه = grade ناشناخته → قاعدهٔ grade نمی‌گیرد → defer. */
+      let abacGrade = (op.data && op.data.grade != null) ? op.data.grade : null;
+      if (op.c === 'grades' && abacGrade == null && op.data && op.data.class_id != null) {
+        const clsList = store.classes || [];
+        const abacCls = clsList.find(function (x) { return x && x.id != null && Number(x.id) === Number(op.data.class_id); });
+        if (abacCls && abacCls.grade != null) abacGrade = abacCls.grade;
+      }
+      const fv = fieldGate(op, s, iepUsersUpdate(s, op) || dropUsersUpdate(s, op), abacGrade);
       if(fv){
         audit('sync_field_gate', { user_id: s.id, uid: op.uid, collection: op.c, code: fv.code });
         results.push({ uid: op.uid, ok: false, code: fv.code, message: fv.msg });
@@ -1463,4 +1500,7 @@ function createSync(ctx){
   }
   return { apiSync: syncAfterPending, canWrite, inScope };
 }
-module.exports = { createSync, setOutbox, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, virtualDayOfflineBasis, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED };
+module.exports = { createSync, setOutbox, attach, canWrite, canOp, fieldGate, inScope, isVirtualDay, virtualDayViolation, virtualDayOfflineBasis, WRITE_PERMS, AUTHZ, ROLE_LEVEL, OWNERSHIP_KEYS, STATUS_WRITER_COLL, STATUS_INITIAL_MAP, STATUS_UPD_ROLE, iepUsersUpdate, IEP_KEYS, dropUsersUpdate, DROP_KEYS, dropTouchesDropout, filterFields, FIELD_ALLOWLISTS, PROTECTED_FIELDS, protPolicy, VERSIONED, STRUCTURAL, VERSION_TRACKED,
+  /* M15-04 — دسترسیِ آزمون/عملیات به نمونهٔ ABAC سیم‌شده (الگویِ db.__setPoolForTests):
+     reload پس از تغییرِ فایلِ سیاست — برایِ اثباتِ منفیِ سیم‌کشی، نه دورزدنِ گیت. */
+  __abac: ABAC };
