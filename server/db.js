@@ -30,6 +30,10 @@ const path = require('path'); void path;
    وابستگیِ بیرونی؛ metrics.js فقط crypto را require می‌کند (بدون چرخه). */
 const metrics = require('./metrics');
 const logger = require('./logger');
+/* M15-09 — رمز سطح-فیلد در مرزهایِ ماندگاری: users.phone/national_id با کلیدِ
+   تنظیم‌شده در PG به شکل envelope می‌روند و روی هر مسیرِ خواندن باز می‌شوند؛
+   بدونِ کلید = passthrough کامل (پیش‌فرض). fail-closed در field-crypto. */
+const fcs = require('./field-crypto-store');
 
 /* آستانهٔ «کوئریِ کند» — فقط برای شمارش، نه برای تغییرِ رفتار. */
 const DB_SLOW_MS = (Number(process.env.PAYESH_DB_SLOW_MS) > 0)
@@ -562,7 +566,8 @@ async function readCollection(name) {
   if (typeof name !== 'string' || !name) return [];
   if (isPostgres() && isPgReadableTable(name)) {
     const res = await pool.query(`SELECT * FROM "${name}"`);
-    return stripInternalColumns(reviveRows(res.rows));
+    /* M15-09 — مرزِ خواندن: envelopeهایِ فیلدهایِ حساس باز می‌شوند (fail-closed). */
+    return fcs.decryptRows(name, stripInternalColumns(reviveRows(res.rows)));
   }
   return (memoryStore && Array.isArray(memoryStore[name])) ? memoryStore[name] : [];
 }
@@ -580,7 +585,8 @@ async function readOne(name, id) {
     const n = Number(id);
     if (!Number.isFinite(n)) return null;
     const res = await pool.query(`SELECT * FROM "${name}" WHERE id = $1 LIMIT 1`, [n]);
-    const rows = stripInternalColumns(reviveRows(res.rows));
+    /* M15-09 — همان لولهٔ خواندنِ رمز */
+    const rows = fcs.decryptRows(name, stripInternalColumns(reviveRows(res.rows)));
     return rows.length ? rows[0] : null;
   }
   const rows = await readCollection(name);
@@ -648,7 +654,7 @@ async function hydrateStoreFromPg(store, opts) {
            client-visible row shape silently diverged from memory mode (and
            chg_id could enter an op payload, where validate.js rejects it as
            unknown_field). One pipe, one shape. */
-        rows = stripInternalColumns(reviveRows(res.rows));
+        rows = fcs.decryptRows(key, stripInternalColumns(reviveRows(res.rows)));
       } else {
         rows = await readCollection(key);
       }
@@ -819,7 +825,10 @@ async function recordTombstone(client, collection, recordId, schoolId) {
 async function persistOpWithClient(client, op) {
   const col = op.c;
   const t = op.t;
-  const data = op.data || {};
+  /* M15-09 — مرزِ persist: فیلدهایِ حساسِ users قبل از رفتن به PG رمز می‌شوند
+     (کلیدِ تنظیم‌شده)؛ بدونِ کلید = همان data. RAM/آینه دست‌نخورده می‌ماند. */
+  let data = op.data || {};
+  data = fcs.encryptRowValues(col, data) || data;
   const ident = (name) => {
     if(!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(String(name || ''))) throw new Error('unsafe SQL identifier: ' + name);
     return '"' + name + '"';

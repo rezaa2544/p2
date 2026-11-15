@@ -122,6 +122,7 @@ const DEMO_CODE_EFFECTIVE = DEMO_CODE_ECHO &&
   process.env.PAYESH_ENV !== 'production';
 
 /* ── store ────────────────────────────────────────────────────────── */
+const fcs = require('./field-crypto-store'); /* M15-09 — مرزهایِ رمزِ snapshot */
 function loadStore(){
   if(!fs.existsSync(STORE_FILE)){
     /* Wave 1: with PostgreSQL configured, the file is only a bootstrap
@@ -165,6 +166,10 @@ function loadStore(){
         ' user record(s) — the product has no password concept (phone+OTP only); regenerate the store with `node server/seed.js`');
     }
   }
+  /* M15-09 — مرزِ بارگذاریِ snapshot: envelopeهایِ فیلدهایِ حساسِ users باز
+     می‌شوند (fail-closed — envelope دستکاری‌شده = بوتِ بلند). بدونِ کلید =
+     همان plaintext (فایلِ قدیمی سازگار است). */
+  if(Array.isArray(s.users)) s.users = fcs.decryptRows('users', s.users);
   return s;
 }
 const store = loadStore();
@@ -180,7 +185,7 @@ let mirrorIncomplete = false;
    JSON.stringify(store) و نوشتنِ سنکرونِ فایل از رشتهٔ اصلی به ورکر
    می‌روند (persist هر ۲ ثانیه، بکاپ، گزارشِ عمومی). ورکر دیرزیاد و
    unref است؛ شکستش به مسیرِ سنکرونِ قدیمی برمی‌گردد (فال‌بک). */
-const workers = createHeavyWorker({ getStore: () => store });
+const workers = createHeavyWorker({ getStore: () => fcs.storeSnapshotForPersist(store) });
 /* Wave 9 — کشِ استاتیک: خواندنِ async + اعتبارسنجیِ mtime (نه readFileSync در هر درخواست) */
 const staticCache = createStaticCache();
 
@@ -648,7 +653,7 @@ function persistStoreSync(){
     const tmp = STORE_FILE + '.tmp';
     /* Wave 24 (KPI-3): همان قالبِ ASCII-escapedِ ورکر — پارسِ بوتِ بعدی سریع‌تر.
        این مسیر فقط در خاموشی/فال‌بک اجرا می‌شود؛ ~۴۰ms اضافه بی‌اثر است. */
-    fs.writeFileSync(tmp, require('./json-fast').stringifyAscii(store), { encoding: 'utf8', mode: 0o600 }); /* S-73-3: PII — owner-only */
+    fs.writeFileSync(tmp, require('./json-fast').stringifyAscii(fcs.storeSnapshotForPersist(store)), { encoding: 'utf8', mode: 0o600 }); /* S-73-3: PII — owner-only */
     fs.renameSync(tmp, STORE_FILE);
     try{ fs.chmodSync(STORE_FILE, 0o600); }catch(e){/* swallowed: intentional — e unused */}
   }catch(e){ /* store file may be gone (tests) — never crash on exit */ }
