@@ -17,7 +17,8 @@
     "strict-verification": "node tools/strict-verification-gate.js",
     "test:all": "bash scripts/run-all-tests.sh",
     "lint": "eslint server/ tools/ tests/ --max-warnings 411",
-    "lint:fix": "eslint server/ tools/ tests/ --fix"
+    "lint:fix": "eslint server/ tools/ tests/ --fix",
+    "cover:core": "c8 --include \"server/**\" --reporter text --reporter json-summary node tests/api/runner.js"
   },
   "keywords": [
     "school-management",
