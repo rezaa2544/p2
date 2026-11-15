@@ -6,6 +6,15 @@
 **Branch:** `main`  
 **Documentation baseline before this synchronization:** `f74ec223874cd8bbd44dcfbf7365a98100ecb549`
 
+## 0. همگام‌سازیِ ۲۰۲۶-۱۱-۱۴ — بسته‌شدنِ صفِ Notion (مواردِ قابلِ اجرا)
+
+- **صفِ کاریِ Notion (۴۶ ردیف): ۲۸ DONE · ۱۸ BLOCKED-OWNER · صفر PARTIAL/QUEUED** — هر ردیفِ مالکی با اقدامِ دقیقِ لازم در جزئیاتِ خودش مستند است.
+- **M15-04 (ردیف ۲۴)**: لایهٔ ABAC به دروازهٔ عملیاتِ sync سیم شد (deny-first، ردِ عملیات‌محورِ abac_denied با audit، حلِ پایهٔ کلاس از store) + اصلاحِ قواعدِ مردهٔ سیاست + سوئیتِ ۱۵/۱۵ با اثباتِ منفیِ سیم‌کشی — evidence `f8913d45`.
+- **A-36 (ردیف ۱۵)**: فیکسِ false-green (اسکریپتِ `cover:core` غایب بود) + اندازه‌گیریِ تازهٔ coverage روی HEAD — هستهٔ امنیتیِ بحرانی همه ≥۸۰٪ (waf 84.02، csrf 82.3، key-strength 100، env-flags 80.76، occ 88.88) — evidence `f8cf0a9a`.
+- **M15-09 (ردیف ۲۳)**: رمزِ سطح-فیلد در مرزهایِ persist/خواندن/snapshot (پیش‌فرضِ بدونِ کلید = passthrough کامل) + ابزارِ backfill + سوئیتِ ۱۸/۱۸ با اثباتِ منفی — evidence `b224798e`.
+- گیتِ strict محلی روی `7cd6b600`: **VERDICT VERIFIED، ۳۲/۳۲**؛ فریزِ ۶۸۱ = ۶۴۸ + ۳۳.
+- باقی‌مانده = فقط اقداماتِ انحصاریِ مالک (زیرساختِ E4، secrets، چرخشِ SI-013، اشتراکِ داشبوردهایِ Bug Hunt/PRs، sign-offِ M15-01، زنجیرهٔ گواهینامهٔ ۴۰→۴۲).
+
 ## 1. Ground truth فعلی
 این سند خلاصهٔ واحدِ وضعیت جاری پروژه است و برای هم‌راستاسازی ChatGPT، Arena و Atria ایجاد شده است. در تعارض، اجرای واقعی/E3-E4 و GitHub Actions بر کد و گزارش‌ها مقدم‌اند.
 

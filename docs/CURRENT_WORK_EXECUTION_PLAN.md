@@ -1,6 +1,11 @@
-> ## CURRENT SYNCHRONIZATION — 2026-09-24
+> ## CURRENT SYNCHRONIZATION — 2026-11-14
 > This plan remains the canonical execution-order document. The original baseline SHA below is intentionally preserved as the planning baseline.
-> Latest synchronized project-intelligence document: `docs/CURRENT_PROJECT_INTELLIGENCE.md`.
+> Latest synchronized project-intelligence document: `docs/CURRENT_PROJECT_INTELLIGENCE.md` (§۰ — همگام‌سازیِ ۲۰۲۶-۱۱-۱۴).
+> **Notion work-queue final state: 28 DONE · 18 BLOCKED-OWNER · 0 PARTIAL/QUEUED** — the repo-side executable work is closed with SHA-bound evidence: M15-04 ABAC wiring (`f8913d45`)، A-36 coverage re-verify + cover:core fix (`f8cf0a9a`)، M15-09 field-crypto store wiring + backfill (`b224798e`)؛ HEAD `7cd6b600`، strict gate VERIFIED 32/32.
+> The remaining 18 rows = owner-exclusive actions only (E4 infra، vendor secrets، SI-013 rotation، dashboard sharing، M15-01 sign-off، the 40→42 certification chain) — each documented in its Notion row.
+>
+> ## PREVIOUS SYNCHRONIZATION — 2026-09-24
+> This plan remains the canonical execution-order document. The original baseline SHA below is intentionally preserved as the planning baseline.
 > Latest documentation synchronization checkpoint: `d5034211400a79c00aa0ac82428c34b3f0f5a2df`.
 > Recent confirmed code changes include Intelligence PR #401 (`e264932419335ce42da53f2700e362bce31670b9`) and Phase 7 verifier fixes reconciled through PRs #382/#383/#386/#390/#391/#392.
 > Intelligence remediation status: 21/21 runtime-wired, 0 orphan, F-EI-01 closed at remediation level; final certification remains evidence-gated.
