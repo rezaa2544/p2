@@ -91,6 +91,16 @@ function parseHostPorts(str) {
 function buildRedisConfig(env) {
   env = env || process.env;
   const password = env.REDIS_PASSWORD || null;
+  /* M15-07 (۲۰۲۶-۱۱-۱۶): TLS برای sentinel/cluster — standalone از قبل با
+     `rediss://` (native ioredis) رمز می‌شود؛ این‌جا همان گزینه برای دو حالت
+     دیگر باز می‌شود. REDIS_TLS=1 ⇒ tls فعال (CA اختیاری: REDIS_TLS_CA).
+     بدون پرچم = رفتارِ پیشین، هیچ تغییری. */
+  const tlsOn = env.REDIS_TLS === '1' || env.REDIS_TLS === 'true';
+  const tls = tlsOn ? (() => {
+    const t = {};
+    if (env.REDIS_TLS_CA) { try { t.ca = [require('fs').readFileSync(env.REDIS_TLS_CA)]; } catch (e) { /* مسیرِ نامعتبر = بدونِ CA سفارشی؛ خطا در اتصالِ واقعی دیده می‌شود */ } }
+    return t;
+  })() : null;
   const base = {
     maxRetriesPerRequest: 2,
     connectTimeout: 3000,
@@ -120,7 +130,7 @@ function buildRedisConfig(env) {
       password,
       options: base,
       clusterOptions: {
-        redisOptions: Object.assign({}, base, password ? { password } : {}),
+        redisOptions: Object.assign({}, base, password ? { password } : {}, tls ? { tls } : {}),
         scaleReads: 'master', /* سازگاری خواندن؛ شمارنده‌ها نباید کهنه خوانده شوند */
         clusterRetryStrategy: (times) => {
           /* M14-C01: هرگز null برنمی‌گرداند. بازگشتِ null در ioredis کلاینتِ
@@ -145,7 +155,7 @@ function buildRedisConfig(env) {
       sentinels,
       name,
       password,
-      options: Object.assign({}, base, password ? { password } : {}),
+      options: Object.assign({}, base, password ? { password } : {}, tls ? { tls } : {}),
       sentinelOptions: {
         connectTimeout: 2000,
         retryStrategy: (times) => {
@@ -157,7 +167,9 @@ function buildRedisConfig(env) {
              واقعی کلاینت جان می‌داد. اکنون تا پایانِ قطعی تلاش می‌کند.
              (reproduction: tests/m14-c01-retry-exhaustion.js) */
           return Math.min(times * 250, 1500);
-        }
+        },
+        /* M15-07: کانالِ sentinel هم رمز می‌شود (TLS-سرتاسری) */
+        tls: tls || undefined
       }
     };
   }
@@ -168,7 +180,7 @@ function buildRedisConfig(env) {
       mode: 'standalone',
       url: String(env.REDIS_URL),
       password,
-      options: Object.assign({}, base, password ? { password } : {})
+      options: Object.assign({}, base, password ? { password } : {}, tls ? { tls } : {})
     };
   }
 
