@@ -23,7 +23,8 @@ const ROOT = path.join(__dirname, '..');
 const MUTS = [
   {
     file: 'server/sync.js', suite: 'tests/server16.js',
-    bad: 'const fv = fieldGate(op, s, iepUsersUpdate(s, op) || dropUsersUpdate(s, op));',
+    /* M15-04 (2026-11-14): call-site با حلِ پایهٔ ABAC چهارآرگانه شد — همان جهش، همان خانه. */
+    bad: 'const fv = fieldGate(op, s, iepUsersUpdate(s, op) || dropUsersUpdate(s, op), abacGrade);',
     mut: 'const fv = null; /* MUTATION: fieldGate off */',
     name: 'M1 fieldGate خاموش شد',
     expectFail: 'ماتریس'

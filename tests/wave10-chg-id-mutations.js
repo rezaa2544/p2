@@ -25,10 +25,12 @@ const chk = (name, cond, extra) => {
 };
 function mutate(file, old, newTxt) {
   const p = path.join(ROOT, file);
-  const src = fs.readFileSync(p, 'utf8');
+  /* نرمال‌سازی CRLF→LF (الگویِ server16-mutations): چک‌اوتِ ویندوزی
+     سوزن‌هایِ چندخطی را نمی‌یافت — همان عیب، دو چهره (2026-11-14). */
+  const src = fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
   if (src.indexOf(old) === -1) throw new Error('anchor not found in ' + file + ': ' + old.slice(0, 60));
   fs.writeFileSync(p, src.replace(old, newTxt), 'utf8');
-  return src;
+  return src.replace(/\r\n/g, '\n'); /* مرجعِ بازگردانی = همان نرمال */
 }
 function runSuite() {
   try { execFileSync('node', [path.join(ROOT, 'tests', 'wave10-chg-id.js')], { stdio: 'pipe', timeout: 120000 }); return 0; }
@@ -39,7 +41,7 @@ function runSuite() {
   console.log('\n▸ جهش‌های Wave 10 — chg_id');
 
   let orig = mutate('server/db.js',
-    "    return stripInternalColumns(reviveRows(res.rows));",
+    "    return fcs.decryptRows(name, stripInternalColumns(reviveRows(res.rows)));",
     "    return reviveRows(res.rows); /*MUT*/");
   chk('M1 «strip در readCollection حذف» کشته شد', runSuite() !== 0);
   fs.writeFileSync(path.join(ROOT, 'server', 'db.js'), orig, 'utf8');
