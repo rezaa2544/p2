@@ -191,6 +191,10 @@ async function serverMutated(mutName, mutateSync, probe, mutatePolicyFn) { /* mu
   fs.mkdirSync(path.join(tmp, 'authz'), { recursive: true });
   fs.copyFileSync(path.join(ROOT, 'authz', 'model.json'), path.join(tmp, 'authz', 'model.json'));
   fs.copyFileSync(path.join(ROOT, 'authz', 'write-perms.json'), path.join(tmp, 'authz', 'write-perms.json'));
+  /* M15-04 (2026-11-16): createAbacِ ماژول‌سطحِ sync.js سیاستِ ABAC را از
+     authz/abac-policies.json می‌خواند — بدونِ آن بوتِ سرورِ کپی fail-closed
+     می‌میرد (بازتولید: CI 43849989947، M5/M6-sanity «سرور بالا نیامد»). */
+  fs.copyFileSync(path.join(ROOT, 'authz', 'abac-policies.json'), path.join(tmp, 'authz', 'abac-policies.json'));
   const syncFile = path.join(srvDir, 'sync.js');
   if (mutateSync) fs.writeFileSync(syncFile, mutateSync(fs.readFileSync(syncFile, 'utf8')));
   /* ترمیم لنگر (BH-mut فاز ۲): دروازه‌های رفتاری (از جمله دامنه‌بندیِ مدیر)
