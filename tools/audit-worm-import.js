@@ -96,5 +96,5 @@ function parseLine(line) {
     imported++;
   }
   console.log((dry ? 'DRY-RUN: ' : '') + 'imported=' + imported + ' skipped(<=lastSeq)=' + skipped + ' corrupt=' + corrupt);
-  process.exit(0);
+  /* G7: خروجِ موفق = پایانِ طبیعیِ فرایند (بدونِ exit(0) صریح) */
 })().catch((e) => { console.error('FATAL ' + (e && e.message)); process.exit(1); });
