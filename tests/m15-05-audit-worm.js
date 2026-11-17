@@ -40,6 +40,7 @@ function chainHash(prevHash, payloadObj) {
   chk('T1b REVOKE UPDATE/DELETE', mig.includes('REVOKE UPDATE, DELETE ON audit_events_worm'));
   chk('T1c triggerهای UPDATE/DELETE = RAISE', (mig.match(/audit_events_worm_no_(update|delete)/g) || []).length >= 4 && mig.includes("RAISE EXCEPTION 'AUDIT_WORM_IMMUTABLE"));
   chk('T1d ستون‌هایِ زنجیره', mig.includes('prev_hash') && mig.includes('hash'));
+  chk('T1e transactional (BEGIN/COMMIT — قراردادِ db-engineering)', /^\s*BEGIN;\s*$/m.test(mig) && /^\s*COMMIT;\s*$/m.test(mig) && !/\bDROP\s+TABLE\b/i.test(mig));
 
   /* T2 — down */
   const down = fs.readFileSync(path.join(__dirname, '..', 'migrations', '027_audit_worm.down.sql'), 'utf8');
