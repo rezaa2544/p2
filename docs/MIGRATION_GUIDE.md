@@ -280,8 +280,9 @@ $ node tools/migrate-helper.js --next
 | ۰۲۴ | `024_ref_id_text_receipt_codes.sql` / `.down` | تبدیلِ `ref_id` به TEXT روی installments/parent_subscriptions/subscription_payments — کلاینت کدهای پرداخت را به‌صورت رشته می‌سازد (`RC-<۸ رقم>`، `SUB-S<plan>-<id>`) ولی `۰۰۱` این ستون‌ها را INTEGER داشت؛ seed یک‌بارۀ bootstrap→PG روی PostgreSQLِ خالی fail-closed می‌شد (پیگیریِ A-31) | اصلاحِ نوع داده (پیگیریِ A-31) |
 | ۰۲۵ | `025_bell_schedule_days_text.sql` / `.down` | تبدیلِ `bell_schedules.days` به TEXT — هفتهٔ واقعیِ مدرسه به‌صورت آرایه‌ای از day objectها ذخیره می‌شود و ~۱٫۳KB است (فراتر از VARCHAR(255) از `۰۰۱`)؛ seed و آینهٔ زنده با `value too long for type character varying(255)` fail می‌شدند (پیگیریِ A-31) | اصلاحِ نوع داده (پیگیریِ A-31) |
 | ۰۲۶ | `026_outbox_cache_invalidation.sql` / `.down` | داربستِ ذخیره‌سازیِ ابطالِ کشِ ماندگارِ بین‌نمونه (N-36 / M15-05 PACMA v2): جدولِ `server_outbox_watermark` (نشانگرِ ماندگارِ هر نمونه روی PG تا نقطهٔ ازسرگیری از restart و قطعیِ Redis جانِ سالم ببرد) + دو ایندکسِ جزئی برای اسکنِ رویدادهای `cache.*` و بازپس‌گیرِ نگه‌داشت | قابلیتِ جدید (پیگیریِ N-36 / M15-05) |
+| ۰۲۷ | `027_audit_worm.sql` / `.down` | جدولِ WORMِ حسابرسی — آینهٔ فقط-الحاقِ `audit_events_worm` در PG (منبعِ زنده = فایلِ append-only `server/audit.js`): `REVOKE UPDATE/DELETE` + دو triggerِ guard (`AUDIT_WORM_IMMUTABLE`) + ستون‌های `prev_hash`/`hash` برای زنجیرهٔ sha256 که حذف/جای‌گذاریِ ردیف را افشا می‌کند؛ تغذیه/راستی‌آزمایی با `tools/audit-worm-import.js` (M15-05) | قابلیتِ جدید (M15-05 — حسابرسی ضد-دستکاری) |
 
-> مهاجرت بعدی شمارهٔ `027` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را به جدول اضافه کند — مالک: نویسندهٔ مهاجرت.
+> مهاجرت بعدی شمارهٔ `028` را می‌گیرد. هر مهاجرتِ تازه باید همین ردیف را به جدول اضافه کند — مالک: نویسندهٔ مهاجرت.
 
 ---
 
