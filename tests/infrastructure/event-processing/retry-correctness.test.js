@@ -7,12 +7,13 @@
 const assert = require('assert');
 const {
   retryFailedEvent,
+  deterministicJitter,
   EVENT_STATUS,
   DEFAULT_RETRY_POLICY
 } = require('../../../server/infrastructure/event-processing-layer');
 
 function runTests() {
-  console.log('▸ تست ۳: صحت سیاست بازتلاش و بک‌آف نمایی (retry-correctness)');
+  console.log('▸ تست ۳: صحت سیاست بازتلاش و بک‌آف نمایی + jitter قطعی (#471)');
 
   const baseEvent = {
     event_id: 'EVT-FAIL-01',
@@ -22,18 +23,33 @@ function runTests() {
     max_retries: 3
   };
 
-  // بازتلاش اول (تلاش ۱)
+  // jitterِ قطعیِ انتظاری برای همین رویداد — فرمولِ مرجعِ قرارداد
+  const j = deterministicJitter(baseEvent);
+
+  // بازتلاش اول (تلاش ۱): پایهٔ ۱۰۰۰ms × jitterِ قطعی (0.9..1.1)
   const retry1 = retryFailedEvent(baseEvent, { error: 'Network timeout' });
   assert.strictEqual(retry1.status, EVENT_STATUS.FAILED_RETRYABLE);
   assert.strictEqual(retry1.retry_count, 1);
   assert.strictEqual(retry1.last_error, 'Network timeout');
-  assert.ok(retry1.backoff_ms >= 1000);
+  assert.strictEqual(retry1.backoff_ms, Math.round(1000 * j),
+    '#471: jitterِ قطعی باید در backoff_ms اعمال شود (نه فقط پرچم)');
+  assert.ok(retry1.backoff_ms >= 900 && retry1.backoff_ms <= 1100);
 
-  // بازتلاش دوم (تلاش ۲)
+  // قطعیت: همان رویداد دوباره = دقیقاً همان backoff (بازپخش بازتولیدپذیر)
+  const retry1again = retryFailedEvent(baseEvent, { error: 'Network timeout' });
+  assert.strictEqual(retry1again.backoff_ms, retry1.backoff_ms,
+    '#471: jitter باید «قطعی» باشد — دو اجرای همان id = همان نتیجه');
+
+  // بازتلاش دوم (تلاش ۲): پایهٔ ۲۰۰۰ms × همان ضریب قطعی ⇒ رشد نمایی حفظ
   const retry2 = retryFailedEvent(retry1, { error: 'Connection refused' });
   assert.strictEqual(retry2.status, EVENT_STATUS.FAILED_RETRYABLE);
   assert.strictEqual(retry2.retry_count, 2);
-  assert.ok(retry2.backoff_ms >= 2000, 'بک‌آف باید به‌صورت نمایی افزایش یابد');
+  assert.strictEqual(retry2.backoff_ms, Math.round(2000 * j));
+  assert.ok(retry2.backoff_ms > retry1.backoff_ms, 'بک‌آف باید به‌صورت نمایی افزایش یابد');
+
+  // سقف مطلق: حتی با jitter هرگز از max_interval عبور نمی‌کند
+  assert.ok(retry1.backoff_ms <= DEFAULT_RETRY_POLICY.max_interval_ms);
+  assert.ok(retry2.backoff_ms <= DEFAULT_RETRY_POLICY.max_interval_ms);
 
   // بازتلاش سوم (تلاش ۳ - رسیدن به سقف)
   const retry3 = retryFailedEvent(retry2, { error: 'DB lock timeout' });
@@ -46,7 +62,7 @@ function runTests() {
   assert.strictEqual(dlqEvent.terminal, true);
   assert.ok(dlqEvent.dead_letter_reason.includes('تجاوز از سقف'));
 
-  console.log('  ✅ صحت بازتلاش با بک‌آف نمایی و انتقال قطعی به DLQ تایید شد');
+  console.log('  ✅ بازتلاش نمایی + jitterِ قطعی اعمال‌شده (#471) + DLQ قطعی تایید شد');
 }
 
 if (require.main === module) {

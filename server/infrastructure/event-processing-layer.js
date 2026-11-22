@@ -56,6 +56,26 @@ const DEFAULT_RETRY_POLICY = Object.freeze({
 });
 
 /**
+ * #471 — jitterِ «قطعی» (بدون Math.random): ضریبِ 0.8..1.2 مشتق از FNV-1a
+ * روی idِ رویداد. همان رویداد همیشه همان ضریب را می‌گیرد ⇒ بازپخش/تست
+ * بازتولیدپذیر می‌ماند، ولی بین رویدادهای مختلف پخشِ تلاش‌ها واقعی است —
+ * یعنی پرچمِ `jitter: true` از این پس ادعای اثبات‌شده است، نه برچسبِ خالی.
+ * @param {Object} event
+ * @param {number} span دامنهٔ کل jitter (پیش‌فرض 0.2 ⇒ ±۱۰٪…±۲۰٪ کل)
+ * @returns {number}
+ */
+function deterministicJitter(event, span = 0.2) {
+  const id = String((event && (event.event_id || event.id || event.uid)) || '');
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const unit = (h >>> 0) % 1000 / 1000; /* 0..0.999 — قطعی نسبت به id */
+  return 1 + span * (unit - 0.5);       /* 0.9..1.1 — قطعی */
+}
+
+/**
  * رجیستری محلی هندلرهای رویداد و کش کنترل مصرف تکراری (Idempotency Store)
  */
 const eventHandlersRegistry = new Map();
@@ -395,9 +415,13 @@ function retryFailedEvent(event = {}, options = {}) {
 
   if (currentRetry < maxRetries) {
     const nextRetryCount = currentRetry + 1;
+    /* #471: jitterِ قطعی پیش از سقف اعمال می‌شود تا هرگز از max_interval عبور نکند. */
+    const baseMs = DEFAULT_RETRY_POLICY.initial_interval_ms *
+      Math.pow(DEFAULT_RETRY_POLICY.backoff_multiplier, currentRetry);
+    const jitterFactor = DEFAULT_RETRY_POLICY.jitter === true ? deterministicJitter(event) : 1;
     const backoffMs = Math.min(
       DEFAULT_RETRY_POLICY.max_interval_ms,
-      DEFAULT_RETRY_POLICY.initial_interval_ms * Math.pow(DEFAULT_RETRY_POLICY.backoff_multiplier, currentRetry)
+      Math.round(baseMs * jitterFactor)
     );
 
     const updatedEvent = Object.assign({}, event, {
@@ -581,6 +605,7 @@ module.exports = {
   rememberIdempotency,
   refreshEventIdempotencyFromSoT,
   retryFailedEvent,
+  deterministicJitter,
   detectQueueBottlenecks,
   buildEventProcessingHealthSnapshot
 };
