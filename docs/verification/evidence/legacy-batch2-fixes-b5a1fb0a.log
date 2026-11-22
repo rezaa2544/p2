@@ -1,0 +1,75 @@
+﻿LEGACY BATCH 2 (A-11..A-20) FIX EVIDENCE
+HEAD: b5a1fb0a99c89551560e7ea7173035ce8e226b72
+UTC: 2026-11-22T15:25:23.4627685Z
+node: v24.21.0
+
+== [1] a18-conflict-nextver-hardening (positive) ==
+  ✅ T1 nextVer با Math.max(curV, snapV) مشتق می‌شود
+  ✅ T2 اسنپ‌شاتِ غیرfinite به نسخهٔ فعلیِ هدف fallback می‌شود (نه ۱ ثابت)
+  ✅ T3 فرمولِ قدیمیِ rewind‌زا دیگر در فایل نیست
+  ✅ T4 فرمولِ قدیمی روی حفرهٔ NaN از v10 به v2 rewind می‌کرد (اثباتِ حفره)
+  ✅ T5 هاردنینگ روی همان حفره v11 می‌دهد (بدونِ rewind)
+  ✅ T6 مسیرِ سالم تغییر نکرده: snapshot=9 و target=9 → 10
+
+a18-conflict-nextver-hardening: 6 بررسی — ✅ 6 · ❌ 0
+exit=0
+
+== [2] phase-c-conflict-resolution (positive) ==
+
+──────────────────────────────────────────
+phase-c-conflict-resolution: 12/12 موفق ✅
+exit=0
+
+== [3] reaudit-occ-stale-write (positive) ==
+  ✅ [grades/STRICT] بدونِ base_version ⇒ ۴۰۰ missing_base_version
+
+reaudit-occ-stale-write (A-20): 34/34 موفق
+exit=0
+
+== [4] bell2 8/8 (positive; B7 runs, no NOT-RUN) ==
+
+▸ زنگِ زنده (دور ۶۵)
+  ✅ B1 — کارتِ ولی: هر سه فرزند + اسم دبیرِ زنگِ جاری
+  ✅ B2 — اسم دبیر با عوضِ زنگ عوض می‌شود
+  ✅ B3 — حضورِ امروز: سه وضعیت + ثبت‌نشده
+  ✅ B4 — مدرسهٔ بدونِ برنامهٔ زنگ: ساعتِ خیالی نمی‌دهد
+  ✅ B5 — جمعه (روزِ غیردرسی): «امروز روز درسی نیست»
+  ✅ B6 — خودِ دانش‌آموز هم کارتِ زنده می‌بیند
+  ✅ B7 — تیکِ زنده: تغییرِ حضور، بدونِ رندرِ کامل، به DOM می‌رسد
+  ✅ B8 — رایگان بودن: فرزندِ اشتراکِ منقضی هم روی کارتِ زنده است
+
+────────────────────────────────────────────────────
+زنگ زنده: 8/8 موفق  —  بدون خطا ✅
+────────────────────────────────────────────────────
+
+exit=0
+
+== [5] mutation-kill: old rewind formula re-applied to a COPY of server/conflicts.js ==
+  ❌ T1 nextVer با Math.max(curV, snapV) مشتق می‌شود
+  ❌ T2 اسنپ‌شاتِ غیرfinite به نسخهٔ فعلیِ هدف fallback می‌شود (نه ۱ ثابت)
+  ❌ T3 فرمولِ قدیمیِ rewind‌زا دیگر در فایل نیست
+  ✅ T4 فرمولِ قدیمی روی حفرهٔ NaN از v10 به v2 rewind می‌کرد (اثباتِ حفره)
+  ✅ T5 هاردنینگ روی همان حفره v11 می‌دهد (بدونِ rewind)
+  ✅ T6 مسیرِ سالم تغییر نکرده: snapshot=9 و target=9 → 10
+
+a18-conflict-nextver-hardening: 6 بررسی — ✅ 3 · ❌ 3
+exit=1 (expected 1 — mutation killed)
+
+== [6] tools/legacy-checks-batch2.js full run (POST-FIX) ==
+A-11 DEFECT-OPEN | .github/workflows/fortify.yml:65 "echo "Skipping Fortify scan because required credentials are not available or the PR comes" | :67 "— NOT EXECUTED" | fail-closed step :92 — documented skip, no real scan without credenti
+A-12 PASS | package.json:18 scripts["test:all"] → run-all-tests.sh ✓ | .github/workflows/node.js.yml:135 "npm run test:all" ✓
+A-13 PASS | tests/ci-test-parity-contract.js:21 git ls-files tests + :123-129 walkTestApi→jsUnder (recursive); final line: "TEST/CI parity: 47 pass / 0 fail" (exit 0)
+A-14 PASS | tests/bell2.js:29/31 explicit __skip → NOT-RUN counter; no new Date( gates a skip; summary line :237
+A-15 PASS | tests/offline-sync-drill.js:179 collects r.body.ok===true for 3 sends; :185-186 S2c asserts length===3 && every(Boolean)
+A-16 PASS | tests/chaos-drill-lib.js:477 pgRunning(): execFileSync pg_ctl status — exit-code semantics (throw→false); no live ===Buffer.alloc(0) comparison (only A-16 comment)
+A-17 PASS | tests/client-features.js:149 asserts real toast text (indexOf("آماده شد")>=0 from #toasts) | tests/multigrade2.js:174/183 assert class_subject_members count === 0 (G7/G8 real effect)
+A-18 PASS | server/conflicts.js:271 nextVer=Math.max(curVer, server_version)+1 | target-record school scope :236-237 (403 out_of_scope)
+A-19 PASS | server/idor.js:68 policy.studentRecordOk(store,s,st,opts) gate →404 | server/routes/semantic-analytics.js:256,263,371 policy.studentRecordOk
+A-20 PASS | grades:227✓ | students:212✓ | users:202✓ | classes:240✓ | attendance:201✓ — all 5 PATCH routes pass isVersioned=true to checkOcc
+exit=0
+
+== [7] PRE-FIX measurements (quoted from this session, tree@509e74b1 + uncommitted fixes, before this commit) ==
+batch2 A-14 DEFECT-OPEN | tests/bell2.js:29/31 __skip sentinel + NOT-RUN counter OK, BUT :195 skip() gated by TODAY_OK_FOR_LIVE_TICK (def :101-104 uses new Date().getDay()) — date-dependent skip still present
+batch2 A-18 DEFECT-OPEN | server/conflicts.js:264 nextVer=(Number(c.server_version)||1)+1 — monotonic Math.max(target.version, server_version)+1 NOT found at HEAD (regression vs claim)
+bell2 pre-fix: 7/7 (+1 NOT-RUN) — B7 skipped on non-clean days
+batch2 A-13 (unchanged claim) PASS | parity run: TEST/CI parity: 47 pass / 0 fail (exit 0)
