@@ -98,10 +98,12 @@ const REFDAY = W(`(function(){
   var w=new Date(+p[0], +p[1]-1, +p[2]).getDay();
   return (w+1)%7;
 })()`);
-const TODAY_OK_FOR_LIVE_TICK = W(`(function(){
-  var w=new Date().getDay(); if(!(w===0||w===1||w===2||w===3||w===6)) return false;
-  return !(db.attendance_modes||[]).some(function(m){return m.date===todayISO()&&m.school_id===1;});
-})()`);
+/* A-14: گیتِ تاریخ‌دارِ skip حذف شد (new Date().getDay() دیگر skip را gating نمی‌کند).
+   B7 روی هر روزِ هفته کار می‌کند: کارتِ زنده در familyDash بی‌قید رندر می‌شود
+   (08-dashboard.js:441-443)، بِجِ حضور برای هر نوعِ اسلاتی می‌آید
+   (46-bell-now.js:448-480) و bellLiveTick بدونِ سرور از db محلی بازمحاسبه
+   می‌کند (46-bell-now.js:514-524). شرطِ «روزِ مدرسهٔ تمیز» به‌جای ساعتِ واقعی،
+   با داده در خودِ B7 تضمین می‌شود. */
 
 test('B1 — کارتِ ولی: هر سه فرزند + اسم دبیرِ زنگِ جاری', () => {
   const who = W(`(function(){
@@ -192,7 +194,9 @@ test('B6 — خودِ دانش‌آموز هم کارتِ زنده می‌بین
 });
 
 test('B7 — تیکِ زنده: تغییرِ حضور، بدونِ رندرِ کامل، به DOM می‌رسد', () => {
-  if(!TODAY_OK_FOR_LIVE_TICK){ skip('today is not a clean school day for school 1 — the live tick follows the real clock'); }
+  /* A-14: روزِ تمیز با داده تضمین می‌شود، نه با گیتِ ساعتِ واقعی — اگر مدرسه ۱
+     امروز attendance_mode داشته باشد، پاکش می‌کنیم تا داشبوردِ ساختارِ عادی داشته باشد. */
+  W(`(function(){ var sid=db.schools[0].id; (db.attendance_modes||[]).filter(function(m){return m.date===todayISO()&&m.school_id===sid;}).forEach(function(m){remove('attendance_modes',m.id);}); })()`);
   /* ولی و فرزندِ تازه (یک‌فرزند) تا آزمون به دادهٔ نمونه وابسته نباشد */
   const mk = W(`(function(){
     var sid=db.schools[0].id;

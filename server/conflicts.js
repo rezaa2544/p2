@@ -261,9 +261,15 @@ function createConflicts(ctx) {
         });
       }
 
-      const nextVer = (Number(c.server_version) || 1) + 1;
-      const patch = Object.assign({}, incData, { id: targetId, version: nextVer });
+      /* A-18 (hardening): nextVer هرگز rewind نمی‌کند — وقتی هدفِ موجود
+         نسخهٔ فعلی دارد، مرجعِ نسخهٔ بعدی «نسخهٔ فعلیِ هدف» است و اسنپ‌شاتِ
+         تعارض فقط وقتی که finite است در max شرکت می‌کند؛ حفرهٔ قدیمی
+         (Number(NaN)||1)+1=2 روی رکوردِ v10 بسته شد. برای رکوردِ تازه = 1. */
       const wasExisting = !!target;
+      const curV = wasExisting ? (Number(target.version) || 0) : 0;
+      const snapV = Number.isFinite(Number(c.server_version)) ? Number(c.server_version) : curV;
+      const nextVer = Math.max(curV, snapV) + 1;
+      const patch = Object.assign({}, incData, { id: targetId, version: nextVer });
 
       if (pgLive && typeof db.persistOpsBatch === 'function') {
         try {
