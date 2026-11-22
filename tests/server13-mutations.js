@@ -77,10 +77,14 @@ for (const m of MUTS) {
   kit.mutant(abs, src0.replace(m.bad, m.mut, 1)); /* کپی جدا؛ سورس اصلی دست‌نخورده */
   const childArgs = ['--max-old-space-size=1500', m.suite];
   let res = runNode(childArgs, { cwd: ROOT, env: kit.env(), timeoutMs: CHILD_TIMEOUT_MS });
-  if (res.out.trim() === '') { /* R89: خروجیِ خالی = فرزند کشته شد (محیط/حافظه) — یک تلاشِ مجدد */
+  /* R89/CI-FLAKE: خروجیِ خالی «یا» CHILD_CRASH = بی‌اعتبارِ محیطی (نه اثباتِ بقایِ
+     جهش) — یک تلاشِ مجدد. حکمِ fail-closed سرِ جای خود می‌ماند: اگر تلاشِ دوم
+     هم کرش/خالی بود قرمز می‌ماند؛ اگر قرمزیِ T1 واقعی بود «کشته شد». */
+  let verdict = judgeMutation(res, m.expectFail, m.crashOK === true);
+  if (verdict.status === 'CHILD_CRASH' || (res.out || '').trim() === '') {
     res = runNode(childArgs, { cwd: ROOT, env: kit.env(), timeoutMs: CHILD_TIMEOUT_MS });
+    verdict = judgeMutation(res, m.expectFail, m.crashOK === true);
   }
-  const verdict = judgeMutation(res, m.expectFail, m.crashOK === true);
   console.log('  ' + (verdict.killed ? '✅' : '❌') + ' ' + m.name + ' — ' +
     (verdict.killed ? 'کشته شد (' + verdict.status + ')' : 'زنده ماند! (' + verdict.status + ': ' + verdict.note + ')'));
   if (verdict.killed) killed++;
