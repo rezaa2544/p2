@@ -205,6 +205,8 @@
 | `PB_REPO_S3_BUCKET` · `PB_REPO_S3_ENDPOINT` · `PB_REPO_S3_REGION` · `PB_REPO_S3_VERIFY_TLS` | رشته | — | با پی‌جی‌بک‌رست | تولید | مخزن اس۳ پشتیبان | — |
 | `PGBACKREST_REPO1_S3_KEY` · `PGBACKREST_REPO1_S3_KEY_SECRET` | رشته | — | با پی‌جی‌بک‌رست | تولید | کلیدهای مخزن پشتیبان | — |
 | `REDIS_PASSWORD` | رشته | — | در اچ‌ای | تولید | گذرواژهٔ ردیس (قالب‌های `infra/redis/`) | — |
+| `REDIS_TLS` | `1`/`true` | (خالی) | در اچ‌ای | تولید | فعال‌سازی TLS برای هر سه حالت اتصال ردیس (sentinel شامل کانال سنتینل، cluster، standalone) — M15-07؛ بدون پرچم = رفتار قبلی | `1` |
+| `REDIS_TLS_CA` | مسیر | (خالی) | با `REDIS_TLS` | تولید | مسیر گواهی CA برای اعتبارسنجی سرور ردیس؛ مسیر ناموجود نادیده گرفته می‌شود و در اتصال fail-closed می‌شود | `/etc/payesh/redis-ca.crt` |
 | `GRAFANA_USER` · `GRAFANA_PASSWORD` | رشته | `admin`/(خالی) | در رصد | تولید | ورود گرافانا (`env.observability.example`) | — |
 | `GF_SECURITY_ADMIN_USER` · `GF_SECURITY_ADMIN_PASSWORD` | رشته | — | در رصد | تولید | متغیرهای رسمی ایمج گرافانا | — |
 | `PAYESH_LOG_DIR` | مسیر | (خالی) | در رصد | تولید | دایرکتوری لاگ برای پرومتیل | `/var/log/payesh` |

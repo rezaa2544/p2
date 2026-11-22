@@ -19,6 +19,7 @@
 | RC-009 | پر شدن دیسک | ≤۲۰ دقیقه | مصرف >۹۵٪ | [کارت](DISK_FULL_EMERGENCY.md) |
 | RC-010 | مقابله با دیداس | ≤۱۵ دقیقه | ترافیک >۵× عادی | [کارت](DDOS_MITIGATION.md) |
 | RC-016 | هشدار پایش امنیت زمان اجرا | ≤۱۵ دقیقه | `AnomalyDetected` / `AttackPatternSignature` / `SuspiciousSession` | [کارت](RC-016.md) |
+| RC-027-E4 | راه‌اندازیِ staging (E4) و چرخشِ credentialها (SI-013) | ≤۱۲۰ دقیقه | شروعِ فازِ عملیاتیِ M15 پس از تأمینِ سرورها | [کارت](E4_SI013_STAGING_BOOTSTRAP.md) |
 
 ## نقشهٔ درخت تصمیم: اگر این آلارم → این کارت
 
@@ -35,6 +36,7 @@
   - `AnomalyDetected` / `AttackPatternSignature` / `SuspiciousSession` → [هشدار پایش امنیت زمان اجرا](RC-016.md)
 - **زیرساخت:**
   - دیسک >۹۵٪ → [دیسک پر](DISK_FULL_EMERGENCY.md)
+  - شروعِ استقرارِ staging جدید (پس از تأمینِ سرور) → [staging و چرخشِ credentialها](E4_SI013_STAGING_BOOTSTRAP.md)
 
 ## قاعدهٔ نگهداری
 
