@@ -1045,6 +1045,7 @@ async function persistOpsBatchWithClient(client, ops) {
   }
   const seenInBatch = new Set();
   const toClaim = [];
+  const appliedOps = [];
   let n = 0;
   for (const op of (ops || [])) {
     if (!op || !op.c) continue;
@@ -1056,6 +1057,7 @@ async function persistOpsBatchWithClient(client, ops) {
       toClaim.push(op.uid);
     }
     await persistOpWithClient(client, Object.assign({}, op, { uid: undefined }));
+    appliedOps.push(op);
     n++;
   }
   for (const uid of toClaim) {
@@ -1067,6 +1069,27 @@ async function persistOpsBatchWithClient(client, ops) {
       const e = new Error('concurrent duplicate sync; retry will deduplicate');
       e.code = 'duplicate_sync';
       throw e;
+    }
+  }
+  /* WP-06 (#434): سطرهای لاگِ تغییر در همان تراکنش — هیچ نوشتِ کامیتی
+     بدونِ سطرِ لاگش وجود ندارد (شکستِ append = رول‌بکِ کل تراکنش، الگوی
+     hookِ N-36). PAYESH_SYNC_LOG=off = مسیرِ قدیمیِ undo-log بدونِ تغییر
+     (قفلِ rollback). tenant: سطرها school_id دارند؛ خواننده ملزم به
+     فیلترِ school_id است (گارد PHASE6). */
+  if (process.env.PAYESH_SYNC_LOG !== 'off' && appliedOps.length) {
+    const hasLog = await client.query(
+      "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sync_change_log'"
+    );
+    if (hasLog.rows.length) {
+      for (const op of appliedOps) {
+        const recordId = op.data && op.data.id != null ? String(op.data.id) : (op.id != null ? String(op.id) : null);
+        const schoolId = op.data && op.data.school_id != null ? Number(op.data.school_id) : null;
+        const nextVer = Number.isFinite(Number(op.base_version)) ? Number(op.base_version) + 1 : null;
+        await client.query(
+          'INSERT INTO sync_change_log (collection, record_id, school_id, op, version, at) VALUES ($1,$2,$3,$4,$5,NOW())',
+          [String(op.c), recordId, Number.isFinite(schoolId) ? schoolId : null, String(op.t), nextVer]
+        );
+      }
     }
   }
   return { ok: true, count: n };
