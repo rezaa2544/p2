@@ -1085,8 +1085,10 @@ async function persistOpsBatchWithClient(client, ops) {
         const recordId = op.data && op.data.id != null ? String(op.data.id) : (op.id != null ? String(op.id) : null);
         const schoolId = op.data && op.data.school_id != null ? Number(op.data.school_id) : null;
         const nextVer = Number.isFinite(Number(op.base_version)) ? Number(op.base_version) + 1 : null;
+        /* public-qualified: suites با search_path=drill-schema هم باید به
+           جدولِ مهاجرت‌شدهٔ public بنویسند (به دامِ schema نبند) */
         await client.query(
-          'INSERT INTO sync_change_log (collection, record_id, school_id, op, version, at) VALUES ($1,$2,$3,$4,$5,NOW())',
+          'INSERT INTO public.sync_change_log (collection, record_id, school_id, op, version, at) VALUES ($1,$2,$3,$4,$5,NOW())',
           [String(op.c), recordId, Number.isFinite(schoolId) ? schoolId : null, String(op.t), nextVer]
         );
       }

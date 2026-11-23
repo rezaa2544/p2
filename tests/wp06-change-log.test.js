@@ -74,6 +74,14 @@ async function main() {
   ];
 
   const db = require('../server/db.js');
+  /* db.js init is async — until awaited the layer runs in memory mode
+     (the drill suites instead inject __setPoolForTests). */
+  await db.init();
+  if (!db.isPostgres()) {
+    console.log(NAME + ': NOT-RUN — db layer did not enter PostgreSQL mode (DATABASE_URL/init)');
+    await client.end();
+    process.exit(2);
+  }
 
   /* CL1+CL2: committed batch ⇒ log rows, monotonic ids, per-op fields */
   const before = await client.query('SELECT COALESCE(MAX(id),0) AS m FROM sync_change_log');
@@ -110,9 +118,13 @@ async function main() {
     sup.ok === true && sup.rows.length === 3);
 
   /* CL5: NEGATIVE PROOF — a failing log insert must roll back the batch.
-     Break the table (rename) so the in-transaction INSERT throws; the
-     data mutation must NOT survive. */
-  await client.query('ALTER TABLE sync_change_log RENAME TO sync_change_log_broken');
+     Inject the failure with a BEFORE INSERT trigger while the table stays
+     PRESENT (a rename would only trip the graceful hasLog skip, not the
+     atomicity law); the data mutation must NOT survive. */
+  await client.query(`CREATE OR REPLACE FUNCTION wp06_break_log() RETURNS trigger AS $fn$
+    BEGIN RAISE EXCEPTION 'injected sync_change_log failure'; END $fn$ LANGUAGE plpgsql`);
+  await client.query('DROP TRIGGER IF EXISTS wp06_break ON sync_change_log');
+  await client.query('CREATE TRIGGER wp06_break BEFORE INSERT ON sync_change_log FOR EACH ROW EXECUTE FUNCTION wp06_break_log()');
   let rolledBack = false;
   try {
     await db.persistOpsBatch([
@@ -123,7 +135,8 @@ async function main() {
   }
   const survivor = await client.query("SELECT count(*) AS c FROM wp06_t WHERE id = 'wp06-r4'");
   const uids = await client.query("SELECT count(*) AS c FROM server_processed_uids WHERE uid = 'wp06-uid-4'");
-  await client.query('ALTER TABLE sync_change_log_broken RENAME TO sync_change_log');
+  await client.query('DROP TRIGGER IF EXISTS wp06_break ON sync_change_log');
+  await client.query('DROP FUNCTION IF EXISTS wp06_break_log()');
   chk('CL5 broken log ⇒ batch THROWS (explicit failure, no silent ack)', rolledBack);
   chk('CL5 negative proof: the data mutation did NOT survive without its log row',
     Number(survivor.rows[0].c) === 0, 'rows surviving: ' + survivor.rows[0].c);

@@ -41,7 +41,7 @@ async function readChangeLogSince(db, opts) {
   let rows;
   try {
     const params = [sinceSeq, limit];
-    let sql = 'SELECT id, collection, record_id, school_id, op, version, at FROM sync_change_log WHERE id > $1';
+    let sql = 'SELECT id, collection, record_id, school_id, op, version, at FROM public.sync_change_log WHERE id > $1';
     if (!isSuperadmin) {
       sql += ' AND school_id = $3';
       params.push(schoolId);
@@ -57,7 +57,7 @@ async function readChangeLogSince(db, opts) {
     const r = await db.query(sql, params);
     rows = (r && r.rows) || [];
   } catch (e) {
-    if (e && /relation "sync_change_log" does not exist/.test(String(e.message))) {
+    if (e && /relation "(public\.)?sync_change_log" does not exist/.test(String(e.message))) {
       return { ok: false, code: 'CHANGE_LOG_UNAVAILABLE', message: 'sync_change_log missing (migration 028 not applied or PAYESH_SYNC_LOG=off)' };
     }
     throw e;
