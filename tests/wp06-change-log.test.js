@@ -29,7 +29,11 @@
 const path = require('path');
 
 const NAME = 'wp06-change-log';
-const PGURL = process.env.PG_LIVE_PG || null;
+/* Same fallback chain as the pg-prod-* suites: explicit PG_LIVE_PG, then the
+   ambient DATABASE_URL, then the CI provisioning default (127.0.0.1:55433). */
+const PGURL = process.env.PG_LIVE_PG
+  || process.env.DATABASE_URL
+  || 'postgres://chat1:chat1@127.0.0.1:55433/payesh_chat1';
 if (!PGURL) {
   console.log(NAME + ': NOT-RUN — PG_LIVE_PG required (PG-contract suite)');
   process.exit(2);

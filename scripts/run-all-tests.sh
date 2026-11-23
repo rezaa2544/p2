@@ -178,6 +178,7 @@ tests/schema-migrations-live-pg.test.js
 tests/migration-012-crash-recovery-live.js
 tests/migration-009-live.js
 tests/pg-relational-seed.js
+tests/wp06-change-log.test.js
 tests/migrate-pg-constraints.js
 tests/migrate-pg-constraints-mutations.js
 tests/wave3-query.js
