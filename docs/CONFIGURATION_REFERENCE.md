@@ -37,6 +37,7 @@
 | `PAYESH_ROOT` | مسیر | ریشهٔ ریپو | — | همه | ریشهٔ حل مسیرهای داده/ایستا | `/srv/payesh` |
 | `PAYESH_STORE` | مسیر | `server/data/payesh.json` | — | dev | فایل فروشگاه جی‌سان (در حالت دیتابیس فقط بوت‌استرپ) | `server/data/payesh.json` |
 | `PAYESH_SYNC_PATH` | مسیر | پیش‌فرض کد | — | همه | مسیر پروندهٔ وضعیت همگام‌سازی | `server/data/sync.json` |
+| `PAYESH_SYNC_LOG` | پرچم | روشن | `off` | همه | لاگِ تغییرِ seq-دارِ همگام‌سازی (WP-06): `off` = نوشتنِ سطرهای `sync_change_log` در تراکنشِ persistOpsBatch غیرفعال می‌شود (مسیرِ قدیمیِ undo-log)؛ هر مقدارِ دیگر = روشن | `on` |
 | `PAYESH_SHUTDOWN_TIMEOUT_MS` | عدد | پیش‌فرض کد | — | همه | مهلت تخلیهٔ آرام هنگام سیگنال خاتمه | `10000` |
 | `PAYESH_TEST_SLOW_MS` | عدد | (بدون مقدار = غیرفعال) | — | فقط-تست | فعال‌سازی `/api/__slow` برای اثبات تخلیه | `3000` |
 
