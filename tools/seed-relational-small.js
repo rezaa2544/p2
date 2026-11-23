@@ -221,15 +221,21 @@ async function clearFixture(client) {
 
 async function loadFixture(client) {
   /* ── tenants ── */
+  /* province_id is load-bearing: /api/v1 resolves the actor's province through
+     resolveActorProvince (server/index.js:1410-1430 → phase6-production-hardening.js).
+     A school row with NULL province_id fail-closes every scoped request for
+     non-superadmin users with 403 PHASE6_UNRESOLVED_PROVINCE (found by the real
+     Wave-18 load run, 2026-11-23). Tenant A = province 1, tenant B = province 2,
+     matching the demo store's province_id 1..3 contract. */
   const schools = [
-    { name: 'دبیرستان نمونه الف', code: 'SCH-A', city: 'Tehran' },
-    { name: 'دبیرستان نمونه ب', code: 'SCH-B', city: 'Shiraz' }
+    { name: 'دبیرستان نمونه الف', code: 'SCH-A', city: 'Tehran', province_id: 1 },
+    { name: 'دبیرستان نمونه ب', code: 'SCH-B', city: 'Shiraz', province_id: 2 }
   ];
   const schoolIds = [];
   for (const s of schools) {
     const r = await client.query(
-      'INSERT INTO schools (name, code, city, "active", created_at, updated_at) VALUES ($1,$2,$3,true,NOW(),NOW()) RETURNING id',
-      [s.name, s.code, s.city]);
+      'INSERT INTO schools (name, code, city, province_id, "active", created_at, updated_at) VALUES ($1,$2,$3,$4,true,NOW(),NOW()) RETURNING id',
+      [s.name, s.code, s.city, s.province_id]);
     schoolIds.push(r.rows[0].id);
   }
 

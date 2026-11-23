@@ -128,7 +128,16 @@ function generate(scale, opts) {
   users.push({ id: uid++, school_id: null, role: 'superadmin', full_name: 'مدیر کل سامانه', username: 'superadmin', password: 'seed-national', active: 1, created_at: created, phone: '09999838444', national_id: '9993235245' });
   const schoolRows = [];
   for (let i = 0; i < schools; i++) {
-    schoolRows.push({ id: i + 1, name: 'مدرسهٔ نمونه ' + (i + 1), type: 'high' });
+    /* server/auth.js:476 — `if(school && !school.active) return fail('school_inactive')`.
+       A generated school without `active` makes every manager/teacher login die on
+       school_inactive (found by the real Wave-18 load run, 2026-11-23), so the
+       store shape must carry `active: 1` like the demo seed does. */
+    /* server/index.js:1410-1430 — /api/v1 resolves the actor's province through
+       phase6-production-hardening.js resolveActorProvince (school.province_id →
+       province_code). A school without `province_id` makes every scoped /api/v1
+       request fail-closed 403 PHASE6_UNRESOLVED_PROVINCE (same real load run).
+       Demo store uses province_id 1..3 — keep that contract here. */
+    schoolRows.push({ id: i + 1, name: 'مدرسهٔ نمونه ' + (i + 1), type: 'high', active: 1, province_id: (i % 3) + 1 });
     users.push({ id: uid++, school_id: i + 1, role: 'manager', full_name: 'مدیر ' + (i + 1), username: 'manager_' + (i + 1), password: 'seed-national', active: 1, created_at: created, phone: '091' + String(10000000 + i).slice(-8), national_id: String(1000000000 + i) });
     users.push({ id: uid++, school_id: i + 1, role: 'teacher', full_name: 'آموزگار ' + (i + 1), username: 'teacher_' + (i + 1), password: 'seed-national', active: 1, created_at: created, phone: '092' + String(10000000 + i).slice(-8), national_id: String(2000000000 + i) });
   }

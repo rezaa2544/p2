@@ -244,6 +244,14 @@ async function boot(port, storeFile, tmp) {
     chk('DS6 scale and provenance are recorded inside the store',
       store.__generated_by === 'tools/seed-national.js' && store.__scale === 1e-4,
       JSON.stringify({ by: store.__generated_by, scale: store.__scale }));
+    /* server/auth.js:476 rejects a school whose `active` is falsy, and
+       server/index.js:1410-1430 (via resolveActorProvince) fail-closes /api/v1
+       when the actor's province is unresolvable — a school row without
+       `active: 1` + `province_id` kills every manager/teacher flow with
+       school_inactive / PHASE6_UNRESOLVED_PROVINCE (found by a real load
+       run, 2026-11-23). */
+    chk('DS10 every generated school carries active: 1 + province_id',
+      store.schools.every((s) => s.active === 1 && s.province_id != null), 'schools=' + store.schools.length);
 
     /* the CLI refuses to write a generated dataset into the repository */
     const { spawnSync } = require('child_process');
