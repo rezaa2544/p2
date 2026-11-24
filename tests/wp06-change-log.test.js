@@ -173,6 +173,11 @@ async function main() {
     for (const f of fails) console.log(' - ' + f);
     process.exit(1);
   }
+  /* db.js owns an internal pg.Pool (opened by db.init()) whose sockets keep
+     the event loop alive — exit explicitly so the runner's timeout never
+     turns a finished green suite into "unfinishable". */
+  try { await db.close(); } catch (_) { }
+  process.exit(0);
 }
 
 main().catch((e) => { console.error(NAME + ': FATAL —', e.message); process.exit(1); });
