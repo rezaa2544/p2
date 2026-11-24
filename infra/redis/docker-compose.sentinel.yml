@@ -53,8 +53,10 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD را در env بگذارید}
     volumes:
       - redis-master-data:/data
+    # publish هاست ۱۶۳۷۹ (نه ۶۳۷۹): تداخل با ردیسِ سایر استک‌ها روی همان پورت؛
+    # کلاینتِ هاست‌سمت با REDIS_SENTINEL_NAT_MAP به همین پورت می‌رسد.
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:16379:6379"
     healthcheck:
       test: ["CMD-SHELL", "REDISCLI_AUTH=\"$${REDIS_PASSWORD}\" redis-cli ping | grep -q PONG"]
       interval: 5s
@@ -76,6 +78,11 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     volumes:
       - redis-replica1-data:/data
+    # announce-ip hardening: هر گره باید از هاست دست‌رس‌پذیر باشد — پس از
+    # فیلاور، مسترِ تازه روی همین گره‌ها بالا می‌آید و بدون پورت منتشرشده
+    # کلاینتِ هاست‌سمت مرد (تکرار واقعی 2026-11-24).
+    ports:
+      - "127.0.0.1:16380:6379"
     depends_on:
       redis-master:
         condition: service_healthy
@@ -95,6 +102,8 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     volumes:
       - redis-replica2-data:/data
+    ports:
+      - "127.0.0.1:16381:6379"
     depends_on:
       redis-master:
         condition: service_healthy

@@ -2,7 +2,7 @@
 
 > Generated from `package-lock.json` by `node tools/supply-chain-audit.js --write`. Do not hand-edit.
 
-Lockfile SHA256: `c5d9ef48536a76092dc5c64baf8f074f96659c0111992666f50aafebd48e8613`  
+Lockfile SHA256: `24d7ab0c907157e186e49109c3c001f52c61a89adbf4ad25cc66d9b780e79565`  
 Inventory date: 2026-09-11  
 Packages inventoried: **234**
 
@@ -248,7 +248,7 @@ Packages inventoried: **234**
 | `word-wrap` | `1.2.5` | MIT | development |
 | `wrap-ansi` | `9.0.2` | MIT | development |
 | `wrap-ansi/node_modules/string-width` | `7.2.0` | MIT | development |
-| `ws` | `8.22.2` | MIT | runtime |
+| `ws` | `8.23.0` | MIT | runtime |
 | `xml-name-validator` | `5.0.0` | Apache-2.0 | development |
 | `xmlchars` | `2.2.0` | MIT | development |
 | `xtend` | `4.0.2` | MIT | runtime |

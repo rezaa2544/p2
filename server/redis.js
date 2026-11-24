@@ -17,6 +17,8 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
+const net = require('net');
+
 let Redis = null;
 try {
   Redis = require('ioredis');
@@ -88,6 +90,94 @@ function parseHostPorts(str) {
   return out.length ? out : null;
 }
 
+/**
+ * NAT map for sentinel-reported addresses (announce-ip hardening).
+ * A host-side client cannot reach the master's internal Docker address —
+ * reproduced 2026-11-24: after a real sentinel failover the master moved to a
+ * replica with no published host port and every host-side client died while
+ * sentinels kept reporting the unreachable 172.18.x.x address.
+ * REDIS_SENTINEL_NAT_MAP='172.18.0.2:6379=127.0.0.1:16379,...' maps the
+ * sentinel-reported endpoint to a host-reachable one. Any malformed pair
+ * rejects the whole map (fail-closed: the caller then uses the default
+ * sentinel path, which surfaces the real connection error instead of a
+ * silently wrong mapping).
+ * @param {string} str
+ * @returns {Object<string,{host:string,port:number}>|null}
+ */
+function parseNatMap(str) {
+  const out = {};
+  for (const part of String(str || '').split(',')) {
+    const t = part.trim();
+    if (!t) continue;
+    const eq = t.indexOf('=');
+    if (eq <= 0) return null;
+    const from = t.slice(0, eq).trim();
+    const to = t.slice(eq + 1).trim();
+    const fi = from.lastIndexOf(':');
+    const ti = to.lastIndexOf(':');
+    if (fi <= 0 || ti <= 0) return null;
+    const fh = from.slice(0, fi);
+    const fp = Number(from.slice(fi + 1));
+    const th = to.slice(0, ti);
+    const tp = Number(to.slice(ti + 1));
+    if (!fh || !th || !Number.isInteger(fp) || fp < 1 || fp > 65535 || !Number.isInteger(tp) || tp < 1 || tp > 65535) return null;
+    out[from] = { host: th, port: tp };
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+/**
+ * Ask the sentinels (one at a time, bounded 2s each) for the current master
+ * address of `name`. Returns {host, port} or null when no sentinel answers —
+ * callers must fail closed (never guess a master).
+ * Raw RESP over a plain socket: sentinel procs answer exactly two commands
+ * (optional AUTH + the single lookup); dragging the full ioredis client in
+ * (ready-check/INFO quirks, retry loops) buys nothing and can hang.
+ * @param {Array<{host:string,port:number}>} sentinels
+ * @param {string} name
+ * @param {string|null} password
+ * @returns {Promise<{host:string,port:number}|null>}
+ */
+function probeOneSentinel(sentinel, name, password) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (v) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { sock.destroy(); } catch (e) { /* intentional no-op */ }
+      resolve(v);
+    };
+    const sock = net.connect({ host: sentinel.host, port: sentinel.port });
+    const timer = setTimeout(() => finish(null), 2000);
+    let buf = '';
+    sock.on('connect', () => {
+      if (password) {
+        sock.write('*2\r\n$4\r\nAUTH\r\n$' + Buffer.byteLength(password) + '\r\n' + password + '\r\n');
+      }
+      sock.write('*3\r\n$8\r\nsentinel\r\n$' + Buffer.byteLength('get-master-addr-by-name') + '\r\nget-master-addr-by-name\r\n$' + Buffer.byteLength(name) + '\r\n' + name + '\r\n');
+    });
+    sock.on('data', (d) => {
+      buf += d.toString('utf8');
+      /* the positive reply: *2 + two bulk strings (host may be an IP or a
+         hostname — announce-hostnames is supported by the template) */
+      const m = buf.match(/\*2\r\n\$\d+\r\n([^\r\n]+)\r\n\$(\d+)\r\n([0-9]+)\r\n/);
+      if (m) { finish({ host: m[1], port: Number(m[3]) }); return; }
+      /* any error reply (-ERR/-NOAUTH/…), nil (*-1 / *0 / $-1) = no master */
+      if (/^-/.test(buf) || /\*-1\r\n/.test(buf) || /\*0\r\n/.test(buf) || /\$-1\r\n/.test(buf)) finish(null);
+    });
+    sock.on('error', () => finish(null));
+    sock.on('timeout', () => finish(null));
+  });
+}
+async function resolveMasterFromSentinels(sentinels, name, password) {
+  for (const s of (sentinels || [])) {
+    const addr = await probeOneSentinel(s, name, password);
+    if (addr && addr.host && Number.isInteger(addr.port) && addr.port > 0) return addr;
+  }
+  return null;
+}
+
 function buildRedisConfig(env) {
   env = env || process.env;
   const password = env.REDIS_PASSWORD || null;
@@ -150,11 +240,17 @@ function buildRedisConfig(env) {
   const sentinels = parseHostPorts(env.REDIS_SENTINELS);
   if (sentinels) {
     const name = (env.REDIS_SENTINEL_NAME || 'mymaster').trim();
+    const natMap = parseNatMap(env.REDIS_SENTINEL_NAT_MAP);
     return {
       mode: 'sentinel',
       sentinels,
       name,
       password,
+      /* announce-ip hardening: when set, init() resolves the master through the
+         sentinels itself, translates the reported address through this map and
+         connects standalone (mode sentinel-nat) — for host-side clients whose
+         network cannot reach Docker-internal addresses after a failover. */
+      natMap,
       options: Object.assign({}, base, password ? { password } : {}, tls ? { tls } : {}),
       sentinelOptions: {
         connectTimeout: 2000,
@@ -218,6 +314,70 @@ async function init() {
 
     if (cfg.mode === 'cluster') {
       client = new Redis.Cluster(cfg.nodes, cfg.clusterOptions);
+    } else if (cfg.mode === 'sentinel' && cfg.natMap) {
+      /* announce-ip hardening (sentinel-nat): a host-side client cannot reach
+         the Docker-internal address sentinels report after a failover —
+         reproduced 2026-11-24 (master moved to a port-less replica, every
+         host client died). Resolve the master ourselves, translate it through
+         cfg.natMap and connect standalone; a watchdog below re-resolves every
+         5s and reconnects when the (translated) master moves. */
+      const connectNat = async (isSub) => {
+        const resolved = await resolveMasterFromSentinels(cfg.sentinels, cfg.name, cfg.password);
+        if (!resolved) throw new Error('sentinel-nat: no sentinel answered for master "' + cfg.name + '"');
+        const mapped = cfg.natMap[resolved.host + ':' + resolved.port] || resolved;
+        return { resolved, mapped, c: new Redis('redis://' + mapped.host + ':' + mapped.port, cfg.options) };
+      };
+      let cur = await connectNat(false);
+      client = cur.c;
+      const sub = await connectNat(true);
+      subClient = sub.c;
+      /* failover watchdog: when the sentinel-answered master moves, the
+         standalone client above keeps retrying a dead address forever.
+         Re-resolve on an interval; on a changed (translated) address swap
+         both clients to the new master. unref'd — never holds the boot. */
+      const natWatch = setInterval(() => {
+        (async () => {
+          const next = await connectNat(false);
+          const addrOf = (x) => x.mapped.host + ':' + x.mapped.port;
+          if (addrOf(next) !== addrOf(cur)) {
+            console.warn('[Redis] sentinel-nat: master moved ' + addrOf(cur) + ' → ' + addrOf(next) + ' — reconnecting');
+            const oldC = client, oldS = subClient;
+            client = next.c;
+            try { oldC.disconnect(); } catch (e) { /* intentional no-op */ }
+            const ns = await connectNat(true);
+            subClient = ns.c;
+            try { oldS.disconnect(); } catch (e) { /* intentional no-op */ }
+            cur = next;
+          } else {
+            try { next.c.disconnect(); } catch (e) { /* intentional no-op */ }
+          }
+        })().catch((e) => { console.warn('[Redis] sentinel-nat watchdog: ' + e.message); });
+      }, 5000);
+      natWatch.unref();
+      client.on('error', (err) => {
+        if (isRedisActive) console.warn('[Redis] Connection error:', err.message);
+        isRedisActive = false;
+      });
+      client.on('connect', () => { isRedisActive = true; });
+      subClient.on('error', () => {});
+      await Promise.race([
+        client.connect(),
+        new Promise((_, reject) => setTimeout(
+          () => reject(new Error('Redis connect timeout during init')),
+          (cfg.options && cfg.options.connectTimeout ? cfg.options.connectTimeout : 3000) + 1000
+        ).unref())
+      ]);
+      await subClient.connect();
+      subClient.on('message', (channel, message) => {
+        const cbs = subscriptions.get(channel);
+        if (cbs) {
+          for (const cb of cbs) {
+            try { cb(message, channel); } catch (e) { /* intentional no-op */ }
+          }
+        }
+      });
+      isRedisActive = true;
+      return { ok: true, driver: 'redis', mode: 'sentinel-nat', message: 'Connected to Redis (sentinel-nat, master ' + cur.mapped.host + ':' + cur.mapped.port + ')' };
     } else if (cfg.mode === 'sentinel') {
       client = new Redis(Object.assign({}, cfg.options, {
         sentinels: cfg.sentinels,
@@ -980,5 +1140,8 @@ module.exports = {
   zRemByScoreMax,
   zCard,
   close,
-  __setClientForTests
+  __setClientForTests,
+  /* announce-ip hardening — test hooks */
+  parseNatMap,
+  resolveMasterFromSentinels
 };

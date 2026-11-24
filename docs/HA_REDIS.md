@@ -26,7 +26,8 @@ sentinel-1/2/3 :26379 (quorum=2, down-after=5000, failover-timeout=15000)
 
 1. `REDIS_CLUSTER` (اگر استفاده می‌کنید)
 2. **`REDIS_SENTINELS="host1:26379,host2:26379,host3:26379"` + `REDIS_SENTINEL_NAME=mymaster`** ← این فاز
-3. `REDIS_URL` standalone (dev)
+3. **`REDIS_SENTINELS` + `REDIS_SENTINEL_NAT_MAP`** — حالت `sentinel-nat` (سخت‌سازیِ announce-ip برای کلاینتِ هاست‌سمت)
+4. `REDIS_URL` standalone (dev)
 
 رمز فقط از `REDIS_PASSWORD` یا داخل URL؛ retry/reconnectِ sentinel-aware با
 `retryStrategy` **نامحدود و backoffِ سقف‌دار** پیاده شده است (قراردادِ
@@ -41,6 +42,29 @@ backoffِ سقف‌دارِ ≤۱.۵s (sentinel) / ≤۲s (cluster)، هر قط�
 blackhole واقعی + negative proof با `C01_MUTATE=VULN`) و `tests/api/cache.test.js`
 و مانورِ §۴ پایین ثبت می‌شود.
 
+### ۲.۱) حالت `sentinel-nat` — سخت‌سازیِ announce-ip (کلاینتِ هاست‌سمت)
+
+**زمینهٔ واقعی (2026-11-24):** پس از یک فیلاورِ واقعی، مستر به یکی از
+replicaها نقل کرد که پورت منتشرشدهٔ هاست نداشت؛ سنتینل‌ها همچنان آدرسِ
+داخلیِ `172.18.x.x:6379` را گزارش می‌کردند و کلاینتِ ioredisِ سنتینلی
+(و هر کلاینتِ سمتِ هاست) به آدرسِ دست‌نرس می‌افتد. سخت‌سازی:
+
+1. **compose:** هر سه گره پورت هاست دارند (`16379/16380/16381` —
+   replica-1/2 از قبل بدون پورت بودند؛ این تعمیر اضافه شد).
+2. **`REDIS_SENTINEL_NAT_MAP='172.18.0.2:6379=127.0.0.1:16379,...'`:**
+   سرور خودش مستر را از سنتینل‌ها می‌پرسد (پروبِ RESP خام، ۲ث برای هر
+   سنتینل)، آدرسِ گزارش‌شده را از نقشهٔ NAT ترجمه و **standalone** وصل
+   می‌شود (`mode='sentinel-nat'`)؛ نگهبانِ ۵ثانیه‌ای جابه‌جاییِ مستر
+   (فیلاور) را کشف و هر دو کلاینت (اصلی + Pub/Sub) را به مسترِ نو وصل
+   می‌کند — بدونِ ری‌بوت.
+3. **fail-closed:** نقشهٔ خراب = ردِ کل نقشه (مسیر پیش‌فرضِ sentinel حفظ
+   می‌شود و خطای اتصال واقعی دیده می‌شود)؛ هیچ سنتینلی پاسخ ندهد =
+   `sentinel-nat: no sentinel answered` در بوت — هیچ حدسِ مستر ممنوع.
+4. بدونِ این متغیر کد دقیقاً مسیرِ قبلی را می‌رود (هیچ تغییر رفتاری).
+
+تست: `tests/sentinel-nat.test.js` — ۱۵/۱۵ (پارسِ نقشه، سیم‌کشی،
+sentinel جعلیِ RESP واقعی-TCP، fail-closed، ترجمهٔ end-to-end).
+
 ## ۳) شروعِ سریع
 
 ```bash
@@ -52,7 +76,7 @@ REDIS_SENTINELS=127.0.0.1:26379,127.0.0.1:26380,127.0.0.1:26381 \
 REDIS_SENTINEL_NAME=mymaster REDIS_PASSWORD=... server/index.js
 ```
 
-## ۴) Failover-Drill (مانورِ فصلی + سناریوی ۲/۴)
+## ۴) Failover-Drill (مانورِ فصلی + سنجهٔ ۲/۴)
 
 ```bash
 # ۱) خودکار (سکوتِ ۵ ثانیه‌ایِ master ⇒ ارتقایِ sentinel):

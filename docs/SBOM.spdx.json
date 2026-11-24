@@ -3,7 +3,7 @@
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
   "name": "@rezaa2544/payesh-sbom",
-  "documentNamespace": "https://github.com/rezaa2544/p2/sbom/c5d9ef48536a76092dc5c64b",
+  "documentNamespace": "https://github.com/rezaa2544/p2/sbom/24d7ab0c907157e186e49109",
   "creationInfo": {
     "created": "2026-09-11T00:00:00Z",
     "creators": [
@@ -5176,7 +5176,7 @@
     {
       "SPDXID": "SPDXRef-Package-225",
       "name": "ws",
-      "versionInfo": "8.22.2",
+      "versionInfo": "8.23.0",
       "downloadLocation": "https://registry.npmjs.org/ws",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT",
@@ -5186,13 +5186,13 @@
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:npm/ws@8.22.2"
+          "referenceLocator": "pkg:npm/ws@8.23.0"
         }
       ],
       "checksums": [
         {
           "algorithm": "SHA512",
-          "checksumValue": "feb119d9e8e8c27d8de60c554c752ef5b5550bbb6dbb4fd38337f985b4ce8b147716cee66db5e09f60db75b70a8093a6a5032dac85168afb58b95327a7f5bfc8"
+          "checksumValue": "c029265fc40c3ab2a380ef075b65b20db4d219eaa4a1cc600f34bd891efdac401ec6dcbaff6ab38a5c77020f13a9ff72928a778ab2ca95ed0cb559f9aa3567a1"
         }
       ]
     },
@@ -5496,7 +5496,7 @@
       "annotationDate": "2026-09-11T00:00:00Z",
       "annotationType": "OTHER",
       "annotator": "Tool: payesh-supply-chain-audit/1.0",
-      "comment": "Lockfile SHA256: c5d9ef48536a76092dc5c64baf8f074f96659c0111992666f50aafebd48e8613"
+      "comment": "Lockfile SHA256: 24d7ab0c907157e186e49109c3c001f52c61a89adbf4ad25cc66d9b780e79565"
     }
   ]
 }
