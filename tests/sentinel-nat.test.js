@@ -111,7 +111,10 @@ function fakeSentinel(masterHost, masterPort, opts) {
   if (fail) {
     console.log('شکست‌ها:');
     for (const f of fails) console.log(' - ' + f);
-    process.exit(1);
+    /* خروج طبیعی با کد شکست — فراخوانیِ دائمِ exit ممنوع (کلاس G7) و
+       event loop را هم نمی‌بندد؛ سرورهای فیک این بالا بسته شده‌اند. */
+    process.exitCode = 1;
+    return;
   }
-  process.exit(0);
+  process.exitCode = 0;
 })();
