@@ -1,21 +1,21 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-23T23:21:36.272Z",
+  "generated_at": "2026-11-24T04:43:22.996Z",
   "generated_by": "tools/seed-relational-small.js (PG_SEED_MANIFEST=1)",
   "scale_label": "demo-scale — NOT a national dataset",
   "benchmark_claim": "NONE. No workload was run; no throughput, latency or capacity number is asserted here or anywhere from this file. Capacity Engineering belongs to chat 4.",
   "database": {
     "version": "PostgreSQL 16.15 (Debian 16.15-1.pgdg12+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit",
-    "server_addr": "172.19.0.4",
+    "server_addr": "172.19.0.2",
     "server_port": 5432,
     "database": "payesh",
     "connection_env": "PG_LIVE_PG (or DATABASE_URL)",
-    "url_without_credentials": "postgres://<user>:<password>@172.19.0.4:5432/payesh"
+    "url_without_credentials": "postgres://<user>:<password>@172.19.0.2:5432/payesh"
   },
   "migrations": {
     "total": 28,
-    "applied": 26,
-    "already_exists": 2,
+    "applied": 28,
+    "already_exists": 0,
     "failed": 0,
     "new_migrations_added": 0,
     "not_run": []
@@ -154,7 +154,7 @@
     },
     "manifest": {
       "path": "tools/relational-seed-manifest.json",
-      "sha256": "c2b5af6ee60dff21ee7d32256190b7cfa0a2d2fdd2c0d56374f49956525b3de2"
+      "sha256": "cf67741a752a2bd3aed6f3e105d4b8a2e86d2c05b59b85697e9c4a915d0fcfc8"
     }
   },
   "verification": {
