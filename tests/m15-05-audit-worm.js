@@ -7,6 +7,10 @@
    T4 parse: خطِ سالم/corrupt/بی-seq
    T5 زنجیرهٔ نمونه: hash(i)=f(hash(i-1)) — جای‌گذاریِ ردیفِ میانی کشف می‌شود
    T6 اثباتِ منفی: حذفِ زنجیره از tool ⇒ این تست قرمز
+   T7 fail-closed: هر دو حالتِ tool بدونِ PG زنده = PG_REQUIRED (فالس‌گرینِ
+      verifyِ «rows=0» ممنوع — db.init + isPostgres پیش از هر query)
+   T8 fp (migration 029): اثرِ انگشتِ payload = پایدار و حساس به تغییر
+   T9 import idempotent: fp-dup → skip؛ seq از دنبالهٔ جدول
    Run: node tests/m15-05-audit-worm.js */
 
 const crypto = require('crypto');
@@ -79,6 +83,30 @@ function chainHash(prevHash, payloadObj) {
   /* T6 — اثباتِ منفی: tool واقعی باید زنجیره را بنویسد */
   const tool = fs.readFileSync(path.join(__dirname, '..', 'tools', 'audit-worm-import.js'), 'utf8');
   chk('T6 tool = زنجیره + verify + sqlb', tool.includes("INSERT INTO audit_events_worm") && tool.includes('--verify') && tool.includes('$4::jsonb'));
+
+  /* T7 — fail-closed مشترک: verifyِ بدونِ PG نباید «rows=0» سبز چاپ کند */
+  chk('T7a tool دیتابیس را init می‌کند', tool.includes('await db.init()'));
+  chk('T7b گیتِ isPostgres پیش از هر query', /if \(!db\.isPostgres\(\)\)/.test(tool) && tool.indexOf('!db.isPostgres()') < tool.indexOf('SELECT seq, payload, prev_hash, hash'));
+  chk('T7c PG_REQUIRED با exit 2 در هر دو حالت', (tool.match(/PG_REQUIRED/g) || []).length >= 2 && (tool.match(/process\.exit\(2\)/g) || []).length >= 2);
+  chk('T7d verify بدونِ ردیفِ قابل‌اعتماد = خطا (نه سبز)', tool.includes('PG_VERIFY_FAILED'));
+
+  /* T8 — fp (migration 029): اثرِ انگشتِ payload */
+  const fp = (o) => crypto.createHash('sha256').update(canonical(o), 'utf8').digest('hex').slice(0, 32);
+  chk('T8a migration 029 = ستونِ fp + ایندکسِ یکتا', (() => {
+    const m = fs.readFileSync(path.join(__dirname, '..', 'migrations', '029_audit_worm_fp.sql'), 'utf8');
+    return m.includes('ADD COLUMN IF NOT EXISTS fp TEXT') && m.includes('CREATE UNIQUE INDEX IF NOT EXISTS audit_events_worm_fp_key');
+  })());
+  chk('T8b downِ 029 = حذفِ کامل', (() => {
+    const d = fs.readFileSync(path.join(__dirname, '..', 'migrations', '029_audit_worm_fp.down.sql'), 'utf8');
+    return d.includes('DROP INDEX IF EXISTS audit_events_worm_fp_key') && d.includes('DROP COLUMN IF EXISTS fp');
+  })());
+  chk('T8c fp = پایدار و مستقل از ترتیبِ کلید', fp({ b: 2, a: 1 }) === fp({ a: 1, b: 2 }));
+  chk('T8d fp = حساس به تغییرِ payload', fp({ a: 1 }) !== fp({ a: 2 }));
+
+  /* T9 — import idempotent با fp */
+  chk('T9a tool fp را محاسبه و dedup می‌کند', tool.includes('fingerprint(p.payload)') && tool.includes('seen.has(fp)'));
+  chk('T9b seq از دنبالهٔ جدول برای خطِ بی-seq', tool.includes('else seq = lastSeq + 1'));
+  chk('T9c insert ستونِ fp را می‌نویسد', tool.includes('fp, prev_hash, hash'));
 
   console.log('────────────────────────────────────────────');
   console.log('m15-05-audit-worm: ' + ok + ' pass / ' + fail + ' fail');

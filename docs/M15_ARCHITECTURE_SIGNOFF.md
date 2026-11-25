@@ -78,8 +78,13 @@ readiness probe؛ اثباتِ رفتاری: `tests/multi-instance.js` — **س�
 | تصمیم | انتخاب | نام/تاریخ |
 |---|---|---|
 | (الف) احراز هویت (تأییدِ مجددِ JWT-cookie+ابطال) | ☐ | — |
-| (ب) جداسازیِ multi-tenant (A/B/C) | ☐ | — |
+| (ب) جداسازیِ multi-tenant (A/B/C) | ☑ **گزینهٔ B — RLS** | مالک (پنل چت Control Plane)، 2026-11-25 |
 | (ج) مقیاس‌پذیریِ افقی (تأییدِ مجددِ multi-instance) | ☐ | — |
 
-> پس از امضا، همین برگه در Notion (ردیف ۴) لینک و وضعیتِ ردیف‌های ۴ و ۲۰
-> به‌روزرسانی می‌شود. مسیرِ مرجعِ این برگه: `docs/M15_ARCHITECTURE_SIGNOFF.md`.
+> **امضای (ب) ثبت شد** — 2026-11-25، مالک در چت به سؤال صریحِ «کدام گزینهٔ معماری
+> A/B/C؟» پاسخ «گزینهٔ B — RLS (پیشنهادی)» را انتخاب کرد. اجرای M15-03 در همان
+> راند انجام شد: migration `030_rls_tenant_isolation.sql` (۸۰ جدول، ENABLE+FORCE
+> + `tenant_isolation` با fail-closed) + سوئیت زندهٔ
+> `tests/m15-03-rls-tenant-isolation.js` **۱۳/۱۳** روی PostgreSQL 16.15 (docker
+> `payesh-pg-ha-pg-primary-1`). Notion ردیف ۴ و ۲۰ به‌روز شد.
+> مسیرِ مرجعِ این برگه: `docs/M15_ARCHITECTURE_SIGNOFF.md`.
