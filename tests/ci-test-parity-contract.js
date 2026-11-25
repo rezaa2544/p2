@@ -118,7 +118,11 @@ const DECLARED_SKIP_TOLERANT_SUITES = [
   'tests/m15-03-aggregate-pg.js',
   /* NOT-RUN بدونِ DATABASE_URL (self-skip صادقانه با NOTICE — هرگز PASS
      شمرده نمی‌شود)؛ با PG زنده هر ۱۳ چکِ RLS اجرا و binding است. */
-  'tests/m15-03-rls-tenant-isolation.js'
+  'tests/m15-03-rls-tenant-isolation.js',
+  /* NOT-RUN بدونِ env کاملِ PAYESH_RABBITMQ_* (self-skip صادقانه با
+     NOTICE — هرگز PASS شمرده نمی‌شود)؛ با استکِ زنده (docker compose
+     infra/rabbitmq/...) هر ۱۲ چکِ فقط-AMQPS اجرا و binding است. */
+  'tests/m15-07-rabbitmq-tls.js'
 ];
 
 function readWorkflows() { if (!fs.existsSync(WF)) return []; return fs.readdirSync(WF).filter(f => f.endsWith('.yml') || f.endsWith('.yaml')).map(f => fs.readFileSync(path.join(WF,f),'utf8')); }

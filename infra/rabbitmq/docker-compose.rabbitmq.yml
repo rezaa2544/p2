@@ -1,0 +1,43 @@
+# ═══════════════════════════════════════════════════════════════════════
+# docker-compose.rabbitmq.yml — M15-07 (ردیف ۲۶): Message Queue امن
+# ───────────────────────────────────────────────────────────────────────
+#   • فقط-AMQPS: هیچ listenerِ plain (5672) وجود ندارد — `listeners.tcp = none`
+#     ⇒ «تستِ اتصالِ بدونِ TLS = رد» در سطحِ سرور (نه فقط سطحِ publish).
+#   • TLS 1.2/1.3 با verify_peer؛ گواهی سرور از PAYESH_RABBITMQ_CERTS_DIR
+#     (ساخت با tools/rabbitmq-gen-certs.sh — *.pem/*.crt/*.key در .gitignore).
+#   • auth: کاربرِ bootstrap از env (بدون guest — ایمیجِ رسمی وقتی
+#     RABBITMQ_DEFAULT_USER ست باشد guest را نمی‌سازد)؛ vhost و کاربرِ اپ
+#     با rabbitmqctl در drill ایجاد می‌شوند؛ رمزها فقط از env (۰۶۰۰).
+#   • پورت‌ها فقط 127.0.0.1: 25671 (amqps) — هیچ پورتِ دیگری publish نیست.
+#   • معیارِ پذیرش: docs/M15_GOVERNANCE_ACCEPTANCE.md §۲ (M15-07 Queue).
+# اجرا:
+#   bash tools/rabbitmq-gen-certs.sh infra/rabbitmq/certs
+#   PAYESH_RABBITMQ_CERTS_DIR=$PWD/infra/rabbitmq/certs \
+#   PAYESH_RABBITMQ_ADMIN_PASS='<قوی>' \
+#     docker compose -f infra/rabbitmq/docker-compose.rabbitmq.yml up -d
+# ═══════════════════════════════════════════════════════════════════════
+name: payesh-rabbitmq
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13.7-alpine
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${PAYESH_RABBITMQ_ADMIN_USER:?PAYESH_RABBITMQ_ADMIN_USER را در env بگذارید}
+      RABBITMQ_DEFAULT_PASS: ${PAYESH_RABBITMQ_ADMIN_PASS:?PAYESH_RABBITMQ_ADMIN_PASS را در env بگذارید}
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ${PAYESH_RABBITMQ_CERTS_DIR:?PAYESH_RABBITMQ_CERTS_DIR را در env بگذارید}:/etc/rabbitmq/tls:ro
+      - rabbitmq-data:/var/lib/rabbitmq
+    ports:
+      - "127.0.0.1:25671:5671"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  rabbitmq-data:

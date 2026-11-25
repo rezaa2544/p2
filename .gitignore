@@ -84,3 +84,6 @@ docs-refs-probe.json
 # Fine-tuning artifacts: base model weights are re-downloadable, not committed
 tools/ft/base-model/
 tools/ft/bench-*.jsonl
+
+# M15-07 — گواهی‌های RabbitMQ (تولیدی با tools/rabbitmq-gen-certs.sh — هرگز commit نشود)
+infra/rabbitmq/certs/
