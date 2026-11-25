@@ -115,7 +115,10 @@ const DECLARED_SKIP_TOLERANT_SUITES = [
   'tests/wave1-reads.js',
   'tests/wave3-query2.js',
   /* NOT-RUN without PostgreSQL; honest only when M1503_REQUIRE_PG=1. */
-  'tests/m15-03-aggregate-pg.js'
+  'tests/m15-03-aggregate-pg.js',
+  /* NOT-RUN بدونِ DATABASE_URL (self-skip صادقانه با NOTICE — هرگز PASS
+     شمرده نمی‌شود)؛ با PG زنده هر ۱۳ چکِ RLS اجرا و binding است. */
+  'tests/m15-03-rls-tenant-isolation.js'
 ];
 
 function readWorkflows() { if (!fs.existsSync(WF)) return []; return fs.readdirSync(WF).filter(f => f.endsWith('.yml') || f.endsWith('.yaml')).map(f => fs.readFileSync(path.join(WF,f),'utf8')); }

@@ -176,19 +176,20 @@ runner تنها وقتی سبز می‌دهد که **همهٔ** شرایط زی�
 / نیازمند PostgreSQL واقعی، دو مورد assertion واقعی) و اتصال بی‌قید آن‌ها CI را قرمز
 می‌کند. گزارش کامل با فرمان‌ها در `docs/TEST_COVERAGE_M15_01_CHAT2_REPORT.md`.
 
-## ۸. رجیستری سوئیت‌های «skip-محور» — `DECLARED_SKIP_TOLERANT_SUITES` (۱۱ مورد)
+## ۸. رجیستری سوئیت‌های «skip-محور» — `DECLARED_SKIP_TOLERANT_SUITES` (۱۲ مورد)
 
 سوئیتی که شمارندهٔ `skip`/`NOT-RUN` را بالا می‌برد و **باز هم exit 0** می‌دهد، در
 حالی «سبز» گزارش می‌شود که بخشی از آن اجرا نشده است — همان کلاسی که لایهٔ API با
-قاعدهٔ E5 رد می‌کند. این ۱۱ سوئیت سطح‌اول پیش از قرارداد نوشته شده‌اند و به
-زیرساختی وابسته‌اند که این مخزن نمی‌تواند همه‌جا الزام کند (باینری‌های Redis Sentinel،
-PostgreSQL زنده، store دانه‌شده).
+قاعدهٔ E5 رد می‌کند. این ۱۲ سوئیت سطح‌اول به زیرساختی وابسته‌اند که این مخزن
+نمی‌تواند همه‌جا الزام کند (باینری‌های Redis Sentinel، PostgreSQL زنده، store
+دانه‌شده).
 
 | سوئیت | شرطِ skip |
 |---|---|
 | `tests/chat9-behavior-regression.js` | نبود/خرابی `server/data/payesh.json` یا خوانده‌نشدن `tests/donations2.js` |
 | `tests/redis-sentinel-failover.js` | نبود `ioredis` یا باینری‌های Redis |
 | `tests/m15-03-aggregate-pg.js` | نبود PostgreSQL (exit 0 مگر `M1503_REQUIRE_PG=1`) |
+| `tests/m15-03-rls-tenant-isolation.js` | نبود `DATABASE_URL` (self-skip صادقانه با NOTICE؛ با PG زنده ۱۳ چک RLS binding اجرا می‌شود) |
 | `tests/bell2.js`، `reports-export.js`، `reports-pdf-e2e.js`، `seed-completeness.js`، `server16.js`، `tracing-integration.js`، `wave1-reads.js`، `wave3-query2.js` | مسیرهای skip داخلی سوئیت |
 
 `P20` تضمین می‌کند سوئیت تازه‌ای با الگوی «شمارندهٔ skip + exit 0» بدون اعلانِ صریح
