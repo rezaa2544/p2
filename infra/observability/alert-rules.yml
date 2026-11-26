@@ -5,6 +5,13 @@
 groups:
   - name: payesh-critical
     rules:
+      - alert: ApiDown
+        expr: up{job="payesh-api"} == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "dead-man: نمونهٔ payesh-api از دید Prometheus از دسترس خارج است"
+          description: "up{job=payesh-api}==0 به مدت ۱د (M15-14 dead-man) — مانورِ ۲۰۲۶-۱۱-۲۶ ثابت کرد بدونِ این قانون مرگِ اپ آلارمی ندارد؛ DR_RUNBOOK §۰"
       - alert: HighErrorRate
         expr: |
           (sum(rate(payesh_http_requests_total{code=~"5.."}[5m]))

@@ -32,7 +32,7 @@ chk('all active alerts have for + severity', [...rules.matchAll(/- alert:[\s\S]*
 const secondaryPath = path.join(ROOT, 'monitoring/alert-rules.yml');
 const secondary = fs.existsSync(secondaryPath) ? fs.readFileSync(secondaryPath, 'utf8') : null;
 chk('secondary monitoring catalogue is absent or retired', secondary === null || !/^\s*-\s*alert:/m.test(secondary));
-chk('canonical P0 alert count is 11', (rules.match(/- alert:/g) || []).length === 11);
+chk('canonical P0 alert count is 12 (11 + dead-man ApiDown — M15-14 drill 2026-11-26)', (rules.match(/- alert:/g) || []).length === 12);
 chk('قانون SyncQueueDepth با آستانهٔ درست', /alert:\s*SyncQueueDepth[\s\S]*?expr:\s*payesh_sync_queue_depth\s*>\s*1000/.test(rules));
 chk('قانون AnomalyDetected با آستانهٔ درست', /alert:\s*AnomalyDetected[\s\S]*?expr:\s*sum\(increase\(payesh_runtime_anomalies_total\[5m\]\)\)\s*>\s*0/.test(rules));
 chk('قانون AttackPatternSignature با آستانهٔ درست', /alert:\s*AttackPatternSignature[\s\S]*?expr:\s*sum by \(pattern, severity\) \(increase\(payesh_attack_patterns_detected_total\[5m\]\)\)\s*>\s*0/.test(rules));

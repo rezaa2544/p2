@@ -443,7 +443,7 @@
    "merge_state": "NOT MERGED",
    "evidence_sha": null,
    "evidence_valid": "UNKNOWN",
-   "evidence_note": "CONFIG PRESENT (infra/observability, infra/tracing, 11 alerts); DEPLOYMENT UNPROVEN; dead-man NOT FOUND.",
+   "evidence_note": "E3-LOCAL DRILL PASSED (2026-11-26, single-host): stack deployed live (prometheus v2.54.1 + alertmanager v0.27 + grafana/loki/promtail/otelcol/jaeger); alarms fired with real causes and delivered to an external local webhook receiver (22 receipts incl. firing+resolved): RedisDown (real docker-stop of master), HighErrorRate (real /api/health 503 during that outage), HighLatency (real 450ms route), SyncQueueDepth (1101 real pending outbox rows), plus SuspiciousSession/DiskSpaceLow/MemoryHigh. Acceptance #1 kill-monitoring -> app health 200 x4 over 2min (SLO unchanged). dead-man: GAP proven by drill (app killed -> up=0 -> NO alert fired), then CLOSED with new canonical ApiDown rule (12 alerts now; observability-config 31/31, semantic guard PASS, wave14 PASS). Remaining: production deployment on separate host + real on-call receiver + E4-07 (owner; capacity/server).",
    "executor_report": null,
    "hermes_verification": null,
    "supporting_work": [],
