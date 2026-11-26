@@ -1,0 +1,7 @@
+# e4sim-override: keep the host-mapped port of the payesh pg-ha primary at
+# 15432 (local convention used by all tests/tools) — 5432 on this host belongs
+# to the native Windows PostgreSQL service. Local untracked SIM helper.
+services:
+  pg-primary:
+    ports: !override
+      - "127.0.0.1:15432:5432"

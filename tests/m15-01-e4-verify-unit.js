@@ -24,13 +24,15 @@ function check(label, cond, extra) {
   }
 }
 
-const LEDGER_26_LINES = Array.from({ length: 26 }, (_, idx) => {
+/* 2026-11-26: canonical chain re-pinned at 30 migrations (tool constant) — the
+   unit mock follows the count to stay self-consistent with the real probe. */
+const LEDGER_30_LINES = Array.from({ length: 30 }, (_, idx) => {
   const ver = String(idx + 1).padStart(3, '0');
   return `${ver}|mig_${ver}|chk_${ver}`;
 });
 const TEST_CATALOG_SHA256 = crypto
   .createHash('sha256')
-  .update(`${LEDGER_26_LINES.join('\n')}\n`, 'utf8')
+  .update(`${LEDGER_30_LINES.join('\n')}\n`, 'utf8')
   .digest('hex');
 
 const HOST_MAP = {
@@ -86,7 +88,7 @@ function makeValidMultiNodeMocks() {
       }
       if (dsn.includes('pg-pitr.staging.internal')) {
         if (sql.includes('schema_migrations')) {
-          return { rows: LEDGER_26_LINES.map((line) => ({ line })) };
+          return { rows: LEDGER_30_LINES.map((line) => ({ line })) };
         }
         return { rows: [{ cnt: 0 }] };
       }
@@ -251,6 +253,22 @@ async function runTests() {
   check('rejects shared-host observability plane fail-closed (E4-06)',
     sharedObsReport.overall_status === 'FAIL'
       && sharedObsReport.criteria.find((c) => c.id === 'E4-06').reason_code === 'shared_failure_domain_observability_rejected');
+
+  const noAuditTable = makeValidMultiNodeMocks();
+  const baseQueryFn = noAuditTable.pgQueryFn;
+  noAuditTable.pgQueryFn = async (dsn, sql, ...rest) => {
+    if (dsn.includes('pg-pitr.staging.internal') && sql.includes('audit_log')) {
+      const e = new Error('relation "audit_log" does not exist');
+      e.code = '42P01';
+      throw e;
+    }
+    return baseQueryFn(dsn, sql, ...rest);
+  };
+  const noAuditTableReport = await runE4Verification(noAuditTable);
+  check('reports audit_durability_table_absent explicitly when the WORM audit table is unprovisioned (E4-03 never silently skips)',
+    noAuditTableReport.overall_status === 'FAIL'
+      && noAuditTableReport.exit_code === 1
+      && noAuditTableReport.criteria.find((c) => c.id === 'E4-03').reason_code === 'audit_durability_table_absent');
 
   const syntheticOncall = makeValidMultiNodeMocks();
   const origFsRead = syntheticOncall.fsReadFn;

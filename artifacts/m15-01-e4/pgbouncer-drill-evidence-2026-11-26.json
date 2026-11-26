@@ -1,0 +1,10 @@
+{
+  "drill": "E4-04 SIM — PgBouncer reroute after pg-primary death",
+  "date_utc": "2026-11-26",
+  "method": "tools/failover-postgres.sh --live (compose mode) driven from host Git Bash; fence = docker stop payesh-pg-ha-pg-primary-1",
+  "pgbouncer_reroute_tested": true,
+  "promotion_to_verified_pgbouncer_write_ms": 25430,
+  "ceiling_ms": 30000,
+  "verified_write": "CREATE TABLE drill_reroute_marker; INSERT; SELECT count(*) = 1 via pgbouncer:6432 after RELOAD+RECONNECT, SHOW DATABASES host=pg-standby",
+  "slo": "promotion_to_verified_pgbouncer_write_ms <= 30000 (E4-04)"
+}

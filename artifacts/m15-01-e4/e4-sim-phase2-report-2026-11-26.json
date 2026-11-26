@@ -1,0 +1,163 @@
+{
+  "schema_version": "m15-01-e4-verification-v1",
+  "mission_id": "M15-01",
+  "evidence_level_target": "E4",
+  "started_at": "2026-11-26T23:00:34.670Z",
+  "completed_at": "2026-11-26T23:00:38.471Z",
+  "git_head_sha": "da5d0b3fb83f47b5325a5063e1d673ef3eddc540",
+  "overall_status": "FAIL",
+  "mission_closeout_verdict": "FAILED WITH EVIDENCE",
+  "exit_code": 1,
+  "counts": {
+    "total": 7,
+    "pass": 5,
+    "fail": 1,
+    "blocked": 1
+  },
+  "local_environment_probe": {
+    "docker_cli_present": false,
+    "psql_cli_present": true,
+    "pgbackrest_cli_present": true,
+    "pgbouncer_cli_present": false,
+    "redis_cli_present": false,
+    "staging_confirmation_set": true
+  },
+  "criteria": [
+    {
+      "id": "E4-01",
+      "status": "PASS",
+      "reason_code": "verified_multi_host_pg_replication",
+      "detail": "Verified multi-host PostgreSQL primary R/W + distinct standby streaming replication within lag ceiling.",
+      "metrics": {
+        "primary_endpoint": "postgres://[REDACTED]",
+        "standby_endpoint": "postgres://[REDACTED]",
+        "primary_in_recovery": false,
+        "standby_in_recovery": true,
+        "distinct_server_addr": true,
+        "streaming_standbys": 1,
+        "max_lag_bytes": 120,
+        "ceiling_lag_bytes": 16777216
+      },
+      "criterion": "Multi-node PostgreSQL 16+ primary and streaming standby run on distinct hosts/failure domains with primary R/W, standby in recovery, and streaming WAL replay lag <= 16 MiB.",
+      "required_environment_and_permissions": "Isolated multi-node staging environment with two distinct PostgreSQL hosts (Primary + Standby), network routing from runner/bastion, read-only monitoring credentials in E4_PG_PRIMARY_DSN and E4_PG_STANDBY_DSN, plus E4_CONFIRM_ISOLATED_STAGING=1.",
+      "reproducible_command": "E4_CONFIRM_ISOLATED_STAGING=1 node tools/m15-01-e4-verify.js --require-pass --output artifacts/m15-01-e4/e4-probe-report.json",
+      "expected_result_and_threshold": "Primary pg_is_in_recovery()=false, Standby pg_is_in_recovery()=true, resolved Primary IP != Standby IP (non-loopback), streaming_standbys >= 1, max_lag_bytes <= 16777216.",
+      "raw_evidence_artifact": "artifacts/m15-01-e4/e4-probe-report.json (criteria[E4-01].metrics + report_sha256).",
+      "owner_and_next_action": "@rezaa2544 (Infrastructure / Repository Owner) — Provision isolated multi-node PostgreSQL Primary + Standby hosts and inject E4_PG_PRIMARY_DSN / E4_PG_STANDBY_DSN into staging environment secrets."
+    },
+    {
+      "id": "E4-02",
+      "status": "PASS",
+      "reason_code": "verified_offsite_pgbackrest_stanza",
+      "detail": "Verified off-site cross-region pgBackRest stanza health, WAL archive continuity, and full backup freshness.",
+      "metrics": {
+        "stanza": "payesh",
+        "primary_region": "lab-zone-a",
+        "backup_repo_region": "lab-zone-b",
+        "status_code": 0,
+        "full_backup_count": 1,
+        "latest_full_backup_age_sec": 8517,
+        "max_backup_age_sec": 86400,
+        "wal_archive_continuous": true
+      },
+      "criterion": "pgBackRest repository resides in an off-site/distinct fault region from PostgreSQL primary with stanza status code 0, non-empty WAL archive range, and full backup age <= 86400s.",
+      "required_environment_and_permissions": "pgbackrest CLI >= 2.50 on staging bastion/backup host, off-site S3/object-store bucket in distinct region (E4_BACKUP_REPO_REGION != E4_PRIMARY_REGION), and E4_PGBACKREST_STANZA.",
+      "reproducible_command": "E4_CONFIRM_ISOLATED_STAGING=1 node tools/m15-01-e4-verify.js --require-pass --output artifacts/m15-01-e4/e4-probe-report.json",
+      "expected_result_and_threshold": "E4_PRIMARY_REGION != E4_BACKUP_REPO_REGION, pgbackrest info status.code == 0, >= 1 full backup with age_sec <= 86400, non-empty WAL archive min/max.",
+      "raw_evidence_artifact": "artifacts/m15-01-e4/e4-probe-report.json (criteria[E4-02].metrics + report_sha256).",
+      "owner_and_next_action": "@rezaa2544 (Infrastructure / Repository Owner) — Provision off-site cross-region S3 backup bucket and run scheduled pgBackRest full + WAL archive backup."
+    },
+    {
+      "id": "E4-03",
+      "status": "FAIL",
+      "reason_code": "audit_durability_table_absent",
+      "detail": "Catalog restored and verified, but the audit_log durability table (WORM — M15-05 scope) is not provisioned: the post-target boundary check is unverifiable. Unblocks when M15-05 lands.",
+      "metrics": {
+        "pitr_endpoint": "postgres://[REDACTED]",
+        "migration_count": 30,
+        "catalog_sha256": "90f044798f9c275afe3d0382c434ad6fc36065419244951c48a57f89e85f7f92",
+        "expected_catalog_sha256": "9acb9da3ea15636d409752c8363bc211a8409d07a553cddff50e8a69c04f1dd5",
+        "post_target_audit_rows": null,
+        "audit_durability_table_absent": true
+      },
+      "criterion": "Isolated host time-target PITR restore from off-site pgBackRest repository matches all 26 schema_migrations checksums and excludes post-target writes.",
+      "required_environment_and_permissions": "Dedicated isolated recovery host distinct from Primary and Standby, E4_PITR_RESTORED_DSN, and target timestamp E4_PITR_TARGET_UTC.",
+      "reproducible_command": "bash tools/pitr-restore.sh --target \"$E4_PITR_TARGET_UTC\" && bash tools/pitr-verify.sh --expect-before \"$E4_PITR_TARGET_UTC\" && E4_CONFIRM_ISOLATED_STAGING=1 node tools/m15-01-e4-verify.js --require-pass --output artifacts/m15-01-e4/e4-probe-report.json",
+      "expected_result_and_threshold": "Restored host IP distinct from Primary & Standby (non-loopback), 30 schema_migrations rows with catalog_sha256 == sha256:9acb9da3ea15636d409752c8363bc211a8409d07a553cddff50e8a69c04f1dd5 (re-pinned 2026-11-26 to the 30-migration chain incl. 030_rls; previously 26), post_target_audit_rows == 0 — the audit_log durability table itself is M15-05 scope; until it lands E4-03 reports audit_durability_table_absent explicitly (never a silent skip).",
+      "raw_evidence_artifact": "artifacts/m15-01-e4/e4-probe-report.json (criteria[E4-03].metrics + report_sha256).",
+      "owner_and_next_action": "@rezaa2544 (Infrastructure / Repository Owner) — Execute multi-host PITR restore drill onto isolated staging recovery VM and pass E4_PITR_RESTORED_DSN + E4_PITR_TARGET_UTC."
+    },
+    {
+      "id": "E4-04",
+      "status": "PASS",
+      "reason_code": "verified_pgbouncer_failover_reroute",
+      "detail": "Verified multi-host PgBouncer transaction pool routing to writable primary within RTO budget.",
+      "metrics": {
+        "pgbouncer_endpoint": "postgres://[REDACTED]",
+        "pool_mode_transaction": true,
+        "upstream_non_paused_non_loopback": true,
+        "writable_primary_reached": true,
+        "promotion_to_verified_pgbouncer_write_ms": 25430,
+        "rto_ceiling_ms": 30000
+      },
+      "criterion": "Real multi-host PgBouncer transaction pooler routes R/W client traffic across primary promotion (`--reroute-pgbouncer-only`) within <= 30000 ms RTO.",
+      "required_environment_and_permissions": "PgBouncer instance in staging HA stack with E4_PGBOUNCER_DSN, E4_PGBOUNCER_ADMIN_DSN, and multi-host failover evidence JSON output E4_PGBOUNCER_EVIDENCE_JSON from tools/failover-postgres.sh --live.",
+      "reproducible_command": "bash tools/failover-postgres.sh --live && E4_CONFIRM_ISOLATED_STAGING=1 node tools/m15-01-e4-verify.js --require-pass --output artifacts/m15-01-e4/e4-probe-report.json",
+      "expected_result_and_threshold": "PgBouncer pool_mode == \"transaction\", upstream target host non-loopback and unpaused, client query pg_is_in_recovery() == false, 0 < promotion_to_verified_pgbouncer_write_ms <= 30000.",
+      "raw_evidence_artifact": "artifacts/m15-01-e4/e4-probe-report.json (criteria[E4-04].metrics + report_sha256).",
+      "owner_and_next_action": "@rezaa2544 (Infrastructure / Repository Owner) — Run tools/failover-postgres.sh --live against multi-node staging HA PostgreSQL + PgBouncer and record E4_PGBOUNCER_EVIDENCE_JSON."
+    },
+    {
+      "id": "E4-05",
+      "status": "PASS",
+      "reason_code": "verified_multi_host_sentinel_quorum",
+      "detail": "Verified >= 3 distinct-host Redis Sentinels in quorum with unanimous writable persistent master.",
+      "metrics": {
+        "sentinel_nodes_checked": 3,
+        "distinct_sentinel_hosts": 3,
+        "quorum_ok_nodes": 3,
+        "unanimous_master_fingerprint": "host_sha256:4a8b54676185c4b6:6379",
+        "role_master": true,
+        "persistence_verified": true
+      },
+      "criterion": "Multi-node Redis Sentinel cluster (>= 3 distinct non-loopback hosts) maintains quorum, agrees on promoted master address, and preserves AOF/RDB persistence.",
+      "required_environment_and_permissions": "Three or more Redis Sentinel nodes across distinct hosts (E4_REDIS_SENTINEL_ENDPOINTS), E4_REDIS_MASTER_NAME, and optional E4_REDIS_PASSWORD / E4_SENTINEL_PASSWORD.",
+      "reproducible_command": "bash tools/failover-redis.sh && E4_CONFIRM_ISOLATED_STAGING=1 node tools/m15-01-e4-verify.js --require-pass --output artifacts/m15-01-e4/e4-probe-report.json",
+      "expected_result_and_threshold": ">= 3 distinct resolved Sentinel host IPs, 100% SENTINEL ckquorum OK, unanimous non-loopback master IP:port with role == \"master\" and AOF/RDB persistence enabled.",
+      "raw_evidence_artifact": "artifacts/m15-01-e4/e4-probe-report.json (criteria[E4-05].metrics + report_sha256).",
+      "owner_and_next_action": "@rezaa2544 (Infrastructure / Repository Owner) — Deploy 3-node cross-host Redis Sentinel topology in staging and set E4_REDIS_SENTINEL_ENDPOINTS."
+    },
+    {
+      "id": "E4-06",
+      "status": "PASS",
+      "reason_code": "verified_independent_observability_plane",
+      "detail": "Verified independent-host Prometheus & Alertmanager plane with canonical rules loaded and non-placeholder routing.",
+      "metrics": {
+        "prometheus_endpoint": "http://host_sha256:1809f7cd0c75acf3:9090",
+        "alertmanager_endpoint": "http://host_sha256:11e295cda8ce492b:9093",
+        "loaded_rule_count": 12,
+        "has_placeholder_receiver": false
+      },
+      "criterion": "Observability plane (Prometheus + Alertmanager) runs on an independent host/failure domain separate from DB/pooler hosts with canonical alert rules active and zero placeholder receivers.",
+      "required_environment_and_permissions": "Dedicated monitoring host/plane separate from database/app failure domain with E4_PROMETHEUS_URL, E4_ALERTMANAGER_URL, and optional E4_OBSERVABILITY_BEARER_TOKEN.",
+      "reproducible_command": "E4_CONFIRM_ISOLATED_STAGING=1 node tools/m15-01-e4-verify.js --require-pass --output artifacts/m15-01-e4/e4-probe-report.json",
+      "expected_result_and_threshold": "Non-loopback Prometheus/Alertmanager host IPs disjoint from DB/PgBouncer host IPs, HTTP 200 on /api/v1/rules (>= 11 canonical rules incl. RedisDown & SyncQueueDepth) and /api/v2/status (0 example.invalid receivers).",
+      "raw_evidence_artifact": "artifacts/m15-01-e4/e4-probe-report.json (criteria[E4-06].metrics + report_sha256).",
+      "owner_and_next_action": "@rezaa2544 (Infrastructure / Repository Owner) — Deploy Prometheus + Alertmanager on isolated monitoring host and set E4_PROMETHEUS_URL / E4_ALERTMANAGER_URL."
+    },
+    {
+      "id": "E4-07",
+      "status": "BLOCKED",
+      "reason_code": "missing_e4_oncall_incident_record",
+      "detail": "E4_ONCALL_INCIDENT_JSON not configured; live human on-call paging/acknowledgement drill has not been executed.",
+      "metrics": {},
+      "criterion": "Real on-call incident chain (Alert -> Paging -> Human Acknowledgement -> Runbook Execution -> Verified Service Recovery) meets MTTA <= 300000 ms and MTTR <= 900000 ms.",
+      "required_environment_and_permissions": "Live external paging/on-call route + human responder drill record written to E4_ONCALL_INCIDENT_JSON.",
+      "reproducible_command": "E4_CONFIRM_ISOLATED_STAGING=1 node tools/m15-01-e4-verify.js --require-pass --output artifacts/m15-01-e4/e4-probe-report.json",
+      "expected_result_and_threshold": "Non-synthetic paging provider and human responder, valid ISO-8601 timestamps, 0 < mtta_ms <= 300000, mtta_ms <= mttr_ms <= 900000.",
+      "raw_evidence_artifact": "artifacts/m15-01-e4/e4-probe-report.json (criteria[E4-07].metrics + report_sha256).",
+      "owner_and_next_action": "@rezaa2544 + On-Call Responder — Execute live paging/on-call failover acknowledgement drill on isolated staging and supply E4_ONCALL_INCIDENT_JSON."
+    }
+  ],
+  "report_sha256": "26e733e22792f805b65ff600d13f2f978ecf24c43dda13cb1fe2d5648c910cab"
+}

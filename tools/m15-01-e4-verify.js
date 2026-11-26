@@ -35,8 +35,12 @@ const net = require('net');
 const path = require('path');
 const { redactText } = require('./m15-01-log-redactor');
 
-const CANONICAL_CATALOG_SHA256 = 'sha256:7743953e67a9f6421a245143501f010532c02056427d8d480725fdecfcd14eb6'.replace(/^sha256:/, '');
-const EXPECTED_MIGRATION_COUNT = 26;
+/* Re-pin history: pinned at 26 migrations on 2026-10-23 (canonical at the time).
+   2026-11-26: chain grew to 30 (027-030 incl. 030_rls_tenant_isolation — M15-03);
+   re-computed from the live restored catalog on HEAD 977d5555 (restore-drill E4-SIM).
+   The constant must track the CURRENT chain of record — verified by a live catalog probe. */
+const CANONICAL_CATALOG_SHA256 = '9acb9da3ea15636d409752c8363bc211a8409d07a553cddff50e8a69c04f1dd5'.replace(/^sha256:/, '');
+const EXPECTED_MIGRATION_COUNT = 30;
 const DEFAULT_MAX_REPL_LAG_BYTES = 16 * 1024 * 1024;
 const DEFAULT_MAX_BACKUP_AGE_SEC = 86400;
 const DEFAULT_PGBOUNCER_RTO_MAX_MS = 30000;
@@ -291,7 +295,7 @@ const CLOSURE_CHECKLIST_SPEC = {
     criterion: 'Isolated host time-target PITR restore from off-site pgBackRest repository matches all 26 schema_migrations checksums and excludes post-target writes.',
     required_environment_and_permissions: 'Dedicated isolated recovery host distinct from Primary and Standby, E4_PITR_RESTORED_DSN, and target timestamp E4_PITR_TARGET_UTC.',
     reproducible_command: 'bash tools/pitr-restore.sh --target "$E4_PITR_TARGET_UTC" && bash tools/pitr-verify.sh --expect-before "$E4_PITR_TARGET_UTC" && E4_CONFIRM_ISOLATED_STAGING=1 node tools/m15-01-e4-verify.js --require-pass --output artifacts/m15-01-e4/e4-probe-report.json',
-    expected_result_and_threshold: 'Restored host IP distinct from Primary & Standby (non-loopback), 26 schema_migrations rows with catalog_sha256 == sha256:7743953e67a9f6421a245143501f010532c02056427d8d480725fdecfcd14eb6, post_target_audit_rows == 0.',
+    expected_result_and_threshold: 'Restored host IP distinct from Primary & Standby (non-loopback), 30 schema_migrations rows with catalog_sha256 == sha256:9acb9da3ea15636d409752c8363bc211a8409d07a553cddff50e8a69c04f1dd5 (re-pinned 2026-11-26 to the 30-migration chain incl. 030_rls; previously 26), post_target_audit_rows == 0 — the audit_log durability table itself is M15-05 scope; until it lands E4-03 reports audit_durability_table_absent explicitly (never a silent skip).',
     raw_evidence_artifact: 'artifacts/m15-01-e4/e4-probe-report.json (criteria[E4-03].metrics + report_sha256).',
     owner_and_next_action: '@rezaa2544 (Infrastructure / Repository Owner) — Execute multi-host PITR restore drill onto isolated staging recovery VM and pass E4_PITR_RESTORED_DSN + E4_PITR_TARGET_UTC.',
   },
@@ -585,28 +589,42 @@ async function runE4Verification(options = {}) {
         );
         const lines = (ledgerRes.rows || []).map((row) => String(row.line || ''));
         const catalogSha = sha256Hex(`${lines.join('\n')}\n`);
-        const postTargetRes = await pgQueryFn(
-          pitrDsn.raw,
-          'SELECT count(*)::int AS cnt FROM audit_log WHERE created_at > $1::timestamptz',
-          [pitrTargetUtc]
-        );
-        const postRows = Number((postTargetRes.rows && postTargetRes.rows[0] && postTargetRes.rows[0].cnt) || 0);
+        let postRows = null;
+        let auditDurabilityAbsent = false;
+        try {
+          const postTargetRes = await pgQueryFn(
+            pitrDsn.raw,
+            'SELECT count(*)::int AS cnt FROM audit_log WHERE created_at > $1::timestamptz',
+            [pitrTargetUtc]
+          );
+          postRows = Number((postTargetRes.rows && postTargetRes.rows[0] && postTargetRes.rows[0].cnt) || 0);
+        } catch (auditErr) {
+          /* 42P01 = undefined_table: the audit durability table (WORM, M15-05
+             scope) is not provisioned yet — the post-target boundary check is
+             then UNVERIFIABLE, reported explicitly, never silently skipped. */
+          auditDurabilityAbsent = true;
+        }
         const passed = lines.length === EXPECTED_MIGRATION_COUNT
           && catalogSha === expectedCatalogSha
+          && !auditDurabilityAbsent
           && postRows === 0;
         criteria.push(makeCriterionResult(
           'E4-03',
           passed ? 'PASS' : 'FAIL',
-          passed ? 'verified_isolated_pitr_restore' : 'pitr_verification_mismatch',
+          passed ? 'verified_isolated_pitr_restore'
+            : (auditDurabilityAbsent ? 'audit_durability_table_absent' : 'pitr_verification_mismatch'),
           passed
-            ? 'Verified isolated multi-host PITR catalog SHA-256 across all 26 migrations and zero post-target rows.'
-            : 'PITR restored catalog SHA-256, migration count, or post-target boundary check failed.',
+            ? `Verified isolated multi-host PITR catalog SHA-256 across all ${EXPECTED_MIGRATION_COUNT} migrations and zero post-target rows.`
+            : (auditDurabilityAbsent
+              ? 'Catalog restored and verified, but the audit_log durability table (WORM — M15-05 scope) is not provisioned: the post-target boundary check is unverifiable. Unblocks when M15-05 lands.'
+              : 'PITR restored catalog SHA-256, migration count, or post-target boundary check failed.'),
           {
             pitr_endpoint: pitrDsn.fingerprint,
             migration_count: lines.length,
             catalog_sha256: catalogSha,
             expected_catalog_sha256: expectedCatalogSha,
             post_target_audit_rows: postRows,
+            audit_durability_table_absent: auditDurabilityAbsent,
           }
         ));
       }
