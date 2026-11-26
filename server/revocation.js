@@ -10,15 +10,19 @@
      قدیمیِ بدونِ sv تا اولین revoke-all معتبر می‌مانند (سازگاریِ روبه‌عقب).
    - خطایِ Redis = fail-open در خواندن (توضیح در §5): ابطالِ محلی همچنان
      پابرجاست؛ ابطالِ بین‌نمونه‌ای تا وصل‌شدنِ Redis عقب می‌افتد.
-   کلیدها: revoked:<jti> (TTL=باقیِ عمرِ توکن)، sessver:<userId> (بدونِ TTL).
+   کلیدها: revoked:<jti> (TTL=باقیِ عمرِ توکن)، sessver:<userId> (بدونِ TTL)
+   — پیشوندها از رجیستریِ نقش‌های Redis (server/redis-roles.js، M15-08).
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 const redis = require('./redis');
 const cache = require('./cache');
 const cacheEvents = require('./cache-invalidation-events'); /* N-36 — مسیرِ دوام‌دارِ ابطال */
+/* M15-08: پیشوندهای خانوادهٔ نشست از رجیستریِ نقش‌ها (server/redis-roles.js)
+   — مقادیر عیناً همان «revoked:» و «sessver:» تاریخی‌اند (بدون تغییرِ نام). */
+const redisRoles = require('./redis-roles');
 
-const DENY_PREFIX = 'revoked:';
-const VER_PREFIX = 'sessver:';
+const DENY_PREFIX = redisRoles.familyPrefix('revocation-deny');
+const VER_PREFIX = redisRoles.familyPrefix('session-version');
 const pendingRevocations = new Map();
 
 async function replayPendingRevocations() {

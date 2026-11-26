@@ -6,13 +6,18 @@
      وگرنه fallback درون‌حافظه‌ایِ همان ریپو (تک‌پروسه — برای dev/test).
    - خطایِ غیرمنتظره = fail-open (allowed:true) تا افتِ Redis به خود-DDoS
      تبدیل نشود؛ لبه (nginx/Cloudflare) کنترلِ سختِ نرخ می‌ماند.
-   - کلیدها: rate:<prefix>:<identifier> با TTL=windowSeconds.
+   - کلیدها: rate:<prefix>:<identifier> با TTL=windowSeconds — پیشوند از
+     رجیستریِ نقش‌های Redis (server/redis-roles.js، خانوادهٔ ratelimit-live، M15-08).
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 const redis = require('./redis');
+/* M15-08: پیشوندِ خانوادهٔ نرخ از رجیستریِ نقش‌ها می‌آید (server/redis-roles.js)
+   — مقدار عیناً همان «rate:» تاریخی است (بدون تغییرِ نامِ کلید)؛ گیتِ
+   tests/m15-08-redis-roles.js انحرافِ پیشوند را قرمز می‌کند. */
+const redisRoles = require('./redis-roles');
 
 function getKey(prefix, identifier) {
-  return `rate:${prefix}:${identifier}`;
+  return redisRoles.key('ratelimit', prefix, identifier);
 }
 
 async function checkRateLimit({ prefix, identifier, limit, windowSeconds, weight }) {

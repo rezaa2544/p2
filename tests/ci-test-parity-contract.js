@@ -122,7 +122,11 @@ const DECLARED_SKIP_TOLERANT_SUITES = [
   /* NOT-RUN بدونِ env کاملِ PAYESH_RABBITMQ_* (self-skip صادقانه با
      NOTICE — هرگز PASS شمرده نمی‌شود)؛ با استکِ زنده (docker compose
      infra/rabbitmq/...) هر ۱۲ چکِ فقط-AMQPS اجرا و binding است. */
-  'tests/m15-07-rabbitmq-tls.js'
+  'tests/m15-07-rabbitmq-tls.js',
+  /* NOT-RUN بدونِ REDIS_URL (self-skip صادقانه با NOTICE — هرگز PASS
+     شمرده نمی‌شود)؛ با Redis زنده ۴۲ چک اجرا می‌شود (S4 = آدیتِ
+     SCANِ کل keyspace داخل قراردادِ پیشوندها — M15-08). */
+  'tests/m15-08-redis-roles.js'
 ];
 
 function readWorkflows() { if (!fs.existsSync(WF)) return []; return fs.readdirSync(WF).filter(f => f.endsWith('.yml') || f.endsWith('.yaml')).map(f => fs.readFileSync(path.join(WF,f),'utf8')); }
