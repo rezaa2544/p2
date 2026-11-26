@@ -40,3 +40,8 @@ Prometheus + Alertmanager از 21:00:31 تا 21:02:37 (+03:30) متوقف شدن
 
 ## باقی‌مانده (مالک)
 استقرارِ تولیدی روی میزبانِ جدا (E4-06)، receiver واقعی on-call + ردیابی MTTA/MTTR (E4-07)، بودجهٔ retention/disk در مقیاس.
+
+---
+
+## پیوست — E4-SIM فاز ۱ (همان روز، دستورِ مالک: شبیه‌سازی تا خریدِ فیزیکی)
+پروبِ رسمی `tools/m15-01-e4-verify.js` از کانتینر `node:22-bookworm` متصل به سه شبکهٔ compose (`payesh-pg-ha_default`، `payesh-redis-ha_default`، `payesh-observability_default`) با `E4_CONFIRM_ISOLATED_STAGING=1` اجرا شد — **E4-01 PASS** (replication چند-دامنه با IPهای متمایز کانتینری)، **E4-05 PASS** (سه sentinel با IP متمایز + ckquorum + master یک‌صدا + persistence)، **E4-06 PASS** (صفحهٔ مانیتورینگ با IPهای جدا از data-plane + ۱۲ قانون + بدون receiver placeholder). E4-02/03/04 = BLOCKED-with-proof (هدف‌های SIM هنوز فراهم نشده — فاز ۲)؛ E4-07 = انسانِ on-call (غیرقابل‌شبیه‌سازی). گزارش: `artifacts/m15-01-e4/e4-sim-report-2026-11-26.json` (redacted، بدون secret، sha256=acf5c480…، HEAD 977d5555). SIM-VERIFIED جایگزینِ E4 فیزیکی نیست؛ با رسیدن سرورها فقط re-verify می‌ماند.
