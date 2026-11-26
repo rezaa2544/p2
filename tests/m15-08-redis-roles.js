@@ -49,7 +49,7 @@ if (rr) {
   const ids = fams.map(f => f.id), prefs = fams.map(f => f.prefix);
   chk('idها یکتا', new Set(ids).size === ids.length);
   chk('پیشوندها یکتا', new Set(prefs).size === prefs.length);
-  chk('هیچ پیشوندی پیشوندِ دیگری نیست (سقفِ کلید)', prefs.every((p, i) => prefs.every((q, j) => i === j || !q.startsWith(p) || q === p)) || true);
+  chk('هیچ پیشوندی پیشوندِ دیگری نیست (سقفِ کلید)', prefs.every((p, i) => prefs.every((q, j) => i === j || !q.startsWith(p))));
   chk('نقشِ هر خانواده معتبر', fams.every(f => rr.ROLES[f.role]));
   chk('هر نقش دقیقاً یک canonical', roleNames.every(r => fams.filter(f => f.role === r && f.canonical).length === 1));
   chk('owner+note همهٔ خانواده‌ها', fams.every(f => f.owner && f.note));
