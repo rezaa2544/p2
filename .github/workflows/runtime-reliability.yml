@@ -30,6 +30,7 @@ jobs:
       PGURL: postgres://payesh:payesh@127.0.0.1:5432/payesh_ci
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
           persist-credentials: false
           fetch-depth: 1
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4

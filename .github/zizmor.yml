@@ -21,3 +21,9 @@ rules:
     # Trusted Publishing (OIDC) برای npm.pkg.github.com معنا ندارد.
     ignore:
       - npm-publish-github-packages.yml
+  adhoc-packages:
+    # node.js.yml: نصب playwright/axe فقط ابزار تست CI است (پین‌شده playwright@1.65.1
+    # و @axe-core/playwright@4.14.1، خارج از درخت محصول، کش‌شده در /var/tmp) —
+    # یافتهٔ zizmor صرفاً به‌دلیل الگوی npm-install مستقیم است.
+    ignore:
+      - node.js.yml

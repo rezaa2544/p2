@@ -67,6 +67,7 @@ jobs:
     # in a `--depth 1 --no-tags` clone the contract exits 1 with "no vX.Y.Z tag found" â€”
     # it fails loudly rather than passing vacuously, but CI still needs real history.
     - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      with:
         persist-credentials: false
         fetch-depth: 0
         fetch-tags: true
@@ -99,7 +100,7 @@ jobs:
         sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 >/dev/null 2>&1 || true
         if [ ! -d /var/tmp/pw-tools/node_modules/@axe-core/playwright ]; then
           mkdir -p /var/tmp/pw-tools
-          npm install --prefix /var/tmp/pw-tools --no-audit --no-fund playwright @axe-core/playwright
+          npm install --prefix /var/tmp/pw-tools --no-audit --no-fund playwright@1.65.1 @axe-core/playwright@4.14.1
         fi
         /var/tmp/pw-tools/node_modules/.bin/playwright install --with-deps chromium
         PW_CHROME="$(find "$HOME/.cache/ms-playwright" -type f \( -name 'chrome' -o -name 'chrome-headless-shell' \) | head -n 1 || true)"
