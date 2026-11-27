@@ -156,6 +156,7 @@
 | `OBSERVABILITY_DEPLOYMENT.md` | استقرار استک رصد روی میزبان | 🟡 اجرا باقی | ۲۰۲۶-۰۹-۱۰ |
 | `DRILL_LOG_M15-14_OBSERVABILITY_2026-11-26.md` | مانور E3 محلی M15-14 — شلیک واقعی ۷ آلارم + dead-man (GAP→ApiDown) + قطع صفحهٔ مانیتورینگ | ✅ | ۲۰۲۶-۱۱-۲۶ |
 | `DRILL_LOG_SI-013_ROTATION_REHEARSAL_2026-11-26.md` | تمرین چرخش دومرحله‌ای credentialها (PG/Redis دو-نودی + kid field-crypto با پنجرهٔ هم‌پوشانی و اثباتِ از-دست‌رفتن) + یافتهٔ pg_hba برای bootstrap واقعی | ✅ | ۲۰۲۶-۱۱-۲۶ |
+| `DRILL_LOG_M15-12_SECURITY_SIM_2026-11-27.md` | جایگزین‌های OSS اسکن‌های امنیتی (SAST/SCA/secret محلی+CI، ZAP baseline CI سبز + مانور محلی با رفع دو مانع ویندوزی و ثبت ناپایداری docker) | ✅ | ۲۰۲۶-۱۱-۲۷ |
 | `MULTI_INSTANCE_ARCHITECTURE.md` · `MULTI_INSTANCE_AUDIT.md` · `MULTI_INSTANCE_READINESS.md` | معماری/ممیزی/آمادگی چندنمونه‌ای | 🟡 | ۲۰۲۶-۰۹-۱۰ |
 | `CLIENT_OFFLINE_ARCHITECTURE.md` | معماری آفلاین‌اول سمت کلاینت | ✅ | ۲۰۲۶-۰۹-۱۰ |
 | `CACHE_STRATEGY_DESIGN.md` | استراتژی کش ال۱/ردیس | ✅ | ۲۰۲۶-۰۹-۱۰ |

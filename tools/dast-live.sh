@@ -154,7 +154,10 @@ if [ -z "$TARGET_URL" ]; then
     cd "$ROOT"
     export PAYESH_STORE="$SEED_STORE_TMP" PAYESH_AUDIT="$OUT_DIR/audit.log"
     export PAYESH_ENV="$ENV_MODE" NODE_ENV="$ENV_MODE"
-    export PORT="$PORT" HOST=127.0.0.1 PAYESH_DEMO_CODE=1
+    # DAST_HOST برای ویندوزِ محلی: ZAP-کانتینر از host.docker.internal به
+    # loopback نمی‌رسد؛ با DAST_HOST=0.0.0.0 میزبان روی همهٔ اینترفیس‌ها
+    # گوش می‌دهد (پیش‌فرض 127.0.0.1 — همان رفتار CI/لینوکس).
+    export PORT="$PORT" HOST="${DAST_HOST:-127.0.0.1}" PAYESH_DEMO_CODE=1
     # در deployment واقعی TLS لبه (nginx) می‌شکند — guardِ TLS production
     # با PAYESH_BEHIND_PROXY=1 راضی می‌شود (الگوی W12 edge).
     if [ "$ENV_MODE" = "production" ]; then export PAYESH_BEHIND_PROXY=1; fi
@@ -189,8 +192,18 @@ if [ -n "${ZAP_BIN:-}" ]; then
   timeout "$TIMEOUT" python3 "$ZAP_BIN" "${ZAP_ARGS[@]}" > "$OUT_DIR/zap.out" 2>&1
   code=$?
 elif command -v docker >/dev/null 2>&1; then
-  timeout "$TIMEOUT" docker run --rm --network=host \
-    -v "$OUT_DIR:/zap/wrk/:rw" "$ZAP_IMAGE" "$ZAP_CMD" "${ZAP_ARGS[@]}" > "$OUT_DIR/zap.out" 2>&1
+  if [ "$(uname -s)" = "Linux" ]; then
+    # CI/لینوکس: host-network واقعی — رفتارِ پیشین، بدونِ تغییر
+    timeout "$TIMEOUT" docker run --rm --network=host \
+      -v "$OUT_DIR:/zap/wrk/:rw" "$ZAP_IMAGE" "$ZAP_CMD" "${ZAP_ARGS[@]}" > "$OUT_DIR/zap.out" 2>&1
+  else
+    # Windows/macOS Docker Desktop: ‎--network=host‎ یعنی netns ماشینِ VM نه
+    # میزبانِ واقعی — پل + alias هاست‌گیت‌وی تا کانتینر به بوتِ staging برسد؛
+    # هدفِ 127.0.0.1 هم به همان alias بازنویسی می‌شود.
+    ZAP_ARGS_GW=("${ZAP_ARGS[@]/http:\/\/127.0.0.1:/http://host.docker.internal:}")
+    timeout "$TIMEOUT" docker run --rm --add-host=host.docker.internal:host-gateway \
+      -v "$OUT_DIR:/zap/wrk/:rw" "$ZAP_IMAGE" "$ZAP_CMD" "${ZAP_ARGS_GW[@]}" > "$OUT_DIR/zap.out" 2>&1
+  fi
   code=$?
 else
   say "❌ ZAP در دسترس نیست (نه docker نه ZAP_BIN) — بخشِ اسکن برای محیطِ واقعی است"
