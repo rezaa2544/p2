@@ -1,21 +1,49 @@
-# Security Policy
+# سیاست امنیتی Payesh — v1 (۲۰۲۶-۱۱-۲۷، ردیف ۵۱)
 
-## Supported Versions
+این سیاست جایگزینِ قالبِ پیش‌فرضِ گیت‌هاب است و برای مخزن `rezaa2544/p2` (پایش — سامانهٔ پایش مدرسه) معتبر است.
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+## دامنه‌ها (Scope)
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+| دامنه | پوشش | مثال |
+|---|---|---|
+| سرور (`server/**`) | در دامنه | مسیرهای API، احراز/مجوز (ABAC+RBAC)، اجاره‌نشینی چند-مستأجری و RLS، ماسک‌سازی داده، WAF، صف‌ها |
+| کلاینت (`client/**`) | در دامنه | نشت داده در رندر، ذخیره‌سازی سمت‌کلاینت، آفلاین‌اول، تزریق XSS |
+| سینک/زیرساخت (`infra/**`, `migrations/**`) | در دامنه | Postgres/Redis HA، پشتیبان‌گیری/PITR، رمزنگاری سطح-فیلد، مسیرهای داخلی شبکه |
+| کنترل‌های CI (`tests/**`, `tools/**`, `.github/**`) | در دامنه | دورزدنِ گیت‌ها، اثباتِ منفیِ ناقص، اسکریپت‌های evidence |
+| کانال‌های بیرونی (Notion/ماشینِ مالک/سرویس‌های فروشندگان) | **خارج از دامنه** این مخزن | گزارش‌های ابزارهای خریداری‌نشده، تمرین‌های شبیه‌سازی (SIM-VERIFIED) |
+| داده‌های کاربر واقعی | **هرگز** در دامنهٔ تست قرار نمی‌گیرد | گزارش باید با دیتای ساختگی/محیط ایزوله بازتولید شود |
 
-## Reporting a Vulnerability
+## گزارشِ آسیب‌پذیری
 
-Use this section to tell people how to report a vulnerability.
+- **کانال رسمی فعلی:** GitHub Private Vulnerability Reporting (PVR) از طریق دکمهٔ «Report a vulnerability» همین مخزن — تنها کانالِ امنِ مستقیم با مالک تا تعیینِ ایمیل اختصاصی.
+- **تصمیمِ کانال نهایی (ایمیل اختصاصی در برابر PVR):** با مالک است (طبق خودِ تسک). تا آن زمان PVR مرجع است؛ این تصمیم در همین فایل ثبت می‌شود.
+- **ممنوع:** گزارشِ عمومی در issue، DM غیررسمی، افشای عمومی قبل از انتشارِ رفع.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+### آنچه در گزارش بیاورید
+1. شرح و اثر (چه کسی، چه چیزی، چقدر بد).
+2. مسیر بازتولید دقیق (request/response یا اسکریپت) — روی دیتای ساختگی.
+3. SHA کامیتِ هدف (`git rev-parse HEAD`).
+4. اگر پیشنهاد رفع دارید، بنویسید؛ لازم نیست.
+
+### SLA (به‌روزرسانی‌ها)
+| مرحله | هدف |
+|---|---|
+| تأییدِ دریافت | ≤ ۳ روز کاری |
+| ارزیابی اولیه + تشکر/رد مستدل | ≤ ۱۰ روز کاری |
+| به‌روزرسانی وضعیت برای مواردِ پذیرفته‌شده | هر ۱۴ روز تا رفع |
+| رفع (Critical/High) | ≤ ۹۰ روز کاری از تأیید |
+| اعتبار عمومی (فقط با هماهنگی گزارشگر) | پس از انتشارِ رفع + ۱۴ روز |
+
+## رویهٔ داخلی پس از دریافت گزارش
+
+گزارش → `Finding` → طبق قراردادِ رفع عیب مخزن (`docs/ENGINEERING_EXECUTION_AND_VERIFICATION_POLICY.md` §3): Reproduce → Root Cause → Fix → Regression Test → Execute → Evidence → Review. هر status بدون اثبات روی Current HEAD معتبر نیست (قانون طلایی). اگر سکرت واقعی در تاریخچه پیدا شود: توقفِ خط + چرخش کلید فقط با مالک (ردیف ۵۰/صف Notion).
+
+## پشتیبانی نسخه
+
+پروژه تک-خطی (`main`) است؛ فقط آخرین HEAD پشتیبانی می‌شود. نسخه‌های تگ‌شدهٔ قدیمی با همان قانون (فقط آخرین انتشارِ هر خطِ پشتیبانی‌شده) پشتیبانی می‌شوند.
+
+## حاکمیت
+
+- **مالک:** `@rezaa2544` — تصمیم نهایی انتشار/افشا + همهٔ تصمیم‌های خرید/کانال.
+- **reviewer مستقل (به تفویضِ مکتوبِ مالک):** طبق `docs/M15_GOVERNANCE_ACCEPTANCE.md` (Hermes).
+- سیاست‌های مرتبط: `CONTRIBUTING.md`، `docs/ENGINEERING_EXECUTION_AND_VERIFICATION_POLICY.md`، `docs/PEN_TEST_CHECKLIST.md`، `docs/RISK_REGISTER.md`.
