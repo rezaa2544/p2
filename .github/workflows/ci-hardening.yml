@@ -1,0 +1,54 @@
+# Row 50 — CI hardening: gitleaks secret-scan (baseline) + zizmor actions audit.
+# ابزارها نسخه-پین‌شده و checksum-تأییدشده؛ هیچ اکشن مارکت‌پلیسِ لایسنس‌دار استفاده نشده.
+# baseline یافته‌های قدیمی: .gitleaks-baseline.json (redacted؛ fingerprint-matched)
+# config zizmor: .github/zizmor.yml (توجیه‌های accept ثبت‌شده)
+name: CI Hardening (gitleaks + zizmor)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: Secret scan (gitleaks 8.30.1, baseline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install gitleaks (checksum-verified, pinned)
+        env:
+          GL_VERSION: 8.30.1
+        run: |
+          set -euo pipefail
+          curl -sSfL -o gl.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GL_VERSION}/gitleaks_${GL_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o checksums.txt "https://github.com/gitleaks/gitleaks/releases/download/v${GL_VERSION}/checksums.txt"
+          WANT="$(grep "gitleaks_${GL_VERSION}_linux_x64.tar.gz" checksums.txt | awk '{print $1}')"
+          echo "${WANT}  gl.tar.gz" | sha256sum -c -
+          tar -xzf gl.tar.gz gitleaks && chmod +x gitleaks
+      - name: Scan with baseline (new leaks fail the gate)
+        run: ./gitleaks detect --source . --baseline-path .gitleaks-baseline.json --no-banner --redact --exit-code 1
+
+  zizmor:
+    name: Actions audit (zizmor 1.33.1)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install zizmor (pinned)
+        run: pip install zizmor==1.33.1
+      - name: Audit workflows (config: .github/zizmor.yml)
+        run: zizmor --no-progress --strict-collection .github/workflows

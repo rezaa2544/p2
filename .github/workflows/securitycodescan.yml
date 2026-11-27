@@ -19,14 +19,22 @@ on:
   schedule:
     - cron: '19 11 * * 6'
 
+# Row 50 (zizmor: excessive-permissions) — no default token permissions; jobs grant explicitly.
+permissions:
+  contents: read
+
 jobs:
   scope-check:
     name: SecurityCodeScan applicability (C# / VB.NET)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       has_dotnet: ${{ steps.scope.outputs.has_dotnet }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Require a matching language before invoking SecurityCodeScan
         id: scope
         shell: bash
@@ -37,7 +45,7 @@ jobs:
           else
             echo 'has_dotnet=false' >> "$GITHUB_OUTPUT"
             {
-              echo '## SecurityCodeScan — NOT APPLICABLE'
+              echo '## SecurityCodeScan â€” NOT APPLICABLE'
               echo 'No C# (.cs) or VB.NET (.vb) source files exist in this JavaScript/Node.js repository.'
               echo 'The C#/VB scanner was not run; this is a scope decision, not a clean SAST result.'
             } >> "$GITHUB_STEP_SUMMARY"
@@ -47,10 +55,15 @@ jobs:
     needs: scope-check
     if: ${{ needs.scope-check.outputs.has_dotnet == 'true' }}
     runs-on: windows-latest
+    permissions:
+      contents: read
+      security-events: write # upload-sarif فقط همین را لازم دارد
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: nuget/setup-nuget@04b0c2b8d1b97922f67eca497d7cf0bf17b8ffe1
-      - uses: microsoft/setup-msbuild@v1.0.2
+      - uses: microsoft/setup-msbuild@c26a08ba26249b81327e26f6ef381897b6a8754d # v1.0.2
 
       - name: Set up projects for analysis
         uses: security-code-scan/security-code-scan-add-action@f8ff4f2763ed6f229eded80b1f9af82ae7f32a0d
@@ -65,4 +78,4 @@ jobs:
         uses: security-code-scan/security-code-scan-results-action@cdb3d5e639054395e45bf401cba8688fcaf7a687
 
       - name: Upload sarif
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@74c1aea9df7c0f02e9b7bfe4a8935abf2e5e3aa6 # v3

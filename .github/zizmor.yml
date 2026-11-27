@@ -1,0 +1,23 @@
+# zizmor config — row 50 (CI hardening) — 2026-11-27
+# توجیه‌های accept ثبت‌شده؛ هر موردِ بعدیِ تازه باید فیکس شود نه ignore.
+# قالبِ ignore طبق مستندات zizmor: نامِ فایلِ پایه ([:line[:column]] اختیاری).
+rules:
+  cache-poisoning:
+    # npm-publish: لِینِ انتشار = فقط با event «release» که مالک می‌سازد + جداسازی
+    # build→publish با needs: build و publish از سورسِ تست‌شده — کش/آرتیفکتِ خارجی
+    # در این مسیر وجود ندارد (actions/cache استفاده نمی‌شود).
+    ignore:
+      - npm-publish-github-packages.yml
+  dangerous-triggers:
+    # notion-sync/payesh-watch: تریگرهای issues/pull_request عمدی‌اند (سینکِ وضعیتِ
+    # مخزن به Notion)؛ هر دو workflow فقط read-only اند (contents/actions/issues/
+    # pull-requests: read)، محتوای event از طریق env به اسکریپت می‌رسد و
+    # خروجی فقط به Notion API می‌رود — مسیر RCE وجود ندارد.
+    ignore:
+      - notion-sync.yml
+      - payesh-watch.yml
+  use-trusted-publishing:
+    # npm-publish: انتشار به GitHub Packages با GITHUB_TOKEN (نه npmjs)؛
+    # Trusted Publishing (OIDC) برای npm.pkg.github.com معنا ندارد.
+    ignore:
+      - npm-publish-github-packages.yml

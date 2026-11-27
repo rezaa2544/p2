@@ -9,17 +9,17 @@ permissions:
   contents: read
 jobs:
   strict-verification:
-    name: STRICT — 3-AI Evidence Gate
+    name: STRICT â€” 3-AI Evidence Gate
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - name: Checkout intended main commit
-        uses: actions/checkout@v4
-        with:
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+          persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
       - name: Setup Node 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -65,7 +65,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           if [ -n "${DATABASE_URL}" ]; then
-            echo "secrets.DATABASE_URL is present — the production truth gate below runs."
+            echo "secrets.DATABASE_URL is present â€” the production truth gate below runs."
           else
             echo "::warning title=Production truth gate NOT RUN::secrets.DATABASE_URL is empty, so the truth gate cannot run in this job (it fails closed without a URL). This job makes no claim that it ran."
           fi

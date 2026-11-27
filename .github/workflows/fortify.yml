@@ -38,7 +38,7 @@ jobs:
 
     # F-QA-04 (Chat 4 remediation): the `secrets` context is NOT available inside a
     # step-level `if:` (GitHub context-availability rules). The previous conditions
-    # referenced `secrets.*` directly in `if:`, which made this workflow file INVALID —
+    # referenced `secrets.*` directly in `if:`, which made this workflow file INVALID â€”
     # every run failed instantly with zero jobs, so the "skip without credentials"
     # branch could never execute and Fortify produced no signal in either direction.
     # Secrets ARE allowed in `jobs.<id>.env`, so credential presence is resolved once
@@ -51,11 +51,13 @@ jobs:
     steps:
       # Check out source code
       - name: Check Out Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       # F-QA-04 (Chat 4): transparency gate. A green check on this workflow must never be
       # readable as "Fortify scanned the code and found nothing". When credentials are
-      # absent the job still succeeds (by design — a missing optional integration is not
+      # absent the job still succeeds (by design â€” a missing optional integration is not
       # a build failure), so the outcome is written to the job summary in plain words.
       # NOTE: this reports state, it does not suppress anything. No continue-on-error and
       # no `|| true` exist in this workflow; a genuine scan failure still fails the job.
@@ -64,10 +66,10 @@ jobs:
         run: |
           echo "Skipping Fortify scan because required credentials are not available or the PR comes from a fork. Configure repository secrets for Fortify and rerun the workflow."
           {
-            echo "## Fortify AST Scan — NOT EXECUTED"
+            echo "## Fortify AST Scan â€” NOT EXECUTED"
             echo ""
             echo "**Scan status:** \`NOT SCANNED\`"
-            echo "**SAST result:** none produced — this run is NOT evidence of a clean codebase."
+            echo "**SAST result:** none produced â€” this run is NOT evidence of a clean codebase."
             echo ""
             if [ "${FOD_CREDENTIALS_PRESENT}" = "false" ]; then
               echo "- Reason: Fortify credentials are not configured (\`FOD_USER\` / \`FOD_CLIENT_ID\` absent)."
@@ -83,7 +85,7 @@ jobs:
         if: ${{ env.FOD_CREDENTIALS_PRESENT == 'true' && env.IS_FORK_PR != 'true' }}
         run: |
           {
-            echo "## Fortify AST Scan — EXECUTED"
+            echo "## Fortify AST Scan â€” EXECUTED"
             echo ""
             echo "**Scan status:** \`SCANNED\` (SAST + Debricked SCA)"
             echo "Results are reported by the Fortify action below and/or in the Fortify platform."
@@ -94,7 +96,7 @@ jobs:
         run: |
           echo "Fortify scan was NOT EXECUTED. This workflow cannot be green without a real Fortify scan."
           {
-            echo "## Fortify AST Scan — BLOCKED"
+            echo "## Fortify AST Scan â€” BLOCKED"
             echo ""
             echo '**Scan status:** `NOT SCANNED`'
             echo '**Gate result:** `BLOCKED / FAILURE`'

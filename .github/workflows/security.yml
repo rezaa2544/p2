@@ -1,20 +1,20 @@
-# ═══════════════════════════════════════════════════════════════════════
-# Security Program (Wave 13) — SAST · SCA · SBOM · DAST · Secret · WAF
+# â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
+# Security Program (Wave 13) â€” SAST آ· SCA آ· SBOM آ· DAST آ· Secret آ· WAF
 # -----------------------------------------------------------------------
 # Repo-native Security Program CI. Principles:
 #  - SAST uses the repo's OWN static security gates (no invented ESLint):
-#      tests/run.js         → structure + JS syntax + offline + add()/scope guards (35 checks)
-#      tools/check-authz.js → authorisation model parity (client ACTION_ROLES ⇄ server WRITE_PERMS)
-#    (The jsdom XSS boot suites — tests/xss-guard.js, tests/security*.js,
-#    tests/waf-ddos.js full — need a seeded server/data/payesh.json and/or a
+#      tests/run.js         â†’ structure + JS syntax + offline + add()/scope guards (35 checks)
+#      tools/check-authz.js â†’ authorisation model parity (client ACTION_ROLES â‡„ server WRITE_PERMS)
+#    (The jsdom XSS boot suites â€” tests/xss-guard.js, tests/security*.js,
+#    tests/waf-ddos.js full â€” need a seeded server/data/payesh.json and/or a
 #    booted instance; they run in the local/nightly flow, not the merge gate.)
 #  - Secret scan is the repo's own tools-backed tests/secret-scan.js.
 #  - SCA (npm audit) / SBOM (npm sbom) / DAST (OWASP ZAP baseline) are hard
 #    security gates. A dependency/network/target failure is a real CI failure,
 #    not a green result. DAST uses SECURITY_TARGET_URL when set, else boots the
 #    API locally (127.0.0.1:3000) and scans it via docker host-networking.
-# ═══════════════════════════════════════════════════════════════════════
-name: Security Program (SAST · SCA · SBOM · DAST · Secret)
+# â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
+name: Security Program (SAST آ· SCA آ· SBOM آ· DAST آ· Secret)
 
 permissions:
   contents: read
@@ -27,14 +27,16 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ── SAST: repo-native static analysis ──────────────────────────────
+  # â”€â”€ SAST: repo-native static analysis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   sast:
     name: SAST (repo-native static)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Use Node.js 22.x
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22.x
           cache: npm
@@ -46,14 +48,16 @@ jobs:
       - name: Syntax check of core modules
         run: node --check server/index.js && node --check server/sync.js && node --check server/db.js
 
-  # ── Secret scan ─────────────────────────────────────────────────────
+  # â”€â”€ Secret scan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   secret:
     name: Secret scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Use Node.js 22.x
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22.x
           cache: npm
@@ -61,14 +65,16 @@ jobs:
       - name: Secret scan (repo rules)
         run: node tests/secret-scan.js
 
-  # ── SCA: dependency audit (hard gate) ───────────────────────────────
+  # â”€â”€ SCA: dependency audit (hard gate) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   sca:
     name: SCA (npm audit, best-effort)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Use Node.js 22.x
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22.x
           cache: npm
@@ -76,14 +82,16 @@ jobs:
       - name: npm audit (fail at high or above)
         run: npm audit --audit-level=high
 
-  # ── SBOM: dependency inventory (SPDX) — hard gate ───────────────────
+  # â”€â”€ SBOM: dependency inventory (SPDX) â€” hard gate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   sbom:
     name: SBOM (npm sbom / SPDX, best-effort)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Use Node.js 22.x
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22.x
           cache: npm
@@ -91,21 +99,23 @@ jobs:
       - name: Generate SBOM (SPDX JSON)
         run: npm sbom --sbom-format=spdx > sbom.spdx.json
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: sbom-spdx
           path: sbom.spdx.json
 
-  # ── DAST: OWASP ZAP baseline (hard gate; staging URL or local boot) ─
+  # â”€â”€ DAST: OWASP ZAP baseline (hard gate; staging URL or local boot) â”€
   dast:
     name: DAST (OWASP ZAP baseline, best-effort)
     runs-on: ubuntu-latest
     env:
       SECURITY_TARGET_URL: ${{ secrets.SECURITY_TARGET_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Use Node.js 22.x
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22.x
           cache: npm
@@ -133,8 +143,8 @@ jobs:
         env:
           DAST_MODE: ${{ steps.dast-target.outputs.mode }}
       - name: Boot local API for DAST (no staging URL configured)
-        # P0 #6: بدون secret → local boot. با secret → مستقیم staging.
-        # معادلِ Go-Live: tools/dast-live.sh (DRY_RUN در سندباکس سبز است).
+        # P0 #6: ط¨ط¯ظˆظ† secret â†’ local boot. ط¨ط§ secret â†’ ظ…ط³طھظ‚غŒظ… staging.
+        # ظ…ط¹ط§ط¯ظ„ظگ Go-Live: tools/dast-live.sh (DRY_RUN ط¯ط± ط³ظ†ط¯ط¨ط§ع©ط³ ط³ط¨ط² ط§ط³طھ).
         if: steps.dast-target.outputs.mode == 'local'
         run: |
           node server/seed.js
@@ -148,24 +158,24 @@ jobs:
           curl -s -o /dev/null -w "dast local target HTTP %{http_code}\n" http://127.0.0.1:3000/api/health || true
       - name: OWASP ZAP baseline scan (staging target)
         if: steps.dast-target.outputs.mode == 'staging'
-        # NOTE: secrets.* must not be referenced directly in `if:` on this repo —
+        # NOTE: secrets.* must not be referenced directly in `if:` on this repo â€”
         # GitHub rejects the workflow with zero jobs ("workflow file issue").
-        # Verified empirically (bisect on wftest-branch, runs #61–#66, 2026-09-09):
+        # Verified empirically (bisect on wftest-branch, runs #61â€“#66, 2026-09-09):
         # resolve the secret into a step output and test the output in `if`.
-        # (ZAP runs in BOTH modes now — staging secret, or local-boot fallback.)
-        uses: zaproxy/action-baseline@v0.12.0
+        # (ZAP runs in BOTH modes now â€” staging secret, or local-boot fallback.)
+        uses: zaproxy/action-baseline@66042c8e7e24680119199a017e5b0e8603bf4dae # v0.12.0
         with:
           target: ${{ secrets.SECURITY_TARGET_URL }}
           # Findings and scan errors are hard failures for the security gate.
       - name: OWASP ZAP baseline scan (local target)
         if: steps.dast-target.outputs.mode == 'local'
         # The action runs ZAP inside docker, where 127.0.0.1 is the container
-        # itself — so the local target uses host networking to reach the API
+        # itself â€” so the local target uses host networking to reach the API
         # booted above on the runner.
         # zap-baseline exit codes: 1 = FAIL findings, 2 = WARN-only (advisory),
         # 3+ = scan error. WARN-only must not fail the gate (triage + enforcement
         # is a Wave 13 follow-up, same as the staging action's fail-on-FAIL
-        # semantics); FAILs and errors still fail loudly — never false-green.
+        # semantics); FAILs and errors still fail loudly â€” never false-green.
         run: |
           set +e
           docker run --rm --network=host \
@@ -177,13 +187,13 @@ jobs:
           code=$?
           echo "zap-baseline exit code: $code (1=FAIL findings, 2=WARN-only, 3+=error)"
           if [ "$code" -eq 2 ]; then
-            echo "WARN-only verdict — advisory, not failing the gate."
+            echo "WARN-only verdict â€” advisory, not failing the gate."
             exit 0
           fi
           exit "$code"
       - name: Upload ZAP reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: zap-baseline-reports
           path: |
@@ -198,14 +208,16 @@ jobs:
         run: |
           if [ -f /tmp/dast-api.pid ]; then kill "$(cat /tmp/dast-api.pid)" 2>/dev/null || true; fi
 
-  # ── WAF (kept from the earlier Security (WAF) workflow) ─────────────
+  # â”€â”€ WAF (kept from the earlier Security (WAF) workflow) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   waf:
     name: WAF & nginx config
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - name: Use Node.js 22.x
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22.x
           cache: npm
@@ -215,9 +227,9 @@ jobs:
       - name: WAF unit tests (no boot)
         run: node tests/waf-ddos.js --unit-only
       - name: WAF enforce + abuse protection (P0 #6)
-        # enforce: XSS/SQLi ⇒ 403 waf_blocked (fail-safe allowlist) ·
-        # report پیش‌فرض دست‌نخورده · per-phone login cap · پلکانِ send-code.
-        # seed لازم ندارد (boot با store خالی + fallback — شمارنده‌ها پیش از وجود‌سنجی).
+        # enforce: XSS/SQLi â‡’ 403 waf_blocked (fail-safe allowlist) آ·
+        # report ظ¾غŒط´â€Œظپط±ط¶ ط¯ط³طھâ€Œظ†ط®ظˆط±ط¯ظ‡ آ· per-phone login cap آ· ظ¾ظ„ع©ط§ظ†ظگ send-code.
+        # seed ظ„ط§ط²ظ… ظ†ط¯ط§ط±ط¯ (boot ط¨ط§ store ط®ط§ظ„غŒ + fallback â€” ط´ظ…ط§ط±ظ†ط¯ظ‡â€Œظ‡ط§ ظ¾غŒط´ ط§ط² ظˆط¬ظˆط¯â€Œط³ظ†ط¬غŒ).
         run: node tests/waf-enforce.js
       - name: Install nginx (for config test)
         run: sudo apt-get update -qq && sudo apt-get install -y -qq nginx > /dev/null

@@ -29,10 +29,10 @@ jobs:
     env:
       PGURL: postgres://payesh:payesh@127.0.0.1:5432/payesh_ci
     steps:
-      - uses: actions/checkout@v4
-        with:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+          persist-credentials: false
           fetch-depth: 1
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22.x
           cache: npm
@@ -41,7 +41,7 @@ jobs:
       - name: Static lease fencing contract
         run: node tests/outbox-lease-fencing.test.js
 
-      - name: Live lease fencing — independent fresh database run A
+      - name: Live lease fencing â€” independent fresh database run A
         run: |
           set -euo pipefail
           DB="payesh_rr_a"
@@ -58,7 +58,7 @@ jobs:
           node tests/outbox-runtime-reliability.test.js
           node tests/runtime-reliability-five-task.test.js
 
-      - name: Live lease fencing — independent fresh database run B
+      - name: Live lease fencing â€” independent fresh database run B
         run: |
           set -euo pipefail
           DB="payesh_rr_b"

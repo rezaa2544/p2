@@ -4,7 +4,7 @@
 # documentation.
 
 # APIsec addresses the critical need to secure APIs before they reach production.
-# APIsec provides the industry’s only automated and continuous API testing platform that uncovers security vulnerabilities and logic flaws in APIs.
+# APIsec provides the industryâ€™s only automated and continuous API testing platform that uncovers security vulnerabilities and logic flaws in APIs.
 # Clients rely on APIsec to evaluate every update and release, ensuring that no APIs go to production with vulnerabilities.
 
 # How to Get Started with APIsec.ai
@@ -61,7 +61,7 @@ jobs:
          shell: bash
          run: |
            {
-             echo '## APIsec — BLOCKED'
+             echo '## APIsec â€” BLOCKED'
              echo ''
              echo 'Required repository secrets apisec_username and apisec_password are missing or empty.'
              echo 'No APIsec scan was executed; this result is NOT evidence of a clean API.'
@@ -81,6 +81,6 @@ jobs:
           # The name of the sarif format result file The file is written only if this property is provided.
           sarif-result-file: "apisec-results.sarif"
        - name: Import results
-         uses: github/codeql-action/upload-sarif@v3
+         uses: github/codeql-action/upload-sarif@74c1aea9df7c0f02e9b7bfe4a8935abf2e5e3aa6 # v3
          with:
           sarif_file: ./apisec-results.sarif

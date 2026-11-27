@@ -20,11 +20,11 @@ jobs:
       matrix:
         run: ["a", "b"]
     steps:
-      - uses: actions/checkout@v4
-        with:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+          persist-credentials: false
           fetch-depth: 1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22.x
           cache: npm
@@ -70,7 +70,7 @@ jobs:
 
       - name: Upload current-head E3 evidence and command output
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: m15-01-runtime-${{ matrix.run }}-${{ steps.runtime_summary.outputs.status }}-${{ steps.runtime_summary.outputs.failure_code }}-${{ steps.runtime_summary.outputs.failed_stage }}-${{ github.sha }}
           path: ${{ runner.temp }}/m15-01-${{ matrix.run }}-${{ github.run_id }}-${{ github.run_attempt }}/
@@ -82,11 +82,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
-        with:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+          persist-credentials: false
           fetch-depth: 1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22.x
           cache: npm
@@ -140,7 +140,7 @@ jobs:
 
       - name: Upload DR command output and bounded E3 evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: m15-01-dr-${{ steps.dr_summary.outputs.status }}-${{ steps.dr_summary.outputs.failure_code }}-${{ steps.dr_summary.outputs.failed_stage }}-${{ github.sha }}
           path: ${{ runner.temp }}/m15-01-dr-${{ github.run_id }}-${{ github.run_attempt }}/
@@ -162,10 +162,10 @@ jobs:
       HISTORICAL_EXPECTED_SHA: "9c1471f71d80e03dfba1ce8f44d66cc2a9db590e"
       HISTORICAL_ATTEMPT1_IDS: "12366605456,12365184942,12366156323"
     steps:
-      - uses: actions/checkout@v4
-        with:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+          persist-credentials: false
           fetch-depth: 1
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22.x
       - name: Download and audit current + historical E3/DR ZIP archives
@@ -196,7 +196,7 @@ jobs:
           fi
       - name: Upload redacted M15-01 E4 operational readiness probe report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: m15-01-e4-probe-${{ steps.e4_probe.outputs.status }}-${{ github.sha }}
           path: ${{ runner.temp }}/m15-01-e4-probe-${{ github.run_id }}-${{ github.run_attempt }}/
